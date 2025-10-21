@@ -1,12 +1,11 @@
 package main
 
 import (
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/routes"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
-	"github.com/swaggo/files"
-	"github.com/swaggo/gin-swagger"
 	"os"
 )
 
@@ -26,12 +25,7 @@ func main() {
 
 	r := gin.Default()
 	r.Use(cors.Default())
-	r.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"message": "OK",
-		})
-	})
-	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	routes.RegisterRoutes(r)
 
 	r.Run(":" + port)
 }
