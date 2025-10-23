@@ -2,26 +2,58 @@ package main
 
 import (
 	"fmt"
-	"RPM-Backend/internal/config"
-	"RPM-Backend/internal/cleanup"
-	"github.com/joho/godotenv"
-	"RPM-Backend/internal/api/router"
-	"RPM-Backend/internal/repository"
 	"log"
+	"os"
+
+	"RPM-Backend/internal/api/router"
+	"RPM-Backend/internal/cleanup"
+	"RPM-Backend/internal/config"
+	"RPM-Backend/internal/repository"
+
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
+	"github.com/sirupsen/logrus"
 )
 
 func main() {
-   _ = godotenv.Load() // Load env
-   err := config.Connect()
-   if err != nil {
-	   log.Fatal("Failed to connect to MongoDB:", err)
-   }
-   fmt.Println("Connected to MongoDB successfully!")
+	// Load environment variables
+	if err := godotenv.Load(); err != nil {
+		logrus.Warn("No .env file found")
+	} else {
+		logrus.Info("Successfully loaded .env file")
+	}
 
-   db := config.Database()
-   repository.InitRefreshTokenCollection(db)
-   cleanup.StartRefreshTokenCleanup()
+	// Connect to MongoDB
+	if err := config.Connect(); err != nil {
+		log.Fatal("Failed to connect to MongoDB:", err)
+	}
+	fmt.Println("Connected to MongoDB successfully!")
 
-   r := router.SetupRouter()
-   r.Run() // listens on 0.0.0.0:8080 by default
+	// Initialize refresh token collection and cleanup
+	db := config.Database()
+	repository.InitRefreshTokenCollection(db)
+	cleanup.StartRefreshTokenCleanup()
+
+	// Setup Gin
+	if os.Getenv("GIN_MODE") == "release" {
+		gin.SetMode(gin.ReleaseMode)
+	}
+
+	r := gin.Default()
+	r.Use(cors.Default())
+
+	// Register routes (tùy bạn dùng SetupRouter hay RegisterRoutes)
+	router.RegisterRoutes(r)
+
+	// Get port from env or use default
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	// Start server
+	if err := r.Run(":" + port); err != nil {
+		log.Fatal("Failed to start server:", err)
+	}
 }
