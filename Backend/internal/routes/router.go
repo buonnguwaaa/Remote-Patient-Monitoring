@@ -7,7 +7,6 @@ import (
 )
 
 func RegisterRoutes(r *gin.Engine) {
-	// Add your route registrations here
 	RegisterUserRoutes(r)
 	// Health check endpoint
 	r.GET("/health", func(c *gin.Context) {

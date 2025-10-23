@@ -1,14 +1,14 @@
 package services
 
 import (
-	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domains"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domains/users"
 )
 
 type userService struct {
-	repo domains.UserRepository
+	repo users.UserRepository
 }
 
-func NewUserService(repo domains.UserRepository) domains.UserService {
+func NewUserService(repo users.UserRepository) users.UserService {
 	return &userService{
 		repo: repo,
 	}
