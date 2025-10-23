@@ -1,14 +1,14 @@
 package handlers
 
 import (
-	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domains"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domains/users"
 )
 
 type UserHandler struct {
-	service domains.UserService
+	service users.UserService
 }
 
-func NewUserHandler(service domains.UserService) *UserHandler {
+func NewUserHandler(service users.UserService) *UserHandler {
 	return &UserHandler{
 		service: service,
 	}
