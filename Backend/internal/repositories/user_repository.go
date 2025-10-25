@@ -34,7 +34,7 @@ func (r *userRepository) Create(ctx context.Context, u *users.User) (*users.User
 	if err != nil {
 		return nil, err
 	}
-	
+
 	u.ID = result.InsertedID.(primitive.ObjectID).Hex()
 	return u, nil
 }

@@ -37,12 +37,12 @@ func (s *userService) CreateUser(ctx context.Context, req *dto.CreateUserRequest
 		Gender:   req.Gender,
 		Dob:      dob,
 	}
-	
+
 	insertedUser, err := s.repo.Create(ctx, u)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return &dto.UserResponse{
 		ID:        insertedUser.ID,
 		Name:      insertedUser.Name,
