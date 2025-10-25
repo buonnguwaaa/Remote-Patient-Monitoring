@@ -3,3 +3,6 @@ gen_swagger:
 
 run:
 	go run cmd/server/main.go
+
+format:
+	gofmt -s -w .
