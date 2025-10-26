@@ -17,32 +17,42 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/config"
-	_ "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/docs"
-	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/routes"
+	docs "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/docs"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/cleanup"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repositories"
+	routes "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/routes"
+
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	"github.com/sirupsen/logrus"
 )
 
 func main() {
-	log.SetOutput(gin.DefaultWriter)
-	log.SetFlags(0)
-
+	// Load environment variables
 	if err := godotenv.Load(); err != nil {
-		log.Println("[GIN-warning] No .env file found")
+		logrus.Warn("No .env file found")
 	} else {
-		log.Println("[GIN-info] Successfully loaded .env file")
+		logrus.Info("Successfully loaded .env file")
 	}
 
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
+	// Connect to MongoDB
+	if err := config.ConnectMongo(); err != nil {
+		log.Fatal("Failed to connect to MongoDB:", err)
 	}
+	fmt.Println("Connected to MongoDB successfully!")
 
+	// Initialize refresh token collection and cleanup
+	db := config.Mongo.Database
+	repositories.InitRefreshTokenCollection(db)
+	cleanup.StartRefreshTokenCleanup()
+
+	// Setup Gin
 	if os.Getenv("GIN_MODE") == "release" {
 		gin.SetMode(gin.ReleaseMode)
 	}
@@ -61,10 +71,19 @@ func main() {
 	r.Use(gin.Recovery())
 	r.Use(cors.Default())
 
+	// Register routes
+	// Configure swagger doc base path
+	docs.SwaggerInfo.BasePath = "/"
 	routes.RegisterRoutes(r)
 
-	log.Printf("[GIN-info] Starting server on :%s", port)
+	// Get port from env or use default
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	// Start server
 	if err := r.Run(":" + port); err != nil {
-		log.Fatalf("[GIN-fatal] Failed to start server: %v", err)
+		log.Fatal("Failed to start server:", err)
 	}
 }

@@ -1,10 +1,13 @@
-package notificationtokens
+package model
 
-import "time"
+import (
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"time"
+)
 
 type NotificationToken struct {
-	ID        string    `json:"id" bson:"_id,omitempty"`
-	UserID    string    `json:"userId" bson:"userId"`
-	FCMToken  string    `json:"fcmToken" bson:"fcmToken"`
-	CreatedAt time.Time `json:"createdAt" bson:"createdAt"`
+	ID        primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+	UserID    primitive.ObjectID `bson:"user_id" json:"user_id"`
+	Token     string             `bson:"token" json:"token"`
+	ExpiresAt time.Time          `bson:"expires_at" json:"expires_at"`
 }

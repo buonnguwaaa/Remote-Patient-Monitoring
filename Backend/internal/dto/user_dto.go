@@ -2,6 +2,7 @@ package dto
 
 import (
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domains/users"
+	"time"
 )
 
 type CreateUserRequest struct {
@@ -22,4 +23,47 @@ type UserResponse struct {
 	Dob       string       `json:"dob" example:"1990-05-15"`
 	CreatedAt string       `json:"createdAt" example:"2025-10-25T12:00:00Z"`
 	UpdatedAt string       `json:"updatedAt" example:"2025-10-25T12:00:00Z"`
+}
+
+// Login
+type LoginRequest struct {
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required"`
+}
+
+type AuthTokens struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+}
+
+type LoginResponse struct {
+	Tokens AuthTokens   `json:"tokens"`
+	User   UserResponse `json:"user"`
+}
+
+// Refresh Token
+type RefreshTokenRequest struct {
+	RefreshToken string `json:"refresh_token" binding:"required"`
+}
+
+type RefreshTokenResponse struct {
+	AccessToken string `json:"access_token"`
+}
+
+// Helpers
+func ToUserResponse(u users.User) UserResponse {
+	var dobStr string
+	if !u.Dob.IsZero() {
+		dobStr = u.Dob.Format("2006-01-02")
+	}
+	return UserResponse{
+		ID:        u.ID.Hex(),
+		Name:      u.Name,
+		Email:     u.Email,
+		Role:      u.Role,
+		Gender:    u.Gender,
+		Dob:       dobStr,
+		CreatedAt: u.CreatedAt.Format(time.RFC3339),
+		UpdatedAt: u.UpdatedAt.Format(time.RFC3339),
+	}
 }

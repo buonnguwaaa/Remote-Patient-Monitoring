@@ -1,3 +1,8 @@
+<<<<<<< HEAD
+info:
+  contact: {}
+paths: {}
+=======
 basePath: /
 definitions:
   dto.CreateUserRequest:
@@ -129,4 +134,5 @@ paths:
 schemes:
 - http
 - https
+>>>>>>> develop
 swagger: "2.0"

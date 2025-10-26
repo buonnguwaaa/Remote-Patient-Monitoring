@@ -2,72 +2,124 @@ package services
 
 import (
 	"context"
+	"fmt"
+	"os"
 	"time"
 
+	ntmodel "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domains/notification_tokens"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domains/users"
-	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repositories"
+	"github.com/golang-jwt/jwt/v5"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"golang.org/x/crypto/bcrypt"
 )
 
-type userService struct {
-	repo repositories.UserRepository
-}
-
-type UserService interface {
-	CreateUser(context.Context, *dto.CreateUserRequest) (*dto.UserResponse, error)
-	GetUserByID(context.Context, string) (*dto.UserResponse, error)
-}
-
-func NewUserService(repo repositories.UserRepository) UserService {
-	return &userService{
-		repo: repo,
+// Đăng ký user mới
+func RegisterUser(ctx context.Context, req *users.User) error {
+	// Kiểm tra email đã tồn tại
+	foundUser, err := repositories.FindUserByEmail(ctx, req.Email)
+	if err == nil && foundUser != nil {
+		return fmt.Errorf("email already exists")
 	}
-}
-
-func (s *userService) CreateUser(ctx context.Context, req *dto.CreateUserRequest) (*dto.UserResponse, error) {
-	dob, err := time.Parse("2006-01-02", req.Dob)
+	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("failed to hash password: %w", err)
 	}
-	u := &users.User{
-		Name:     req.Name,
-		Email:    req.Email,
-		Password: req.Password,
-		Role:     req.Role,
-		Gender:   req.Gender,
-		Dob:      dob,
+	req.Password = string(hash)
+	if err := repositories.CreateUser(ctx, req); err != nil {
+		return fmt.Errorf("failed to create user: %w", err)
 	}
-
-	insertedUser, err := s.repo.Create(ctx, u)
-	if err != nil {
-		return nil, err
-	}
-
-	return &dto.UserResponse{
-		ID:        insertedUser.ID,
-		Name:      insertedUser.Name,
-		Email:     insertedUser.Email,
-		Role:      insertedUser.Role,
-		Gender:    insertedUser.Gender,
-		Dob:       insertedUser.Dob.Format("2006-01-02"),
-		CreatedAt: insertedUser.CreatedAt.Format(time.RFC3339),
-		UpdatedAt: insertedUser.UpdatedAt.Format(time.RFC3339),
-	}, nil
+	return nil
 }
 
-func (s *userService) GetUserByID(ctx context.Context, id string) (*dto.UserResponse, error) {
-	user, err := s.repo.FindByID(ctx, id)
+// Đăng nhập, trả về accessToken, refreshToken, user
+func LoginUser(ctx context.Context, email, password string) (string, string, *users.User, error) {
+	jwtSecret := []byte(os.Getenv("JWT_SECRET"))
+	user, err := repositories.FindUserByEmail(ctx, email)
 	if err != nil {
-		return nil, err
+		return "", "", nil, err
 	}
-	return &dto.UserResponse{
-		ID:        user.ID,
-		Name:      user.Name,
-		Email:     user.Email,
-		Role:      user.Role,
-		Gender:    user.Gender,
-		Dob:       user.Dob.Format("2006-01-02"),
-		CreatedAt: user.CreatedAt.Format(time.RFC3339),
-		UpdatedAt: user.UpdatedAt.Format(time.RFC3339),
-	}, nil
+	if bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)) != nil {
+		return "", "", nil, err
+	}
+	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"user_id": user.ID.Hex(),
+		"email":   user.Email,
+		"role":    user.Role,
+		"exp":     time.Now().Add(time.Hour * 1).Unix(),
+	})
+	accessTokenString, err := accessToken.SignedString(jwtSecret)
+	if err != nil {
+		return "", "", nil, err
+	}
+	// Xóa hết refresh token cũ của user
+	_ = repositories.DeleteRefreshTokensByUserID(ctx, user.ID)
+	refreshTokenExp := time.Now().Add(time.Hour * 24 * 7)
+	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"user_id": user.ID.Hex(),
+		"email":   user.Email,
+		"role":    user.Role,
+		"exp":     refreshTokenExp.Unix(),
+	})
+	refreshTokenString, err := refreshToken.SignedString(jwtSecret)
+	if err != nil {
+		return "", "", nil, err
+	}
+	err = repositories.SaveRefreshToken(ctx, &ntmodel.NotificationToken{
+		ID:        primitive.NewObjectID(),
+		UserID:    user.ID,
+		Token:     refreshTokenString,
+		ExpiresAt: refreshTokenExp,
+	})
+	if err != nil {
+		return "", "", nil, err
+	}
+	return accessTokenString, refreshTokenString, user, nil
 }
+
+// Xử lý refresh token
+type RefreshResult struct {
+	AccessToken string
+	Err         error
+}
+
+func HandleRefreshToken(ctx context.Context, refreshToken string) RefreshResult {
+	jwtSecret := []byte(os.Getenv("JWT_SECRET"))
+
+	doc, err := repositories.FindRefreshToken(ctx, refreshToken)
+	if err != nil {
+		return RefreshResult{"", err}
+	}
+	if time.Now().After(doc.ExpiresAt) {
+		_ = repositories.DeleteRefreshToken(ctx, refreshToken)
+		return RefreshResult{"", err}
+	}
+
+	claims := jwt.MapClaims{}
+	_, err = jwt.ParseWithClaims(refreshToken, claims, func(token *jwt.Token) (interface{}, error) {
+		return jwtSecret, nil
+	})
+	if err != nil {
+		return RefreshResult{"", err}
+	}
+
+	userID, ok := claims["user_id"].(string)
+	if !ok {
+		return RefreshResult{"", err}
+	}
+
+	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"user_id": userID,
+		"email":   claims["email"],
+		"role":    claims["role"],
+		"exp":     time.Now().Add(time.Hour * 1).Unix(),
+	})
+	accessTokenString, err := accessToken.SignedString(jwtSecret)
+	if err != nil {
+		return RefreshResult{"", err}
+	}
+
+	return RefreshResult{accessTokenString, nil}
+}
+
+// RefreshToken struct moved to internal/domains/auth to avoid import cycles
