@@ -1,3 +1,19 @@
+// @title Remote Patient Monitoring API
+// @version 1.0
+// @description A REST API for remote patient monitoring system
+// @termsOfService http://swagger.io/terms/
+
+// @contact.name API Support
+// @contact.url http://www.swagger.io/support
+// @contact.email support@swagger.io
+
+// @license.name MIT
+// @license.url https://opensource.org/licenses/MIT
+
+// @host localhost:8080
+// @BasePath /
+// @schemes http https
+
 package main
 
 import (
@@ -41,7 +57,18 @@ func main() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	r := gin.Default()
+	if err := config.ConnectMongo(); err != nil {
+		log.Fatalf("[GIN-fatal] Could not connect to MongoDB: %v", err)
+	}
+	defer func() {
+		if err := config.DisconnectMongo(); err != nil {
+			log.Printf("[GIN-error] Error disconnecting from MongoDB: %v", err)
+		}
+	}()
+
+	r := gin.New()
+	r.Use(gin.Logger())
+	r.Use(gin.Recovery())
 	r.Use(cors.Default())
 
 	// Register routes

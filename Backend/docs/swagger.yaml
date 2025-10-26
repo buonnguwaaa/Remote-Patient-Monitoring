@@ -1,4 +1,138 @@
+<<<<<<< HEAD
 info:
   contact: {}
 paths: {}
+=======
+basePath: /
+definitions:
+  dto.CreateUserRequest:
+    properties:
+      dob:
+        example: "1990-05-15"
+        type: string
+      email:
+        example: john.doe@example.com
+        type: string
+      gender:
+        allOf:
+        - $ref: '#/definitions/users.Gender'
+        example: M
+      name:
+        example: John Doe
+        type: string
+      password:
+        example: SecurePass123!
+        minLength: 8
+        type: string
+      role:
+        allOf:
+        - $ref: '#/definitions/users.Role'
+        example: patient
+    required:
+    - dob
+    - email
+    - gender
+    - name
+    - password
+    - role
+    type: object
+  users.Gender:
+    enum:
+    - M
+    - F
+    - O
+    type: string
+    x-enum-varnames:
+    - GenderMale
+    - GenderFemale
+    - GenderOther
+  users.Role:
+    enum:
+    - patient
+    - doctor
+    type: string
+    x-enum-varnames:
+    - RolePatient
+    - RoleDoctor
+host: localhost:8080
+info:
+  contact:
+    email: support@swagger.io
+    name: API Support
+    url: http://www.swagger.io/support
+  description: A REST API for remote patient monitoring system
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: http://swagger.io/terms/
+  title: Remote Patient Monitoring API
+  version: "1.0"
+paths:
+  /users:
+    post:
+      consumes:
+      - application/json
+      description: Create a new user with the provided information
+      parameters:
+      - description: User information
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: User created successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a new user
+      tags:
+      - users
+  /users/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get a user by their ID
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: User not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get user by ID
+      tags:
+      - users
+schemes:
+- http
+- https
+>>>>>>> develop
 swagger: "2.0"

@@ -10,7 +10,6 @@ import (
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domains/users"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repositories"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -89,12 +88,10 @@ func HandleRefreshToken(ctx context.Context, refreshToken string) RefreshResult 
 
 	doc, err := repositories.FindRefreshToken(ctx, refreshToken)
 	if err != nil {
-		logrus.WithError(err).Warn("refresh token not found in DB")
 		return RefreshResult{"", err}
 	}
 	if time.Now().After(doc.ExpiresAt) {
 		_ = repositories.DeleteRefreshToken(ctx, refreshToken)
-		logrus.WithField("expired_at", doc.ExpiresAt).Warn("refresh token expired")
 		return RefreshResult{"", err}
 	}
 
@@ -103,13 +100,11 @@ func HandleRefreshToken(ctx context.Context, refreshToken string) RefreshResult 
 		return jwtSecret, nil
 	})
 	if err != nil {
-		logrus.WithError(err).Warn("failed to parse refresh token JWT")
 		return RefreshResult{"", err}
 	}
 
 	userID, ok := claims["user_id"].(string)
 	if !ok {
-		logrus.Warn("refresh token missing user_id claim")
 		return RefreshResult{"", err}
 	}
 
