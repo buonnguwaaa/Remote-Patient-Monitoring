@@ -5,10 +5,11 @@ import (
 	"log"
 	"os"
 
-	"RPM-Backend/internal/api/router"
-	"RPM-Backend/internal/cleanup"
-	"RPM-Backend/internal/config"
-	"RPM-Backend/internal/repository"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/config"
+	docs "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/docs"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/cleanup"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repositories"
+	routes "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/routes"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -25,14 +26,14 @@ func main() {
 	}
 
 	// Connect to MongoDB
-	if err := config.Connect(); err != nil {
+	if err := config.ConnectMongo(); err != nil {
 		log.Fatal("Failed to connect to MongoDB:", err)
 	}
 	fmt.Println("Connected to MongoDB successfully!")
 
 	// Initialize refresh token collection and cleanup
-	db := config.Database()
-	repository.InitRefreshTokenCollection(db)
+	db := config.Mongo.Database
+	repositories.InitRefreshTokenCollection(db)
 	cleanup.StartRefreshTokenCleanup()
 
 	// Setup Gin
@@ -43,8 +44,10 @@ func main() {
 	r := gin.Default()
 	r.Use(cors.Default())
 
-	// Register routes (tùy bạn dùng SetupRouter hay RegisterRoutes)
-	router.RegisterRoutes(r)
+	// Register routes
+	// Configure swagger doc base path
+	docs.SwaggerInfo.BasePath = "/"
+	routes.RegisterRoutes(r)
 
 	// Get port from env or use default
 	port := os.Getenv("PORT")

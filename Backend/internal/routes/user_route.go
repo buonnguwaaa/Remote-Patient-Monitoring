@@ -1,19 +1,14 @@
 package routes
 
 import (
+	userhandler "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/handlers/user"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/middleware"
 	"github.com/gin-gonic/gin"
 )
 
 func RegisterUserRoutes(r *gin.Engine) {
-	// Init handler ở đây
-	// e.g: userHandler := handlers.NewUserHandler()
-	// Add your user route registrations here
-	userGroup := r.Group("/users")
-	{
-		// Sau có API thì thay thế đoạn func() bằng handler tương ứng
-		userGroup.GET("/", func(c *gin.Context) {
-			// Handle GET /users
-			c.JSON(200, gin.H{"message": "List of users"})
-		})
-	}
+	r.POST("/auth/register", userhandler.Register)                  // register user
+	r.POST("/auth/login", userhandler.Login)                        // login user
+	r.GET("/auth/status", middleware.JWTAuth(), userhandler.Status) // check login status
+	r.POST("/auth/refresh", userhandler.RefreshToken)               // refresh token
 }
