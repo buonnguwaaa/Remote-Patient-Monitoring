@@ -7,6 +7,7 @@ import (
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domains/users"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repositories"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type userService struct {
@@ -44,7 +45,7 @@ func (s *userService) CreateUser(ctx context.Context, req *dto.CreateUserRequest
 	}
 
 	return &dto.UserResponse{
-		ID:        insertedUser.ID,
+		ID:        insertedUser.ID.Hex(),
 		Name:      insertedUser.Name,
 		Email:     insertedUser.Email,
 		Role:      insertedUser.Role,
@@ -56,12 +57,16 @@ func (s *userService) CreateUser(ctx context.Context, req *dto.CreateUserRequest
 }
 
 func (s *userService) GetUserByID(ctx context.Context, id string) (*dto.UserResponse, error) {
-	user, err := s.repo.FindByID(ctx, id)
+	objID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return nil, err
+	}
+	user, err := s.repo.FindByID(ctx, objID)
 	if err != nil {
 		return nil, err
 	}
 	return &dto.UserResponse{
-		ID:        user.ID,
+		ID:        user.ID.Hex(),
 		Name:      user.Name,
 		Email:     user.Email,
 		Role:      user.Role,
