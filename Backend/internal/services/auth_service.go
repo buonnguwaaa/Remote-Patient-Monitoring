@@ -3,8 +3,8 @@ package services
 import (
 	"context"
 	"errors"
-	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domains/users"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repositories"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecases"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/utils"

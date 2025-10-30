@@ -6,12 +6,13 @@ import (
 )
 
 type RegisterInput struct {
-	Name     string
-	Email    string
-	Password string
-	Role     users.Role
-	Gender   users.Gender
-	Dob      time.Time
+	Name              string
+	Email             string
+	Password          string
+	ConfirmedPassword string
+	Role              users.Role
+	Gender            users.Gender
+	Dob               time.Time
 }
 
 type LoginInput struct {

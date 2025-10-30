@@ -15,6 +15,6 @@ type RegisterRequest struct {
 }
 
 type LoginRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	Email    string `json:"email" example:"john.doe@example.com" binding:"required,email"`
+	Password string `json:"password" example:"SecurePass123!" binding:"required,min=8"`
 }
