@@ -8,19 +8,20 @@ import (
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/utils"
 	"github.com/gin-gonic/gin"
 	"os"
-	"time"
 )
 
 func RegisterAuthRoutes(r *gin.Engine) {
 	jwtSecret := os.Getenv("JWT_SECRET")
 	userRepo := repositories.NewUserRepository(config.Mongo.Database)
-	jwtManager := utils.NewJWTManager(jwtSecret, 24*time.Hour)
-	authService := services.NewAuthService(userRepo, jwtManager)
+	tokenRepo := repositories.NewTokenRepository(config.Mongo.Database)
+	jwtManager := utils.NewJWTManager(jwtSecret)
+	authService := services.NewAuthService(userRepo, tokenRepo, jwtManager)
 	authHandler := handlers.NewAuthHandler(authService)
 
 	authGroup := r.Group("/auth")
 	{
 		authGroup.POST("/register", authHandler.Register)
 		authGroup.POST("/login", authHandler.Login)
+		authGroup.POST("/refresh", authHandler.Refresh)
 	}
 }

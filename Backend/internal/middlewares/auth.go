@@ -1,12 +1,14 @@
 package middlewares
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domains/users"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/utils"
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 func JWTAuthMiddleware(jwtManager *utils.JWTManager) gin.HandlerFunc {
@@ -23,9 +25,13 @@ func JWTAuthMiddleware(jwtManager *utils.JWTManager) gin.HandlerFunc {
 			return
 		}
 
-		claims, err := jwtManager.VerifyToken(parts[1])
+		claims, err := jwtManager.VerifyAccessToken(parts[1])
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid or expired token"})
+			if errors.Is(err, jwt.ErrTokenExpired) {
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "token expired"})
+			} else {
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+			}
 			return
 		}
 

@@ -18,3 +18,12 @@ type LoginRequest struct {
 	Email    string `json:"email" example:"john.doe@example.com" binding:"required,email"`
 	Password string `json:"password" example:"SecurePass123!" binding:"required,min=8"`
 }
+
+type LoginResponse struct {
+	AccessToken  string `json:"accessToken"`
+	RefreshToken string `json:"refreshToken"`
+}
+
+type RefreshRequest struct {
+	RefreshToken string `json:"refreshToken" binding:"required"`
+}

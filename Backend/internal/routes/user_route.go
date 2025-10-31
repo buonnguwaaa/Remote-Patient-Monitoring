@@ -9,7 +9,6 @@ import (
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/utils"
 	"github.com/gin-gonic/gin"
 	"os"
-	"time"
 )
 
 func RegisterUserRoutes(r *gin.Engine) {
@@ -18,7 +17,7 @@ func RegisterUserRoutes(r *gin.Engine) {
 	userHandler := handlers.NewUserHandler(userService)
 
 	jwtSecret := os.Getenv("JWT_SECRET")
-	jwtManager := utils.NewJWTManager(jwtSecret, 24*time.Hour)
+	jwtManager := utils.NewJWTManager(jwtSecret)
 
 	userGroup := r.Group("/users")
 	{

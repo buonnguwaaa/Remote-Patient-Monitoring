@@ -1,6 +1,9 @@
 package utils
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -11,4 +14,17 @@ func HashPassword(password string) (string, error) {
 
 func ComparePassword(hashedPassword string, rawPassword string) bool {
 	return bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(rawPassword)) == nil
+}
+
+func HashTokenSHA256(token string) string {
+	sum := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(sum[:])
+}
+
+func MustHexToObjectID(hexStr string) primitive.ObjectID {
+	id, err := primitive.ObjectIDFromHex(hexStr)
+	if err != nil {
+		panic(err)
+	}
+	return id
 }
