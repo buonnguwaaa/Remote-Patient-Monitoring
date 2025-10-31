@@ -8,6 +8,8 @@ import (
 
 func RegisterRoutes(r *gin.Engine) {
 	RegisterUserRoutes(r)
+	RegisterAuthRoutes(r)
+
 	// Health check endpoint
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{
