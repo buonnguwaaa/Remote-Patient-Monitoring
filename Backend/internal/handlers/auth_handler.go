@@ -129,7 +129,9 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"accessToken": accessToken, "message": "refresh access token successfully"})
+
+	h.setAccessTokenCookie(c, accessToken)
+	c.JSON(http.StatusOK, gin.H{"message": "refresh access token successfully"})
 }
 
 // @Summary Logout
