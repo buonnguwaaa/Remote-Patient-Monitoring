@@ -19,6 +19,15 @@ func JWTAuthMiddleware(jwtManager *utils.JWTManager) gin.HandlerFunc {
 			return
 		}
 
+		if token == "" {
+			var err error
+			token, err = c.Cookie("access_token")
+			if err != nil {
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "missing access token"})
+				return
+			}
+		}
+
 		parts := strings.SplitN(authHeader, " ", 2)
 		if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid Authorization header"})
