@@ -1,6 +1,7 @@
 package users
 
 import (
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"time"
 )
 
@@ -20,21 +21,13 @@ const (
 )
 
 type User struct {
-	ID           string    `json:"id" bson:"_id"`
-	Role         Role      `json:"role" bson:"role"`
-	Name         string    `json:"name" bson:"name"`
-	EmailLower   string    `json:"emailLower" bson:"emailLower"`
-	PasswordHash string    `json:"passwordHash" bson:"passwordHash"`
-	Gender       Gender    `json:"gender,omitempty" bson:"gender,omitempty"`
-	Dob          time.Time `json:"dob,omitempty" bson:"dob,omitempty"`
-	CreatedAt    time.Time `json:"createdAt" bson:"createdAt"`
-	UpdatedAt    time.Time `json:"updatedAt" bson:"updatedAt"`
-}
-
-type UserRepository interface {
-	// Define methods for user data access here
-}
-
-type UserService interface {
-	// Define methods for user business logic here
+	ID        primitive.ObjectID `json:"id" bson:"_id,omitempty"`
+	Role      Role               `json:"role" bson:"role"`
+	Name      string             `json:"name" bson:"name"`
+	Email     string             `json:"email" bson:"email"`
+	Password  string             `json:"password" bson:"password"`
+	Gender    Gender             `json:"gender,omitempty" bson:"gender,omitempty"`
+	Dob       time.Time          `json:"dob,omitempty" bson:"dob,omitempty"`
+	CreatedAt time.Time          `json:"createdAt" bson:"createdAt"`
+	UpdatedAt time.Time          `json:"updatedAt" bson:"updatedAt"`
 }
