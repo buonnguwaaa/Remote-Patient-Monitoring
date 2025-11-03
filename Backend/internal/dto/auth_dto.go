@@ -27,3 +27,7 @@ type LoginResponse struct {
 type RefreshRequest struct {
 	RefreshToken string `json:"refreshToken" binding:"required"`
 }
+
+type LogoutRequest struct {
+	RefreshToken string `json:"refreshToken, omitempty"`
+}

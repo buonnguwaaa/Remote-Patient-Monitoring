@@ -23,3 +23,11 @@ type LoginInput struct {
 type RefreshInput struct {
 	RefreshToken string
 }
+
+type LogoutInput struct {
+	RefreshToken string
+}
+
+type GoogleOAuth2Input struct {
+	Code string
+}

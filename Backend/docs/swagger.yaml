@@ -13,6 +13,11 @@ definitions:
     - email
     - password
     type: object
+  dto.LogoutRequest:
+    properties:
+      refreshToken:
+        type: string
+    type: object
   dto.RefreshRequest:
     properties:
       refreshToken:
@@ -88,6 +93,43 @@ info:
   title: Remote Patient Monitoring API
   version: "1.0"
 paths:
+  /auth/google/callback:
+    get:
+      description: Handle Google OAuth2 callback and generate JWT, unified with LoginResponse
+      parameters:
+      - description: Google Auth Code
+        in: query
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Google Callback
+      tags:
+      - auth
+  /auth/google/login:
+    get:
+      description: Redirect user to Google OAuth2 login
+      responses:
+        "302":
+          description: Redirect
+          schema:
+            type: string
+      summary: Google Login
+      tags:
+      - auth
   /auth/login:
     post:
       consumes:
@@ -115,6 +157,35 @@ paths:
               type: string
             type: object
       summary: Login a user
+      tags:
+      - auth
+  /auth/logout:
+    post:
+      consumes:
+      - application/json
+      description: Revoke refresh token and clear session
+      parameters:
+      - description: Logout request (falls back to cookies)
+        in: body
+        name: logout
+        schema:
+          $ref: '#/definitions/dto.LogoutRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Logged out successfully
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Logout
       tags:
       - auth
   /auth/refresh:

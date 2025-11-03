@@ -25,7 +25,8 @@ type User struct {
 	Role      Role               `json:"role" bson:"role"`
 	Name      string             `json:"name" bson:"name"`
 	Email     string             `json:"email" bson:"email"`
-	Password  string             `json:"password" bson:"password"`
+	Password  string             `json:"password,omitempty" bson:"password,omitempty"`
+	Provider  string             `json:"provider,omitempty" bson:"provider,omitempty"`
 	Gender    Gender             `json:"gender,omitempty" bson:"gender,omitempty"`
 	Dob       time.Time          `json:"dob,omitempty" bson:"dob,omitempty"`
 	CreatedAt time.Time          `json:"createdAt" bson:"createdAt"`

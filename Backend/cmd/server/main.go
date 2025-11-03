@@ -55,6 +55,7 @@ func main() {
 			log.Printf("[GIN-error] Error disconnecting from MongoDB: %v", err)
 		}
 	}()
+	config.InitGoogleOAuth2()
 
 	r := gin.New()
 	r.Use(gin.Logger())

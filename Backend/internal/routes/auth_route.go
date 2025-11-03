@@ -23,5 +23,8 @@ func RegisterAuthRoutes(r *gin.Engine) {
 		authGroup.POST("/register", authHandler.Register)
 		authGroup.POST("/login", authHandler.Login)
 		authGroup.POST("/refresh", authHandler.Refresh)
+		authGroup.POST("/logout", authHandler.Logout)
+		authGroup.GET("/google/login", authHandler.HandleGoogleOAuth2Login)
+		authGroup.GET("/google/callback", authHandler.HandleGoogleOAuth2Callback)
 	}
 }
