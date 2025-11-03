@@ -5,7 +5,6 @@ import (
 	"time"
 )
 
-type Role string
 
 const (
 	RolePatient Role = "patient"
