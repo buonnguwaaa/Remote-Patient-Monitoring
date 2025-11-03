@@ -1,20 +1,35 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { SafeAreaView } from 'react-native';
+import LoginScreen from './screens/LoginScreen';
+import RegisterScreen from './screens/RegisterScreen';
+import HomeScreen from './screens/HomeScreen';
+import { AuthProvider, useAuth } from './context/AuthContext';
 
-export default function App() {
+function AppInner() {
+  const [mode, setMode] = useState('login');
+  const { accessToken, initializing } = useAuth();
+
+  if (initializing) return null;
+
+  if (accessToken) {
+    return <HomeScreen />;
+  }
+
   return (
-    <View style={styles.container}>
-      <Text>Open up App.js to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <SafeAreaView style={{ flex: 1 }}>
+      {mode === 'login' ? (
+        <LoginScreen onSwitchToRegister={() => setMode('register')} />
+      ) : (
+        <RegisterScreen onSwitchToLogin={() => setMode('login')} />
+      )}
+    </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppInner />
+    </AuthProvider>
+  );
+}

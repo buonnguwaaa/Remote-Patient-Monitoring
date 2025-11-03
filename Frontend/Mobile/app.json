@@ -25,5 +25,9 @@
     "web": {
       "favicon": "./assets/favicon.png"
     }
+    ,
+    "extra": {
+      "BASE_URL": "https://anjelica-nondisturbing-juli.ngrok-free.dev"
+    }
   }
 }
