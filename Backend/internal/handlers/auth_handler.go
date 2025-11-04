@@ -8,6 +8,8 @@ import (
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/utils"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"os"
+	"strings"
 	"time"
 )
 
@@ -60,7 +62,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusCreated, gin.H{"data": resp})
+	c.JSON(http.StatusCreated, gin.H{"data": resp, "message": "user registered successfully"})
 }
 
 // Login authenticates a user and returns a JWT token
@@ -92,12 +94,10 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	// Set httpOnly refresh token cookie
-	maxAge := int(utils.RefreshTokenTTL.Seconds())
-	c.SetSameSite(http.SameSiteLaxMode)
-	c.SetCookie("refresh_token", resp.RefreshToken, maxAge, "/auth/refresh", "", true, true)
+	h.setAccessTokenCookie(c, resp.AccessToken)
+	h.setRefreshTokenCookie(c, resp.RefreshToken)
 
-	c.JSON(http.StatusOK, gin.H{"data": resp})
+	c.JSON(http.StatusOK, gin.H{"message": "user logged in successfully"})
 }
 
 // Refresh issues a new access token given a valid refresh token
@@ -113,7 +113,6 @@ func (h *AuthHandler) Login(c *gin.Context) {
 func (h *AuthHandler) Refresh(c *gin.Context) {
 	var req dto.RefreshRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		// Fallback to cookie if no JSON body or bind error
 		cookie, cookieErr := c.Cookie("refresh_token")
 		if cookieErr != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -130,5 +129,122 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"accessToken": accessToken})
+
+	h.setAccessTokenCookie(c, accessToken)
+	c.JSON(http.StatusOK, gin.H{"message": "refresh access token successfully"})
+}
+
+// @Summary Logout
+// @Description Revoke refresh token and clear session
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param logout body dto.LogoutRequest false "Logout request (falls back to cookies)"
+// @Success 200 {object} map[string]string "Logged out successfully"
+// @Failure 400 {object} map[string]string "Bad request"
+// @Router /auth/logout [post]
+func (h *AuthHandler) Logout(c *gin.Context) {
+	var req dto.LogoutRequest
+	if err := c.ShouldBindJSON(&req); err != nil || req.RefreshToken == "" {
+		cookie, err := c.Cookie("refresh_token")
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "missing refresh token"})
+			return
+		}
+		req.RefreshToken = cookie
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	if err := h.service.Logout(ctx, &usecases.LogoutInput{RefreshToken: req.RefreshToken}); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.SetSameSite(http.SameSiteLaxMode)
+	c.SetCookie("access_token", "", -1, "/", "", h.isSecure(c), false)
+	c.SetCookie("refresh_token", "", -1, "/", "", h.isSecure(c), true)
+
+	c.JSON(http.StatusOK, gin.H{"message": "logged out successfully"})
+}
+
+// @Summary Google Login
+// @Description Redirect user to Google OAuth2 login
+// @Tags auth
+// @Success 302 {string} string "Redirect"
+// @Router /auth/google/login [get]
+func (h *AuthHandler) HandleGoogleOAuth2Login(c *gin.Context) {
+	// TODO: Generate and store state parameter to prevent CSRF
+	url := h.service.GetGoogleLoginURL("random-state")
+	c.Redirect(http.StatusTemporaryRedirect, url)
+}
+
+// @Summary Google Callback
+// @Description Handle Google OAuth2 callback and generate JWT, unified with LoginResponse
+// @Tags auth
+// @Produce json
+// @Param code query string true "Google Auth Code"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]string
+// @Router /auth/google/callback [get]
+func (h *AuthHandler) HandleGoogleOAuth2Callback(c *gin.Context) {
+	code := c.Query("code")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	resp, err := h.service.HandleGoogleOAuth2Callback(ctx, &usecases.GoogleOAuth2Input{Code: code})
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	h.setAccessTokenCookie(c, resp.AccessToken)
+	h.setRefreshTokenCookie(c, resp.RefreshToken)
+
+	c.Redirect(http.StatusTemporaryRedirect, os.Getenv("FE_URL"))
+}
+
+func (h *AuthHandler) setAccessTokenCookie(c *gin.Context, accessToken string) {
+	maxAge := int(utils.AccessTokenTTL.Seconds())
+	c.SetSameSite(http.SameSiteLaxMode)
+	c.SetCookie(
+		"access_token",
+		accessToken,
+		maxAge,
+		"/",
+		"",
+		h.isSecure(c),
+		false,
+	)
+}
+
+func (h *AuthHandler) setRefreshTokenCookie(c *gin.Context, refreshToken string) {
+	maxAge := int(utils.RefreshTokenTTL.Seconds())
+	c.SetSameSite(http.SameSiteLaxMode)
+	c.SetCookie(
+		"refresh_token",
+		refreshToken,
+		maxAge,
+		"/",
+		"",
+		h.isSecure(c),
+		true,
+	)
+}
+
+// isSecure determines whether cookies should be set with the Secure flag.
+// It prefers TLS detection but allows an environment override or a HTTPS FE_URL.
+func (h *AuthHandler) isSecure(c *gin.Context) bool {
+	if strings.ToLower(os.Getenv("FORCE_COOKIE_SECURE")) == "true" {
+		return true
+	}
+	if c.Request.TLS != nil {
+		return true
+	}
+	fe := os.Getenv("FE_URL")
+	if strings.HasPrefix(strings.ToLower(fe), "https://") {
+		return true
+	}
+	return false
 }

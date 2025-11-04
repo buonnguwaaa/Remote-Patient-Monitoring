@@ -13,13 +13,14 @@ import { Feather, FontAwesome } from '@expo/vector-icons';
 import styles from '../styles/login';
 
 import { useAuth } from '../context/AuthContext';
+import * as GoogleAuth from '../api/googleAuth';
 
 export default function LoginScreen({ onSwitchToRegister }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, setTokens } = useAuth();
 
   const handleSubmit = () => {
     setLoading(true);
@@ -101,11 +102,32 @@ export default function LoginScreen({ onSwitchToRegister }) {
 
           {/* Social buttons */}
           <View style={styles.socialRow}>
-            <ButtonPrimary variant="outline" onPress={() => {}} style={{ flex: 1, marginRight: 8 }}>
+            <ButtonPrimary
+              variant="outline"
+              onPress={async () => {
+                setLoading(true);
+                try {
+                  const res = await GoogleAuth.loginWithGoogle();
+                  if (!res.ok) {
+                    alert('Google login failed: ' + JSON.stringify(res.error || res));
+                  } else if (res.opened || res.redirected) {
+                    alert('Opening browser for Google sign-in. Complete the flow, then return to the app.');
+                  } else {
+                    alert('Google login result: ' + JSON.stringify(res));
+                  }
+                } catch (e) {
+                  alert('Google login error: ' + String(e));
+                } finally {
+                  setLoading(false);
+                }
+              }}
+              disabled={loading}
+              style={{ flex: 1, marginRight: 8 }}
+            >
               <FontAwesome name="google" size={18} color="#000" style={{ marginRight: 8 }} />
-              <Text style={{ color: '#030213', fontWeight: '600' }}>Google</Text>
+              <Text style={{ color: '#030213', fontWeight: '600' }}>{loading ? 'Signing in...' : 'Google'}</Text>
             </ButtonPrimary>
-            <ButtonPrimary variant="outline" onPress={() => {}} style={{ flex: 1, marginLeft: 8 }}>
+            <ButtonPrimary variant="outline" onPress={() => {}} disabled={loading} style={{ flex: 1, marginLeft: 8 }}>
               <FontAwesome name="apple" size={18} color="#000" style={{ marginRight: 8 }} />
               <Text style={{ color: '#030213', fontWeight: '600' }}>Apple</Text>
             </ButtonPrimary>

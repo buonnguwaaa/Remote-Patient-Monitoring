@@ -13,19 +13,29 @@ import (
 
 func JWTAuthMiddleware(jwtManager *utils.JWTManager) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		var token string
+		
 		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "missing Authorization header"})
+		if authHeader != "" {
+			parts := strings.SplitN(authHeader, " ", 2)
+			if len(parts) == 2 && strings.EqualFold(parts[0], "Bearer") {
+				token = parts[1]
+			}
+		}
+		
+		if token == "" {
+			cookieToken, err := c.Cookie("access_token")
+			if err == nil && cookieToken != "" {
+				token = cookieToken
+			}
+		}
+		
+		if token == "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "missing access token"})
 			return
 		}
 
-		parts := strings.SplitN(authHeader, " ", 2)
-		if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid Authorization header"})
-			return
-		}
-
-		claims, err := jwtManager.VerifyAccessToken(parts[1])
+		claims, err := jwtManager.VerifyAccessToken(token)
 		if err != nil {
 			if errors.Is(err, jwt.ErrTokenExpired) {
 				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "token expired"})

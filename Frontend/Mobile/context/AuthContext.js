@@ -72,6 +72,14 @@ export function AuthProvider({ children }) {
     }
   };
 
+  // allow external callers (e.g. social login) to set tokens directly
+  const setTokens = async (a, r) => {
+    setAccessToken(a);
+    setRefreshToken(r);
+    await persistTokens(a, r);
+    scheduleRefresh(a, r);
+  };
+
   const scheduleRefresh = (aToken, rToken) => {
     if (!aToken || !rToken) return;
     const payload = parseJwt(aToken);
@@ -107,15 +115,28 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     const res = await authApi.login({ email, password });
-    if (res.ok && res.body && res.body.data) {
-      const data = res.body.data;
-      const a = data.accessToken || data.AccessToken || null;
-      const r = data.refreshToken || data.RefreshToken || null;
-      setAccessToken(a);
-      setRefreshToken(r);
-      await persistTokens(a, r);
-      scheduleRefresh(a, r);
-      return { ok: true, data };
+    if (res.ok) {
+      // If backend returned nested data with tokens
+      if (res.body && res.body.data) {
+        const data = res.body.data;
+        const a = data.accessToken || data.AccessToken || null;
+        const r = data.refreshToken || data.RefreshToken || null;
+        if (a || r) {
+          await setTokens(a, r);
+        }
+        return { ok: true, data };
+      }
+
+      // If backend returned tokens at top-level
+      if (res.body && (res.body.accessToken || res.body.AccessToken)) {
+        const a = res.body.accessToken || res.body.AccessToken || null;
+        const r = res.body.refreshToken || res.body.RefreshToken || null;
+        await setTokens(a, r);
+        return { ok: true, data: res.body };
+      }
+      
+      setAccessToken('cookie-session');
+      return { ok: true, data: res.body };
     }
     return { ok: false, error: res.body };
   };
@@ -135,7 +156,7 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider
-      value={{ accessToken, refreshToken, initializing, login, register, logout, doRefresh }}
+      value={{ accessToken, refreshToken, initializing, login, register, logout, doRefresh, setTokens }}
     >
       {children}
     </AuthContext.Provider>

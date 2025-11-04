@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { SafeAreaView } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
 import HomeScreen from './screens/HomeScreen';
@@ -16,6 +16,7 @@ function AppInner() {
   }
 
   return (
+    <SafeAreaProvider>
     <SafeAreaView style={{ flex: 1 }}>
       {mode === 'login' ? (
         <LoginScreen onSwitchToRegister={() => setMode('register')} />
@@ -23,6 +24,7 @@ function AppInner() {
         <RegisterScreen onSwitchToLogin={() => setMode('login')} />
       )}
     </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
 

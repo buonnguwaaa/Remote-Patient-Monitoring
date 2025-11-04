@@ -24,10 +24,13 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
-    ,
+    },
     "extra": {
-      "BASE_URL": "https://anjelica-nondisturbing-juli.ngrok-free.dev"
-    }
+      "BASE_URL": "http://localhost:8080"
+    },
+    "scheme": "rpm",
+    "plugins": [
+      "expo-web-browser"
+    ]
   }
 }

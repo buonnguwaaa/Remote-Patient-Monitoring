@@ -1,9 +1,6 @@
 import Constants from 'expo-constants';
 
-// Resolution order for config values:
-// 1. process.env (when using a babel plugin to inline .env at build time)
-// 2. expo extras (app.json) when running via Expo
-// 3. fallback to localhost
+
 const extras = (Constants?.manifest?.extra) || (Constants?.expoConfig?.extra) || {};
 const BASE_URL = process.env.BASE_URL || extras.BASE_URL || 'http://localhost:8080';
 
@@ -17,6 +14,7 @@ async function request(path, opts = {}) {
     const res = await fetch(`${BASE_URL}${path}`, {
       headers,
       signal: controller.signal,
+      credentials: 'include',
       ...opts,
     });
     clearTimeout(id);

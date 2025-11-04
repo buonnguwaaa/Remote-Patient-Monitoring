@@ -42,5 +42,5 @@ func (h *UserHandler) GetUserByID(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": u})
+	c.JSON(http.StatusOK, gin.H{"data": u, "message": "user retrieved successfully"})
 }
