@@ -19,6 +19,10 @@ type UserRepository interface {
 	Create(context.Context, *users.User) (*users.User, error)
 	FindByID(context.Context, primitive.ObjectID) (*users.User, error)
 	FindByEmail(context.Context, string) (*users.User, error)
+	UpdateActivation(context.Context, string, bool) error
+	SetResetToken(context.Context, string, string, time.Time) error
+	FindByResetToken(context.Context, string) (*users.User, error)
+	UpdatePassword(context.Context, primitive.ObjectID, string) error
 }
 
 func NewUserRepository(db *mongo.Database) *userRepository {
@@ -56,4 +60,29 @@ func (r *userRepository) FindByEmail(ctx context.Context, email string) (*users.
 		return nil, err
 	}
 	return &u, nil
+}
+
+func (r *userRepository) UpdateActivation(ctx context.Context, email string, active bool) error {
+	_, err := r.col.UpdateOne(ctx, bson.M{"email": email}, bson.M{"$set": bson.M{"isActive": active, "updatedAt": time.Now().UTC()}})
+	return err
+}
+
+func (r *userRepository) SetResetToken(ctx context.Context, email, token string, expires time.Time) error {
+	_, err := r.col.UpdateOne(ctx, bson.M{"email": email}, bson.M{"$set": bson.M{"resetToken": token, "resetExpires": expires}})
+	return err
+}
+
+func (r *userRepository) FindByResetToken(ctx context.Context, token string) (*users.User, error) {
+	var u users.User
+	filter := bson.M{"resetToken": token, "resetExpires": bson.M{"$gt": time.Now()}}
+	err := r.col.FindOne(ctx, filter).Decode(&u)
+	if err != nil {
+		return nil, err
+	}
+	return &u, nil
+}
+
+func (r *userRepository) UpdatePassword(ctx context.Context, id primitive.ObjectID, hashed string) error {
+	_, err := r.col.UpdateOne(ctx, bson.M{"_id": id}, bson.M{"$set": bson.M{"password": hashed, "resetToken": "", "resetExpires": time.Time{}, "updatedAt": time.Now().UTC()}})
+	return err
 }

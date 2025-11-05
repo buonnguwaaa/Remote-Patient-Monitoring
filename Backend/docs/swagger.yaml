@@ -1,5 +1,12 @@
 basePath: /
 definitions:
+  dto.ForgotPasswordRequest:
+    properties:
+      email:
+        type: string
+    required:
+    - email
+    type: object
   dto.LoginRequest:
     properties:
       email:
@@ -61,6 +68,20 @@ definitions:
     - password
     - role
     type: object
+  dto.ResetPasswordRequest:
+    properties:
+      confirmPassword:
+        type: string
+      newPassword:
+        minLength: 6
+        type: string
+      token:
+        type: string
+    required:
+    - confirmPassword
+    - newPassword
+    - token
+    type: object
   users.Gender:
     enum:
     - M
@@ -93,6 +114,63 @@ info:
   title: Remote Patient Monitoring API
   version: "1.0"
 paths:
+  /auth/activate/{email}:
+    get:
+      description: Activate user account by email after registration
+      parameters:
+      - description: Email
+        in: path
+        name: email
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Account activated
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Activate account
+      tags:
+      - auth
+  /auth/forgot-password:
+    post:
+      consumes:
+      - application/json
+      description: Send reset link to user email
+      parameters:
+      - description: Email
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ForgotPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Reset link sent
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Forgot Password
+      tags:
+      - auth
   /auth/google/callback:
     get:
       description: Handle Google OAuth2 callback and generate JWT, unified with LoginResponse
@@ -244,6 +322,36 @@ paths:
               type: string
             type: object
       summary: Register a new user
+      tags:
+      - auth
+  /auth/reset-password:
+    post:
+      consumes:
+      - application/json
+      description: Reset password using valid token
+      parameters:
+      - description: New password
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ResetPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Password reset successfully
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Reset Password
       tags:
       - auth
   /users/{id}:

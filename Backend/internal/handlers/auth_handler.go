@@ -248,3 +248,72 @@ func (h *AuthHandler) isSecure(c *gin.Context) bool {
 	}
 	return false
 }
+
+// @Summary Forgot Password
+// @Description Send reset link to user email
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param data body dto.ForgotPasswordRequest true "Email"
+// @Success 200 {object} map[string]string "Reset link sent"
+// @Failure 400 {object} map[string]string "Bad request"
+// @Router /auth/forgot-password [post]
+func (h *AuthHandler) ForgotPassword(c *gin.Context) {
+	var req dto.ForgotPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	ctx, cancel := context.WithTimeout(c, 5*time.Second)
+	defer cancel()
+	if err := h.service.ForgotPassword(ctx, req.Email); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Reset link sent to email"})
+}
+
+// @Summary Reset Password
+// @Description Reset password using valid token
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param data body dto.ResetPasswordRequest true "New password"
+// @Success 200 {object} map[string]string "Password reset successfully"
+// @Failure 400 {object} map[string]string "Bad request"
+// @Router /auth/reset-password [post]
+func (h *AuthHandler) ResetPassword(c *gin.Context) {
+	var req dto.ResetPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	ctx, cancel := context.WithTimeout(c, 5*time.Second)
+	defer cancel()
+	if err := h.service.ResetPassword(ctx, req.Token, req.NewPassword); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Password reset successful"})
+}
+
+// @Summary Activate account
+// @Description Activate user account by email after registration
+// @Tags auth
+// @Produce json
+// @Param email path string true "Email"
+// @Success 200 {object} map[string]string "Account activated"
+// @Failure 400 {object} map[string]string "Bad request"
+// @Router /auth/activate/{email} [get]
+func (h *AuthHandler) ActivateAccount(c *gin.Context) {
+	email := c.Param("email")
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	if err := h.service.ActivateAccount(ctx, email); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Account activated"})
+}

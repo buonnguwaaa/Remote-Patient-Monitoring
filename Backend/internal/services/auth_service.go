@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"os"
 )
 
 const (
@@ -35,6 +36,9 @@ type AuthService interface {
 	Logout(ctx context.Context, input *usecases.LogoutInput) error
 	GetGoogleLoginURL(state string) string
 	HandleGoogleOAuth2Callback(ctx context.Context, input *usecases.GoogleOAuth2Input) (*dto.LoginResponse, error)
+	ForgotPassword(ctx context.Context, email string) error
+	ResetPassword(ctx context.Context, token, newPassword string) error
+	ActivateAccount(ctx context.Context, email string) error
 }
 
 func NewAuthService(userRepo repositories.UserRepository, tokenRepo repositories.TokenRepository, jwtManager *utils.JWTManager) AuthService {
@@ -274,4 +278,34 @@ func (s *authService) issueTokens(ctx context.Context, u *users.User) (*dto.Logi
 	}
 
 	return &dto.LoginResponse{AccessToken: accessToken, RefreshToken: refreshToken}, nil
+}
+
+func (s *authService) ForgotPassword(ctx context.Context, email string) error {
+	user, err := s.userRepo.FindByEmail(ctx, email)
+	if err != nil {
+		return errors.New("email not found")
+	}
+	token := utils.GenerateRandomToken(32)
+	expires := time.Now().Add(15 * time.Minute)
+	if err := s.userRepo.SetResetToken(ctx, email, token, expires); err != nil {
+		return err
+	}
+	resetLink := fmt.Sprintf("%s/reset-password?token=%s", os.Getenv("FE_URL"), token)
+	return utils.SendEmail(user.Email, "Password Reset", fmt.Sprintf("Click here to reset your password: %s", resetLink))
+}
+
+func (s *authService) ResetPassword(ctx context.Context, token, newPassword string) error {
+	u, err := s.userRepo.FindByResetToken(ctx, token)
+	if err != nil {
+		return errors.New("invalid or expired token")
+	}
+	hashed, err := utils.HashPassword(newPassword)
+	if err != nil {
+		return err
+	}
+	return s.userRepo.UpdatePassword(ctx, u.ID, hashed)
+}
+
+func (s *authService) ActivateAccount(ctx context.Context, email string) error {
+	return s.userRepo.UpdateActivation(ctx, email, true)
 }
