@@ -23,6 +23,10 @@ type UserRepository interface {
 	SetResetToken(context.Context, string, string, time.Time) error
 	FindByResetToken(context.Context, string) (*users.User, error)
 	UpdatePassword(context.Context, primitive.ObjectID, string) error
+
+	SetActivationToken(ctx context.Context, email, hash string, expires time.Time) error
+	FindByActivationHash(ctx context.Context, hash string) (*users.User, error)
+	ClearActivationToken(ctx context.Context, id primitive.ObjectID) error
 }
 
 func NewUserRepository(db *mongo.Database) *userRepository {
@@ -72,9 +76,12 @@ func (r *userRepository) SetResetToken(ctx context.Context, email, token string,
 	return err
 }
 
-func (r *userRepository) FindByResetToken(ctx context.Context, token string) (*users.User, error) {
+func (r *userRepository) FindByResetToken(ctx context.Context, tokenHash string) (*users.User, error) {
 	var u users.User
-	filter := bson.M{"resetToken": token, "resetExpires": bson.M{"$gt": time.Now()}}
+	filter := bson.M{
+		"resetToken":   tokenHash,
+		"resetExpires": bson.M{"$gt": time.Now()},
+	}
 	err := r.col.FindOne(ctx, filter).Decode(&u)
 	if err != nil {
 		return nil, err
@@ -84,5 +91,41 @@ func (r *userRepository) FindByResetToken(ctx context.Context, token string) (*u
 
 func (r *userRepository) UpdatePassword(ctx context.Context, id primitive.ObjectID, hashed string) error {
 	_, err := r.col.UpdateOne(ctx, bson.M{"_id": id}, bson.M{"$set": bson.M{"password": hashed, "resetToken": "", "resetExpires": time.Time{}, "updatedAt": time.Now().UTC()}})
+	return err
+}
+
+func (r *userRepository) SetActivationToken(ctx context.Context, email, hash string, expires time.Time) error {
+	_, err := r.col.UpdateOne(ctx,
+		bson.M{"email": email},
+		bson.M{"$set": bson.M{
+			"activationTokenHash": hash,
+			"activationExpires":   expires,
+			"updatedAt":           time.Now().UTC(),
+		}},
+	)
+	return err
+}
+
+func (r *userRepository) FindByActivationHash(ctx context.Context, hash string) (*users.User, error) {
+	var u users.User
+	filter := bson.M{
+		"activationTokenHash": hash,
+		"activationExpires":   bson.M{"$gt": time.Now()},
+	}
+	err := r.col.FindOne(ctx, filter).Decode(&u)
+	if err != nil {
+		return nil, err
+	}
+	return &u, nil
+}
+
+func (r *userRepository) ClearActivationToken(ctx context.Context, id primitive.ObjectID) error {
+	_, err := r.col.UpdateOne(ctx,
+		bson.M{"_id": id},
+		bson.M{"$unset": bson.M{
+			"activationTokenHash": "",
+			"activationExpires":   "",
+		}},
+	)
 	return err
 }

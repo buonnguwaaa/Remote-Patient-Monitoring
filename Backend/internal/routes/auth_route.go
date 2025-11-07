@@ -29,7 +29,7 @@ func RegisterAuthRoutes(r *gin.Engine) {
 
 		authGroup.POST("/forgot-password", authHandler.ForgotPassword)
 		authGroup.POST("/reset-password", authHandler.ResetPassword)
-		authGroup.GET("/activate/:email", authHandler.ActivateAccount)
+		authGroup.GET("/activate", authHandler.ActivateAccountByToken)
 	}
 }
 

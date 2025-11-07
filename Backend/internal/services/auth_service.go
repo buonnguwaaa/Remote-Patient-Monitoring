@@ -16,6 +16,8 @@ import (
 	"strings"
 	"time"
 	"os"
+	"crypto/rand"
+	"encoding/hex"
 )
 
 const (
@@ -39,6 +41,8 @@ type AuthService interface {
 	ForgotPassword(ctx context.Context, email string) error
 	ResetPassword(ctx context.Context, token, newPassword string) error
 	ActivateAccount(ctx context.Context, email string) error
+	ActivateAccountByToken(ctx context.Context, token string) error
+
 }
 
 func NewAuthService(userRepo repositories.UserRepository, tokenRepo repositories.TokenRepository, jwtManager *utils.JWTManager) AuthService {
@@ -52,6 +56,11 @@ func NewAuthService(userRepo repositories.UserRepository, tokenRepo repositories
 func (s *authService) Login(ctx context.Context, input *usecases.LoginInput) (*dto.LoginResponse, error) {
 	email := strings.ToLower(strings.TrimSpace(input.Email))
 	u, err := s.userRepo.FindByEmail(ctx, email)
+
+	if !u.IsActive {
+		return nil, errors.New("account not activated")
+	}
+
 	if err != nil {
 		return nil, errors.New("invalid credentials")
 	}
@@ -90,6 +99,13 @@ func (s *authService) Register(ctx context.Context, input *usecases.RegisterInpu
 	if err != nil {
 		return nil, err
 	}
+
+	plain, hash, _ := generateSecureToken(32)
+	_ = s.userRepo.SetActivationToken(ctx, insertedUser.Email, hash, time.Now().Add(24*time.Hour))
+
+	link := fmt.Sprintf("%s/activate?token=%s", os.Getenv("FE_URL"), plain)
+	_ = utils.SendEmail(insertedUser.Email, "Activate your account", "Click to activate: "+link)
+
 	return &dto.UserResponse{
 		ID:        insertedUser.ID.Hex(),
 		Name:      insertedUser.Name,
@@ -281,31 +297,80 @@ func (s *authService) issueTokens(ctx context.Context, u *users.User) (*dto.Logi
 }
 
 func (s *authService) ForgotPassword(ctx context.Context, email string) error {
-	user, err := s.userRepo.FindByEmail(ctx, email)
-	if err != nil {
-		return errors.New("email not found")
+	// luôn trả về phản hồi chung để tránh lộ user
+	user, _ := s.userRepo.FindByEmail(ctx, email)
+	if user == nil {
+		// không tiết lộ thông tin tồn tại
+		return nil
 	}
-	token := utils.GenerateRandomToken(32)
+
+	token, err := utils.SecureRandomToken(32)
+	if err != nil {
+		return fmt.Errorf("failed to generate token: %w", err)
+	}
+	tokenHash := utils.HashTokenSHA256(token)
 	expires := time.Now().Add(15 * time.Minute)
-	if err := s.userRepo.SetResetToken(ctx, email, token, expires); err != nil {
+
+	if err := s.userRepo.SetResetToken(ctx, email, tokenHash, expires); err != nil {
 		return err
 	}
+
 	resetLink := fmt.Sprintf("%s/reset-password?token=%s", os.Getenv("FE_URL"), token)
-	return utils.SendEmail(user.Email, "Password Reset", fmt.Sprintf("Click here to reset your password: %s", resetLink))
+	go utils.SendEmail(user.Email, "Password Reset",
+		fmt.Sprintf("Click to reset your password: %s (valid 15 minutes)", resetLink))
+
+	// luôn trả thông báo chung
+	return nil
 }
 
 func (s *authService) ResetPassword(ctx context.Context, token, newPassword string) error {
-	u, err := s.userRepo.FindByResetToken(ctx, token)
+	hash := utils.HashTokenSHA256(token)
+	u, err := s.userRepo.FindByResetToken(ctx, hash)
 	if err != nil {
 		return errors.New("invalid or expired token")
 	}
+
+	// áp dụng cùng ràng buộc mật khẩu như đăng ký
+	if len(newPassword) < 8 {
+		return errors.New("password too short")
+	}
+
 	hashed, err := utils.HashPassword(newPassword)
 	if err != nil {
 		return err
 	}
-	return s.userRepo.UpdatePassword(ctx, u.ID, hashed)
+	if err := s.userRepo.UpdatePassword(ctx, u.ID, hashed); err != nil {
+		return err
+	}
+	// xóa token sau khi dùng
+	return s.userRepo.SetResetToken(ctx, u.Email, "", time.Time{})
 }
 
 func (s *authService) ActivateAccount(ctx context.Context, email string) error {
 	return s.userRepo.UpdateActivation(ctx, email, true)
+}
+
+func (s *authService) ActivateAccountByToken(ctx context.Context, token string) error {
+	if strings.TrimSpace(token) == "" {
+		return errors.New("missing token")
+	}
+	hash := utils.HashTokenSHA256(token)
+	u, err := s.userRepo.FindByActivationHash(ctx, hash)
+	if err != nil {
+		return errors.New("invalid or expired token")
+	}
+	if err := s.userRepo.UpdateActivation(ctx, u.Email, true); err != nil {
+		return err
+	}
+	return s.userRepo.ClearActivationToken(ctx, u.ID)
+}
+
+func generateSecureToken(n int) (plain string, hash string, err error) {
+	b := make([]byte, n)
+	if _, err = rand.Read(b); err != nil {
+		return "", "", err
+	}
+	plain = hex.EncodeToString(b)
+	hash = utils.HashTokenSHA256(plain)
+	return
 }

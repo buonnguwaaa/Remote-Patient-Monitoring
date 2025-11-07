@@ -114,6 +114,33 @@ info:
   title: Remote Patient Monitoring API
   version: "1.0"
 paths:
+  /auth/activate:
+    get:
+      description: Activate user account using token from email link
+      parameters:
+      - description: Activation token
+        in: query
+        name: token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Account activated
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Activate account
+      tags:
+      - auth
   /auth/activate/{email}:
     get:
       description: Activate user account by email after registration

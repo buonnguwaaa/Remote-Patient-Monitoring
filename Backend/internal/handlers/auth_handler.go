@@ -317,3 +317,22 @@ func (h *AuthHandler) ActivateAccount(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Account activated"})
 }
+
+// @Summary Activate account
+// @Description Activate user account using token from email link
+// @Tags auth
+// @Produce json
+// @Param token query string true "Activation token"
+// @Success 200 {object} map[string]string "Account activated"
+// @Failure 400 {object} map[string]string "Bad request"
+// @Router /auth/activate [get]
+func (h *AuthHandler) ActivateAccountByToken(c *gin.Context) {
+	token := c.Query("token")
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+	if err := h.service.ActivateAccountByToken(ctx, token); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Account activated"})
+}

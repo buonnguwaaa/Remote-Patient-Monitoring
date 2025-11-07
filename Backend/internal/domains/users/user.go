@@ -32,6 +32,8 @@ type User struct {
 	IsActive     bool      `json:"isActive" bson:"isActive"`
 	ResetToken   string    `json:"resetToken,omitempty" bson:"resetToken,omitempty"`
 	ResetExpires time.Time `json:"resetExpires,omitempty" bson:"resetExpires,omitempty"`
+	ActivationTokenHash string    `bson:"activationTokenHash,omitempty"`
+	ActivationExpires   time.Time `bson:"activationExpires,omitempty"`
 	CreatedAt time.Time          `json:"createdAt" bson:"createdAt"`
 	UpdatedAt time.Time          `json:"updatedAt" bson:"updatedAt"`
 }
