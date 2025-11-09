@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"fmt"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/services"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecases"
@@ -112,7 +111,6 @@ func (h *AuthHandler) Login(c *gin.Context) {
 // @Router /auth/me [post]
 func (h *AuthHandler) Me(c *gin.Context) {
 	userID, exists := c.Get("userId")
-	fmt.Println("UserID in Me handler:", userID)
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
