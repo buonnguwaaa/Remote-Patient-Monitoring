@@ -188,6 +188,28 @@ paths:
       summary: Logout
       tags:
       - auth
+  /auth/me:
+    post:
+      consumes:
+      - application/json
+      description: Retrieve information about the authenticated user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User information retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get authenticated user info
+      tags:
+      - auth
   /auth/refresh:
     post:
       consumes:

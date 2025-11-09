@@ -2,19 +2,18 @@ package middlewares
 
 import (
 	"errors"
-	"net/http"
-	"strings"
-
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domains/users"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"net/http"
+	"strings"
 )
 
 func JWTAuthMiddleware(jwtManager *utils.JWTManager) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var token string
-		
+
 		authHeader := c.GetHeader("Authorization")
 		if authHeader != "" {
 			parts := strings.SplitN(authHeader, " ", 2)
@@ -22,14 +21,14 @@ func JWTAuthMiddleware(jwtManager *utils.JWTManager) gin.HandlerFunc {
 				token = parts[1]
 			}
 		}
-		
+
 		if token == "" {
 			cookieToken, err := c.Cookie("access_token")
 			if err == nil && cookieToken != "" {
 				token = cookieToken
 			}
 		}
-		
+
 		if token == "" {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "missing access token"})
 			return
