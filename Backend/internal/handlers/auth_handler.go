@@ -100,6 +100,34 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "user logged in successfully"})
 }
 
+// Me retrieves the authenticated user's information
+// @Summary Get authenticated user info
+// @Description Retrieve information about the authenticated user
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]interface{} "User information retrieved successfully"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Router /auth/me [post]
+func (h *AuthHandler) Me(c *gin.Context) {
+	userID, exists := c.Get("userId")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	user, err := h.service.Me(ctx, &usecases.MeInput{UserID: userID.(string)})
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": user})
+}
+
 // Refresh issues a new access token given a valid refresh token
 // @Summary Refresh access token
 // @Description Provide a refresh token to obtain a new access token

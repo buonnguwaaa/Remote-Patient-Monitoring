@@ -3,6 +3,7 @@ package routes
 import (
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/config"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/handlers"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/middlewares"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repositories"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/services"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/utils"
@@ -22,6 +23,7 @@ func RegisterAuthRoutes(r *gin.Engine) {
 	{
 		authGroup.POST("/register", authHandler.Register)
 		authGroup.POST("/login", authHandler.Login)
+		authGroup.POST("/me", middlewares.JWTAuthMiddleware(jwtManager), authHandler.Me)
 		authGroup.POST("/refresh", authHandler.Refresh)
 		authGroup.POST("/logout", authHandler.Logout)
 		authGroup.GET("/google/login", authHandler.HandleGoogleOAuth2Login)
