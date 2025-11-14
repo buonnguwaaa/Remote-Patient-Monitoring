@@ -190,7 +190,11 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 		return
 	}
 
-	c.SetSameSite(http.SameSiteLaxMode)
+	sameSite := http.SameSiteLaxMode
+	if strings.ToLower(os.Getenv("FORCE_SAMESITE_NONE")) == "true" {
+		sameSite = http.SameSiteNoneMode
+	}
+	c.SetSameSite(sameSite)
 	c.SetCookie("access_token", "", -1, "/", "", h.isSecure(c), false)
 	c.SetCookie("refresh_token", "", -1, "/", "", h.isSecure(c), true)
 
@@ -235,7 +239,11 @@ func (h *AuthHandler) HandleGoogleOAuth2Callback(c *gin.Context) {
 
 func (h *AuthHandler) setAccessTokenCookie(c *gin.Context, accessToken string) {
 	maxAge := int(utils.AccessTokenTTL.Seconds())
-	c.SetSameSite(http.SameSiteLaxMode)
+	sameSite := http.SameSiteLaxMode
+	if strings.ToLower(os.Getenv("FORCE_SAMESITE_NONE")) == "true" {
+		sameSite = http.SameSiteNoneMode
+	}
+	c.SetSameSite(sameSite)
 	c.SetCookie(
 		"access_token",
 		accessToken,
@@ -249,7 +257,11 @@ func (h *AuthHandler) setAccessTokenCookie(c *gin.Context, accessToken string) {
 
 func (h *AuthHandler) setRefreshTokenCookie(c *gin.Context, refreshToken string) {
 	maxAge := int(utils.RefreshTokenTTL.Seconds())
-	c.SetSameSite(http.SameSiteLaxMode)
+	sameSite := http.SameSiteLaxMode
+	if strings.ToLower(os.Getenv("FORCE_SAMESITE_NONE")) == "true" {
+		sameSite = http.SameSiteNoneMode
+	}
+	c.SetSameSite(sameSite)
 	c.SetCookie(
 		"refresh_token",
 		refreshToken,

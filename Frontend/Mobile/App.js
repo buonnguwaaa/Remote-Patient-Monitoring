@@ -7,11 +7,11 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 
 function AppInner() {
   const [mode, setMode] = useState('login');
-  const { accessToken, initializing } = useAuth();
+  const { user, initializing } = useAuth();
 
   if (initializing) return null;
 
-  if (accessToken) {
+  if (user) {
     return <HomeScreen />;
   }
 

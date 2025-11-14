@@ -1,163 +1,83 @@
-import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import * as authApi from '../api/authApi';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-const ACCESS_KEY = 'rpm_access_token';
-const REFRESH_KEY = 'rpm_refresh_token';
 
 const AuthContext = createContext(null);
 
-function parseJwt(token) {
-  try {
-    const base64Url = token.split('.')[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    let decoded;
-    if (typeof atob !== 'undefined') {
-      decoded = atob(base64);
-    } else if (typeof Buffer !== 'undefined') {
-      decoded = Buffer.from(base64, 'base64').toString('binary');
-    } else {
-      // can't decode
-      return null;
-    }
-    const jsonPayload = decodeURIComponent(
-      decoded
-        .split('')
-        .map(function (c) {
-          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-        })
-        .join(''),
-    );
-    return JSON.parse(jsonPayload);
-  } catch (e) {
-    return null;
-  }
-}
-
 export function AuthProvider({ children }) {
-  const [accessToken, setAccessToken] = useState(null);
-  const [refreshToken, setRefreshToken] = useState(null);
+  const [user, setUser] = useState(null);
   const [initializing, setInitializing] = useState(true);
-  const refreshTimeout = useRef(null);
 
   useEffect(() => {
-    // load tokens from storage
+    // On app start, ask backend who the current user is (backend will read cookies)
     (async () => {
       try {
-        const a = await AsyncStorage.getItem(ACCESS_KEY);
-        const r = await AsyncStorage.getItem(REFRESH_KEY);
-        if (a) setAccessToken(a);
-        if (r) setRefreshToken(r);
-        if (a) scheduleRefresh(a, r);
+        const res = await authApi.me();
+        if (res.ok && res.body && res.body.data) {
+          setUser(res.body.data);
+        } else if (res.ok && res.body) {
+          // some backends return user at top-level
+          setUser(res.body.user || res.body);
+        } else {
+          setUser(null);
+        }
       } catch (e) {
-        // ignore
+        setUser(null);
       } finally {
         setInitializing(false);
       }
     })();
-
-    return () => {
-      if (refreshTimeout.current) clearTimeout(refreshTimeout.current);
-    };
   }, []);
-
-  const persistTokens = async (a, r) => {
-    try {
-      if (a) await AsyncStorage.setItem(ACCESS_KEY, a);
-      else await AsyncStorage.removeItem(ACCESS_KEY);
-      if (r) await AsyncStorage.setItem(REFRESH_KEY, r);
-      else await AsyncStorage.removeItem(REFRESH_KEY);
-    } catch (e) {
-      // ignore
-    }
-  };
-
-  // allow external callers (e.g. social login) to set tokens directly
-  const setTokens = async (a, r) => {
-    setAccessToken(a);
-    setRefreshToken(r);
-    await persistTokens(a, r);
-    scheduleRefresh(a, r);
-  };
-
-  const scheduleRefresh = (aToken, rToken) => {
-    if (!aToken || !rToken) return;
-    const payload = parseJwt(aToken);
-    if (!payload || !payload.exp) return;
-    const expiresAt = payload.exp * 1000;
-    const now = Date.now();
-    const msUntilExpiry = expiresAt - now;
-    // refresh 60 seconds before expiry, or immediately if expired
-    const refreshIn = Math.max(msUntilExpiry - 60 * 1000, 0);
-    if (refreshTimeout.current) clearTimeout(refreshTimeout.current);
-    refreshTimeout.current = setTimeout(() => {
-      doRefresh();
-    }, refreshIn);
-  };
-
-  const doRefresh = async () => {
-    if (!refreshToken) return logout();
-    try {
-      const res = await authApi.refresh(refreshToken);
-      if (res.ok && res.body && res.body.accessToken) {
-        setAccessToken(res.body.accessToken);
-        await persistTokens(res.body.accessToken, refreshToken);
-        scheduleRefresh(res.body.accessToken, refreshToken);
-        return true;
-      }
-    } catch (e) {
-      // ignore
-    }
-    // failed to refresh -> logout
-    logout();
-    return false;
-  };
 
   const login = async (email, password) => {
     const res = await authApi.login({ email, password });
-    if (res.ok) {
-      // If backend returned nested data with tokens
-      if (res.body && res.body.data) {
-        const data = res.body.data;
-        const a = data.accessToken || data.AccessToken || null;
-        const r = data.refreshToken || data.RefreshToken || null;
-        if (a || r) {
-          await setTokens(a, r);
-        }
-        return { ok: true, data };
-      }
+    if (!res.ok) return { ok: false, error: res.body };
 
-      // If backend returned tokens at top-level
-      if (res.body && (res.body.accessToken || res.body.AccessToken)) {
-        const a = res.body.accessToken || res.body.AccessToken || null;
-        const r = res.body.refreshToken || res.body.RefreshToken || null;
-        await setTokens(a, r);
-        return { ok: true, data: res.body };
-      }
-      
-      setAccessToken('cookie-session');
-      return { ok: true, data: res.body };
+    // After login, backend likely set cookies; fetch current user
+    const meRes = await authApi.me();
+    if (meRes.ok && meRes.body && meRes.body.data) {
+      setUser(meRes.body.data);
+      return { ok: true, data: meRes.body.data };
     }
-    return { ok: false, error: res.body };
+
+    if (meRes.ok && meRes.body) {
+      setUser(meRes.body.user || meRes.body);
+      return { ok: true, data: meRes.body };
+    }
+
+    // no user returned, but login succeeded (cookie-only); mark as success
+    return { ok: true, data: res.body };
   };
 
   const register = async (payload) => {
     const res = await authApi.register(payload);
-    if (res.ok) return { ok: true, data: res.body };
-    return { ok: false, error: res.body };
+    if (!res.ok) return { ok: false, error: res.body };
+    // Optionally auto-login: some backends set cookies on register
+    const meRes = await authApi.me();
+    if (meRes.ok && meRes.body && meRes.body.data) setUser(meRes.body.data);
+    return { ok: true, data: res.body };
   };
 
   const logout = async () => {
-    setAccessToken(null);
-    setRefreshToken(null);
-    if (refreshTimeout.current) clearTimeout(refreshTimeout.current);
-    await persistTokens(null, null);
+    try {
+      await authApi.logout();
+    } catch (e) {
+      // ignore
+    }
+    setUser(null);
+  };
+
+  const refreshSession = async () => {
+    // call refresh endpoint which uses cookies and may rotate cookies
+    const res = await authApi.refresh();
+    if (!res.ok) return false;
+    // optionally refresh user info
+    const meRes = await authApi.me();
+    if (meRes.ok && meRes.body && meRes.body.data) setUser(meRes.body.data);
+    return true;
   };
 
   return (
-    <AuthContext.Provider
-      value={{ accessToken, refreshToken, initializing, login, register, logout, doRefresh, setTokens }}
-    >
+    <AuthContext.Provider value={{ user, initializing, login, register, logout, refreshSession }}>
       {children}
     </AuthContext.Provider>
   );

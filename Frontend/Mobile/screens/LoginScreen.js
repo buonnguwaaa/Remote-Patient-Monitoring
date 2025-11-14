@@ -15,12 +15,12 @@ import styles from '../styles/login';
 import { useAuth } from '../context/AuthContext';
 import * as GoogleAuth from '../api/googleAuth';
 
-export default function LoginScreen({ onSwitchToRegister }) {
+export default function LoginScreen({ onSwitchToRegister, onLoginSuccess }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { login, setTokens } = useAuth();
+  const { login } = useAuth();
 
   const handleSubmit = () => {
     setLoading(true);
@@ -29,6 +29,17 @@ export default function LoginScreen({ onSwitchToRegister }) {
       setLoading(false);
       if (!res.ok) {
         alert('Login failed: ' + JSON.stringify(res.error));
+        return;
+      }
+
+      // If caller provided onLoginSuccess, call it with user data (if any)
+      if (onLoginSuccess) {
+        try {
+          // res.data may contain user when AuthContext fetched /auth/me; otherwise caller can read context
+          await onLoginSuccess(res.data || null);
+        } catch (e) {
+          // ignore
+        }
       }
     })();
   };
