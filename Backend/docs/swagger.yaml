@@ -77,6 +77,13 @@ definitions:
     - password
     - role
     type: object
+  dto.ResendActivationEmailRequest:
+    properties:
+      email:
+        type: string
+    required:
+    - email
+    type: object
   dto.ResetPasswordRequest:
     properties:
       confirmedNewPassword:
@@ -279,7 +286,7 @@ paths:
       tags:
       - auth
   /auth/me:
-    post:
+    get:
       consumes:
       - application/json
       description: Retrieve information about the authenticated user
@@ -356,6 +363,36 @@ paths:
               type: string
             type: object
       summary: Register a new user
+      tags:
+      - auth
+  /auth/resend-activation:
+    post:
+      consumes:
+      - application/json
+      description: Resend account activation email to user
+      parameters:
+      - description: Email
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ResendActivationEmailRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Activation email resent successfully
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Resend Activation Email
       tags:
       - auth
   /auth/reset-password:

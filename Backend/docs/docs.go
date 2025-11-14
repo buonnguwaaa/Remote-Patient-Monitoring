@@ -259,7 +259,7 @@ const docTemplate = `{
             }
         },
         "/auth/me": {
-            "post": {
+            "get": {
                 "description": "Retrieve information about the authenticated user",
                 "consumes": [
                     "application/json"
@@ -365,6 +365,52 @@ const docTemplate = `{
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/resend-activation": {
+            "post": {
+                "description": "Resend account activation email to user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Resend Activation Email",
+                "parameters": [
+                    {
+                        "description": "Email",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.ResendActivationEmailRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Activation email resent successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     },
                     "400": {
@@ -580,6 +626,17 @@ const docTemplate = `{
                         }
                     ],
                     "example": "patient"
+                }
+            }
+        },
+        "dto.ResendActivationEmailRequest": {
+            "type": "object",
+            "required": [
+                "email"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
                 }
             }
         },
