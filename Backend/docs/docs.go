@@ -25,8 +25,8 @@ const docTemplate = `{
     "basePath": "{{.BasePath}}",
     "paths": {
         "/auth/activate": {
-            "get": {
-                "description": "Activate user account using token from email link",
+            "post": {
+                "description": "Activate user account created from local strategy using token from email link",
                 "produces": [
                     "application/json"
                 ],
@@ -36,57 +36,18 @@ const docTemplate = `{
                 "summary": "Activate account",
                 "parameters": [
                     {
-                        "type": "string",
                         "description": "Activation token",
-                        "name": "token",
-                        "in": "query",
-                        "required": true
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.ActivateAccountRequest"
+                        }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Account activated",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/auth/activate/{email}": {
-            "get": {
-                "description": "Activate user account by email after registration",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "auth"
-                ],
-                "summary": "Activate account",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Email",
-                        "name": "email",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Account activated",
+                        "description": "Account activated successfully",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -132,7 +93,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Reset link sent",
+                        "description": "Reset password link was sent to your mailbox",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -420,7 +381,7 @@ const docTemplate = `{
         },
         "/auth/reset-password": {
             "post": {
-                "description": "Reset password using valid token",
+                "description": "Reset password using va\tlid token",
                 "consumes": [
                     "application/json"
                 ],
@@ -508,6 +469,17 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "dto.ActivateAccountRequest": {
+            "type": "object",
+            "required": [
+                "activateToken"
+            ],
+            "properties": {
+                "activateToken": {
+                    "type": "string"
+                }
+            }
+        },
         "dto.ForgotPasswordRequest": {
             "type": "object",
             "required": [
@@ -532,13 +504,16 @@ const docTemplate = `{
                 },
                 "password": {
                     "type": "string",
-                    "minLength": 8,
+                    "minLength": 6,
                     "example": "SecurePass123!"
                 }
             }
         },
         "dto.LogoutRequest": {
             "type": "object",
+            "required": [
+                "refreshToken"
+            ],
             "properties": {
                 "refreshToken": {
                     "type": "string"
@@ -595,7 +570,7 @@ const docTemplate = `{
                 },
                 "password": {
                     "type": "string",
-                    "minLength": 8,
+                    "minLength": 6,
                     "example": "SecurePass123!"
                 },
                 "role": {
@@ -611,19 +586,20 @@ const docTemplate = `{
         "dto.ResetPasswordRequest": {
             "type": "object",
             "required": [
-                "confirmPassword",
+                "confirmedNewPassword",
                 "newPassword",
-                "token"
+                "resetToken"
             ],
             "properties": {
-                "confirmPassword": {
-                    "type": "string"
+                "confirmedNewPassword": {
+                    "type": "string",
+                    "minLength": 6
                 },
                 "newPassword": {
                     "type": "string",
                     "minLength": 6
                 },
-                "token": {
+                "resetToken": {
                     "type": "string"
                 }
             }

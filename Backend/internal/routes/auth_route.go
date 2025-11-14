@@ -1,6 +1,8 @@
 package routes
 
 import (
+	"os"
+
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/config"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/handlers"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/middlewares"
@@ -8,7 +10,6 @@ import (
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/services"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/utils"
 	"github.com/gin-gonic/gin"
-	"os"
 )
 
 func RegisterAuthRoutes(r *gin.Engine) {
@@ -23,7 +24,7 @@ func RegisterAuthRoutes(r *gin.Engine) {
 	{
 		authGroup.POST("/register", authHandler.Register)
 		authGroup.POST("/login", authHandler.Login)
-		authGroup.POST("/me", middlewares.JWTAuthMiddleware(jwtManager), authHandler.Me)
+		authGroup.GET("/me", middlewares.JWTAuthMiddleware(jwtManager), authHandler.Me)
 		authGroup.POST("/refresh", authHandler.Refresh)
 		authGroup.POST("/logout", authHandler.Logout)
 		authGroup.GET("/google/login", authHandler.HandleGoogleOAuth2Login)
@@ -31,7 +32,7 @@ func RegisterAuthRoutes(r *gin.Engine) {
 
 		authGroup.POST("/forgot-password", authHandler.ForgotPassword)
 		authGroup.POST("/reset-password", authHandler.ResetPassword)
-		authGroup.GET("/activate", authHandler.ActivateAccountByToken)
+		authGroup.POST("/activate", authHandler.ActivateAccount)
+		authGroup.POST("/resend-activation", authHandler.ResendActivationEmail)
 	}
 }
-
