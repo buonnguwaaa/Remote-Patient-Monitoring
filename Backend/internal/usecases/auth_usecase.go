@@ -20,6 +20,10 @@ type LoginInput struct {
 	Password string
 }
 
+type MeInput struct {
+	UserID string
+}
+
 type RefreshInput struct {
 	RefreshToken string
 }

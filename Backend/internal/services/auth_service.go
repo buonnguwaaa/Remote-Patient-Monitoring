@@ -31,6 +31,7 @@ type authService struct {
 type AuthService interface {
 	Login(ctx context.Context, input *usecases.LoginInput) (*dto.LoginResponse, error)
 	Register(ctx context.Context, input *usecases.RegisterInput) (*dto.UserResponse, error)
+	Me(ctx context.Context, input *usecases.MeInput) (*dto.UserResponse, error)
 	Refresh(ctx context.Context, input *usecases.RefreshInput) (string, error)
 	Logout(ctx context.Context, input *usecases.LogoutInput) error
 	GetGoogleLoginURL(state string) string
@@ -96,6 +97,23 @@ func (s *authService) Register(ctx context.Context, input *usecases.RegisterInpu
 		Dob:       insertedUser.Dob.Format("2006-01-02"),
 		CreatedAt: insertedUser.CreatedAt.Format(time.RFC3339),
 		UpdatedAt: insertedUser.UpdatedAt.Format(time.RFC3339),
+	}, nil
+}
+
+func (s *authService) Me(ctx context.Context, input *usecases.MeInput) (*dto.UserResponse, error) {
+	u, err := s.userRepo.FindByID(ctx, utils.MustHexToObjectID(input.UserID))
+	if err != nil {
+		return nil, err
+	}
+	return &dto.UserResponse{
+		ID:        u.ID.Hex(),
+		Name:      u.Name,
+		Email:     u.Email,
+		Role:      u.Role,
+		Gender:    u.Gender,
+		Dob:       u.Dob.Format("2006-01-02"),
+		CreatedAt: u.CreatedAt.Format(time.RFC3339),
+		UpdatedAt: u.UpdatedAt.Format(time.RFC3339),
 	}, nil
 }
 
