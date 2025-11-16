@@ -2,17 +2,19 @@ package repositories
 
 import (
 	"context"
+	"time"
+
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domains/refresh_tokens"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
-	"time"
 )
 
 type TokenRepository interface {
 	Save(ctx context.Context, userIDHex string, tokenHash string, expiresAt time.Time) error
 	IsValid(ctx context.Context, userIDHex string, tokenHash string) (bool, error)
-	RevokeToken(ctx context.Context, userIDHex string, tokenHash string) error
+	RevokeTokenByTokenHash(ctx context.Context, userIDHex string, tokenHash string) error
+	GetActiveTokenHashByUserID(ctx context.Context, userIDHex string) (string, error)
 }
 
 type tokenRepository struct {
@@ -56,15 +58,37 @@ func (r *tokenRepository) IsValid(ctx context.Context, userIDHex string, tokenHa
 	return err == nil, err
 }
 
-func (r *tokenRepository) RevokeToken(ctx context.Context, userIDHex string, tokenHash string) error {
+func (r *tokenRepository) RevokeTokenByTokenHash(ctx context.Context, userIDHex string, tokenHash string) error {
 	userID, err := primitive.ObjectIDFromHex(userIDHex)
 	if err != nil {
 		return err
 	}
 	now := time.Now().UTC()
 	_, err = r.col.UpdateOne(ctx,
-		bson.M{"userId": userID, "tokenHash": tokenHash, "revokedAt": bson.M{"$exists": false}},
+		bson.M{
+			"userId":    userID,
+			"tokenHash": tokenHash,
+			"revokedAt": bson.M{"$exists": false},
+		},
 		bson.M{"$set": bson.M{"revokedAt": &now}},
 	)
 	return err
+}
+
+func (r *tokenRepository) GetActiveTokenHashByUserID(ctx context.Context, userIDHex string) (string, error) {
+	userID, err := primitive.ObjectIDFromHex(userIDHex)
+	if err != nil {
+		return "", err
+	}
+	filter := bson.M{
+		"userId":    userID,
+		"revokedAt": bson.M{"$exists": false},
+		"expiresAt": bson.M{"$gt": time.Now()},
+	}
+	var token refresh_tokens.RefreshToken
+	err = r.col.FindOne(ctx, filter).Decode(&token)
+	if err != nil {
+		return "", err
+	}
+	return token.TokenHash, nil
 }

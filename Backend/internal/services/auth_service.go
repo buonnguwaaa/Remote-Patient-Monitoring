@@ -5,21 +5,27 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
+	"os"
+	"strings"
+	"time"
+
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/config"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/consts"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domains/users"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repositories"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecases"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/utils"
 	"go.mongodb.org/mongo-driver/mongo"
-	"net/http"
-	"strings"
-	"time"
 )
 
 const (
 	LocalProvider  = "local"
 	GoogleProvider = "google"
+
+	ActivationTokenTTL    = 24 * time.Hour
+	ResetPasswordTokenTTL = 15 * time.Minute
 )
 
 type authService struct {
@@ -36,6 +42,10 @@ type AuthService interface {
 	Logout(ctx context.Context, input *usecases.LogoutInput) error
 	GetGoogleLoginURL(state string) string
 	HandleGoogleOAuth2Callback(ctx context.Context, input *usecases.GoogleOAuth2Input) (*dto.LoginResponse, error)
+	ForgotPassword(ctx context.Context, input *usecases.ForgotPasswordInput) error
+	ResetPassword(ctx context.Context, input *usecases.ResetPasswordInput) error
+	ActivateAccount(ctx context.Context, input *usecases.ActivateAccountInput) error
+	ResendActivationEmail(ctx context.Context, input *usecases.ResendActivationEmailInput) error
 }
 
 func NewAuthService(userRepo repositories.UserRepository, tokenRepo repositories.TokenRepository, jwtManager *utils.JWTManager) AuthService {
@@ -51,6 +61,10 @@ func (s *authService) Login(ctx context.Context, input *usecases.LoginInput) (*d
 	u, err := s.userRepo.FindByEmail(ctx, email)
 	if err != nil {
 		return nil, errors.New("invalid credentials")
+	}
+
+	if !u.IsActive {
+		return nil, errors.New("account not activated")
 	}
 
 	if !utils.ComparePassword(u.Password, input.Password) {
@@ -87,6 +101,23 @@ func (s *authService) Register(ctx context.Context, input *usecases.RegisterInpu
 	if err != nil {
 		return nil, err
 	}
+
+	token, err := utils.GenerateRandomToken(32)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate activation token: %w", err)
+	}
+	hashedToken := utils.HashTokenSHA256(token)
+	expires := time.Now().Add(ActivationTokenTTL)
+
+	if err := s.userRepo.SetActivationToken(ctx, email, hashedToken, expires); err != nil {
+		return nil, fmt.Errorf("failed to set activation token: %w", err)
+	}
+
+	activateURI := fmt.Sprintf("%s/activate?token=%s", os.Getenv("FE_URL"), token)
+	activateEmailSubject := consts.SubjectActivateAccount
+	activateEmailBody := fmt.Sprintf(consts.ActivateEmailTemplate, insertedUser.Name, activateURI)
+	go utils.SendEmail(insertedUser.Email, activateEmailSubject, activateEmailBody)
+
 	return &dto.UserResponse{
 		ID:        insertedUser.ID.Hex(),
 		Name:      insertedUser.Name,
@@ -159,7 +190,7 @@ func (s *authService) Logout(ctx context.Context, input *usecases.LogoutInput) e
 	}
 
 	// TODO: Blacklist the access token to enhance
-	return s.tokenRepo.RevokeToken(ctx, refreshTokenClaims.Subject, tokenHash)
+	return s.tokenRepo.RevokeTokenByTokenHash(ctx, refreshTokenClaims.Subject, tokenHash)
 }
 
 func (s *authService) GetGoogleLoginURL(state string) string {
@@ -264,6 +295,7 @@ func (s *authService) HandleGoogleOAuth2Callback(ctx context.Context, input *use
 			Provider: GoogleProvider,
 			Gender:   gender,
 			Dob:      dob,
+			IsActive: true,
 		}
 		u, err = s.userRepo.Create(ctx, newUser)
 		if err != nil {
@@ -275,6 +307,11 @@ func (s *authService) HandleGoogleOAuth2Callback(ctx context.Context, input *use
 }
 
 func (s *authService) issueTokens(ctx context.Context, u *users.User) (*dto.LoginResponse, error) {
+	existingTokenHash, err := s.tokenRepo.GetActiveTokenHashByUserID(ctx, u.ID.Hex())
+	if err == nil && existingTokenHash != "" {
+		_ = s.tokenRepo.RevokeTokenByTokenHash(ctx, u.ID.Hex(), existingTokenHash)
+	}
+
 	accessToken, err := s.jwtManager.GenerateAccessToken(u.ID.Hex(), u.Role)
 	if err != nil {
 		return nil, err
@@ -292,4 +329,118 @@ func (s *authService) issueTokens(ctx context.Context, u *users.User) (*dto.Logi
 	}
 
 	return &dto.LoginResponse{AccessToken: accessToken, RefreshToken: refreshToken}, nil
+}
+
+func (s *authService) ForgotPassword(ctx context.Context, input *usecases.ForgotPasswordInput) error {
+	email := strings.ToLower(strings.TrimSpace(input.Email))
+
+	user, err := s.userRepo.FindByEmail(ctx, email)
+	if err != nil {
+		return nil
+	}
+
+	if user.Provider != LocalProvider {
+		return nil
+	}
+
+	token, err := utils.GenerateRandomToken(32)
+	if err != nil {
+		return fmt.Errorf("failed to generate token: %w", err)
+	}
+	tokenHash := utils.HashTokenSHA256(token)
+	expires := time.Now().Add(ResetPasswordTokenTTL)
+
+	if err := s.userRepo.SetResetToken(ctx, email, tokenHash, expires); err != nil {
+		return err
+	}
+
+	resetURI := fmt.Sprintf("%s/reset-password?token=%s", os.Getenv("FE_URL"), token)
+	resetEmailSubject := consts.SubjectResetPassword
+	resetEmailBody := fmt.Sprintf(consts.ResetPasswordEmailTemplate, user.Name, resetURI)
+	go utils.SendEmail(user.Email, resetEmailSubject, resetEmailBody)
+
+	return nil
+}
+
+func (s *authService) ResetPassword(ctx context.Context, input *usecases.ResetPasswordInput) error {
+	if strings.TrimSpace(input.Token) == "" {
+		return errors.New("missing token")
+	}
+
+	if input.NewPassword != input.ConfirmedNewPassword {
+		return errors.New("password and confirmed password do not match")
+	}
+
+	hashedToken := utils.HashTokenSHA256(input.Token)
+	u, err := s.userRepo.FindByResetToken(ctx, hashedToken)
+	if err != nil {
+		return errors.New("invalid or expired token")
+	}
+
+	hashedPwd, err := utils.HashPassword(input.NewPassword)
+	if err != nil {
+		return err
+	}
+
+	if err := s.userRepo.ResetPassword(ctx, u.ID, hashedPwd); err != nil {
+		return err
+	}
+
+	_ = s.userRepo.SetResetToken(ctx, u.Email, "", time.Time{})
+
+	return nil
+}
+
+func (s *authService) ActivateAccount(ctx context.Context, input *usecases.ActivateAccountInput) error {
+	token := input.Token
+	if strings.TrimSpace(token) == "" {
+		return errors.New("missing token")
+	}
+
+	hashedToken := utils.HashTokenSHA256(token)
+	u, err := s.userRepo.FindByActivationHash(ctx, hashedToken)
+	if err != nil {
+		return errors.New("invalid or expired token")
+	}
+
+	if u.IsActive {
+		return nil
+	}
+
+	if err := s.userRepo.ActivateUserByEmail(ctx, u.Email); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *authService) ResendActivationEmail(ctx context.Context, input *usecases.ResendActivationEmailInput) error {
+	email := strings.ToLower(strings.TrimSpace(input.Email))
+
+	u, err := s.userRepo.FindByEmail(ctx, email)
+	if err != nil {
+		return errors.New("user not found")
+	}
+
+	if u.IsActive {
+		return errors.New("account already activated")
+	}
+
+	token, err := utils.GenerateRandomToken(32)
+	if err != nil {
+		return fmt.Errorf("failed to generate activation token: %w", err)
+	}
+	hashedToken := utils.HashTokenSHA256(token)
+	expires := time.Now().Add(ActivationTokenTTL)
+
+	if err := s.userRepo.SetActivationToken(ctx, email, hashedToken, expires); err != nil {
+		return fmt.Errorf("failed to set activation token: %w", err)
+	}
+
+	activateURI := fmt.Sprintf("%s/activate?token=%s", os.Getenv("FE_URL"), token)
+	activateEmailSubject := consts.SubjectActivateAccount
+	activateEmailBody := fmt.Sprintf(consts.ActivateEmailTemplate, u.Name, activateURI)
+	go utils.SendEmail(u.Email, activateEmailSubject, activateEmailBody)
+
+	return nil
 }
