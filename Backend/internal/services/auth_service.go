@@ -306,31 +306,6 @@ func (s *authService) HandleGoogleOAuth2Callback(ctx context.Context, input *use
 	return s.issueTokens(ctx, u)
 }
 
-func (s *authService) issueTokens(ctx context.Context, u *users.User) (*dto.LoginResponse, error) {
-	existingTokenHash, err := s.tokenRepo.GetActiveTokenHashByUserID(ctx, u.ID.Hex())
-	if err == nil && existingTokenHash != "" {
-		_ = s.tokenRepo.RevokeTokenByTokenHash(ctx, u.ID.Hex(), existingTokenHash)
-	}
-
-	accessToken, err := s.jwtManager.GenerateAccessToken(u.ID.Hex(), u.Role)
-	if err != nil {
-		return nil, err
-	}
-
-	refreshToken, err := s.jwtManager.GenerateRefreshToken(u.ID.Hex())
-	if err != nil {
-		return nil, err
-	}
-
-	expiresAt := time.Now().Add(utils.RefreshTokenTTL)
-	tokenHash := utils.HashTokenSHA256(refreshToken)
-	if err := s.tokenRepo.Save(ctx, u.ID.Hex(), tokenHash, expiresAt); err != nil {
-		return nil, err
-	}
-
-	return &dto.LoginResponse{AccessToken: accessToken, RefreshToken: refreshToken}, nil
-}
-
 func (s *authService) ForgotPassword(ctx context.Context, input *usecases.ForgotPasswordInput) error {
 	email := strings.ToLower(strings.TrimSpace(input.Email))
 
@@ -443,4 +418,32 @@ func (s *authService) ResendActivationEmail(ctx context.Context, input *usecases
 	go utils.SendEmail(u.Email, activateEmailSubject, activateEmailBody)
 
 	return nil
+}
+
+// ========================================================
+// =============== Private Helper Functions ===============
+// ========================================================
+func (s *authService) issueTokens(ctx context.Context, u *users.User) (*dto.LoginResponse, error) {
+	existingTokenHash, err := s.tokenRepo.GetActiveTokenHashByUserID(ctx, u.ID.Hex())
+	if err == nil && existingTokenHash != "" {
+		_ = s.tokenRepo.RevokeTokenByTokenHash(ctx, u.ID.Hex(), existingTokenHash)
+	}
+
+	accessToken, err := s.jwtManager.GenerateAccessToken(u.ID.Hex(), u.Role)
+	if err != nil {
+		return nil, err
+	}
+
+	refreshToken, err := s.jwtManager.GenerateRefreshToken(u.ID.Hex())
+	if err != nil {
+		return nil, err
+	}
+
+	expiresAt := time.Now().Add(utils.RefreshTokenTTL)
+	tokenHash := utils.HashTokenSHA256(refreshToken)
+	if err := s.tokenRepo.Save(ctx, u.ID.Hex(), tokenHash, expiresAt); err != nil {
+		return nil, err
+	}
+
+	return &dto.LoginResponse{AccessToken: accessToken, RefreshToken: refreshToken}, nil
 }

@@ -42,6 +42,7 @@ func (s *userService) GetUsers(ctx context.Context, input *usecases.GetUsersInpu
 			ID:        user.ID.Hex(),
 			Name:      user.Name,
 			Email:     user.Email,
+			Provider:  user.Provider,
 			Role:      user.Role,
 			Gender:    user.Gender,
 			Dob:       user.Dob.Format("2006-01-02"),
@@ -66,6 +67,7 @@ func (s *userService) GetUserByID(ctx context.Context, id string) (*dto.UserInfo
 		ID:        user.ID.Hex(),
 		Name:      user.Name,
 		Email:     user.Email,
+		Provider:  user.Provider,
 		Role:      user.Role,
 		Gender:    user.Gender,
 		Dob:       user.Dob.Format("2006-01-02"),
@@ -74,6 +76,9 @@ func (s *userService) GetUserByID(ctx context.Context, id string) (*dto.UserInfo
 	}, nil
 }
 
+// ========================================================
+// =============== Private Helper Functions ===============
+// ========================================================
 func buildUserFilter(f *usecases.UserFilter) (bson.M, *options.FindOptions) {
 	filter := bson.M{}
 	opts := options.Find()
@@ -97,10 +102,13 @@ func buildUserFilter(f *usecases.UserFilter) (bson.M, *options.FindOptions) {
 
 	opts.SetLimit(int64(f.Limit))
 	opts.SetSkip(int64(f.Offset))
-	if f.SortOrder == "asc" {
+	switch f.SortOrder {
+	case "asc":
 		opts.SetSort(bson.D{{Key: "createdAt", Value: 1}})
-	} else if f.SortOrder == "desc" {
+	case "desc":
 		opts.SetSort(bson.D{{Key: "createdAt", Value: -1}})
+	default:
+		opts.SetSort(bson.D{{Key: "createdAt", Value: 1}})
 	}
 
 	return filter, opts
