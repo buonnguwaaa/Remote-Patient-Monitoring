@@ -4,7 +4,7 @@ import (
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domains/users"
 )
 
-type UserResponse struct {
+type UserInfoResponse struct {
 	ID        string       `json:"id" example:"507f1f77bcf86cd799439011"`
 	Name      string       `json:"name" example:"John Doe"`
 	Email     string       `json:"email" example:"john.doe@example.com"`

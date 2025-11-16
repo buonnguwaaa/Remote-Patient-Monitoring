@@ -8,8 +8,9 @@ import (
 type Role string
 
 const (
-	RolePatient Role = "patient"
-	RoleDoctor  Role = "doctor"
+	RolePatient Role = "user.patient"
+	RoleDoctor  Role = "user.doctor"
+	RoleAdmin   Role = "admin"
 )
 
 type Gender string

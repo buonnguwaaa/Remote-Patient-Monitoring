@@ -50,7 +50,6 @@ func JWTAuthMiddleware(jwtManager *utils.JWTManager) gin.HandlerFunc {
 	}
 }
 
-// Sample code for rbac
 func RequireRoles(allowed ...users.Role) gin.HandlerFunc {
 	allowedSet := map[users.Role]struct{}{}
 	for _, r := range allowed {

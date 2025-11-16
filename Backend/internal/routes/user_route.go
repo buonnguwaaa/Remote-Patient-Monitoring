@@ -2,6 +2,7 @@ package routes
 
 import (
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/config"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domains/users"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/handlers"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/middlewares"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repositories"
@@ -21,10 +22,7 @@ func RegisterUserRoutes(r *gin.Engine) {
 
 	userGroup := r.Group("/users")
 	{
-		// Example public route or to be removed later
-		userGroup.GET("/", func(c *gin.Context) {
-			c.JSON(200, gin.H{"message": "List of users"})
-		})
+		userGroup.GET("", middlewares.JWTAuthMiddleware(jwtManager), middlewares.RequireRoles(users.RoleAdmin), userHandler.GetUsers)
 		userGroup.GET("/:id", middlewares.JWTAuthMiddleware(jwtManager), userHandler.GetUserByID)
 	}
 }

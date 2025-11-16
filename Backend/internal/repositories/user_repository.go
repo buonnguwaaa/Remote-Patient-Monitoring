@@ -9,6 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type userRepository struct {
@@ -17,6 +18,7 @@ type userRepository struct {
 
 type UserRepository interface {
 	Create(context.Context, *users.User) (*users.User, error)
+	FindAll(context.Context, bson.M, *options.FindOptions) ([]users.User, error)
 	FindByID(context.Context, primitive.ObjectID) (*users.User, error)
 	FindByEmail(context.Context, string) (*users.User, error)
 	SetResetToken(context.Context, string, string, time.Time) error
@@ -45,6 +47,29 @@ func (r *userRepository) Create(ctx context.Context, u *users.User) (*users.User
 
 	u.ID = result.InsertedID.(primitive.ObjectID)
 	return u, nil
+}
+
+func (r *userRepository) FindAll(ctx context.Context, filter bson.M, opts *options.FindOptions) ([]users.User, error) {
+	cursor, err := r.col.Find(ctx, filter, opts)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var userList []users.User
+	for cursor.Next(ctx) {
+		var u users.User
+		if err := cursor.Decode(&u); err != nil {
+			return nil, err
+		}
+		userList = append(userList, u)
+	}
+
+	if err := cursor.Err(); err != nil {
+		return nil, err
+	}
+
+	return userList, nil
 }
 
 func (r *userRepository) FindByID(ctx context.Context, id primitive.ObjectID) (*users.User, error) {

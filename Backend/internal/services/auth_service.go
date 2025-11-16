@@ -36,8 +36,8 @@ type authService struct {
 
 type AuthService interface {
 	Login(ctx context.Context, input *usecases.LoginInput) (*dto.LoginResponse, error)
-	Register(ctx context.Context, input *usecases.RegisterInput) (*dto.UserResponse, error)
-	Me(ctx context.Context, input *usecases.MeInput) (*dto.UserResponse, error)
+	Register(ctx context.Context, input *usecases.RegisterInput) (*dto.UserInfoResponse, error)
+	Me(ctx context.Context, input *usecases.MeInput) (*dto.UserInfoResponse, error)
 	Refresh(ctx context.Context, input *usecases.RefreshInput) (string, error)
 	Logout(ctx context.Context, input *usecases.LogoutInput) error
 	GetGoogleLoginURL(state string) string
@@ -74,7 +74,7 @@ func (s *authService) Login(ctx context.Context, input *usecases.LoginInput) (*d
 	return s.issueTokens(ctx, u)
 }
 
-func (s *authService) Register(ctx context.Context, input *usecases.RegisterInput) (*dto.UserResponse, error) {
+func (s *authService) Register(ctx context.Context, input *usecases.RegisterInput) (*dto.UserInfoResponse, error) {
 	email := strings.ToLower(strings.TrimSpace(input.Email))
 	existing, _ := s.userRepo.FindByEmail(ctx, email)
 	if existing != nil {
@@ -118,7 +118,7 @@ func (s *authService) Register(ctx context.Context, input *usecases.RegisterInpu
 	activateEmailBody := fmt.Sprintf(consts.ActivateEmailTemplate, insertedUser.Name, activateURI)
 	go utils.SendEmail(insertedUser.Email, activateEmailSubject, activateEmailBody)
 
-	return &dto.UserResponse{
+	return &dto.UserInfoResponse{
 		ID:        insertedUser.ID.Hex(),
 		Name:      insertedUser.Name,
 		Email:     insertedUser.Email,
@@ -131,12 +131,12 @@ func (s *authService) Register(ctx context.Context, input *usecases.RegisterInpu
 	}, nil
 }
 
-func (s *authService) Me(ctx context.Context, input *usecases.MeInput) (*dto.UserResponse, error) {
+func (s *authService) Me(ctx context.Context, input *usecases.MeInput) (*dto.UserInfoResponse, error) {
 	u, err := s.userRepo.FindByID(ctx, utils.MustHexToObjectID(input.UserID))
 	if err != nil {
 		return nil, err
 	}
-	return &dto.UserResponse{
+	return &dto.UserInfoResponse{
 		ID:        u.ID.Hex(),
 		Name:      u.Name,
 		Email:     u.Email,
@@ -306,31 +306,6 @@ func (s *authService) HandleGoogleOAuth2Callback(ctx context.Context, input *use
 	return s.issueTokens(ctx, u)
 }
 
-func (s *authService) issueTokens(ctx context.Context, u *users.User) (*dto.LoginResponse, error) {
-	existingTokenHash, err := s.tokenRepo.GetActiveTokenHashByUserID(ctx, u.ID.Hex())
-	if err == nil && existingTokenHash != "" {
-		_ = s.tokenRepo.RevokeTokenByTokenHash(ctx, u.ID.Hex(), existingTokenHash)
-	}
-
-	accessToken, err := s.jwtManager.GenerateAccessToken(u.ID.Hex(), u.Role)
-	if err != nil {
-		return nil, err
-	}
-
-	refreshToken, err := s.jwtManager.GenerateRefreshToken(u.ID.Hex())
-	if err != nil {
-		return nil, err
-	}
-
-	expiresAt := time.Now().Add(utils.RefreshTokenTTL)
-	tokenHash := utils.HashTokenSHA256(refreshToken)
-	if err := s.tokenRepo.Save(ctx, u.ID.Hex(), tokenHash, expiresAt); err != nil {
-		return nil, err
-	}
-
-	return &dto.LoginResponse{AccessToken: accessToken, RefreshToken: refreshToken}, nil
-}
-
 func (s *authService) ForgotPassword(ctx context.Context, input *usecases.ForgotPasswordInput) error {
 	email := strings.ToLower(strings.TrimSpace(input.Email))
 
@@ -443,4 +418,32 @@ func (s *authService) ResendActivationEmail(ctx context.Context, input *usecases
 	go utils.SendEmail(u.Email, activateEmailSubject, activateEmailBody)
 
 	return nil
+}
+
+// ========================================================
+// =============== Private Helper Functions ===============
+// ========================================================
+func (s *authService) issueTokens(ctx context.Context, u *users.User) (*dto.LoginResponse, error) {
+	existingTokenHash, err := s.tokenRepo.GetActiveTokenHashByUserID(ctx, u.ID.Hex())
+	if err == nil && existingTokenHash != "" {
+		_ = s.tokenRepo.RevokeTokenByTokenHash(ctx, u.ID.Hex(), existingTokenHash)
+	}
+
+	accessToken, err := s.jwtManager.GenerateAccessToken(u.ID.Hex(), u.Role)
+	if err != nil {
+		return nil, err
+	}
+
+	refreshToken, err := s.jwtManager.GenerateRefreshToken(u.ID.Hex())
+	if err != nil {
+		return nil, err
+	}
+
+	expiresAt := time.Now().Add(utils.RefreshTokenTTL)
+	tokenHash := utils.HashTokenSHA256(refreshToken)
+	if err := s.tokenRepo.Save(ctx, u.ID.Hex(), tokenHash, expiresAt); err != nil {
+		return nil, err
+	}
+
+	return &dto.LoginResponse{AccessToken: accessToken, RefreshToken: refreshToken}, nil
 }
