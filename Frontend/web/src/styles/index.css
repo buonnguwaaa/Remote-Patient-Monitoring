@@ -1,11 +1,26 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary: #0d6efd;
-  --color-secondary: #20c997;
-  --color-bg: #f8fafc;
-  --color-text: #1e293b;
-  --color-success: #16a34a;
-  --color-warning: #f59e0b;
-  --color-error: #dc2626;
+  /* --- Màu chủ đạo (Brand Colors) --- */
+  --color-primary: #0d6efd; /* Xanh dương sáng */
+  --color-secondary: #20c997; /* Xanh ngọc (Teal) */
+
+  /* --- Màu trạng thái (Feedback Colors) --- */
+  --color-success: #16a34a; /* Xanh lá */
+  --color-warning: #f59e0b; /* Vàng cam */
+  --color-error: #dc2626; /* Đỏ đậm */
+
+  /* --- Màu nền & Văn bản (Background & Text) --- */
+  --color-bg: #f8fafc; /* Xám rất nhạt (Slate-50) */
+  --color-text: #1e293b; /* Xám đậm (Slate-800) - Dễ đọc hơn đen tuyền */
+  --color-text-muted: #64748b; /* Xám trung tính - Cho chữ phụ */
+
+  /* --- Màu cho Button (Interaction) --- */
+  --color-btn-bg: #0d6efd;
+  --color-btn-text: #ffffff; /* Khuyên dùng màu trắng trên nền xanh để tương phản tốt nhất */
+  --color-hover: #f9f8f6; /* Đậm hơn primary một chút */
+  --color-btn-clicked: #0a58ca; /* Đậm hơn hover */
+
+  /* --- Đường viền (Borders) --- */
+  --color-border: #e2e8f0; /* Xám nhạt - Dùng cho card, input */
 }
