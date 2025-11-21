@@ -4,7 +4,7 @@ import (
 	"os"
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/config"
-	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/handlers"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/handler"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/middleware"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/service"
@@ -18,7 +18,7 @@ func RegisterAuthRoutes(r *gin.Engine) {
 	tokenRepo := repository.NewTokenRepository(config.Mongo.Database)
 	jwtManager := util.NewJWTManager(jwtSecret)
 	authService := service.NewAuthService(userRepo, tokenRepo, jwtManager)
-	authHandler := handlers.NewAuthHandler(authService)
+	authHandler := handler.NewAuthHandler(authService)
 
 	authGroup := r.Group("/auth")
 	{
