@@ -9,7 +9,7 @@ import React from "react";
 
 export const navData: NavigationItem[] = [
   {
-    label: "Dashboard",
+    label: "Bảng điều khiển",
     path: "/",
     icon: React.createElement(LuLayoutDashboard),
   },

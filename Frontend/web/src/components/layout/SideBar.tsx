@@ -23,7 +23,7 @@ const SideBar = ({ navigationItems = navData }: SideBarProps) => {
     <div
       // 3. Width động: w-20 khi đóng, w-64 (hoặc w-48) khi mở
       className={`h-screen bg-white border-r border-gray-200 flex flex-col transition-all duration-300 ${
-        isCollapsed ? "w-14" : "w-48"
+        isCollapsed ? "w-14" : "w-64"
       }`}
     >
       {/* --- HEADER --- */}
@@ -43,9 +43,9 @@ const SideBar = ({ navigationItems = navData }: SideBarProps) => {
           className="text-primary-text"
         >
           {isCollapsed ? (
-            <TbLayoutSidebarRightCollapseFilled size={24} />
+            <TbLayoutSidebarRightCollapseFilled size={28} />
           ) : (
-            <TbLayoutSidebarLeftCollapseFilled size={24} />
+            <TbLayoutSidebarLeftCollapseFilled size={28} />
           )}
         </button>
       </div>
@@ -90,10 +90,10 @@ const SideBar = ({ navigationItems = navData }: SideBarProps) => {
       </nav>
 
       {/* --- FOOTER (USER & LOGOUT) --- */}
-      <div className="p-4 ">
+      <div className="px-2 py-4">
         <div
           className={`flex items-center ${
-            isCollapsed ? "justify-center" : "gap-3"
+            isCollapsed ? "justify-center px-0" : "px-4 gap-3"
           }`}
         >
           {/* Avatar giả lập */}
@@ -108,7 +108,7 @@ const SideBar = ({ navigationItems = navData }: SideBarProps) => {
           {/* Thông tin User: Ẩn khi thu nhỏ */}
           {!isCollapsed && (
             <div className="flex-1 min-w-0">
-              <p className="font-bold text-sm text-gray-800 truncate">
+              <p className="font-bold text-sm text-primary-text truncate">
                 Doctor Name
               </p>
             </div>
