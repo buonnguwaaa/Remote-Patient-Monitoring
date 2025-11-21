@@ -8,17 +8,17 @@ import (
 	"time"
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
-	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/services"
-	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecases"
-	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/utils"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/service"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecase"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/util"
 	"github.com/gin-gonic/gin"
 )
 
 type AuthHandler struct {
-	service services.AuthService
+	service service.AuthService
 }
 
-func NewAuthHandler(service services.AuthService) *AuthHandler {
+func NewAuthHandler(service service.AuthService) *AuthHandler {
 	return &AuthHandler{
 		service: service,
 	}
@@ -45,7 +45,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	input := &usecases.RegisterInput{
+	input := &usecase.RegisterInput{
 		Name:              req.Name,
 		Email:             req.Email,
 		Password:          req.Password,
@@ -82,7 +82,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	input := &usecases.LoginInput{
+	input := &usecase.LoginInput{
 		Email:    req.Email,
 		Password: req.Password,
 	}
@@ -120,7 +120,7 @@ func (h *AuthHandler) Me(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
-	user, err := h.service.Me(ctx, &usecases.MeInput{UserID: userID.(string)})
+	user, err := h.service.Me(ctx, &usecase.MeInput{UserID: userID.(string)})
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -142,7 +142,7 @@ func (h *AuthHandler) Me(c *gin.Context) {
 func (h *AuthHandler) Refresh(c *gin.Context) {
 	var req dto.RefreshRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		cookie, cookieErr := c.Cookie("refresh_token")
+		cookie, cookieErr := c.Cookie("refreshToken")
 		if cookieErr != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
@@ -153,7 +153,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
-	accessToken, err := h.service.Refresh(ctx, &usecases.RefreshInput{RefreshToken: req.RefreshToken})
+	accessToken, err := h.service.Refresh(ctx, &usecase.RefreshInput{RefreshToken: req.RefreshToken})
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -175,7 +175,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 func (h *AuthHandler) Logout(c *gin.Context) {
 	var req dto.LogoutRequest
 	if err := c.ShouldBindJSON(&req); err != nil || req.RefreshToken == "" {
-		cookie, err := c.Cookie("refresh_token")
+		cookie, err := c.Cookie("refreshToken")
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "missing refresh token"})
 			return
@@ -186,14 +186,14 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
-	if err := h.service.Logout(ctx, &usecases.LogoutInput{RefreshToken: req.RefreshToken}); err != nil {
+	if err := h.service.Logout(ctx, &usecase.LogoutInput{RefreshToken: req.RefreshToken}); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	c.SetSameSite(http.SameSiteLaxMode)
-	c.SetCookie("access_token", "", -1, "/", "", h.isSecure(c), false)
-	c.SetCookie("refresh_token", "", -1, "/", "", h.isSecure(c), true)
+	c.SetCookie("accessToken", "", -1, "/", "", h.isSecure(c), false)
+	c.SetCookie("refreshToken", "", -1, "/", "", h.isSecure(c), true)
 
 	c.JSON(http.StatusOK, gin.H{"message": "Logged out successfully"})
 }
@@ -222,7 +222,7 @@ func (h *AuthHandler) HandleGoogleOAuth2Callback(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	resp, err := h.service.HandleGoogleOAuth2Callback(ctx, &usecases.GoogleOAuth2Input{Code: code})
+	resp, err := h.service.HandleGoogleOAuth2Callback(ctx, &usecase.GoogleOAuth2Input{Code: code})
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -253,7 +253,7 @@ func (h *AuthHandler) ForgotPassword(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
-	if err := h.service.ForgotPassword(ctx, &usecases.ForgotPasswordInput{Email: req.Email}); err != nil {
+	if err := h.service.ForgotPassword(ctx, &usecase.ForgotPasswordInput{Email: req.Email}); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -275,7 +275,7 @@ func (h *AuthHandler) ResetPassword(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	input := &usecases.ResetPasswordInput{
+	input := &usecase.ResetPasswordInput{
 		Token:                req.ResetToken,
 		NewPassword:          req.NewPassword,
 		ConfirmedNewPassword: req.ConfirmedNewPassword,
@@ -309,7 +309,7 @@ func (h *AuthHandler) ActivateAccount(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
-	if err := h.service.ActivateAccount(ctx, &usecases.ActivateAccountInput{Token: req.ActivateToken}); err != nil {
+	if err := h.service.ActivateAccount(ctx, &usecase.ActivateAccountInput{Token: req.ActivateToken}); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -335,7 +335,7 @@ func (h *AuthHandler) ResendActivationEmail(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
-	if err := h.service.ResendActivationEmail(ctx, &usecases.ResendActivationEmailInput{Email: req.Email}); err != nil {
+	if err := h.service.ResendActivationEmail(ctx, &usecase.ResendActivationEmailInput{Email: req.Email}); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -346,10 +346,10 @@ func (h *AuthHandler) ResendActivationEmail(c *gin.Context) {
 // =============== Private Helper Functions ===============
 // ========================================================
 func (h *AuthHandler) setAccessTokenCookie(c *gin.Context, accessToken string) {
-	maxAge := int(utils.AccessTokenTTL.Seconds())
+	maxAge := int(util.AccessTokenTTL.Seconds())
 	c.SetSameSite(http.SameSiteLaxMode)
 	c.SetCookie(
-		"access_token",
+		"accessToken",
 		accessToken,
 		maxAge,
 		"/",
@@ -360,10 +360,10 @@ func (h *AuthHandler) setAccessTokenCookie(c *gin.Context, accessToken string) {
 }
 
 func (h *AuthHandler) setRefreshTokenCookie(c *gin.Context, refreshToken string) {
-	maxAge := int(utils.RefreshTokenTTL.Seconds())
+	maxAge := int(util.RefreshTokenTTL.Seconds())
 	c.SetSameSite(http.SameSiteLaxMode)
 	c.SetCookie(
-		"refresh_token",
+		"refreshToken",
 		refreshToken,
 		maxAge,
 		"/",

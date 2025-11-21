@@ -7,16 +7,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/services"
-	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecases"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/service"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecase"
 	"github.com/gin-gonic/gin"
 )
 
 type UserHandler struct {
-	service services.UserService
+	service service.UserService
 }
 
-func NewUserHandler(service services.UserService) *UserHandler {
+func NewUserHandler(service service.UserService) *UserHandler {
 	return &UserHandler{
 		service: service,
 	}
@@ -57,7 +57,7 @@ func (h *UserHandler) GetUsers(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
-	filter := &usecases.UserFilter{
+	filter := &usecase.UserFilter{
 		Name:      c.Query("name"),
 		Email:     c.Query("email"),
 		Role:      roles,
@@ -67,7 +67,7 @@ func (h *UserHandler) GetUsers(c *gin.Context) {
 		Offset:    offset,
 		SortOrder: sortOrder,
 	}
-	input := &usecases.GetUsersInput{
+	input := &usecase.GetUsersInput{
 		Filter: *filter,
 	}
 
