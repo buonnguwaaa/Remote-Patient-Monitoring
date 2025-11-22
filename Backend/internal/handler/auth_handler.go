@@ -352,20 +352,20 @@ func (h *AuthHandler) setSameSite(c *gin.Context) {
 }
 
 func (h *AuthHandler) isSecure(c *gin.Context) bool {
-    if gin.Mode() != gin.ReleaseMode {
-        return false
-    }
+	if gin.Mode() != gin.ReleaseMode {
+		return false
+	}
 
-    if c.Request.TLS != nil {
-        return true
-    }
+	if c.Request.TLS != nil {
+		return true
+	}
 
 	// Check X-Forwarded-Proto header for cases behind a proxy
-    if strings.EqualFold(c.GetHeader("X-Forwarded-Proto"), "https") {
-        return true
-    }
+	if strings.EqualFold(c.GetHeader("X-Forwarded-Proto"), "https") {
+		return true
+	}
 
-    return false
+	return false
 }
 
 func (h *AuthHandler) setAccessTokenCookie(c *gin.Context, accessToken string) {

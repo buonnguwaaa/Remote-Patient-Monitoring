@@ -28,6 +28,7 @@ type UserRepository interface {
 	SetActivationToken(ctx context.Context, email, hash string, expires time.Time) error
 	FindByActivationHash(ctx context.Context, hash string) (*domain.User, error)
 	ActivateUserByEmail(ctx context.Context, email string) error
+	ExistsByIDAndRole(ctx context.Context, id primitive.ObjectID, role domain.Role) (bool, error)
 }
 
 func NewUserRepository(db *mongo.Database) *userRepository {
@@ -167,4 +168,17 @@ func (r *userRepository) ActivateUserByEmail(ctx context.Context, email string) 
 		},
 	)
 	return err
+}
+
+func (r *userRepository) ExistsByIDAndRole(ctx context.Context, id primitive.ObjectID, role domain.Role) (bool, error) {
+	var u domain.User
+	filter := bson.M{"_id": id, "role": role}
+	err := r.col.FindOne(ctx, filter).Decode(&u)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
 }

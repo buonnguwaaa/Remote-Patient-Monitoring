@@ -22,6 +22,7 @@ import (
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/config"
 	_ "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/docs"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/container"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/router"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -62,7 +63,8 @@ func main() {
 	r.Use(gin.Recovery())
 	r.Use(cors.Default())
 
-	router.RegisterRoutes(r)
+	c := container.NewContainer()
+	router.RegisterRoutes(r, c)
 
 	log.Printf("[GIN-info] Starting server on :%s", port)
 	if err := r.Run(":" + port); err != nil {

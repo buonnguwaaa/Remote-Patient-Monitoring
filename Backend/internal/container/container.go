@@ -1,0 +1,59 @@
+package container
+
+import (
+	"os"
+
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/config"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/handler"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/service"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/util"
+)
+
+// Container holds all the dependencies
+type Container struct {
+	// Repositories
+	UserRepo        repository.UserRepository
+	TokenRepo       repository.TokenRepository
+	MeasurementRepo repository.MeasurementRepository
+
+	// Services
+	AuthService        service.AuthService
+	UserService        service.UserService
+	MeasurementService service.MeasurementService
+
+	// Handlers
+	AuthHandler        *handler.AuthHandler
+	UserHandler        *handler.UserHandler
+	MeasurementHandler *handler.MeasurementHandler
+
+	// Utils
+	JWTManager *util.JWTManager
+}
+
+// NewContainer initializes all dependencies once
+func NewContainer() *Container {
+	c := &Container{}
+
+	// Initialize utils
+	jwtSecret := os.Getenv("JWT_SECRET")
+	c.JWTManager = util.NewJWTManager(jwtSecret)
+
+	// Initialize repositories
+	db := config.Mongo.Database
+	c.UserRepo = repository.NewUserRepository(db)
+	c.TokenRepo = repository.NewTokenRepository(db)
+	c.MeasurementRepo = repository.NewMeasurementRepository(db)
+
+	// Initialize services
+	c.AuthService = service.NewAuthService(c.UserRepo, c.TokenRepo, c.JWTManager)
+	c.UserService = service.NewUserService(c.UserRepo)
+	c.MeasurementService = service.NewMeasurementService(c.UserRepo,c.MeasurementRepo)
+
+	// Initialize handlers
+	c.AuthHandler = handler.NewAuthHandler(c.AuthService)
+	c.UserHandler = handler.NewUserHandler(c.UserService)
+	c.MeasurementHandler = handler.NewMeasurementHandler(c.MeasurementService)
+
+	return c
+}
