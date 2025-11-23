@@ -21,6 +21,17 @@ func NewMeasurementHandler(s service.MeasurementService) *MeasurementHandler {
 	}
 }
 
+// CreateMeasurement handles the creation of a new measurement for a patient
+// @Summary Create a new measurement
+// @Description Create a new measurement record for a patient
+// @Tags measurements
+// @Accept json
+// @Produce json
+// @Param measurement body dto.CreateMeasurementRequest true "Measurement data"
+// @Success 200 {object} map[string]interface{} "Measurement created successfully"
+// @Failure 400 {object} map[string]string "Bad request"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /measurements [post]
 func (h *MeasurementHandler) CreateMeasurement(c *gin.Context) {
 	var req dto.CreateMeasurementRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -53,6 +64,18 @@ func (h *MeasurementHandler) CreateMeasurement(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": resp, "message": "Measurement added successfully"})
 }
 
+// UpdateMeasurement handles updating an existing measurement
+// @Summary Update an existing measurement
+// @Description Update an existing measurement record
+// @Tags measurements
+// @Accept json
+// @Produce json
+// @Param id path string true "Measurement ID"
+// @Param measurement body dto.UpdateMeasurementRequest true "Updated measurement data"
+// @Success 200 {object} map[string]interface{} "Measurement updated successfully"
+// @Failure 400 {object} map[string]string "Bad request"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /measurements/{id} [patch]
 func (h *MeasurementHandler) UpdateMeasurement(c *gin.Context) {
 	id := c.Param("id")
 	var req dto.UpdateMeasurementRequest
@@ -85,6 +108,21 @@ func (h *MeasurementHandler) UpdateMeasurement(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": resp, "message": "Measurement updated successfully"})
 }
 
+// GetMeasurements retrieves measurements based on query parameters
+// @Summary Get measurements
+// @Description Retrieve measurements based on query parameters
+// @Description If `patientId` is provided along with `latest=true`, only the latest measurement record for that patient will be returned.
+// @Description   Ví dụ: `/measurements?patientId=123&latest=true`
+// @Tags measurements
+// @Accept json
+// @Produce json
+// @Param patientId query string false "Patient ID"
+// @Param type query string false "Measurement type"
+// @Param timing query string false "Measurement timing"
+// @Param latest query boolean false "Get latest measurement only"
+// @Success 200 {object} map[string]interface{} "Measurements retrieved successfully"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /measurements [get]
 func (h *MeasurementHandler) GetMeasurements(c *gin.Context) {
 	input := &usecase.GetMeasurementsInput{
 		PatientID: c.Query("patientId"),
