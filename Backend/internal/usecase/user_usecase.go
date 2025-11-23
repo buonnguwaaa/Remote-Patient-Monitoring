@@ -1,16 +1,12 @@
 package usecase
 
-type UserFilter struct {
+type GetUsersInput struct {
 	Name      string
 	Email     string
-	Role      []string
+	Roles     []string
 	Gender    string
 	Page      int
 	Limit     int
 	Offset    int
 	SortOrder string
-}
-
-type GetUsersInput struct {
-	Filter UserFilter
 }

@@ -48,7 +48,7 @@ func NewContainer() *Container {
 	// Initialize services
 	c.AuthService = service.NewAuthService(c.UserRepo, c.TokenRepo, c.JWTManager)
 	c.UserService = service.NewUserService(c.UserRepo)
-	c.MeasurementService = service.NewMeasurementService(c.UserRepo,c.MeasurementRepo)
+	c.MeasurementService = service.NewMeasurementService(c.UserRepo, c.MeasurementRepo)
 
 	// Initialize handlers
 	c.AuthHandler = handler.NewAuthHandler(c.AuthService)

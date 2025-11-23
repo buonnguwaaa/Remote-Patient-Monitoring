@@ -3,34 +3,40 @@ package usecase
 import "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
 
 type CreateMeasurementInput struct {
-	PatientID string                 `json:"patientId"`
-	Type      domain.MeasurementType `json:"type"`
+	PatientID string
+	Type      domain.MeasurementType
 
-	Systolic  *float64 `json:"systolic,omitempty"`
-	Diastolic *float64 `json:"diastolic,omitempty"`
-	Pulse     *float64 `json:"pulse,omitempty"`
+	Systolic  *float64
+	Diastolic *float64
+	Pulse     *float64
 
-	Glucose *float64       `json:"glucose,omitempty"`
-	Timing  *domain.Timing `json:"timing,omitempty"`
+	Glucose *float64
+	Timing  *domain.Timing
 
-	Unit   string  `json:"unit,omitempty"`
-	Device *string `json:"device,omitempty"`
-	Note   *string `json:"note,omitempty"`
+	Unit   string
+	Device *string
+	Note   *string
 }
 
 type UpdateMeasurementInput struct {
-	ID string `json:"id"`
+	ID string
 
-	Type *domain.MeasurementType `json:"type,omitempty"`
+	Type domain.MeasurementType
 
-	Systolic  *float64 `json:"systolic,omitempty"`
-	Diastolic *float64 `json:"diastolic,omitempty"`
-	Pulse     *float64 `json:"pulse,omitempty"`
+	Systolic  *float64
+	Diastolic *float64
+	Pulse     *float64
 
-	Glucose *float64       `json:"glucose,omitempty"`
-	Timing  *domain.Timing `json:"timing,omitempty"`
+	Glucose *float64
+	Timing  *domain.Timing
+	Unit    string
+	Device  *string
+	Note    *string
+}
 
-	Unit   *string `json:"unit,omitempty"`
-	Device *string `json:"device,omitempty"`
-	Note   *string `json:"note,omitempty"`
+type GetMeasurementsInput struct {
+	PatientID string
+	Type      string
+	Timing    string
+	IsLatest  bool
 }

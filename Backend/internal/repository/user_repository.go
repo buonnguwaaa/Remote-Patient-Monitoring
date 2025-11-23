@@ -18,7 +18,7 @@ type userRepository struct {
 
 type UserRepository interface {
 	Create(context.Context, *domain.User) (*domain.User, error)
-	FindAll(context.Context, bson.M, *options.FindOptions) ([]domain.User, error)
+	FindAll(context.Context, UserFilter) ([]domain.User, error)
 	FindByID(context.Context, primitive.ObjectID) (*domain.User, error)
 	FindByEmail(context.Context, string) (*domain.User, error)
 	SetResetToken(context.Context, string, string, time.Time) error
@@ -29,6 +29,17 @@ type UserRepository interface {
 	FindByActivationHash(ctx context.Context, hash string) (*domain.User, error)
 	ActivateUserByEmail(ctx context.Context, email string) error
 	ExistsByIDAndRole(ctx context.Context, id primitive.ObjectID, role domain.Role) (bool, error)
+}
+
+type UserFilter struct {
+	Name      string
+	Email     string
+	Roles     []string
+	Gender    string
+	Page      int
+	Limit     int
+	Offset    int
+	SortOrder string
 }
 
 func NewUserRepository(db *mongo.Database) *userRepository {
@@ -50,27 +61,50 @@ func (r *userRepository) Create(ctx context.Context, u *domain.User) (*domain.Us
 	return u, nil
 }
 
-func (r *userRepository) FindAll(ctx context.Context, filter bson.M, opts *options.FindOptions) ([]domain.User, error) {
-	cursor, err := r.col.Find(ctx, filter, opts)
+func (r *userRepository) FindAll(ctx context.Context, f UserFilter) ([]domain.User, error) {
+	bsonFilter := bson.M{}
+	opts := options.Find()
+
+	if f.Name != "" {
+		bsonFilter["name"] = bson.M{"$regex": f.Name, "$options": "i"}
+	}
+	if f.Email != "" {
+		bsonFilter["email"] = bson.M{"$regex": f.Email, "$options": "i"}
+	}
+	if len(f.Roles) > 0 {
+		bsonFilter["role"] = bson.M{"$in": f.Roles}
+	}
+	if f.Gender != "" {
+		bsonFilter["gender"] = f.Gender
+	}
+
+	if f.Limit > 0 {
+		opts.SetLimit(int64(f.Limit))
+	}
+	opts.SetSkip(int64(f.Offset))
+
+	// Sort
+	switch f.SortOrder {
+	case "asc":
+		opts.SetSort(bson.D{{Key: "createdAt", Value: 1}})
+	case "desc":
+		opts.SetSort(bson.D{{Key: "createdAt", Value: -1}})
+	default:
+		opts.SetSort(bson.D{{Key: "createdAt", Value: 1}})
+	}
+
+	cursor, err := r.col.Find(ctx, bsonFilter, opts)
 	if err != nil {
 		return nil, err
 	}
 	defer cursor.Close(ctx)
 
-	var userList []domain.User
-	for cursor.Next(ctx) {
-		var u domain.User
-		if err := cursor.Decode(&u); err != nil {
-			return nil, err
-		}
-		userList = append(userList, u)
-	}
-
-	if err := cursor.Err(); err != nil {
+	var users []domain.User
+	if err := cursor.All(ctx, &users); err != nil {
 		return nil, err
 	}
 
-	return userList, nil
+	return users, nil
 }
 
 func (r *userRepository) FindByID(ctx context.Context, id primitive.ObjectID) (*domain.User, error) {

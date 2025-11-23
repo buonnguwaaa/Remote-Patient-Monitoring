@@ -24,7 +24,7 @@ type CreateMeasurementRequest struct {
 }
 
 type UpdateMeasurementRequest struct {
-	Type *domain.MeasurementType `json:"type,omitempty" validate:"omitempty,oneof=bp glucose"`
+	Type domain.MeasurementType `json:"type,omitempty" validate:"omitempty,oneof=bp glucose"`
 
 	Systolic  *float64       `json:"systolic,omitempty"`
 	Diastolic *float64       `json:"diastolic,omitempty"`
@@ -32,7 +32,7 @@ type UpdateMeasurementRequest struct {
 	Glucose   *float64       `json:"glucose,omitempty"`
 	Timing    *domain.Timing `json:"timing,omitempty" validate:"omitempty,oneof=pre post"`
 
-	Unit   *string `json:"unit,omitempty"`
+	Unit   string  `json:"unit,omitempty"`
 	Device *string `json:"device,omitempty"`
 	Note   *string `json:"note,omitempty"`
 }
