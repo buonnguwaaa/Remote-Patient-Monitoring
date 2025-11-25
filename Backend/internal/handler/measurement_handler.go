@@ -40,16 +40,17 @@ func (h *MeasurementHandler) CreateMeasurement(c *gin.Context) {
 	}
 
 	input := &usecase.CreateMeasurementInput{
-		PatientID: req.PatientID,
-		Type:      req.Type,
-		Systolic:  req.Systolic,
-		Diastolic: req.Diastolic,
-		Pulse:     req.Pulse,
-		Glucose:   req.Glucose,
-		Timing:    req.Timing,
-		Unit:      req.Unit,
-		Device:    req.Device,
-		Note:      req.Note,
+		PatientID:       req.PatientID,
+		Type:            req.Type,
+		Temperature:     req.Temperature,
+		HeartRate:       req.HeartRate,
+		RespiratoryRate: req.RespiratoryRate,
+		SpO2:            req.SpO2,
+		BloodPressure:   req.BloodPressure,
+		Glucose:         req.Glucose,
+		Timing:          req.Timing,
+		Device:          req.Device,
+		Note:            req.Note,
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -78,26 +79,29 @@ func (h *MeasurementHandler) CreateMeasurement(c *gin.Context) {
 // @Router /measurements/{id} [patch]
 func (h *MeasurementHandler) UpdateMeasurement(c *gin.Context) {
 	id := c.Param("id")
+
 	var req dto.UpdateMeasurementRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
 
 	input := &usecase.UpdateMeasurementInput{
-		ID:        id,
-		Type:      req.Type,
-		Systolic:  req.Systolic,
-		Diastolic: req.Diastolic,
-		Pulse:     req.Pulse,
-		Glucose:   req.Glucose,
-		Timing:    req.Timing,
-		Unit:      req.Unit,
-		Device:    req.Device,
-		Note:      req.Note,
+		ID:              id,
+		Type:            req.Type,
+		Temperature:     req.Temperature,
+		HeartRate:       req.HeartRate,
+		RespiratoryRate: req.RespiratoryRate,
+		SpO2:            req.SpO2,
+		BloodPressure:   req.BloodPressure,
+		Glucose:         req.Glucose,
+		Timing:          req.Timing,
+		Device:          req.Device,
+		Note:            req.Note,
 	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
 	resp, err := h.service.UpdateMeasurement(ctx, input)
 	if err != nil {

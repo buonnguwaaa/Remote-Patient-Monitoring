@@ -39,53 +39,64 @@ func (s *measurementService) CreateMeasurement(ctx context.Context, input *useca
 		return nil, fmt.Errorf("user not found or not patient")
 	}
 
+	mapValue := calculateMAP(input.BloodPressure.Systolic, input.BloodPressure.Diastolic)
+	input.BloodPressure.MAP = &mapValue
+
 	measurement := &domain.Measurement{
-		PatientID: patientId,
-		Type:      input.Type,
-		Systolic:  input.Systolic,
-		Diastolic: input.Diastolic,
-		Pulse:     input.Pulse,
-		Glucose:   input.Glucose,
-		Timing:    input.Timing,
-		Unit:      input.Unit,
-		Device:    input.Device,
-		Note:      input.Note,
+		PatientID:       patientId,
+		Type:            input.Type,
+		Temperature:     input.Temperature,
+		HeartRate:       input.HeartRate,
+		RespiratoryRate: input.RespiratoryRate,
+		SpO2:            input.SpO2,
+		BloodPressure:   input.BloodPressure,
+		Glucose:         input.Glucose,
+		Timing:          input.Timing,
+		Device:          input.Device,
+		Note:            input.Note,
 	}
 
-	insertedMeasurement, err := s.measurementRepo.Create(ctx, measurement)
+	inserted, err := s.measurementRepo.Create(ctx, measurement)
 	if err != nil {
 		return nil, err
 	}
 
 	return &dto.MeasurementResponse{
-		ID:        insertedMeasurement.ID.Hex(),
-		PatientID: insertedMeasurement.PatientID.Hex(),
-		Type:      insertedMeasurement.Type,
-		Diastolic: insertedMeasurement.Diastolic,
-		Pulse:     insertedMeasurement.Pulse,
-		Glucose:   insertedMeasurement.Glucose,
-		Timing:    insertedMeasurement.Timing,
-		Unit:      insertedMeasurement.Unit,
-		Device:    insertedMeasurement.Device,
-		Note:      insertedMeasurement.Note,
-		CreatedAt: insertedMeasurement.CreatedAt,
-		UpdatedAt: insertedMeasurement.UpdatedAt,
+		ID:              inserted.ID.Hex(),
+		PatientID:       inserted.PatientID.Hex(),
+		Temperature:     inserted.Temperature,
+		HeartRate:       inserted.HeartRate,
+		RespiratoryRate: inserted.RespiratoryRate,
+		SpO2:            inserted.SpO2,
+		BloodPressure:   inserted.BloodPressure,
+		Type:            inserted.Type,
+		Glucose:         inserted.Glucose,
+		Timing:          inserted.Timing,
+		Device:          inserted.Device,
+		Note:            inserted.Note,
+		CreatedAt:       inserted.CreatedAt,
+		UpdatedAt:       inserted.UpdatedAt,
 	}, nil
 }
 
 func (s *measurementService) UpdateMeasurement(ctx context.Context, input *usecase.UpdateMeasurementInput) (*dto.MeasurementResponse, error) {
+
+	mapValue := calculateMAP(input.BloodPressure.Systolic, input.BloodPressure.Diastolic)
+	input.BloodPressure.MAP = &mapValue
+
 	newMeasurement := &domain.Measurement{
-		ID:        util.MustHexToObjectID(input.ID),
-		Type:      input.Type,
-		Systolic:  input.Systolic,
-		Diastolic: input.Diastolic,
-		Pulse:     input.Pulse,
-		Glucose:   input.Glucose,
-		Timing:    input.Timing,
-		Unit:      input.Unit,
-		Device:    input.Device,
-		Note:      input.Note,
-		UpdatedAt: time.Now().UTC(),
+		ID:              util.MustHexToObjectID(input.ID),
+		Type:            input.Type,
+		Temperature:     input.Temperature,
+		HeartRate:       input.HeartRate,
+		RespiratoryRate: input.RespiratoryRate,
+		SpO2:            input.SpO2,
+		BloodPressure:   input.BloodPressure,
+		Glucose:         input.Glucose,
+		Timing:          input.Timing,
+		Device:          input.Device,
+		Note:            input.Note,
+		UpdatedAt:       time.Now().UTC(),
 	}
 
 	updated, err := s.measurementRepo.Update(ctx, newMeasurement)
@@ -94,18 +105,20 @@ func (s *measurementService) UpdateMeasurement(ctx context.Context, input *useca
 	}
 
 	return &dto.MeasurementResponse{
-		ID:        updated.ID.Hex(),
-		PatientID: updated.PatientID.Hex(),
-		Type:      updated.Type,
-		Diastolic: updated.Diastolic,
-		Pulse:     updated.Pulse,
-		Glucose:   updated.Glucose,
-		Timing:    updated.Timing,
-		Unit:      updated.Unit,
-		Device:    updated.Device,
-		Note:      updated.Note,
-		CreatedAt: updated.CreatedAt,
-		UpdatedAt: updated.UpdatedAt,
+		ID:              updated.ID.Hex(),
+		PatientID:       updated.PatientID.Hex(),
+		Temperature:     updated.Temperature,
+		HeartRate:       updated.HeartRate,
+		RespiratoryRate: updated.RespiratoryRate,
+		SpO2:            updated.SpO2,
+		BloodPressure:   updated.BloodPressure,
+		Type:            updated.Type,
+		Glucose:         updated.Glucose,
+		Timing:          updated.Timing,
+		Device:          updated.Device,
+		Note:            updated.Note,
+		CreatedAt:       updated.CreatedAt,
+		UpdatedAt:       updated.UpdatedAt,
 	}, nil
 }
 
@@ -125,20 +138,26 @@ func (s *measurementService) GetMeasurements(ctx context.Context, input *usecase
 	var resp []dto.MeasurementResponse
 	for _, m := range measurements {
 		resp = append(resp, dto.MeasurementResponse{
-			ID:        m.ID.Hex(),
-			PatientID: m.PatientID.Hex(),
-			Type:      m.Type,
-			Diastolic: m.Diastolic,
-			Pulse:     m.Pulse,
-			Glucose:   m.Glucose,
-			Timing:    m.Timing,
-			Unit:      m.Unit,
-			Device:    m.Device,
-			Note:      m.Note,
-			CreatedAt: m.CreatedAt,
-			UpdatedAt: m.UpdatedAt,
+			ID:              m.ID.Hex(),
+			PatientID:       m.PatientID.Hex(),
+			Temperature:     m.Temperature,
+			HeartRate:       m.HeartRate,
+			RespiratoryRate: m.RespiratoryRate,
+			BloodPressure:   m.BloodPressure,
+			SpO2:            m.SpO2,
+			Type:            m.Type,
+			Glucose:         m.Glucose,
+			Timing:          m.Timing,
+			Device:          m.Device,
+			Note:            m.Note,
+			CreatedAt:       m.CreatedAt,
+			UpdatedAt:       m.UpdatedAt,
 		})
 	}
 
 	return resp, nil
+}
+
+func calculateMAP(sys, dias float64) float64 {
+	return (sys + 2*dias) / 3
 }
