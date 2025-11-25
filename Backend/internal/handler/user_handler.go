@@ -57,18 +57,15 @@ func (h *UserHandler) GetUsers(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
-	filter := &usecase.UserFilter{
+	input := &usecase.GetUsersInput{
 		Name:      c.Query("name"),
 		Email:     c.Query("email"),
-		Role:      roles,
+		Roles:     roles,
 		Gender:    c.Query("gender"),
 		Page:      page,
 		Limit:     limit,
 		Offset:    offset,
 		SortOrder: sortOrder,
-	}
-	input := &usecase.GetUsersInput{
-		Filter: *filter,
 	}
 
 	users, err := h.service.GetUsers(ctx, input)

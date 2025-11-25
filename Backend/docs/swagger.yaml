@@ -1,11 +1,82 @@
 basePath: /
 definitions:
+  domain.Gender:
+    enum:
+    - M
+    - F
+    - O
+    type: string
+    x-enum-varnames:
+    - GenderMale
+    - GenderFemale
+    - GenderOther
+  domain.MeasurementType:
+    enum:
+    - bp
+    - glucose
+    type: string
+    x-enum-varnames:
+    - TypeBloodPressure
+    - TypeGlucose
+  domain.Role:
+    enum:
+    - user.patient
+    - user.doctor
+    - admin
+    type: string
+    x-enum-varnames:
+    - RolePatient
+    - RoleDoctor
+    - RoleAdmin
+  domain.Timing:
+    enum:
+    - pre
+    - post
+    type: string
+    x-enum-varnames:
+    - TimingPre
+    - TimingPost
   dto.ActivateAccountRequest:
     properties:
       activateToken:
         type: string
     required:
     - activateToken
+    type: object
+  dto.CreateMeasurementRequest:
+    properties:
+      device:
+        type: string
+      diastolic:
+        type: number
+      glucose:
+        type: number
+      note:
+        type: string
+      patientId:
+        type: string
+      pulse:
+        type: number
+      systolic:
+        description: Optional depending on Type
+        type: number
+      timing:
+        allOf:
+        - $ref: '#/definitions/domain.Timing'
+        enum:
+        - pre
+        - post
+      type:
+        allOf:
+        - $ref: '#/definitions/domain.MeasurementType'
+        enum:
+        - bp
+        - glucose
+      unit:
+        type: string
+    required:
+    - patientId
+    - type
     type: object
   dto.ForgotPasswordRequest:
     properties:
@@ -55,7 +126,7 @@ definitions:
         type: string
       gender:
         allOf:
-        - $ref: '#/definitions/users.Gender'
+        - $ref: '#/definitions/domain.Gender'
         example: M
       name:
         example: John Doe
@@ -66,7 +137,7 @@ definitions:
         type: string
       role:
         allOf:
-        - $ref: '#/definitions/users.Role'
+        - $ref: '#/definitions/domain.Role'
         example: patient
     required:
     - confirmedPassword
@@ -99,26 +170,35 @@ definitions:
     - newPassword
     - resetToken
     type: object
-  users.Gender:
-    enum:
-    - M
-    - F
-    - O
-    type: string
-    x-enum-varnames:
-    - GenderMale
-    - GenderFemale
-    - GenderOther
-  users.Role:
-    enum:
-    - user.patient
-    - user.doctor
-    - admin
-    type: string
-    x-enum-varnames:
-    - RolePatient
-    - RoleDoctor
-    - RoleAdmin
+  dto.UpdateMeasurementRequest:
+    properties:
+      device:
+        type: string
+      diastolic:
+        type: number
+      glucose:
+        type: number
+      note:
+        type: string
+      pulse:
+        type: number
+      systolic:
+        type: number
+      timing:
+        allOf:
+        - $ref: '#/definitions/domain.Timing'
+        enum:
+        - pre
+        - post
+      type:
+        allOf:
+        - $ref: '#/definitions/domain.MeasurementType'
+        enum:
+        - bp
+        - glucose
+      unit:
+        type: string
+    type: object
 host: localhost:8080
 info:
   contact:
@@ -427,6 +507,122 @@ paths:
       summary: Reset Password
       tags:
       - auth
+  /measurements:
+    get:
+      consumes:
+      - application/json
+      description: |-
+        Retrieve measurements based on query parameters
+        If `patientId` is provided along with `latest=true`, only the latest measurement record for that patient will be returned.
+        Ví dụ: `/measurements?patientId=123&latest=true`
+      parameters:
+      - description: Patient ID
+        in: query
+        name: patientId
+        type: string
+      - description: Measurement type
+        in: query
+        name: type
+        type: string
+      - description: Measurement timing
+        in: query
+        name: timing
+        type: string
+      - description: Get latest measurement only
+        in: query
+        name: latest
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Measurements retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get measurements
+      tags:
+      - measurements
+    post:
+      consumes:
+      - application/json
+      description: Create a new measurement record for a patient
+      parameters:
+      - description: Measurement data
+        in: body
+        name: measurement
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateMeasurementRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Measurement created successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a new measurement
+      tags:
+      - measurements
+  /measurements/{id}:
+    patch:
+      consumes:
+      - application/json
+      description: Update an existing measurement record
+      parameters:
+      - description: Measurement ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated measurement data
+        in: body
+        name: measurement
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateMeasurementRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Measurement updated successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update an existing measurement
+      tags:
+      - measurements
   /users:
     get:
       consumes:

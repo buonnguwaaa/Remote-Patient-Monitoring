@@ -13,9 +13,16 @@ endif
 
 run:
 	@echo "Running server..."
-	go run cmd/server/main.go
+	@go run cmd/server/main.go
 
 format:
+	@echo "Arrange imported packages..."
+	@find . -name "*.go" | xargs goimports -w
 	@echo "Formatting code by Golang formatter..."
-	gofmt -s -w .
+	@gofmt -s -w .
 	@echo "Code formatted successfully!"
+
+static_check:
+	@echo "Running Go static analysis to check implicit bugs..."
+	@go vet ./...
+	@echo "Static analysis completed!"
