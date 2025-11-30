@@ -762,6 +762,20 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "domain.BloodPressure": {
+            "type": "object",
+            "properties": {
+                "diastolic": {
+                    "type": "number"
+                },
+                "map": {
+                    "type": "number"
+                },
+                "systolic": {
+                    "type": "number"
+                }
+            }
+        },
         "domain.Gender": {
             "type": "string",
             "enum": [
@@ -828,13 +842,16 @@ const docTemplate = `{
                 "type"
             ],
             "properties": {
+                "bloodPressure": {
+                    "$ref": "#/definitions/domain.BloodPressure"
+                },
                 "device": {
                     "type": "string"
                 },
-                "diastolic": {
+                "glucose": {
                     "type": "number"
                 },
-                "glucose": {
+                "heartRate": {
                     "type": "number"
                 },
                 "note": {
@@ -843,11 +860,13 @@ const docTemplate = `{
                 "patientId": {
                     "type": "string"
                 },
-                "pulse": {
+                "respiratoryRate": {
                     "type": "number"
                 },
-                "systolic": {
-                    "description": "Optional depending on Type",
+                "spo2": {
+                    "type": "number"
+                },
+                "temperature": {
                     "type": "number"
                 },
                 "timing": {
@@ -871,9 +890,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/domain.MeasurementType"
                         }
                     ]
-                },
-                "unit": {
-                    "type": "string"
                 }
             }
         },
@@ -1015,34 +1031,32 @@ const docTemplate = `{
         "dto.UpdateMeasurementRequest": {
             "type": "object",
             "properties": {
+                "bloodPressure": {
+                    "$ref": "#/definitions/domain.BloodPressure"
+                },
                 "device": {
                     "type": "string"
                 },
-                "diastolic": {
+                "glucose": {
                     "type": "number"
                 },
-                "glucose": {
+                "heartRate": {
                     "type": "number"
                 },
                 "note": {
                     "type": "string"
                 },
-                "pulse": {
+                "respiratoryRate": {
                     "type": "number"
                 },
-                "systolic": {
+                "spo2": {
+                    "type": "number"
+                },
+                "temperature": {
                     "type": "number"
                 },
                 "timing": {
-                    "enum": [
-                        "pre",
-                        "post"
-                    ],
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/domain.Timing"
-                        }
-                    ]
+                    "$ref": "#/definitions/domain.Timing"
                 },
                 "type": {
                     "enum": [
@@ -1054,9 +1068,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/domain.MeasurementType"
                         }
                     ]
-                },
-                "unit": {
-                    "type": "string"
                 }
             }
         }

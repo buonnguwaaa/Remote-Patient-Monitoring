@@ -49,17 +49,19 @@ func (r *measurementRepository) Create(ctx context.Context, m *domain.Measuremen
 }
 
 func (r *measurementRepository) Update(ctx context.Context, m *domain.Measurement) (*domain.Measurement, error) {
+
 	update := bson.M{
-		"type":      m.Type,
-		"systolic":  m.Systolic,
-		"diastolic": m.Diastolic,
-		"pulse":     m.Pulse,
-		"glucose":   m.Glucose,
-		"timing":    m.Timing,
-		"unit":      m.Unit,
-		"device":    m.Device,
-		"note":      m.Note,
-		"updatedAt": m.UpdatedAt,
+		"type":            m.Type,
+		"temperature":     m.Temperature,
+		"heartRate":       m.HeartRate,
+		"respiratoryRate": m.RespiratoryRate,
+		"spo2":            m.SpO2,
+		"bloodPressure":   m.BloodPressure,
+		"glucose":         m.Glucose,
+		"timing":          m.Timing,
+		"device":          m.Device,
+		"note":            m.Note,
+		"updatedAt":       m.UpdatedAt,
 	}
 
 	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)

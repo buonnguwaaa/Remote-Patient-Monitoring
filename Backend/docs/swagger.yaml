@@ -1,5 +1,14 @@
 basePath: /
 definitions:
+  domain.BloodPressure:
+    properties:
+      diastolic:
+        type: number
+      map:
+        type: number
+      systolic:
+        type: number
+    type: object
   domain.Gender:
     enum:
     - M
@@ -45,20 +54,23 @@ definitions:
     type: object
   dto.CreateMeasurementRequest:
     properties:
+      bloodPressure:
+        $ref: '#/definitions/domain.BloodPressure'
       device:
         type: string
-      diastolic:
-        type: number
       glucose:
+        type: number
+      heartRate:
         type: number
       note:
         type: string
       patientId:
         type: string
-      pulse:
+      respiratoryRate:
         type: number
-      systolic:
-        description: Optional depending on Type
+      spo2:
+        type: number
+      temperature:
         type: number
       timing:
         allOf:
@@ -72,8 +84,6 @@ definitions:
         enum:
         - bp
         - glucose
-      unit:
-        type: string
     required:
     - patientId
     - type
@@ -172,32 +182,30 @@ definitions:
     type: object
   dto.UpdateMeasurementRequest:
     properties:
+      bloodPressure:
+        $ref: '#/definitions/domain.BloodPressure'
       device:
         type: string
-      diastolic:
-        type: number
       glucose:
+        type: number
+      heartRate:
         type: number
       note:
         type: string
-      pulse:
+      respiratoryRate:
         type: number
-      systolic:
+      spo2:
+        type: number
+      temperature:
         type: number
       timing:
-        allOf:
-        - $ref: '#/definitions/domain.Timing'
-        enum:
-        - pre
-        - post
+        $ref: '#/definitions/domain.Timing'
       type:
         allOf:
         - $ref: '#/definitions/domain.MeasurementType'
         enum:
         - bp
         - glucose
-      unit:
-        type: string
     type: object
 host: localhost:8080
 info:
