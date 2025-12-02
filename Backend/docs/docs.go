@@ -641,6 +641,170 @@ const docTemplate = `{
                 }
             }
         },
+        "/thresholds": {
+            "get": {
+                "description": "Retrieve thresholds for a patient or doctor",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "thresholds"
+                ],
+                "summary": "Get thresholds",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Patient ID",
+                        "name": "patientId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Doctor ID",
+                        "name": "doctorId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Get latest threshold only",
+                        "name": "latest",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Thresholds retrieved successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a new threshold record for a patient",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "thresholds"
+                ],
+                "summary": "Create a new threshold",
+                "parameters": [
+                    {
+                        "description": "Threshold data",
+                        "name": "threshold",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.CreateThresholdRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Threshold created successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/thresholds/{id}": {
+            "patch": {
+                "description": "Update an existing threshold record",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "thresholds"
+                ],
+                "summary": "Update a threshold",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Threshold ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Updated threshold data",
+                        "name": "threshold",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateThresholdRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Threshold updated successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/users": {
             "get": {
                 "description": "Get a list of users with optional filters and pagination",
@@ -893,6 +1057,67 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.CreateThresholdRequest": {
+            "type": "object",
+            "required": [
+                "doctorId",
+                "effectiveFrom",
+                "patientId"
+            ],
+            "properties": {
+                "diaMax": {
+                    "type": "number"
+                },
+                "diaMin": {
+                    "type": "number"
+                },
+                "doctorId": {
+                    "type": "string"
+                },
+                "effectiveFrom": {
+                    "type": "string"
+                },
+                "effectiveTo": {
+                    "type": "string"
+                },
+                "glucoseMax": {
+                    "type": "number"
+                },
+                "glucoseMin": {
+                    "type": "number"
+                },
+                "heartRateMax": {
+                    "type": "number"
+                },
+                "heartRateMin": {
+                    "type": "number"
+                },
+                "patientId": {
+                    "type": "string"
+                },
+                "respiratoryRateMax": {
+                    "type": "number"
+                },
+                "respiratoryRateMin": {
+                    "type": "number"
+                },
+                "spo2Min": {
+                    "type": "number"
+                },
+                "sysMax": {
+                    "type": "number"
+                },
+                "sysMin": {
+                    "type": "number"
+                },
+                "temperatureMax": {
+                    "type": "number"
+                },
+                "temperatureMin": {
+                    "type": "number"
+                }
+            }
+        },
         "dto.ForgotPasswordRequest": {
             "type": "object",
             "required": [
@@ -1068,6 +1293,56 @@ const docTemplate = `{
                             "$ref": "#/definitions/domain.MeasurementType"
                         }
                     ]
+                }
+            }
+        },
+        "dto.UpdateThresholdRequest": {
+            "type": "object",
+            "properties": {
+                "diaMax": {
+                    "type": "number"
+                },
+                "diaMin": {
+                    "type": "number"
+                },
+                "effectiveFrom": {
+                    "type": "string"
+                },
+                "effectiveTo": {
+                    "type": "string"
+                },
+                "glucoseMax": {
+                    "type": "number"
+                },
+                "glucoseMin": {
+                    "type": "number"
+                },
+                "heartRateMax": {
+                    "type": "number"
+                },
+                "heartRateMin": {
+                    "type": "number"
+                },
+                "respiratoryRateMax": {
+                    "type": "number"
+                },
+                "respiratoryRateMin": {
+                    "type": "number"
+                },
+                "spo2Min": {
+                    "type": "number"
+                },
+                "sysMax": {
+                    "type": "number"
+                },
+                "sysMin": {
+                    "type": "number"
+                },
+                "temperatureMax": {
+                    "type": "number"
+                },
+                "temperatureMin": {
+                    "type": "number"
                 }
             }
         }

@@ -53,7 +53,7 @@ func (h *MeasurementHandler) CreateMeasurement(c *gin.Context) {
 		Note:            req.Note,
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
 	resp, err := h.service.CreateMeasurement(ctx, input)
@@ -100,7 +100,7 @@ func (h *MeasurementHandler) UpdateMeasurement(c *gin.Context) {
 		Note:            req.Note,
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
 	resp, err := h.service.UpdateMeasurement(ctx, input)
@@ -135,7 +135,7 @@ func (h *MeasurementHandler) GetMeasurements(c *gin.Context) {
 		IsLatest:  c.Query("latest") == "true",
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
 	resp, err := h.service.GetMeasurements(ctx, input)
