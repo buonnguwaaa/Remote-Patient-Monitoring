@@ -32,7 +32,10 @@ func NewMeasurementService(userRepo repository.UserRepository, measurementRepo r
 }
 
 func (s *measurementService) CreateMeasurement(ctx context.Context, input *usecase.CreateMeasurementInput) (*dto.MeasurementResponse, error) {
-	patientId := util.MustHexToObjectID(input.PatientID)
+	patientId, err := util.MustHexToObjectID(input.PatientID)
+	if err != nil {
+		return nil, err
+	}
 
 	existedPatient, err := s.userRepo.ExistsByIDAndRole(ctx, patientId, domain.RolePatient)
 	if err != nil || !existedPatient {
@@ -80,12 +83,16 @@ func (s *measurementService) CreateMeasurement(ctx context.Context, input *useca
 }
 
 func (s *measurementService) UpdateMeasurement(ctx context.Context, input *usecase.UpdateMeasurementInput) (*dto.MeasurementResponse, error) {
+	id, err := util.MustHexToObjectID(input.ID)
+	if err != nil {
+		return nil, err
+	}
 
 	mapValue := calculateMAP(input.BloodPressure.Systolic, input.BloodPressure.Diastolic)
 	input.BloodPressure.MAP = &mapValue
 
 	newMeasurement := &domain.Measurement{
-		ID:              util.MustHexToObjectID(input.ID),
+		ID:              id,
 		Type:            input.Type,
 		Temperature:     input.Temperature,
 		HeartRate:       input.HeartRate,
