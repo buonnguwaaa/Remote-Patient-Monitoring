@@ -1,0 +1,716 @@
+basePath: /
+definitions:
+  domain.BloodPressure:
+    properties:
+      diastolic:
+        type: number
+      map:
+        type: number
+      systolic:
+        type: number
+    type: object
+  domain.Gender:
+    enum:
+    - M
+    - F
+    - O
+    type: string
+    x-enum-varnames:
+    - GenderMale
+    - GenderFemale
+    - GenderOther
+  domain.MeasurementType:
+    enum:
+    - bp
+    - glucose
+    type: string
+    x-enum-varnames:
+    - TypeBloodPressure
+    - TypeGlucose
+  domain.Role:
+    enum:
+    - user.patient
+    - user.doctor
+    - admin
+    type: string
+    x-enum-varnames:
+    - RolePatient
+    - RoleDoctor
+    - RoleAdmin
+  domain.Timing:
+    enum:
+    - pre
+    - post
+    type: string
+    x-enum-varnames:
+    - TimingPre
+    - TimingPost
+  dto.ActivateAccountRequest:
+    properties:
+      activateToken:
+        type: string
+    required:
+    - activateToken
+    type: object
+  dto.CreateMeasurementRequest:
+    properties:
+      bloodPressure:
+        $ref: '#/definitions/domain.BloodPressure'
+      device:
+        type: string
+      glucose:
+        type: number
+      heartRate:
+        type: number
+      note:
+        type: string
+      patientId:
+        type: string
+      respiratoryRate:
+        type: number
+      spo2:
+        type: number
+      temperature:
+        type: number
+      timing:
+        allOf:
+        - $ref: '#/definitions/domain.Timing'
+        enum:
+        - pre
+        - post
+      type:
+        allOf:
+        - $ref: '#/definitions/domain.MeasurementType'
+        enum:
+        - bp
+        - glucose
+    required:
+    - patientId
+    - type
+    type: object
+  dto.ForgotPasswordRequest:
+    properties:
+      email:
+        type: string
+    required:
+    - email
+    type: object
+  dto.LoginRequest:
+    properties:
+      email:
+        example: john.doe@example.com
+        type: string
+      password:
+        example: SecurePass123!
+        minLength: 6
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  dto.LogoutRequest:
+    properties:
+      refreshToken:
+        type: string
+    required:
+    - refreshToken
+    type: object
+  dto.RefreshRequest:
+    properties:
+      refreshToken:
+        type: string
+    required:
+    - refreshToken
+    type: object
+  dto.RegisterRequest:
+    properties:
+      confirmedPassword:
+        example: SecurePass123!
+        minLength: 8
+        type: string
+      dob:
+        example: "1990-05-15"
+        type: string
+      email:
+        example: john.doe@example.com
+        type: string
+      gender:
+        allOf:
+        - $ref: '#/definitions/domain.Gender'
+        example: M
+      name:
+        example: John Doe
+        type: string
+      password:
+        example: SecurePass123!
+        minLength: 6
+        type: string
+      role:
+        allOf:
+        - $ref: '#/definitions/domain.Role'
+        example: patient
+    required:
+    - confirmedPassword
+    - dob
+    - email
+    - gender
+    - name
+    - password
+    - role
+    type: object
+  dto.ResendActivationEmailRequest:
+    properties:
+      email:
+        type: string
+    required:
+    - email
+    type: object
+  dto.ResetPasswordRequest:
+    properties:
+      confirmedNewPassword:
+        minLength: 6
+        type: string
+      newPassword:
+        minLength: 6
+        type: string
+      resetToken:
+        type: string
+    required:
+    - confirmedNewPassword
+    - newPassword
+    - resetToken
+    type: object
+  dto.UpdateMeasurementRequest:
+    properties:
+      bloodPressure:
+        $ref: '#/definitions/domain.BloodPressure'
+      device:
+        type: string
+      glucose:
+        type: number
+      heartRate:
+        type: number
+      note:
+        type: string
+      respiratoryRate:
+        type: number
+      spo2:
+        type: number
+      temperature:
+        type: number
+      timing:
+        $ref: '#/definitions/domain.Timing'
+      type:
+        allOf:
+        - $ref: '#/definitions/domain.MeasurementType'
+        enum:
+        - bp
+        - glucose
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@swagger.io
+    name: API Support
+    url: http://www.swagger.io/support
+  description: A REST API for remote patient monitoring system
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: http://swagger.io/terms/
+  title: Remote Patient Monitoring API
+  version: "1.0"
+paths:
+  /auth/activate:
+    post:
+      description: Activate user account created from local strategy using token from
+        email link
+      parameters:
+      - description: Activation token
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ActivateAccountRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Account activated successfully
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Activate account
+      tags:
+      - auth
+  /auth/forgot-password:
+    post:
+      consumes:
+      - application/json
+      description: Send reset link to user email
+      parameters:
+      - description: Email
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ForgotPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Reset password link was sent to your mailbox
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Forgot Password
+      tags:
+      - auth
+  /auth/google/callback:
+    get:
+      description: Handle Google OAuth2 callback and generate JWT, unified with LoginResponse
+      parameters:
+      - description: Google Auth Code
+        in: query
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Google Callback
+      tags:
+      - auth
+  /auth/google/login:
+    get:
+      description: Redirect user to Google OAuth2 login
+      responses:
+        "302":
+          description: Redirect
+          schema:
+            type: string
+      summary: Google Login
+      tags:
+      - auth
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate a user and return a JWT token
+      parameters:
+      - description: User login credentials
+        in: body
+        name: credentials
+        required: true
+        schema:
+          $ref: '#/definitions/dto.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User logged in successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Login a user
+      tags:
+      - auth
+  /auth/logout:
+    post:
+      consumes:
+      - application/json
+      description: Revoke refresh token and clear session
+      parameters:
+      - description: Logout request (falls back to cookies)
+        in: body
+        name: logout
+        schema:
+          $ref: '#/definitions/dto.LogoutRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Logged out successfully
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Logout
+      tags:
+      - auth
+  /auth/me:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve information about the authenticated user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User information retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get authenticated user info
+      tags:
+      - auth
+  /auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Provide a refresh token to obtain a new access token
+      parameters:
+      - description: Refresh token
+        in: body
+        name: refresh
+        required: true
+        schema:
+          $ref: '#/definitions/dto.RefreshRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: New access token
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Refresh access token
+      tags:
+      - auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Register a new user with the provided details
+      parameters:
+      - description: User registration details
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/dto.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: User registered successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Register a new user
+      tags:
+      - auth
+  /auth/resend-activation:
+    post:
+      consumes:
+      - application/json
+      description: Resend account activation email to user
+      parameters:
+      - description: Email
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ResendActivationEmailRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Activation email resent successfully
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Resend Activation Email
+      tags:
+      - auth
+  /auth/reset-password:
+    post:
+      consumes:
+      - application/json
+      description: "Reset password using va\tlid token"
+      parameters:
+      - description: New password
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ResetPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Password reset successfully
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Reset Password
+      tags:
+      - auth
+  /measurements:
+    get:
+      consumes:
+      - application/json
+      description: |-
+        Retrieve measurements based on query parameters
+        If `patientId` is provided along with `latest=true`, only the latest measurement record for that patient will be returned.
+        Ví dụ: `/measurements?patientId=123&latest=true`
+      parameters:
+      - description: Patient ID
+        in: query
+        name: patientId
+        type: string
+      - description: Measurement type
+        in: query
+        name: type
+        type: string
+      - description: Measurement timing
+        in: query
+        name: timing
+        type: string
+      - description: Get latest measurement only
+        in: query
+        name: latest
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Measurements retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get measurements
+      tags:
+      - measurements
+    post:
+      consumes:
+      - application/json
+      description: Create a new measurement record for a patient
+      parameters:
+      - description: Measurement data
+        in: body
+        name: measurement
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateMeasurementRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Measurement created successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a new measurement
+      tags:
+      - measurements
+  /measurements/{id}:
+    patch:
+      consumes:
+      - application/json
+      description: Update an existing measurement record
+      parameters:
+      - description: Measurement ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated measurement data
+        in: body
+        name: measurement
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateMeasurementRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Measurement updated successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update an existing measurement
+      tags:
+      - measurements
+  /users:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of users with optional filters and pagination
+      parameters:
+      - description: Filter by users' name
+        in: query
+        name: name
+        type: string
+      - description: Filter by users' email
+        in: query
+        name: email
+        type: string
+      - description: Filter by users' roles, comma-separated (e.g., admin,user)
+        in: query
+        name: role
+        type: string
+      - description: Filter by users' gender
+        in: query
+        name: gender
+        type: string
+      - description: Page number, default 1
+        in: query
+        name: page
+        type: integer
+      - description: Number of items per page, default 10
+        in: query
+        name: limit
+        type: integer
+      - description: Sort order, asc or desc, default asc
+        in: query
+        name: sortOrder
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of users retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get list of users
+      tags:
+      - users
+  /users/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get a user by their ID
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: User not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get user by ID
+      tags:
+      - users
+schemes:
+- http
+- https
+swagger: "2.0"
