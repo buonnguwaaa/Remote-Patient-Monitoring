@@ -25,3 +25,17 @@ export interface StatItem {
   value: number;
   type: "primary" | "warning" | "neutral";
 }
+
+export interface Patient {
+  id: string;
+  name: string;
+  img: string;
+
+  status: "normal" | "warning";
+
+  // Patient stat
+  systolic: number;
+  diastolic: number;
+  heartRate: number;
+  bloodSugar: number;
+}

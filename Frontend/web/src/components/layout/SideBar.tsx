@@ -23,7 +23,7 @@ const SideBar = ({ navigationItems = navData }: SideBarProps) => {
     <div
       // 3. Width động: w-20 khi đóng, w-64 (hoặc w-48) khi mở
       className={`h-screen bg-white border-r border-gray-200 flex flex-col transition-all duration-300 ${
-        isCollapsed ? "w-14" : "w-64"
+        isCollapsed ? "w-14" : "w-80"
       }`}
     >
       {/* --- HEADER --- */}
@@ -34,7 +34,7 @@ const SideBar = ({ navigationItems = navData }: SideBarProps) => {
       >
         {/* Ẩn chữ RPM khi thu nhỏ */}
         {!isCollapsed && (
-          <h2 className="font-bold text-xl text-primary-text">RPM</h2>
+          <h2 className="font-bold text-2xl text-primary-text">RPM</h2>
         )}
 
         {/* Nút toggle */}
@@ -43,9 +43,9 @@ const SideBar = ({ navigationItems = navData }: SideBarProps) => {
           className="text-primary-text"
         >
           {isCollapsed ? (
-            <TbLayoutSidebarRightCollapseFilled size={28} />
+            <TbLayoutSidebarRightCollapseFilled size={32} />
           ) : (
-            <TbLayoutSidebarLeftCollapseFilled size={28} />
+            <TbLayoutSidebarLeftCollapseFilled size={32} />
           )}
         </button>
       </div>
@@ -73,12 +73,12 @@ const SideBar = ({ navigationItems = navData }: SideBarProps) => {
                 >
                   {/* Icon */}
                   {item.icon && (
-                    <div className="text-base shrink-0">{item.icon}</div>
+                    <div className="text-2xl shrink-0">{item.icon}</div>
                   )}
 
                   {/* Label: Ẩn hoàn toàn khi collapsed để tránh vỡ layout */}
                   {!isCollapsed && (
-                    <span className="text-sm whitespace-nowrap overflow-hidden">
+                    <span className="text-xl font-semibold whitespace-nowrap overflow-hidden">
                       {item.label}
                     </span>
                   )}
@@ -97,7 +97,7 @@ const SideBar = ({ navigationItems = navData }: SideBarProps) => {
           }`}
         >
           {/* Avatar giả lập */}
-          <div className="h-8 w-8 rounded-full  shrink-0">
+          <div className="h-12 w-12 rounded-full  shrink-0">
             <img
               src="https://avatar.iran.liara.run/public"
               alt="User Avatar"
@@ -108,14 +108,17 @@ const SideBar = ({ navigationItems = navData }: SideBarProps) => {
           {/* Thông tin User: Ẩn khi thu nhỏ */}
           {!isCollapsed && (
             <div className="flex-1 min-w-0">
-              <p className="font-bold text-sm text-primary-text truncate">
+              <p className="font-bold text-xl text-primary-text truncate">
                 Doctor Name
               </p>
             </div>
           )}
         </div>
         {/* Nút Logout */}
-        <button className="flex w-full items-center justify-center py-2 rounded-md text-sm text-gray-500 hover:bg-hover mt-3">
+        <button
+          className="flex w-full items-center justify-center py-2 rounded-md text-xl 
+          text-gray-500 hover:bg-rose-400 hover:text-gray-800 transition duration-400 mt-3"
+        >
           <FiLogOut className="mr-1" />
           {!isCollapsed && <span>Đăng xuất</span>}
         </button>

@@ -186,7 +186,7 @@ export const Chart: React.FC = () => {
   ];
 
   return (
-    <div className="p-6 bg-white rounded-xl shadow-sm w-4/10 font-sans">
+    <div className="p-6 bg-white rounded-xl shadow-sm md:w-4/10 font-sans">
       {/* Top Section */}
       <StatsHeader
         stats={stats}

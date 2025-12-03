@@ -24,3 +24,21 @@ export const mockWarnList = [
     message: "Nhịp tim cao",
   },
 ];
+
+export const mockPatientList = [
+  {
+    id: "1",
+    name: "Nguyễn Văn A",
+    status: "warning",
+  },
+  {
+    id: "2",
+    name: "Trần Thị B",
+    status: "normal",
+  },
+  {
+    id: "3",
+    name: "Lê Văn C",
+    status: "warning",
+  },
+];
