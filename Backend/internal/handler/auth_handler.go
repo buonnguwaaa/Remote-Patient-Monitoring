@@ -375,7 +375,7 @@ func (h *AuthHandler) isSecure(c *gin.Context) bool {
 }
 
 func (h *AuthHandler) setAccessTokenCookie(c *gin.Context, accessToken string) {
-	maxAge := int(utils.AccessTokenTTL.Seconds())
+	maxAge := int(util.AccessTokenTTL.Seconds())
 	sameSite := http.SameSiteLaxMode
 	if strings.ToLower(os.Getenv("FORCE_SAMESITE_NONE")) == "true" {
 		sameSite = http.SameSiteNoneMode
@@ -393,7 +393,7 @@ func (h *AuthHandler) setAccessTokenCookie(c *gin.Context, accessToken string) {
 }
 
 func (h *AuthHandler) setRefreshTokenCookie(c *gin.Context, refreshToken string) {
-	maxAge := int(utils.RefreshTokenTTL.Seconds())
+	maxAge := int(util.RefreshTokenTTL.Seconds())
 	sameSite := http.SameSiteLaxMode
 	if strings.ToLower(os.Getenv("FORCE_SAMESITE_NONE")) == "true" {
 		sameSite = http.SameSiteNoneMode

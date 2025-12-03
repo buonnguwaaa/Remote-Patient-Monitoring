@@ -1,250 +1,304 @@
-import { useState } from "react";
+import React, { useState } from 'react';
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
   ScrollView,
-  StyleSheet,
-  Modal,
-  Pressable,
   KeyboardAvoidingView,
   Platform,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import DateTimePicker from "@react-native-community/datetimepicker";
+  Modal,
+} from 'react-native';
+import ButtonPrimary from '../components/ButtonPrimary';
+import { Feather } from '@expo/vector-icons';
+import styles from '../styles/login';
+import { Alert } from 'react-native';
 
-export default function RegisterScreen() {
-  const [gender, setGender] = useState("Male");
-  const [showGenderModal, setShowGenderModal] = useState(false);
+import { useAuth } from '../context/AuthContext';
 
-  const [dob, setDob] = useState(null);
+export default function RegisterScreen({ onSwitchToLogin }) {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [gender, setGender] = useState('');
+  const [showGenderOptions, setShowGenderOptions] = useState(false);
+  const [dob, setDob] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [tempDate, setTempDate] = useState(dob ? new Date(dob) : new Date());
+
+  let DateTimePicker = null;
+  try {
+    DateTimePicker = require('@react-native-community/datetimepicker').default;
+  } catch (e) {
+    DateTimePicker = null;
+  }
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const { register } = useAuth();
+  const [showDobInput, setShowDobInput] = useState(false);
+
+  const handleSubmit = () => {
+    if (password !== confirmPassword) {
+      alert('Passwords do not match');
+      return;
+    }
+    setLoading(true);
+    (async () => {
+      const genderCode = (() => {
+        if (!gender) return 'O';
+        const g = gender.toLowerCase();
+        if (g.startsWith('male')) return 'M';
+        if (g.startsWith('female')) return 'F';
+        return 'O';
+      })();
+
+      const { ok, error } = await register({
+        name,
+        email,
+        password,
+        confirmedPassword: confirmPassword,
+        dob,
+        gender: genderCode,
+        role: 'patient',
+      });
+      setLoading(false);
+      if (ok) {
+        alert('Register successful. Please sign in.');
+        onSwitchToLogin && onSwitchToLogin();
+      } else {
+        alert('Register failed: ' + JSON.stringify(error));
+      }
+    })();
+  };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-      >
-        <ScrollView
-          style={styles.container}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={styles.header}>
-            <View style={styles.logoBox}>
-              <Text style={styles.logoText}>RPM</Text>
-            </View>
-            <Text style={styles.title}>Create Account</Text>
-            <Text style={styles.subtitle}>Sign up to get started</Text>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+        <View style={styles.header}>
+          <View style={styles.logoWrap}>
+            <Text style={styles.logoText}>RPM</Text>
+          </View>
+          <Text style={styles.title}>Create Account</Text>
+          <Text style={styles.subtitle}>Sign up to get started</Text>
+        </View>
+
+        <View style={styles.form}>
+          <View style={styles.field}>
+            <Text style={styles.label}>Full Name</Text>
+            <TextInput
+              value={name}
+              onChangeText={setName}
+              placeholder="Enter your full name"
+              style={styles.input}
+            />
           </View>
 
-          {/* FULL NAME */}
-          <Text style={styles.label}>Full Name</Text>
-          <TextInput placeholder="Enter your full name" style={styles.input} />
+          <View style={styles.field}>
+            <Text style={styles.label}>Email</Text>
+            <TextInput
+              value={email}
+              onChangeText={setEmail}
+              placeholder="Enter your email"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              style={styles.input}
+            />
+          </View>
 
-          {/* CCCD */}
-          <Text style={styles.label}>Citizen ID (CCCD)</Text>
-          <TextInput
-            placeholder="Enter your ID number"
-            keyboardType="numeric"
-            style={styles.input}
-          />
-
-          {/* EMAIL */}
-          <Text style={styles.label}>Email</Text>
-          <TextInput
-            placeholder="Enter your email"
-            keyboardType="email-address"
-            style={styles.input}
-          />
-
-          {/* GENDER */}
-          <Text style={styles.label}>Gender</Text>
-          <TouchableOpacity
-            style={styles.selectBox}
-            onPress={() => setShowGenderModal(true)}
-          >
-            <Text>{gender}</Text>
-          </TouchableOpacity>
-
-          {/* Gender Modal */}
-          <Modal
-            transparent
-            visible={showGenderModal}
-            animationType="fade"
-            onRequestClose={() => setShowGenderModal(false)}
-          >
-            <Pressable
-              style={styles.modalOverlay}
-              onPress={() => setShowGenderModal(false)}
+          <View style={styles.field}>
+            <Text style={styles.label}>Gender</Text>
+            <TouchableOpacity
+              onPress={() => setShowGenderOptions((s) => !s)}
+              style={styles.selectButton}
+              activeOpacity={0.8}
             >
-              <View style={styles.modalBox}>
-                {["Male", "Female", "Other"].map((g) => (
-                  <Pressable
-                    key={g}
-                    style={styles.option}
+              <Text style={gender ? styles.inputText : styles.placeholderText}>{gender || 'Select your gender'}</Text>
+              <Feather name={showGenderOptions ? 'chevron-up' : 'chevron-down'} size={18} color="#717182" />
+            </TouchableOpacity>
+
+            {showGenderOptions && (
+              <View style={styles.selectOptions}>
+                {[
+                  { label: 'Male', value: 'male' },
+                  { label: 'Female', value: 'female' },
+                  { label: 'Non-binary', value: 'non-binary' },
+                  { label: 'Prefer not to say', value: 'prefer-not-to-say' },
+                ].map((opt) => (
+                  <TouchableOpacity
+                    key={opt.value}
                     onPress={() => {
-                      setGender(g);
-                      setShowGenderModal(false);
+                      setGender(opt.label);
+                      setShowGenderOptions(false);
                     }}
+                    style={styles.selectOption}
                   >
-                    <Text style={styles.optionText}>{g}</Text>
-                  </Pressable>
+                    <Text style={styles.selectOptionText}>{opt.label}</Text>
+                  </TouchableOpacity>
                 ))}
               </View>
-            </Pressable>
-          </Modal>
+            )}
+          </View>
 
-          {/* DOB */}
-          <Text style={styles.label}>Date of Birth</Text>
-          <TouchableOpacity
-            style={styles.selectBox}
-            onPress={() => setShowDatePicker(true)}
-          >
-            <Text>{dob ? dob.toLocaleDateString() : "Pick a date"}</Text>
-          </TouchableOpacity>
-
-          {showDatePicker && (
-            <DateTimePicker
-              value={dob || new Date(2000, 0, 1)}
-              mode="date"
-              display="spinner"
-              onChange={(event, selected) => {
-                setShowDatePicker(false);
-                if (selected) setDob(selected);
+          <View style={styles.field}>
+            <Text style={styles.label}>Date of Birth</Text>
+            <TouchableOpacity
+              onPress={() => {
+                if (DateTimePicker) {
+                  setShowDatePicker(true);
+                } else {
+                  // show an inline input so user can type YYYY-MM-DD
+                  setShowDobInput(true);
+                }
               }}
-            />
-          )}
+              style={styles.dobButton}
+            >
+              <Feather name="calendar" size={18} color="#717182" style={{ marginRight: 10 }} />
+              <Text style={dob ? { color: '#030213' } : styles.dobText}>{dob || 'Pick a date'}</Text>
+            </TouchableOpacity>
 
-          {/* PASSWORD */}
-          <Text style={styles.label}>Password</Text>
-          <TextInput
-            placeholder="Create a password"
-            secureTextEntry
-            style={styles.input}
-          />
-          <Text style={styles.helper}>Must be at least 8 characters</Text>
+            {showDobInput && (
+              <TextInput
+                value={dob}
+                onChangeText={setDob}
+                placeholder="YYYY-MM-DD"
+                style={[styles.input, { marginTop: 8 }]}
+                keyboardType="numbers-and-punctuation"
+                autoCapitalize="none"
+              />
+            )}
 
-          {/* CONFIRM PASSWORD */}
-          <Text style={styles.label}>Confirm Password</Text>
-          <TextInput
-            placeholder="Confirm your password"
-            secureTextEntry
-            style={styles.input}
-          />
+            {DateTimePicker && showDatePicker && (
+              <Modal
+                transparent
+                animationType="slide"
+                visible={showDatePicker}
+                onRequestClose={() => setShowDatePicker(false)}
+              >
+                <View style={styles.modalContainer}>
+                  <View style={styles.modalContent}>
+                    <Text style={styles.modalTitle}>Select date</Text>
+                    <DateTimePicker
+                      value={tempDate}
+                      mode="date"
+                      display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                      maximumDate={new Date()}
+                      minimumDate={new Date('1900-01-01')}
+                      onChange={(event, selected) => {
+                        if (Platform.OS === 'android') {
+                          if (selected) {
+                            const iso = selected.toISOString().slice(0, 10);
+                            setDob(iso);
+                          }
+                        } else {
+                          if (selected) setTempDate(selected);
+                        }
+                      }}
+                    />
 
-          {/* BUTTON */}
-          <TouchableOpacity style={styles.btn}>
-            <Text style={styles.btnText}>Create Account</Text>
-          </TouchableOpacity>
+                    <View style={styles.modalActions}>
+                      <TouchableOpacity
+                        style={styles.modalActionButton}
+                        onPress={() => {
+                          setShowDatePicker(false);
+                        }}
+                      >
+                        <Text style={styles.modalActionText}>Cancel</Text>
+                      </TouchableOpacity>
 
-          {/* TERMS */}
-          <Text style={styles.terms}>
-            By signing up, you agree to our <Text style={styles.link}>Terms</Text>{" "}
-            and <Text style={styles.link}>Privacy Policy</Text>
+                      <TouchableOpacity
+                        style={styles.modalActionButton}
+                        onPress={() => {
+                          const iso = tempDate.toISOString().slice(0, 10);
+                          setDob(iso);
+                          setShowDatePicker(false);
+                        }}
+                      >
+                        <Text style={styles.modalActionText}>Confirm</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </View>
+              </Modal>
+            )}
+          </View>
+
+          <View style={styles.field}>
+            <Text style={styles.label}>Password</Text>
+            <View style={styles.passwordWrap}>
+              <TextInput
+                value={password}
+                onChangeText={setPassword}
+                placeholder="Create a password"
+                secureTextEntry={!showPassword}
+                style={[styles.input, { paddingRight: 50 }]}
+              />
+              <TouchableOpacity onPress={() => setShowPassword((s) => !s)} style={styles.eyeButton}>
+                <Feather name={showPassword ? 'eye-off' : 'eye'} size={20} color="#717182" />
+              </TouchableOpacity>
+            </View>
+            <Text style={{ color: '#717182', marginTop: 6 }}>Must be at least 8 characters</Text>
+          </View>
+
+          <View style={styles.field}>
+            <Text style={styles.label}>Confirm Password</Text>
+            <View style={styles.passwordWrap}>
+              <TextInput
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                placeholder="Confirm your password"
+                secureTextEntry={!showConfirmPassword}
+                style={[styles.input, { paddingRight: 50 }]}
+              />
+              <TouchableOpacity onPress={() => setShowConfirmPassword((s) => !s)} style={styles.eyeButton}>
+                <Feather name={showConfirmPassword ? 'eye-off' : 'eye'} size={20} color="#717182" />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <ButtonPrimary title={loading ? 'Creating Account...' : 'Create Account'} onPress={handleSubmit} disabled={loading} />
+          {/* Terms */}
+          <Text style={styles.termsText}>
+            By signing up, you agree to our{' '}
+            <Text
+              style={styles.termsLink}
+              onPress={() => {
+                try {
+                  const url = 'https://example.com/terms';
+                  const { Linking } = require('react-native');
+                  Linking.openURL(url).catch(() => {});
+                } catch (e) {}
+              }}
+            >
+              Terms
+            </Text>{' '}
+            and{' '}
+            <Text
+              style={styles.termsLink}
+              onPress={() => {
+                try {
+                  const url = 'https://example.com/privacy';
+                  const { Linking } = require('react-native');
+                  Linking.openURL(url).catch(() => {});
+                } catch (e) {}
+              }}
+            >
+              Privacy Policy
+            </Text>
           </Text>
+        </View>
 
-          {/* SIGN IN */}
-          <Text style={styles.bottomText}>
-            Already have an account? <Text style={styles.link}>Sign In</Text>
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>
+            Already have an account?{' '}
+            <Text style={styles.signUp} onPress={() => onSwitchToLogin && onSwitchToLogin()}>Sign In</Text>
           </Text>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { padding: 20, backgroundColor: "#fff" },
-
-  header: {
-    alignItems: "center",
-    marginBottom: 20,
-    marginTop: 10,
-  },
-
-  logoBox: {
-    width: 80,
-    height: 80,
-    backgroundColor: "#000",
-    borderRadius: 20,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-
-  logoText: { color: "#fff", fontSize: 24, fontWeight: "bold" },
-  title: { fontSize: 22, fontWeight: "bold", marginBottom: 4 },
-  subtitle: { color: "#777" },
-
-  label: { fontWeight: "600", marginTop: 15, marginBottom: 5 },
-
-  input: {
-    backgroundColor: "#F4F4F5",
-    padding: 14,
-    borderRadius: 10,
-  },
-
-  selectBox: {
-    backgroundColor: "#F4F4F5",
-    padding: 14,
-    borderRadius: 10,
-  },
-
-  helper: { color: "#666", fontSize: 12, marginTop: 4 },
-
-  btn: {
-    backgroundColor: "#000",
-    paddingVertical: 14,
-    borderRadius: 10,
-    marginTop: 25,
-  },
-
-  btnText: {
-    textAlign: "center",
-    color: "#fff",
-    fontWeight: "600",
-  },
-
-  terms: {
-    textAlign: "center",
-    marginTop: 15,
-    color: "#666",
-    fontSize: 12,
-  },
-
-  link: { color: "#0033cc", fontWeight: "600" },
-
-  bottomText: {
-    textAlign: "center",
-    marginTop: 15,
-    color: "#444",
-    fontSize: 13,
-    marginBottom: 40,
-  },
-
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.3)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  modalBox: {
-    width: "70%",
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    paddingVertical: 10,
-  },
-
-  option: {
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-  },
-
-  optionText: {
-    fontSize: 16,
-  },
-});

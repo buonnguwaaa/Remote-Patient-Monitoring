@@ -1,9 +1,0 @@
-{
-  "name": "fe",
-  "private": true,
-  "workspaces": [
-    "packages/*",
-    "mobile",
-    "web"
-  ]
-}
