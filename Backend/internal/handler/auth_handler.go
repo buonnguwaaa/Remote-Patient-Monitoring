@@ -191,7 +191,13 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 		return
 	}
 
-	h.clearAuthCookies(c)
+	sameSite := http.SameSiteLaxMode
+	if strings.ToLower(os.Getenv("FORCE_SAMESITE_NONE")) == "true" {
+		sameSite = http.SameSiteNoneMode
+	}
+	c.SetSameSite(sameSite)
+	c.SetCookie("access_token", "", -1, "/", "", h.isSecure(c), false)
+	c.SetCookie("refresh_token", "", -1, "/", "", h.isSecure(c), true)
 
 	c.JSON(http.StatusOK, gin.H{"message": "Logged out successfully"})
 }
@@ -369,8 +375,12 @@ func (h *AuthHandler) isSecure(c *gin.Context) bool {
 }
 
 func (h *AuthHandler) setAccessTokenCookie(c *gin.Context, accessToken string) {
-	maxAge := int(util.AccessTokenTTL.Seconds())
-	h.setSameSite(c)
+	maxAge := int(utils.AccessTokenTTL.Seconds())
+	sameSite := http.SameSiteLaxMode
+	if strings.ToLower(os.Getenv("FORCE_SAMESITE_NONE")) == "true" {
+		sameSite = http.SameSiteNoneMode
+	}
+	c.SetSameSite(sameSite)
 	c.SetCookie(
 		"accessToken",
 		accessToken,
@@ -383,8 +393,12 @@ func (h *AuthHandler) setAccessTokenCookie(c *gin.Context, accessToken string) {
 }
 
 func (h *AuthHandler) setRefreshTokenCookie(c *gin.Context, refreshToken string) {
-	maxAge := int(util.RefreshTokenTTL.Seconds())
-	h.setSameSite(c)
+	maxAge := int(utils.RefreshTokenTTL.Seconds())
+	sameSite := http.SameSiteLaxMode
+	if strings.ToLower(os.Getenv("FORCE_SAMESITE_NONE")) == "true" {
+		sameSite = http.SameSiteNoneMode
+	}
+	c.SetSameSite(sameSite)
 	c.SetCookie(
 		"refreshToken",
 		refreshToken,
