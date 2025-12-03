@@ -25,13 +25,13 @@ func HashTokenSHA256(token string) string {
 	return hex.EncodeToString(sum[:])
 }
 
-func MustHexToObjectID(hexStr string) primitive.ObjectID {
+func MustHexToObjectID(hexStr string) (primitive.ObjectID, error) {
 	id, err := primitive.ObjectIDFromHex(hexStr)
 	if err != nil {
 		log.Println("[GIN-error] Failed to convert hex to ObjectID:", err)
-		panic(err)
+		return primitive.NilObjectID, err
 	}
-	return id
+	return id, nil
 }
 
 func GenerateRandomToken(n int) (string, error) {

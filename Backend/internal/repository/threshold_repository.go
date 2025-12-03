@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
@@ -35,6 +36,39 @@ func NewThresholdRepository(db *mongo.Database) ThresholdRepository {
 
 func (r *thresholdRepository) Create(ctx context.Context, t *domain.Threshold) (*domain.Threshold, error) {
 	now := time.Now().UTC()
+
+	// 1. Find the latest threshold for this patient
+	filter := bson.M{
+		"patientId": t.PatientID,
+	}
+
+	opts := options.FindOne().SetSort(bson.D{{"effectiveFrom", -1}})
+
+	var last domain.Threshold
+	err := r.col.FindOne(ctx, filter, opts).Decode(&last)
+
+	// 2. If a previous threshold exists and EffectiveTo is nil, update it
+	if err == nil && last.EffectiveTo == nil {
+		update := bson.M{
+			"$set": bson.M{
+				"effectiveTo": now,
+				"updatedAt":   now,
+			},
+		}
+
+		_, uErr := r.col.UpdateByID(ctx, last.ID, update)
+		if uErr != nil {
+			return nil, uErr
+		}
+	}
+
+	// If the error is NotFound – that's fine; we just insert new record
+	if err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
+		// real error
+		return nil, err
+	}
+
+	// 3. Insert the new threshold
 	t.CreatedAt = now
 	t.UpdatedAt = now
 

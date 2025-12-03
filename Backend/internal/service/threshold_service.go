@@ -30,13 +30,19 @@ func NewThresholdService(userRepo repository.UserRepository, thresholdRepo repos
 }
 
 func (s *thresholdService) CreateThreshold(ctx context.Context, input *usecase.CreateThresholdInput) (*dto.ThresholdResponse, error) {
-	patientID := util.MustHexToObjectID(input.PatientID)
+	patientID, err := util.MustHexToObjectID(input.PatientID)
+	if err != nil {
+		return nil, err
+	}
 	existedPatient, err := s.userRepo.ExistsByIDAndRole(ctx, patientID, domain.RolePatient)
 	if err != nil || !existedPatient {
 		return nil, fmt.Errorf("user not found or not patient")
 	}
 
-	doctorID := util.MustHexToObjectID(input.DoctorID)
+	doctorID, err := util.MustHexToObjectID(input.DoctorID)
+	if err != nil {
+		return nil, err
+	}
 	existedDoctor, err := s.userRepo.ExistsByIDAndRole(ctx, doctorID, domain.RoleDoctor)
 	if err != nil || !existedDoctor {
 		return nil, fmt.Errorf("user not found or not doctor")
@@ -113,7 +119,10 @@ func (s *thresholdService) GetThresholds(ctx context.Context, input *usecase.Get
 }
 
 func (s *thresholdService) UpdateThreshold(ctx context.Context, input *usecase.UpdateThresholdInput) (*dto.ThresholdResponse, error) {
-	id := util.MustHexToObjectID(input.ID)
+	id, err := util.MustHexToObjectID(input.ID)
+	if err != nil {
+		return nil, err
+	}
 
 	newThreshold := &domain.Threshold{
 		ID:                 id,
