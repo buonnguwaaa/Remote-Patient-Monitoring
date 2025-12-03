@@ -1,9 +1,10 @@
 package config
 
 import (
+	"os"
+
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
-	"os"
 )
 
 var GoogleOAuth2Conf *oauth2.Config

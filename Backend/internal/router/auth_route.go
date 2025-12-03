@@ -1,38 +1,24 @@
 package router
 
 import (
-	"os"
-
-	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/config"
-	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/handler"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/container"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/middleware"
-	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository"
-	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/service"
-	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/util"
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterAuthRoutes(r *gin.Engine) {
-	jwtSecret := os.Getenv("JWT_SECRET")
-	userRepo := repository.NewUserRepository(config.Mongo.Database)
-	tokenRepo := repository.NewTokenRepository(config.Mongo.Database)
-	jwtManager := util.NewJWTManager(jwtSecret)
-	authService := service.NewAuthService(userRepo, tokenRepo, jwtManager)
-	authHandler := handler.NewAuthHandler(authService)
-
+func RegisterAuthRoutes(r *gin.Engine, c *container.Container) {
 	authGroup := r.Group("/auth")
 	{
-		authGroup.POST("/register", authHandler.Register)
-		authGroup.POST("/login", authHandler.Login)
-		authGroup.GET("/me", middleware.JWTAuthMiddleware(jwtManager), authHandler.Me)
-		authGroup.POST("/refresh", authHandler.Refresh)
-		authGroup.POST("/logout", authHandler.Logout)
-		authGroup.GET("/google/login", authHandler.HandleGoogleOAuth2Login)
-		authGroup.GET("/google/callback", authHandler.HandleGoogleOAuth2Callback)
-
-		authGroup.POST("/forgot-password", authHandler.ForgotPassword)
-		authGroup.POST("/reset-password", authHandler.ResetPassword)
-		authGroup.POST("/activate", authHandler.ActivateAccount)
-		authGroup.POST("/resend-activation", authHandler.ResendActivationEmail)
+		authGroup.POST("/register", c.AuthHandler.Register)
+		authGroup.POST("/login", c.AuthHandler.Login)
+		authGroup.GET("/me", middleware.JWTAuthMiddleware(c.JWTManager), c.AuthHandler.Me)
+		authGroup.POST("/refresh", c.AuthHandler.Refresh)
+		authGroup.POST("/logout", c.AuthHandler.Logout)
+		authGroup.GET("/google/login", c.AuthHandler.HandleGoogleOAuth2Login)
+		authGroup.GET("/google/callback", c.AuthHandler.HandleGoogleOAuth2Callback)
+		authGroup.POST("/forgot-password", c.AuthHandler.ForgotPassword)
+		authGroup.POST("/reset-password", c.AuthHandler.ResetPassword)
+		authGroup.POST("/activate", c.AuthHandler.ActivateAccount)
+		authGroup.POST("/resend-activation", c.AuthHandler.ResendActivationEmail)
 	}
 }

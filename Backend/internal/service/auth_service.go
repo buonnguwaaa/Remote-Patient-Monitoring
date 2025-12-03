@@ -132,7 +132,12 @@ func (s *authService) Register(ctx context.Context, input *usecase.RegisterInput
 }
 
 func (s *authService) Me(ctx context.Context, input *usecase.MeInput) (*dto.UserInfoResponse, error) {
-	u, err := s.userRepo.FindByID(ctx, util.MustHexToObjectID(input.UserID))
+	userId, err := util.MustHexToObjectID(input.UserID)
+	if err != nil {
+		return nil, err
+	}
+
+	u, err := s.userRepo.FindByID(ctx, userId)
 	if err != nil {
 		return nil, err
 	}
@@ -162,7 +167,12 @@ func (s *authService) Refresh(ctx context.Context, input *usecase.RefreshInput) 
 		return "", errors.New("invalid refresh token")
 	}
 
-	user, err := s.userRepo.FindByID(ctx, util.MustHexToObjectID(refreshTokenClaims.Subject))
+	userId, err := util.MustHexToObjectID(refreshTokenClaims.Subject)
+	if err != nil {
+		return "", err
+	}
+
+	user, err := s.userRepo.FindByID(ctx, userId)
 	if err != nil {
 		return "", err
 	}

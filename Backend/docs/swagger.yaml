@@ -1,11 +1,133 @@
 basePath: /
 definitions:
+  domain.BloodPressure:
+    properties:
+      diastolic:
+        type: number
+      map:
+        type: number
+      systolic:
+        type: number
+    type: object
+  domain.Gender:
+    enum:
+    - M
+    - F
+    - O
+    type: string
+    x-enum-varnames:
+    - GenderMale
+    - GenderFemale
+    - GenderOther
+  domain.MeasurementType:
+    enum:
+    - bp
+    - glucose
+    type: string
+    x-enum-varnames:
+    - TypeBloodPressure
+    - TypeGlucose
+  domain.Role:
+    enum:
+    - user.patient
+    - user.doctor
+    - admin
+    type: string
+    x-enum-varnames:
+    - RolePatient
+    - RoleDoctor
+    - RoleAdmin
+  domain.Timing:
+    enum:
+    - pre
+    - post
+    type: string
+    x-enum-varnames:
+    - TimingPre
+    - TimingPost
   dto.ActivateAccountRequest:
     properties:
       activateToken:
         type: string
     required:
     - activateToken
+    type: object
+  dto.CreateMeasurementRequest:
+    properties:
+      bloodPressure:
+        $ref: '#/definitions/domain.BloodPressure'
+      device:
+        type: string
+      glucose:
+        type: number
+      heartRate:
+        type: number
+      note:
+        type: string
+      patientId:
+        type: string
+      respiratoryRate:
+        type: number
+      spo2:
+        type: number
+      temperature:
+        type: number
+      timing:
+        allOf:
+        - $ref: '#/definitions/domain.Timing'
+        enum:
+        - pre
+        - post
+      type:
+        allOf:
+        - $ref: '#/definitions/domain.MeasurementType'
+        enum:
+        - bp
+        - glucose
+    required:
+    - patientId
+    - type
+    type: object
+  dto.CreateThresholdRequest:
+    properties:
+      diaMax:
+        type: number
+      diaMin:
+        type: number
+      doctorId:
+        type: string
+      effectiveFrom:
+        type: string
+      effectiveTo:
+        type: string
+      glucoseMax:
+        type: number
+      glucoseMin:
+        type: number
+      heartRateMax:
+        type: number
+      heartRateMin:
+        type: number
+      patientId:
+        type: string
+      respiratoryRateMax:
+        type: number
+      respiratoryRateMin:
+        type: number
+      spo2Min:
+        type: number
+      sysMax:
+        type: number
+      sysMin:
+        type: number
+      temperatureMax:
+        type: number
+      temperatureMin:
+        type: number
+    required:
+    - doctorId
+    - effectiveFrom
+    - patientId
     type: object
   dto.ForgotPasswordRequest:
     properties:
@@ -55,7 +177,7 @@ definitions:
         type: string
       gender:
         allOf:
-        - $ref: '#/definitions/users.Gender'
+        - $ref: '#/definitions/domain.Gender'
         example: M
       name:
         example: John Doe
@@ -66,7 +188,7 @@ definitions:
         type: string
       role:
         allOf:
-        - $ref: '#/definitions/users.Role'
+        - $ref: '#/definitions/domain.Role'
         example: patient
     required:
     - confirmedPassword
@@ -99,26 +221,66 @@ definitions:
     - newPassword
     - resetToken
     type: object
-  users.Gender:
-    enum:
-    - M
-    - F
-    - O
-    type: string
-    x-enum-varnames:
-    - GenderMale
-    - GenderFemale
-    - GenderOther
-  users.Role:
-    enum:
-    - user.patient
-    - user.doctor
-    - admin
-    type: string
-    x-enum-varnames:
-    - RolePatient
-    - RoleDoctor
-    - RoleAdmin
+  dto.UpdateMeasurementRequest:
+    properties:
+      bloodPressure:
+        $ref: '#/definitions/domain.BloodPressure'
+      device:
+        type: string
+      glucose:
+        type: number
+      heartRate:
+        type: number
+      note:
+        type: string
+      respiratoryRate:
+        type: number
+      spo2:
+        type: number
+      temperature:
+        type: number
+      timing:
+        $ref: '#/definitions/domain.Timing'
+      type:
+        allOf:
+        - $ref: '#/definitions/domain.MeasurementType'
+        enum:
+        - bp
+        - glucose
+    type: object
+  dto.UpdateThresholdRequest:
+    properties:
+      diaMax:
+        type: number
+      diaMin:
+        type: number
+      effectiveFrom:
+        type: string
+      effectiveTo:
+        type: string
+      glucoseMax:
+        type: number
+      glucoseMin:
+        type: number
+      heartRateMax:
+        type: number
+      heartRateMin:
+        type: number
+      respiratoryRateMax:
+        type: number
+      respiratoryRateMin:
+        type: number
+      spo2Min:
+        type: number
+      sysMax:
+        type: number
+      sysMin:
+        type: number
+      temperatureMax:
+        type: number
+      temperatureMin:
+        type: number
+    type: object
 host: localhost:8080
 info:
   contact:
@@ -427,6 +589,231 @@ paths:
       summary: Reset Password
       tags:
       - auth
+  /measurements:
+    get:
+      consumes:
+      - application/json
+      description: |-
+        Retrieve measurements based on query parameters
+        If `patientId` is provided along with `latest=true`, only the latest measurement record for that patient will be returned.
+        Ví dụ: `/measurements?patientId=123&latest=true`
+      parameters:
+      - description: Patient ID
+        in: query
+        name: patientId
+        type: string
+      - description: Measurement type
+        in: query
+        name: type
+        type: string
+      - description: Measurement timing
+        in: query
+        name: timing
+        type: string
+      - description: Get latest measurement only
+        in: query
+        name: latest
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Measurements retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get measurements
+      tags:
+      - measurements
+    post:
+      consumes:
+      - application/json
+      description: Create a new measurement record for a patient
+      parameters:
+      - description: Measurement data
+        in: body
+        name: measurement
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateMeasurementRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Measurement created successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a new measurement
+      tags:
+      - measurements
+  /measurements/{id}:
+    patch:
+      consumes:
+      - application/json
+      description: Update an existing measurement record
+      parameters:
+      - description: Measurement ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated measurement data
+        in: body
+        name: measurement
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateMeasurementRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Measurement updated successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update an existing measurement
+      tags:
+      - measurements
+  /thresholds:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve thresholds for a patient or doctor
+      parameters:
+      - description: Patient ID
+        in: query
+        name: patientId
+        type: string
+      - description: Doctor ID
+        in: query
+        name: doctorId
+        type: string
+      - description: Get latest threshold only
+        in: query
+        name: latest
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Thresholds retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get thresholds
+      tags:
+      - thresholds
+    post:
+      consumes:
+      - application/json
+      description: Create a new threshold record for a patient
+      parameters:
+      - description: Threshold data
+        in: body
+        name: threshold
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateThresholdRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Threshold created successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a new threshold
+      tags:
+      - thresholds
+  /thresholds/{id}:
+    patch:
+      consumes:
+      - application/json
+      description: Update an existing threshold record
+      parameters:
+      - description: Threshold ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated threshold data
+        in: body
+        name: threshold
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateThresholdRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Threshold updated successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update a threshold
+      tags:
+      - thresholds
   /users:
     get:
       consumes:

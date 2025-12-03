@@ -471,6 +471,340 @@ const docTemplate = `{
                 }
             }
         },
+        "/measurements": {
+            "get": {
+                "description": "Retrieve measurements based on query parameters\nIf ` + "`" + `patientId` + "`" + ` is provided along with ` + "`" + `latest=true` + "`" + `, only the latest measurement record for that patient will be returned.\nVí dụ: ` + "`" + `/measurements?patientId=123\u0026latest=true` + "`" + `",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "measurements"
+                ],
+                "summary": "Get measurements",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Patient ID",
+                        "name": "patientId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Measurement type",
+                        "name": "type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Measurement timing",
+                        "name": "timing",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Get latest measurement only",
+                        "name": "latest",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Measurements retrieved successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a new measurement record for a patient",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "measurements"
+                ],
+                "summary": "Create a new measurement",
+                "parameters": [
+                    {
+                        "description": "Measurement data",
+                        "name": "measurement",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.CreateMeasurementRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Measurement created successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/measurements/{id}": {
+            "patch": {
+                "description": "Update an existing measurement record",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "measurements"
+                ],
+                "summary": "Update an existing measurement",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Measurement ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Updated measurement data",
+                        "name": "measurement",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateMeasurementRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Measurement updated successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/thresholds": {
+            "get": {
+                "description": "Retrieve thresholds for a patient or doctor",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "thresholds"
+                ],
+                "summary": "Get thresholds",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Patient ID",
+                        "name": "patientId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Doctor ID",
+                        "name": "doctorId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Get latest threshold only",
+                        "name": "latest",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Thresholds retrieved successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a new threshold record for a patient",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "thresholds"
+                ],
+                "summary": "Create a new threshold",
+                "parameters": [
+                    {
+                        "description": "Threshold data",
+                        "name": "threshold",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.CreateThresholdRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Threshold created successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/thresholds/{id}": {
+            "patch": {
+                "description": "Update an existing threshold record",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "thresholds"
+                ],
+                "summary": "Update a threshold",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Threshold ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Updated threshold data",
+                        "name": "threshold",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateThresholdRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Threshold updated successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/users": {
             "get": {
                 "description": "Get a list of users with optional filters and pagination",
@@ -592,6 +926,68 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "domain.BloodPressure": {
+            "type": "object",
+            "properties": {
+                "diastolic": {
+                    "type": "number"
+                },
+                "map": {
+                    "type": "number"
+                },
+                "systolic": {
+                    "type": "number"
+                }
+            }
+        },
+        "domain.Gender": {
+            "type": "string",
+            "enum": [
+                "M",
+                "F",
+                "O"
+            ],
+            "x-enum-varnames": [
+                "GenderMale",
+                "GenderFemale",
+                "GenderOther"
+            ]
+        },
+        "domain.MeasurementType": {
+            "type": "string",
+            "enum": [
+                "bp",
+                "glucose"
+            ],
+            "x-enum-varnames": [
+                "TypeBloodPressure",
+                "TypeGlucose"
+            ]
+        },
+        "domain.Role": {
+            "type": "string",
+            "enum": [
+                "user.patient",
+                "user.doctor",
+                "admin"
+            ],
+            "x-enum-varnames": [
+                "RolePatient",
+                "RoleDoctor",
+                "RoleAdmin"
+            ]
+        },
+        "domain.Timing": {
+            "type": "string",
+            "enum": [
+                "pre",
+                "post"
+            ],
+            "x-enum-varnames": [
+                "TimingPre",
+                "TimingPost"
+            ]
+        },
         "dto.ActivateAccountRequest": {
             "type": "object",
             "required": [
@@ -600,6 +996,125 @@ const docTemplate = `{
             "properties": {
                 "activateToken": {
                     "type": "string"
+                }
+            }
+        },
+        "dto.CreateMeasurementRequest": {
+            "type": "object",
+            "required": [
+                "patientId",
+                "type"
+            ],
+            "properties": {
+                "bloodPressure": {
+                    "$ref": "#/definitions/domain.BloodPressure"
+                },
+                "device": {
+                    "type": "string"
+                },
+                "glucose": {
+                    "type": "number"
+                },
+                "heartRate": {
+                    "type": "number"
+                },
+                "note": {
+                    "type": "string"
+                },
+                "patientId": {
+                    "type": "string"
+                },
+                "respiratoryRate": {
+                    "type": "number"
+                },
+                "spo2": {
+                    "type": "number"
+                },
+                "temperature": {
+                    "type": "number"
+                },
+                "timing": {
+                    "enum": [
+                        "pre",
+                        "post"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/domain.Timing"
+                        }
+                    ]
+                },
+                "type": {
+                    "enum": [
+                        "bp",
+                        "glucose"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/domain.MeasurementType"
+                        }
+                    ]
+                }
+            }
+        },
+        "dto.CreateThresholdRequest": {
+            "type": "object",
+            "required": [
+                "doctorId",
+                "effectiveFrom",
+                "patientId"
+            ],
+            "properties": {
+                "diaMax": {
+                    "type": "number"
+                },
+                "diaMin": {
+                    "type": "number"
+                },
+                "doctorId": {
+                    "type": "string"
+                },
+                "effectiveFrom": {
+                    "type": "string"
+                },
+                "effectiveTo": {
+                    "type": "string"
+                },
+                "glucoseMax": {
+                    "type": "number"
+                },
+                "glucoseMin": {
+                    "type": "number"
+                },
+                "heartRateMax": {
+                    "type": "number"
+                },
+                "heartRateMin": {
+                    "type": "number"
+                },
+                "patientId": {
+                    "type": "string"
+                },
+                "respiratoryRateMax": {
+                    "type": "number"
+                },
+                "respiratoryRateMin": {
+                    "type": "number"
+                },
+                "spo2Min": {
+                    "type": "number"
+                },
+                "sysMax": {
+                    "type": "number"
+                },
+                "sysMin": {
+                    "type": "number"
+                },
+                "temperatureMax": {
+                    "type": "number"
+                },
+                "temperatureMin": {
+                    "type": "number"
                 }
             }
         },
@@ -682,7 +1197,7 @@ const docTemplate = `{
                 "gender": {
                     "allOf": [
                         {
-                            "$ref": "#/definitions/users.Gender"
+                            "$ref": "#/definitions/domain.Gender"
                         }
                     ],
                     "example": "M"
@@ -699,7 +1214,7 @@ const docTemplate = `{
                 "role": {
                     "allOf": [
                         {
-                            "$ref": "#/definitions/users.Role"
+                            "$ref": "#/definitions/domain.Role"
                         }
                     ],
                     "example": "patient"
@@ -738,31 +1253,98 @@ const docTemplate = `{
                 }
             }
         },
-        "users.Gender": {
-            "type": "string",
-            "enum": [
-                "M",
-                "F",
-                "O"
-            ],
-            "x-enum-varnames": [
-                "GenderMale",
-                "GenderFemale",
-                "GenderOther"
-            ]
+        "dto.UpdateMeasurementRequest": {
+            "type": "object",
+            "properties": {
+                "bloodPressure": {
+                    "$ref": "#/definitions/domain.BloodPressure"
+                },
+                "device": {
+                    "type": "string"
+                },
+                "glucose": {
+                    "type": "number"
+                },
+                "heartRate": {
+                    "type": "number"
+                },
+                "note": {
+                    "type": "string"
+                },
+                "respiratoryRate": {
+                    "type": "number"
+                },
+                "spo2": {
+                    "type": "number"
+                },
+                "temperature": {
+                    "type": "number"
+                },
+                "timing": {
+                    "$ref": "#/definitions/domain.Timing"
+                },
+                "type": {
+                    "enum": [
+                        "bp",
+                        "glucose"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/domain.MeasurementType"
+                        }
+                    ]
+                }
+            }
         },
-        "users.Role": {
-            "type": "string",
-            "enum": [
-                "user.patient",
-                "user.doctor",
-                "admin"
-            ],
-            "x-enum-varnames": [
-                "RolePatient",
-                "RoleDoctor",
-                "RoleAdmin"
-            ]
+        "dto.UpdateThresholdRequest": {
+            "type": "object",
+            "properties": {
+                "diaMax": {
+                    "type": "number"
+                },
+                "diaMin": {
+                    "type": "number"
+                },
+                "effectiveFrom": {
+                    "type": "string"
+                },
+                "effectiveTo": {
+                    "type": "string"
+                },
+                "glucoseMax": {
+                    "type": "number"
+                },
+                "glucoseMin": {
+                    "type": "number"
+                },
+                "heartRateMax": {
+                    "type": "number"
+                },
+                "heartRateMin": {
+                    "type": "number"
+                },
+                "respiratoryRateMax": {
+                    "type": "number"
+                },
+                "respiratoryRateMin": {
+                    "type": "number"
+                },
+                "spo2Min": {
+                    "type": "number"
+                },
+                "sysMax": {
+                    "type": "number"
+                },
+                "sysMin": {
+                    "type": "number"
+                },
+                "temperatureMax": {
+                    "type": "number"
+                },
+                "temperatureMin": {
+                    "type": "number"
+                }
+            }
         }
     }
 }`
