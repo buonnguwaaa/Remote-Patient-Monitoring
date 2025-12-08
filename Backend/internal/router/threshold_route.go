@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterThresholdRoutes(r *gin.Engine, c *container.Container) {
+func RegisterThresholdRoutes(r *gin.Engine, c *container.MainServerContainer) {
 	thresholdGroup := r.Group("/thresholds")
 	thresholdGroup.Use(middleware.JWTAuthMiddleware(c.JWTManager))
 	{

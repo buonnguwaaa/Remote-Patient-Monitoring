@@ -19,6 +19,7 @@ type MeasurementRepository interface {
 	Create(ctx context.Context, m *domain.Measurement) (*domain.Measurement, error)
 	Update(ctx context.Context, m *domain.Measurement) (*domain.Measurement, error)
 	Find(ctx context.Context, f MeasurementFilter) ([]domain.Measurement, error)
+	FindByID(ctx context.Context, id primitive.ObjectID) (*domain.Measurement, error)
 }
 
 type MeasurementFilter struct {
@@ -82,7 +83,6 @@ func (r *measurementRepository) Update(ctx context.Context, m *domain.Measuremen
 }
 
 func (r *measurementRepository) Find(ctx context.Context, f MeasurementFilter) ([]domain.Measurement, error) {
-
 	filter := bson.M{}
 
 	if f.PatientID != "" {
@@ -128,4 +128,13 @@ func (r *measurementRepository) Find(ctx context.Context, f MeasurementFilter) (
 	}
 
 	return results, nil
+}
+
+func (r *measurementRepository) FindByID(ctx context.Context, id primitive.ObjectID) (*domain.Measurement, error) {
+	var m domain.Measurement
+	err := r.col.FindOne(ctx, bson.M{"_id": id}).Decode(&m)
+	if err != nil {
+		return nil, err
+	}
+	return &m, nil
 }

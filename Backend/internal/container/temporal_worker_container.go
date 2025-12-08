@@ -1,0 +1,24 @@
+package container
+
+import (
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/config"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository"
+)
+
+type TemporalWorkerContainer struct {
+	MeasurementRepo repository.MeasurementRepository
+	ThresholdRepo   repository.ThresholdRepository
+	AlertRepo       repository.AlertRepository
+}
+
+func NewTemporalWorkerContainer() *TemporalWorkerContainer {
+	c := &TemporalWorkerContainer{}
+
+	// Initialize repositories
+	db := config.Mongo.Database
+	c.MeasurementRepo = repository.NewMeasurementRepository(db)
+	c.ThresholdRepo = repository.NewThresholdRepository(db)
+	c.AlertRepo = repository.NewAlertRepository(db)
+
+	return c
+}
