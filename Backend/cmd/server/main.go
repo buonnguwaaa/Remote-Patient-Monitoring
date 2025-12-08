@@ -19,6 +19,7 @@ package main
 import (
 	"log"
 	"os"
+	"time"
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/config"
 	_ "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/docs"
@@ -61,7 +62,21 @@ func main() {
 	r := gin.New()
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
-	r.Use(cors.Default())
+
+	// Configure CORS to allow requests from frontend and allow credentials (cookies)
+	fe := os.Getenv("FE_URL")
+	if fe == "" {
+		fe = "http://localhost:3000"
+	}
+	corsConfig := cors.Config{
+		AllowOrigins:     []string{fe},
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}
+	r.Use(cors.New(corsConfig))
 
 	c := container.NewContainer()
 	router.RegisterRoutes(r, c)
