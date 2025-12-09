@@ -3,6 +3,7 @@ package activity
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository"
@@ -58,15 +59,24 @@ func (a *ProcessingAlertActivity) EvaluateAndSendAlertActivity(ctx context.Conte
 		return "", fmt.Errorf("no threshold set for patient")
 	}
 
-	alert := evaluateMeasurementAgainstThreshold(measurement, &thresholds[0])
-	if alert == nil {
+	violations := evaluateMeasurementAgainstThreshold(measurement, &thresholds[0])
+	if len(violations) == 0 {
 		return "no-violation", nil // No alert needed
 	}
 
-	alert.MeasurementID = measurement.ID
-	alert.PatientID = measurement.PatientID
-	alert.DoctorID = thresholds[0].DoctorID
-	alert.Status = domain.StatusOpen
+	now := time.Now().UTC()
+	alert := &domain.Alert{
+		PatientID:       measurement.PatientID,
+		DoctorID:        thresholds[0].DoctorID,
+		MeasurementID:   measurement.ID,
+		Violations:      violations,
+		Status:          domain.StatusOpen,
+		Severity:        aggregateSeverity(violations),
+		AcknowledgedBy:  nil,
+		AcknowledgedAt:  nil,
+		CreatedAt:       now,
+		UpdatedAt:       now,
+	}
 
 	if _, err := a.alertRepo.Create(ctx, alert); err != nil {
 		return "", fmt.Errorf("failed to create alert: %w", err)
@@ -78,8 +88,6 @@ func (a *ProcessingAlertActivity) EvaluateAndSendAlertActivity(ctx context.Conte
 	// }
 
 	// Print for local debugging
-	fmt.Printf("ALERT CREATED: patient=%s measurement=%s rule=%s observed=%v threshold=%v\n",
-		alert.PatientID, alert.MeasurementID, alert.Rule, alert.Observed, alert.ThresholdAtTime)
-
+	fmt.Printf("Alert created for patient %s: %+v\n", patientID, alert)
 	return "created-notification", nil
 }

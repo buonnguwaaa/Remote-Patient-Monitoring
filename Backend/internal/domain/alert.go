@@ -20,19 +20,26 @@ const (
 	StatusAck  Status = "ack"
 )
 
+type ThresholdViolation struct {
+	Type      string   `json:"type" bson:"type"`           // "temperature" | "spo2" | "heartRate"...
+	Rule      string   `json:"rule" bson:"rule"`           // "temperature_max"
+	Observed  float64  `json:"observed" bson:"observed"`   // 40
+	Threshold float64  `json:"threshold" bson:"threshold"` // 38
+	Severity  Severity `json:"severity" bson:"severity"`   // high
+}
+
 type Alert struct {
-	ID              primitive.ObjectID `json:"id" bson:"_id,omitempty"`
-	PatientID       primitive.ObjectID `json:"patientId" bson:"patientId"`
-	DoctorID        primitive.ObjectID `json:"doctorId" bson:"doctorId"`
-	MeasurementID   primitive.ObjectID `json:"measurementId" bson:"measurementId"`
-	Type            string             `json:"type" bson:"type"`
-	Rule            string             `json:"rule" bson:"rule"`
-	Observed        float64            `json:"observed" bson:"observed"`
-	ThresholdAtTime float64            `json:"thresholdAtTime" bson:"thresholdAtTime"`
-	Severity        Severity           `json:"severity" bson:"severity"`
-	Status          Status             `json:"status" bson:"status"`
-	AcknowledgedBy  *string            `json:"acknowledgedBy,omitempty" bson:"acknowledgedBy,omitempty"`
-	AcknowledgedAt  *time.Time         `json:"acknowledgedAt,omitempty" bson:"acknowledgedAt,omitempty"`
-	CreatedAt       time.Time          `json:"createdAt" bson:"createdAt"`
-	UpdatedAt       time.Time          `json:"updatedAt" bson:"updatedAt"`
+	ID            primitive.ObjectID `json:"id" bson:"_id,omitempty"`
+	PatientID     primitive.ObjectID `json:"patientId" bson:"patientId"`
+	DoctorID      primitive.ObjectID `json:"doctorId" bson:"doctorId"`
+	MeasurementID primitive.ObjectID `json:"measurementId" bson:"measurementId"`
+
+	Violations []ThresholdViolation `json:"violations" bson:"violations"`
+
+	Status         Status     `json:"status" bson:"status"`
+	Severity       Severity   `json:"severity" bson:"severity"` // overall severity
+	AcknowledgedBy *string    `json:"acknowledgedBy,omitempty" bson:"acknowledgedBy,omitempty"`
+	AcknowledgedAt *time.Time `json:"acknowledgedAt,omitempty" bson:"acknowledgedAt,omitempty"`
+	CreatedAt      time.Time  `json:"createdAt" bson:"createdAt"`
+	UpdatedAt      time.Time  `json:"updatedAt" bson:"updatedAt"`
 }
