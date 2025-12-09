@@ -93,7 +93,7 @@ func (s *thresholdService) GetThresholds(ctx context.Context, input *usecase.Get
 		IsLatest:  input.IsLatest,
 	}
 
-	thresholds, err := s.thresholdRepo.Find(ctx, filter)
+	thresholds, err := s.thresholdRepo.FindWithFilter(ctx, filter)
 	if err != nil {
 		return nil, err
 	}

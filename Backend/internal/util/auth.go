@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"log"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -26,6 +27,10 @@ func HashTokenSHA256(token string) string {
 }
 
 func MustHexToObjectID(hexStr string) (primitive.ObjectID, error) {
+	if hexStr == "" {
+		return primitive.NilObjectID, errors.New("empty hex string")
+	}
+
 	id, err := primitive.ObjectIDFromHex(hexStr)
 	if err != nil {
 		log.Println("[GIN-error] Failed to convert hex to ObjectID:", err)

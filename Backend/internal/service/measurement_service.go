@@ -7,10 +7,10 @@ import (
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
 
-	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
-	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/client"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/workflow"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecase"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/util"
 )
@@ -147,7 +147,7 @@ func (s *measurementService) GetMeasurements(ctx context.Context, input *usecase
 		IsLatest:  input.IsLatest,
 	}
 
-	measurements, err := s.measurementRepo.Find(ctx, filter)
+	measurements, err := s.measurementRepo.FindWithFilter(ctx, filter)
 	if err != nil {
 		return nil, err
 	}

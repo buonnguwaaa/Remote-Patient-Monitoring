@@ -48,7 +48,7 @@ func (a *ProcessingAlertActivity) EvaluateAndSendAlertActivity(ctx context.Conte
 		return "", fmt.Errorf("measurement not found")
 	}
 
-	thresholds, err := a.thresholdRepo.Find(ctx, repository.ThresholdFilter{
+	thresholds, err := a.thresholdRepo.FindWithFilter(ctx, repository.ThresholdFilter{
 		PatientID: patientID,
 		IsLatest:  true,
 	})
@@ -66,16 +66,15 @@ func (a *ProcessingAlertActivity) EvaluateAndSendAlertActivity(ctx context.Conte
 
 	now := time.Now().UTC()
 	alert := &domain.Alert{
-		PatientID:       measurement.PatientID,
-		DoctorID:        thresholds[0].DoctorID,
-		MeasurementID:   measurement.ID,
-		Violations:      violations,
-		Status:          domain.StatusOpen,
-		Severity:        aggregateSeverity(violations),
-		AcknowledgedBy:  nil,
-		AcknowledgedAt:  nil,
-		CreatedAt:       now,
-		UpdatedAt:       now,
+		PatientID:      measurement.PatientID,
+		MeasurementID:  measurement.ID,
+		Violations:     violations,
+		Status:         domain.StatusOpen,
+		Severity:       aggregateSeverity(violations),
+		AcknowledgedBy: nil,
+		AcknowledgedAt: nil,
+		CreatedAt:      now,
+		UpdatedAt:      now,
 	}
 
 	if _, err := a.alertRepo.Create(ctx, alert); err != nil {

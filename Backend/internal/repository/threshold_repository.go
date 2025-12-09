@@ -18,7 +18,7 @@ type thresholdRepository struct {
 
 type ThresholdRepository interface {
 	Create(ctx context.Context, t *domain.Threshold) (*domain.Threshold, error)
-	Find(ctx context.Context, filter ThresholdFilter) ([]domain.Threshold, error)
+	FindWithFilter(ctx context.Context, filter ThresholdFilter) ([]domain.Threshold, error)
 	Update(ctx context.Context, t *domain.Threshold) (*domain.Threshold, error)
 }
 
@@ -81,7 +81,7 @@ func (r *thresholdRepository) Create(ctx context.Context, t *domain.Threshold) (
 	return t, nil
 }
 
-func (r *thresholdRepository) Find(ctx context.Context, filter ThresholdFilter) ([]domain.Threshold, error) {
+func (r *thresholdRepository) FindWithFilter(ctx context.Context, filter ThresholdFilter) ([]domain.Threshold, error) {
 	query := bson.M{}
 
 	if filter.PatientID != "" {

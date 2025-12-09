@@ -31,15 +31,14 @@ type ThresholdViolation struct {
 type Alert struct {
 	ID            primitive.ObjectID `json:"id" bson:"_id,omitempty"`
 	PatientID     primitive.ObjectID `json:"patientId" bson:"patientId"`
-	DoctorID      primitive.ObjectID `json:"doctorId" bson:"doctorId"`
 	MeasurementID primitive.ObjectID `json:"measurementId" bson:"measurementId"`
 
 	Violations []ThresholdViolation `json:"violations" bson:"violations"`
 
-	Status         Status     `json:"status" bson:"status"`
-	Severity       Severity   `json:"severity" bson:"severity"` // overall severity
-	AcknowledgedBy *string    `json:"acknowledgedBy,omitempty" bson:"acknowledgedBy,omitempty"`
-	AcknowledgedAt *time.Time `json:"acknowledgedAt,omitempty" bson:"acknowledgedAt,omitempty"`
-	CreatedAt      time.Time  `json:"createdAt" bson:"createdAt"`
-	UpdatedAt      time.Time  `json:"updatedAt" bson:"updatedAt"`
+	Status         Status              `json:"status" bson:"status"`
+	Severity       Severity            `json:"severity" bson:"severity"` // overall severity
+	AcknowledgedBy *primitive.ObjectID `json:"acknowledgedBy,omitempty" bson:"acknowledgedBy,omitempty"`
+	AcknowledgedAt *time.Time          `json:"acknowledgedAt,omitempty" bson:"acknowledgedAt,omitempty"`
+	CreatedAt      time.Time           `json:"createdAt" bson:"createdAt"`
+	UpdatedAt      time.Time           `json:"updatedAt" bson:"updatedAt"`
 }

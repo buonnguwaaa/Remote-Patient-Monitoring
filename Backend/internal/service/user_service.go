@@ -37,7 +37,7 @@ func (s *userService) GetUsers(ctx context.Context, input *usecase.GetUsersInput
 		SortOrder: input.SortOrder,
 	}
 
-	users, err := s.repo.FindAll(ctx, repoFilter)
+	users, err := s.repo.FindWithFilter(ctx, repoFilter)
 	if err != nil {
 		return nil, err
 	}

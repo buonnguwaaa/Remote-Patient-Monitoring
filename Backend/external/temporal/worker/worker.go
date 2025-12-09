@@ -3,10 +3,10 @@ package worker
 import (
 	"log"
 
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/config"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/activity"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/client"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/workflow"
-	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/config"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/container"
 
 	"go.temporal.io/sdk/worker"
@@ -32,7 +32,7 @@ func Start() error {
 
 	container := container.NewTemporalWorkerContainer()
 	acts := activity.NewProcessingAlertActivity(container.MeasurementRepo, container.ThresholdRepo, container.AlertRepo)
-	
+
 	w.RegisterActivity(acts.EvaluateAndSendAlertActivity)
 	w.RegisterWorkflow(workflow.AlertWorkflow)
 
