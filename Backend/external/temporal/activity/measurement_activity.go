@@ -55,7 +55,7 @@ func (a *ProcessingAlertActivity) EvaluateAndSendAlertActivity(ctx context.Conte
 	if err != nil {
 		return "", fmt.Errorf("failed to get thresholds: %w", err)
 	}
-	if thresholds == nil {
+	if len(thresholds) == 0 {
 		return "", fmt.Errorf("no threshold set for patient")
 	}
 
