@@ -62,6 +62,11 @@ make worker
 
 **Use case:** When you need dedicated worker processes or want to scale workers independently.
 
+## Accessing the Temporal Web UI (Orchestration Flow Debugging)
+Temporal provides a web UI for better debugging. After starting Temporal with Docker, you can access the Temporal UI to inspect workflows, tasks, and worker activity:
+
+URL: http://localhost:8233
+
 ## Stopping the Application
 
 ### Stop Application Components
