@@ -23,6 +23,14 @@ export const mockWarnList = [
     bloodSugar: 150,
     message: "Nhịp tim cao",
   },
+  {
+    name: "Phạm Thị D",
+    systolic: 130,
+    diastolic: 85,
+    heartRate: 75,
+    bloodSugar: 250,
+    message: "Đường huyết cao",
+  },
 ];
 
 export const mockPatientList = [

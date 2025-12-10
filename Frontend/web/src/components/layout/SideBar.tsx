@@ -54,6 +54,7 @@ const SideBar = ({ navigationItems = navData }: SideBarProps) => {
       <nav className="flex-1 mt-4 px-2 overflow-y-auto">
         <ul className="space-y-2">
           {itemsToDisplay.map((item) => {
+            // Check if the item is active based on current location
             const isActive = location.pathname === item.path;
 
             return (

@@ -2,7 +2,7 @@ import { type NavigationItem } from "./../types/index.ts";
 
 import { LuLayoutDashboard } from "react-icons/lu";
 import { FaRegUser } from "react-icons/fa";
-import { RiErrorWarningLine } from "react-icons/ri";
+//import { RiErrorWarningLine } from "react-icons/ri";
 import { CiViewList } from "react-icons/ci";
 
 import React from "react";
@@ -15,14 +15,10 @@ export const navData: NavigationItem[] = [
   },
   {
     label: "Hồ sơ bệnh nhân",
-    path: "/patient-profile",
+    path: "/patient",
     icon: React.createElement(FaRegUser),
   },
-  {
-    label: "Cảnh báo ngưỡng",
-    path: "/threshold-alerts",
-    icon: React.createElement(RiErrorWarningLine),
-  },
+
   {
     label: "Danh sách cảnh báo",
     path: "/warn-list",
