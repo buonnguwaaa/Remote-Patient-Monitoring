@@ -169,12 +169,11 @@ const CustomBarChart: React.FC<CustomBarChartProps> = ({ data, maxValue }) => {
 export const Chart: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>("all");
 
-  // Mock Data
+  // Mock stats data {month, week, day}
   const stats: StatItem[] = [
-    { id: "all", label: "Tất cả", value: 123, type: "neutral" },
-    { id: "new", label: "Mới", value: 12, type: "neutral" },
-    { id: "warning", label: "Cảnh báo", value: 23, type: "warning" },
-    { id: "normal", label: "Bình thường", value: 14, type: "neutral" },
+    { id: "all", label: "Tất cả", value: 1240, type: "primary" },
+    { id: "month", label: "Tháng", value: 320, type: "neutral" },
+    { id: "week", label: "Tuần", value: 80, type: "warning" },
   ];
 
   // Chart Data (T3 - T8 2025)
