@@ -6,7 +6,8 @@ import {
 import { FiLogOut } from "react-icons/fi"; // Icon Logout
 import { type NavigationItem } from "../../types/index.ts";
 import { navData } from "../../data/NavData.ts";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 
 interface SideBarProps {
   navigationItems?: NavigationItem[];
@@ -14,10 +15,17 @@ interface SideBarProps {
 
 const SideBar = ({ navigationItems = navData }: SideBarProps) => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const itemsToDisplay = navigationItems || navData;
 
   // 2. State quản lý đóng/mở
   const [isCollapsed, setIsCollapsed] = useState(false);
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
 
   return (
     <div
@@ -110,13 +118,14 @@ const SideBar = ({ navigationItems = navData }: SideBarProps) => {
           {!isCollapsed && (
             <div className="flex-1 min-w-0">
               <p className="font-bold text-xl text-primary-text truncate">
-                Doctor Name
+                {user?.username || "Doctor Name"}
               </p>
             </div>
           )}
         </div>
         {/* Nút Logout */}
         <button
+          onClick={handleLogout}
           className="flex w-full items-center justify-center py-2 rounded-md text-xl 
           text-gray-500 hover:bg-rose-400 hover:text-gray-800 transition duration-400 mt-3"
         >

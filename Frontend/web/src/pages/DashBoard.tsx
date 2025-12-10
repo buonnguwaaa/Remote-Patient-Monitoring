@@ -1,4 +1,5 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import {
   FaUsers,
   FaUserInjured,
@@ -6,8 +7,10 @@ import {
   FaArrowTrendUp,
   FaArrowTrendDown,
 } from "react-icons/fa6";
+import { FaExclamationTriangle, FaInfoCircle } from "react-icons/fa";
 
 import Chart from "../components/ui/Chart";
+import { mockAlerts } from "../data/mockData";
 
 // 1. Separate Data Configuration
 interface StatItem {
@@ -113,15 +116,102 @@ const DashBoard = () => {
 
       <div className="mt-8 flex flex-col gap-6 md:flex-row">
         <Chart />
-        <div className="p-6 bg-white rounded-xl shadow-sm w-6/10 font-sans">
-          {/* Placeholder for another widget, e.g., Recent Activities */}
-          <h2 className="text-xl font-bold text-gray-800 mb-4">
-            Cảnh báo gần đây
-          </h2>
-          <p className="text-gray-500">
-            Nội dung cảnh báo sẽ được hiển thị ở đây.
-          </p>
-        </div>
+        <RecentAlerts />
+      </div>
+    </div>
+  );
+};
+
+// Recent Alerts Component
+const RecentAlerts: React.FC = () => {
+  const navigate = useNavigate();
+  
+  // Get only recent 5 alerts, sorted by date
+  const recentAlerts = mockAlerts
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 5);
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    
+    if (diffMins < 60) return `${diffMins} phút trước`;
+    if (diffHours < 24) return `${diffHours} giờ trước`;
+    return date.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" });
+  };
+
+  return (
+    <div className="p-6 bg-white rounded-xl shadow-sm flex-1 font-sans">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-bold text-gray-800">Cảnh báo gần đây</h2>
+        <button
+          onClick={() => navigate("/threshold-alerts")}
+          className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+        >
+          Xem tất cả →
+        </button>
+      </div>
+
+      <div className="space-y-3">
+        {recentAlerts.length === 0 ? (
+          <p className="text-gray-500 text-center py-8">Không có cảnh báo gần đây</p>
+        ) : (
+          recentAlerts.map((alert) => (
+            <div
+              key={alert.id}
+              className="flex items-start gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
+              onClick={() => navigate("/threshold-alerts")}
+            >
+              {/* Icon */}
+              <div className={`flex-shrink-0 mt-1 ${
+                alert.severity === "high" ? "text-red-500" : "text-yellow-500"
+              }`}>
+                {alert.severity === "high" ? (
+                  <FaExclamationTriangle size={20} />
+                ) : (
+                  <FaInfoCircle size={20} />
+                )}
+              </div>
+
+              {/* Content */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <p className="font-medium text-gray-800 truncate">
+                    {alert.patientName}
+                  </p>
+                  <span className="text-xs text-gray-500 flex-shrink-0">
+                    {formatDate(alert.createdAt)}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-600 line-clamp-2">
+                  {alert.violations.map((v, idx) => (
+                    <span key={idx}>
+                      {idx > 0 && ", "}
+                      <span className="font-medium">
+                        {v.type === "systolic" && "Huyết áp tâm thu"}
+                        {v.type === "diastolic" && "Huyết áp tâm trương"}
+                        {v.type === "pulse" && "Nhịp tim"}
+                        {v.type === "glucose" && "Đường huyết"}
+                        {v.type === "temperature" && "Nhiệt độ"}
+                        {v.type === "spo2" && "SpO2"}
+                      </span>: {v.observed}
+                    </span>
+                  ))}
+                </p>
+                
+                {/* Status Badge */}
+                {alert.status === "ack" && (
+                  <span className="inline-block mt-1 text-xs text-green-600 font-medium">
+                    ✓ Đã xác nhận
+                  </span>
+                )}
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );

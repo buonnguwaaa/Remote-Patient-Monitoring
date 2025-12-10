@@ -1,14 +1,25 @@
 import React, { useState } from "react";
-import { HiOutlineEnvelope, HiLockClosed } from "react-icons/hi2"; // Vẫn dùng react-icons
+import { useNavigate } from "react-router-dom";
+import { HiOutlineEnvelope, HiLockClosed } from "react-icons/hi2";
+import { useAuth } from "../../../context/AuthContext";
 
 const LoginForm: React.FC = () => {
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const navigate = useNavigate();
+  const { login } = useAuth();
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    console.log("Dữ liệu đăng nhập:", { email, password });
-    alert("Đã gửi thông tin đăng nhập! (Kiểm tra console)");
+    setError("");
+
+    const success = login(username, password);
+    if (success) {
+      navigate("/");
+    } else {
+      setError("Tên đăng nhập hoặc mật khẩu không đúng!");
+    }
   };
 
   return (
@@ -27,25 +38,39 @@ const LoginForm: React.FC = () => {
 
       {/* Form đăng nhập */}
       <form className="w-full" onSubmit={handleSubmit}>
-        {/* Trường Email */}
+        {/* Error message */}
+        {error && (
+          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md text-sm">
+            {error}
+          </div>
+        )}
+
+        {/* Hint */}
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md text-sm text-blue-700">
+          <p className="font-medium">Thông tin đăng nhập demo:</p>
+          <p>Username: <code className="font-mono bg-white px-1">admin</code></p>
+          <p>Mật khẩu: <code className="font-mono bg-white px-1">123456</code></p>
+        </div>
+
+        {/* Trường Username */}
         <div className="mb-5">
           <label
-            htmlFor="email"
+            htmlFor="username"
             className="mb-2 block text-sm font-medium text-gray-700"
           >
-            Email
+            Tên đăng nhập
           </label>
           <div className="relative">
             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
               <HiOutlineEnvelope className="h-5 w-5 text-gray-500" />
             </div>
             <input
-              type="email"
-              id="email"
+              type="text"
+              id="username"
               className="block w-full rounded-md border border-gray-300 bg-white p-3 pl-10 text-gray-900 placeholder-gray-400 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              placeholder="example@gmail.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              placeholder="admin"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
               required
             />
           </div>
