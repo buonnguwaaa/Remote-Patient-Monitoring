@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterMeasurementRoutes(r *gin.Engine, c *container.Container) {
+func RegisterMeasurementRoutes(r *gin.Engine, c *container.MainServerContainer) {
 	measurementGroup := r.Group("/measurements")
 	measurementGroup.Use(middleware.JWTAuthMiddleware(c.JWTManager))
 	{

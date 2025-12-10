@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterUserRoutes(r *gin.Engine, c *container.Container) {
+func RegisterUserRoutes(r *gin.Engine, c *container.MainServerContainer) {
 	userGroup := r.Group("/users")
 	{
 		userGroup.GET("",

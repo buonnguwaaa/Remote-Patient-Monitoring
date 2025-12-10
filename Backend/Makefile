@@ -11,9 +11,18 @@ endif
 	@echo "Swagger docs generated successfully!"
 
 
-run:
+server:
 	@echo "Running server..."
 	@go run cmd/server/main.go
+
+worker:
+	@echo "Running temporal worker..."
+	@go run cmd/worker/main.go
+
+run:
+	@echo "Running server & worker..."
+	@go run cmd/server/main.go & \
+	go run cmd/worker/main.go
 
 format:
 	@echo "Arrange imported packages..."

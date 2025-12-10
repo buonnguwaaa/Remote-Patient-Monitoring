@@ -9,6 +9,8 @@ import (
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/client"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/workflow"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecase"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/util"
 )
@@ -60,6 +62,14 @@ func (s *measurementService) CreateMeasurement(ctx context.Context, input *useca
 	}
 
 	inserted, err := s.measurementRepo.Create(ctx, measurement)
+	if err != nil {
+		return nil, err
+	}
+
+	err = client.StartAlertWorkflowAsync(workflow.MeasurementAlertInput{
+		MeasurementID: inserted.ID.Hex(),
+		PatientID:     inserted.PatientID.Hex(),
+	})
 	if err != nil {
 		return nil, err
 	}

@@ -78,7 +78,7 @@ func main() {
 	}
 	r.Use(cors.New(corsConfig))
 
-	c := container.NewContainer()
+	c := container.NewMainServerContainer()
 	router.RegisterRoutes(r, c)
 
 	log.Printf("[GIN-info] Starting server on :%s", port)

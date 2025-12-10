@@ -11,7 +11,7 @@ import (
 )
 
 // Container holds all the dependencies
-type Container struct {
+type MainServerContainer struct {
 	// Repositories
 	UserRepo        repository.UserRepository
 	TokenRepo       repository.TokenRepository
@@ -33,10 +33,10 @@ type Container struct {
 	// Utils
 	JWTManager *util.JWTManager
 }
-
-// NewContainer initializes all dependencies once
-func NewContainer() *Container {
-	c := &Container{}
+	
+// NewMainServerContainer initializes all dependencies once
+func NewMainServerContainer() *MainServerContainer {
+	c := &MainServerContainer{}
 
 	// Initialize utils
 	jwtSecret := os.Getenv("JWT_SECRET")

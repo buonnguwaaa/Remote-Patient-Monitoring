@@ -7,7 +7,7 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
-func RegisterRoutes(r *gin.Engine, c *container.Container) {
+func RegisterRoutes(r *gin.Engine, c *container.MainServerContainer) {
 	// Register all routes with container
 	RegisterAuthRoutes(r, c)
 	RegisterUserRoutes(r, c)
