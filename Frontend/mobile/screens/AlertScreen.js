@@ -1,29 +1,112 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
 
+// Mock data theo schema Alerts mới
+// rule: String, observed: Number, thresholdAtTime: Number
+// severity: "info" | "high", status: "open" | "ack"
+
+const alerts = [
+  {
+    id: "a1",
+    patientId: "p1",
+    doctorId: "d1",
+    measurementId: "m1",
+    type: "bp",
+    rule: "SYS > 150",
+    observed: 165,
+    thresholdAtTime: 150,
+    severity: "high",
+    status: "open",
+    acknowledgedBy: null,
+    acknowledgedAt: null,
+    createdAt: "2025-11-24T14:30:00Z",
+    updatedAt: "2025-11-24T14:31:00Z",
+  },
+  {
+    id: "a2",
+    patientId: "p1",
+    doctorId: "d1",
+    measurementId: "m2",
+    type: "glucose",
+    rule: "GLUCOSE > 130",
+    observed: 145,
+    thresholdAtTime: 130,
+    severity: "high",
+    status: "open",
+    acknowledgedBy: null,
+    acknowledgedAt: null,
+    createdAt: "2025-11-24T08:15:00Z",
+    updatedAt: "2025-11-24T08:16:00Z",
+  },
+  {
+    id: "a3",
+    patientId: "p1",
+    doctorId: "d1",
+    measurementId: "m3",
+    type: "bp",
+    rule: "SYS between 90-140",
+    observed: 118,
+    thresholdAtTime: 140,
+    severity: "info",
+    status: "ack",
+    acknowledgedBy: "d1",
+    acknowledgedAt: "2025-11-24T07:20:00Z",
+    createdAt: "2025-11-24T07:10:00Z",
+    updatedAt: "2025-11-24T07:20:00Z",
+  },
+  {
+    id: "a4",
+    patientId: "p1",
+    doctorId: "d1",
+    measurementId: "m4",
+    type: "glucose",
+    rule: "GLUCOSE > 130",
+    observed: 132,
+    thresholdAtTime: 130,
+    severity: "info",
+    status: "ack",
+    acknowledgedBy: "d1",
+    acknowledgedAt: "2025-11-23T15:30:00Z",
+    createdAt: "2025-11-23T15:20:00Z",
+    updatedAt: "2025-11-23T15:30:00Z",
+  },
+];
+
+function formatDateTime(iso) {
+  const d = new Date(iso);
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  return `${dd}/${mm}/${yyyy} • ${hh}:${mi}`;
+}
+
 export default function AlertScreen() {
-  const [tab, setTab] = useState("all");
+  const [tab, setTab] = useState("all"); // "all" | "open" | "ack"
+
+  const openCount = alerts.filter((a) => a.status === "open").length;
+
+  const filteredAlerts = alerts.filter((a) => {
+    if (tab === "all") return true;
+    return a.status === tab;
+  });
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#F2F6FF" }}>
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-
         {/* HEADER */}
         <View style={styles.headerRow}>
-          <TouchableOpacity style={styles.backBtn}>
-            <Ionicons name="chevron-back" size={22} color="#333" />
-          </TouchableOpacity>
-
           <Text style={styles.headerTitle}>Cảnh báo</Text>
 
           <View style={styles.badgeNew}>
-            <Text style={styles.badgeText}>2 mới</Text>
+            <Text style={styles.badgeText}>{openCount} chưa xác nhận</Text>
           </View>
         </View>
 
-        {/* TABS */}
+        {/* TABS (all / open / ack) */}
         <View style={styles.tabs}>
           <TouchableOpacity
             style={[styles.tabItem, tab === "all" && styles.tabActive]}
@@ -35,19 +118,19 @@ export default function AlertScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.tabItem, tab === "new" && styles.tabActive]}
-            onPress={() => setTab("new")}
+            style={[styles.tabItem, tab === "open" && styles.tabActive]}
+            onPress={() => setTab("open")}
           >
-            <Text style={[styles.tabText, tab === "new" && styles.tabTextActive]}>
-              Mới
+            <Text style={[styles.tabText, tab === "open" && styles.tabTextActive]}>
+              Chưa xác nhận
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.tabItem, tab === "done" && styles.tabActive]}
-            onPress={() => setTab("done")}
+            style={[styles.tabItem, tab === "ack" && styles.tabActive]}
+            onPress={() => setTab("ack")}
           >
-            <Text style={[styles.tabText, tab === "done" && styles.tabTextActive]}>
+            <Text style={[styles.tabText, tab === "ack" && styles.tabTextActive]}>
               Đã xác nhận
             </Text>
           </TouchableOpacity>
@@ -55,109 +138,127 @@ export default function AlertScreen() {
 
         {/* ALERT LIST */}
         <View style={styles.list}>
+          {filteredAlerts.map((alert) => {
+            const isHigh = alert.severity === "high";
+            const isOpen = alert.status === "open";
 
-          {/* ITEM 1 */}
-          <View style={[styles.alertCard, { borderColor: "#FFB6B6" }]}>
-            <View style={styles.rowBetween}>
-              <View style={styles.row}>
-                <Ionicons name="heart" size={18} color="#FF4D4F" />
-                <Text style={styles.typeRed}>Huyết áp</Text>
+            const typeLabel =
+              alert.type === "bp"
+                ? "Huyết áp"
+                : alert.type === "glucose"
+                  ? "Đường huyết"
+                  : "Sinh hiệu";
+
+            const iconName =
+              alert.type === "bp"
+                ? "fitness"
+                : alert.type === "glucose"
+                  ? "water"
+                  : "pulse";
+
+            return (
+              <View
+                key={alert.id}
+                style={[
+                  styles.alertCard,
+                  isHigh ? styles.alertCardHigh : styles.alertCardInfo,
+                  !isOpen && styles.alertCardAck,
+                ]}
+              >
+                {/* Header: icon + type + severity */}
+                <View style={styles.alertHeaderRow}>
+                  <View style={styles.alertTitleWrapper}>
+                    <Ionicons
+                      name={iconName}
+                      size={20}
+                      color={isHigh ? "#DC2626" : "#1D4ED8"}
+                    />
+                    <Text style={styles.alertTypeText}>{typeLabel}</Text>
+                  </View>
+
+                  <View
+                    style={
+                      isHigh
+                        ? styles.alertSeverityPillHigh
+                        : styles.alertSeverityPillInfo
+                    }
+                  >
+                    <Text
+                      style={
+                        isHigh
+                          ? styles.alertSeverityTextHigh
+                          : styles.alertSeverityTextInfo
+                      }
+                    >
+                      {isHigh ? "Nguy hiểm" : "Thông tin"}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Observed + threshold + rule */}
+                <Text style={styles.alertMainValue}>
+                  Giá trị đo:{" "}
+                  <Text style={styles.alertMainValueNumber}>{alert.observed}</Text>
+                </Text>
+
+                <Text style={styles.alertThresholdText}>
+                  Ngưỡng tại lúc đo:{" "}
+                  <Text style={styles.alertThresholdNumber}>
+                    {alert.thresholdAtTime}
+                  </Text>{" "}
+                  · Quy tắc: {alert.rule}
+                </Text>
+
+                {/* Meta thời gian */}
+                <View style={styles.alertMetaRow}>
+                  <View style={styles.alertMetaLeft}>
+                    <Ionicons
+                      name="time-outline"
+                      size={14}
+                      color="#9CA3AF"
+                      style={{ marginRight: 4 }}
+                    />
+                    <Text style={styles.alertMetaText}>
+                      Tạo lúc {formatDateTime(alert.createdAt)}
+                    </Text>
+                  </View>
+
+                  {alert.status === "ack" && alert.acknowledgedAt && (
+                    <Text style={styles.alertMetaText}>
+                      Đã xác nhận: {formatDateTime(alert.acknowledgedAt)}
+                    </Text>
+                  )}
+                </View>
+
+                {/* Status + action */}
+                <View style={styles.alertMetaRow}>
+                  <View
+                    style={
+                      isOpen
+                        ? styles.alertStatusPillOpen
+                        : styles.alertStatusPillAck
+                    }
+                  >
+                    <Text
+                      style={
+                        isOpen
+                          ? styles.alertStatusTextOpen
+                          : styles.alertStatusTextAck
+                      }
+                    >
+                      {isOpen ? "Chưa xác nhận" : "Đã xác nhận"}
+                    </Text>
+                  </View>
+
+                  {isOpen && (
+                    <TouchableOpacity style={styles.actionBtnPrimary}>
+                      <Text style={styles.actionBtnText}>Đánh dấu đã xác nhận</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
               </View>
-              <Text style={styles.badgeSmallBlue}>Mới</Text>
-            </View>
-
-            <Text style={styles.alertTitleRed}>Huyết áp cao nguy hiểm</Text>
-
-            <View style={styles.detailBox}>
-              <Text style={styles.detailText}>Giá trị đo: <Text style={styles.bold}>165/95</Text></Text>
-              <Text style={styles.detailText}>Ngưỡng an toàn: 120-140/80-90</Text>
-            </View>
-
-            <View style={styles.timeRow}>
-              <Ionicons name="time-outline" size={16} color="#777" />
-              <Text style={styles.time}>02/11/2025 • 14:30</Text>
-            </View>
-
-            <TouchableOpacity style={styles.actionBtn}>
-              <Text style={styles.actionText}>Đánh dấu đã xử lý</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* ITEM 2 */}
-          <View style={[styles.alertCard, { borderColor: "#FFE7A6" }]}>
-            <View style={styles.rowBetween}>
-              <View style={styles.row}>
-                <MaterialIcons name="warning" size={18} color="#F0A500" />
-                <Text style={styles.typeYellow}>Đường huyết</Text>
-              </View>
-              <Text style={styles.badgeSmallBlue}>Mới</Text>
-            </View>
-
-            <Text style={styles.alertTitleYellow}>Đường huyết cao hơn bình thường</Text>
-
-            <View style={styles.detailBox}>
-              <Text style={styles.detailText}>Giá trị đo: <Text style={styles.bold}>145 mg/dL</Text></Text>
-              <Text style={styles.detailText}>Ngưỡng an toàn: {"<"} 140 mg/dL</Text>
-            </View>
-
-            <View style={styles.timeRow}>
-              <Ionicons name="time-outline" size={16} color="#777" />
-              <Text style={styles.time}>02/11/2025 • 08:15</Text>
-            </View>
-
-            <TouchableOpacity style={styles.actionBtn}>
-              <Text style={styles.actionText}>Đánh dấu đã xử lý</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* ITEM 3 */}
-          <View style={[styles.alertCard, { borderColor: "#A8E6A1" }]}>
-            <View style={styles.rowBetween}>
-              <View style={styles.row}>
-                <Ionicons name="checkmark-circle" size={18} color="#2ECC71" />
-                <Text style={styles.typeGreen}>Huyết áp</Text>
-              </View>
-            </View>
-
-            <Text style={styles.alertTitleGreen}>Huyết áp trở lại bình thường</Text>
-
-            <View style={styles.detailBox}>
-              <Text style={styles.detailText}>Giá trị đo: <Text style={styles.bold}>118/76</Text></Text>
-              <Text style={styles.detailText}>Ngưỡng an toàn: 120-140/80-90</Text>
-            </View>
-
-            <View style={styles.timeRow}>
-              <Ionicons name="time-outline" size={16} color="#777" />
-              <Text style={styles.time}>01/11/2025 • 07:10</Text>
-            </View>
-
-            <Text style={styles.doneText}>Đã xử lý</Text>
-          </View>
-
-          {/* ITEM 4 */}
-          <View style={[styles.alertCard, { borderColor: "#FFB6B6" }]}>
-            <View style={styles.rowBetween}>
-              <View style={styles.row}>
-                <Ionicons name="alert-circle" size={18} color="#FF4D4F" />
-                <Text style={styles.typeRed}>Đường huyết</Text>
-              </View>
-            </View>
-
-            <Text style={styles.alertTitleRed}>Đường huyết rất cao</Text>
-
-            <View style={styles.detailBox}>
-              <Text style={styles.detailText}>Giá trị đo: <Text style={styles.bold}>185 mg/dL</Text></Text>
-              <Text style={styles.detailText}>Ngưỡng an toàn: {"<"} 140 mg/dL</Text>
-            </View>
-
-            <View style={styles.timeRow}>
-              <Ionicons name="time-outline" size={16} color="#777" />
-              <Text style={styles.time}>01/11/2025 • 15:20</Text>
-            </View>
-
-            <Text style={styles.doneText}>Đã xử lý</Text>
-          </View>
-
+            );
+          })}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -172,100 +273,186 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 16,
   },
-
   backBtn: {
     width: 40,
     height: 40,
-    backgroundColor: "#fff",
+    backgroundColor: "#FFFFFF",
     borderRadius: 10,
     justifyContent: "center",
     alignItems: "center",
     marginRight: 10,
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
   },
-
-  headerTitle: { fontSize: 18, fontWeight: "700", flex: 1 },
-
+  headerTitle: { fontSize: 18, fontWeight: "700", flex: 1, color: "#111827" },
   badgeNew: {
-    backgroundColor: "#FF4D4F",
+    backgroundColor: "#DC2626",
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 10,
+    borderRadius: 999,
   },
-
-  badgeText: { color: "#fff", fontWeight: "700", fontSize: 12 },
+  badgeText: { color: "#FFFFFF", fontWeight: "700", fontSize: 12 },
 
   tabs: {
     flexDirection: "row",
-    backgroundColor: "#E9EEFF",
-    padding: 5,
-    borderRadius: 12,
+    backgroundColor: "#E5EDFF",
+    padding: 4,
+    borderRadius: 999,
     marginBottom: 20,
   },
-
   tabItem: {
     flex: 1,
-    paddingVertical: 10,
-    borderRadius: 10,
+    paddingVertical: 8,
+    borderRadius: 999,
     alignItems: "center",
   },
-
   tabActive: {
-    backgroundColor: "#fff",
+    backgroundColor: "#FFFFFF",
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
     elevation: 2,
   },
+  tabText: { color: "#6B7280", fontWeight: "600", fontSize: 13 },
+  tabTextActive: { color: "#2563EB" },
 
-  tabText: { color: "#666", fontWeight: "600" },
-  tabTextActive: { color: "#376AED" },
-
-  list: { gap: 16 },
+  list: { gap: 14 },
 
   alertCard: {
-    backgroundColor: "#fff",
-    borderRadius: 15,
-    padding: 16,
-    borderWidth: 1.5,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    shadowColor: "#000",
+    shadowOpacity: 0.02,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  alertCardHigh: {
+    borderColor: "#FCA5A5",
+    backgroundColor: "#FFF5F5",
+  },
+  alertCardInfo: {
+    borderColor: "#BFDBFE",
+    backgroundColor: "#F3F4FF",
+  },
+  alertCardAck: {
+    opacity: 0.9,
   },
 
-  row: { flexDirection: "row", alignItems: "center", gap: 6 },
-  rowBetween: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  alertHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  alertTitleWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    flex: 1,
+  },
+  alertTypeText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#111827",
+  },
 
-  typeRed: { color: "#FF4D4F", fontWeight: "700" },
-  typeYellow: { color: "#F0A500", fontWeight: "700" },
-  typeGreen: { color: "#2ECC71", fontWeight: "700" },
-
-  badgeSmallBlue: {
-    backgroundColor: "#E9F1FF",
+  alertSeverityPillHigh: {
+    backgroundColor: "#FEE2E2",
     paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
-    color: "#376AED",
+    paddingVertical: 3,
+    borderRadius: 999,
+  },
+  alertSeverityPillInfo: {
+    backgroundColor: "#DBEAFE",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+  },
+  alertSeverityTextHigh: {
+    color: "#B91C1C",
     fontWeight: "700",
-    fontSize: 12,
+    fontSize: 11,
+  },
+  alertSeverityTextInfo: {
+    color: "#1D4ED8",
+    fontWeight: "700",
+    fontSize: 11,
   },
 
-  alertTitleRed: { color: "#FF4D4F", fontSize: 15, fontWeight: "700", marginTop: 6 },
-  alertTitleYellow: { color: "#F0A500", fontSize: 15, fontWeight: "700", marginTop: 6 },
-  alertTitleGreen: { color: "#2ECC71", fontSize: 15, fontWeight: "700", marginTop: 6 },
+  alertMainValue: {
+    marginTop: 4,
+    fontSize: 13,
+    color: "#374151",
+  },
+  alertMainValueNumber: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#111827",
+  },
 
-  detailBox: { marginTop: 10, marginBottom: 10 },
-  detailText: { color: "#555", fontSize: 13, marginBottom: 4 },
-  bold: { fontWeight: "700" },
+  alertThresholdText: {
+    marginTop: 4,
+    fontSize: 12,
+    color: "#6B7280",
+  },
+  alertThresholdNumber: {
+    fontWeight: "600",
+    color: "#111827",
+  },
 
-  timeRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 12 },
-  time: { color: "#777", fontSize: 12 },
-
-  actionBtn: {
-    backgroundColor: "#4A80F0",
-    paddingVertical: 10,
-    borderRadius: 10,
+  alertMetaRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 8,
+  },
+  alertMetaLeft: {
+    flexDirection: "row",
     alignItems: "center",
   },
+  alertMetaText: {
+    fontSize: 11,
+    color: "#9CA3AF",
+  },
 
-  actionText: { color: "#fff", fontWeight: "700" },
-
-  doneText: {
-    color: "#2ECC71",
+  alertStatusPillOpen: {
+    backgroundColor: "#FEF3C7",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  alertStatusPillAck: {
+    backgroundColor: "#DCFCE7",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  alertStatusTextOpen: {
+    color: "#B45309",
     fontWeight: "700",
-    marginTop: 6,
+    fontSize: 11,
+  },
+  alertStatusTextAck: {
+    color: "#15803D",
+    fontWeight: "700",
+    fontSize: 11,
+  },
+
+  actionBtnPrimary: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: "#2563EB",
+  },
+  actionBtnText: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "700",
   },
 });
