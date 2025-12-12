@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
@@ -76,6 +77,9 @@ func (s *alertService) UpdateAlertAcknowledgementByID(ctx context.Context, input
 	updatedAlert, err := s.alertRepo.UpdateAcknowledgementByID(ctx, alertId, doctorId)
 	if err != nil {
 		return nil, err
+	}
+	if updatedAlert == nil {
+		return nil, errors.New("alert not found")
 	}
 
 	var acknowledgedBy *string
