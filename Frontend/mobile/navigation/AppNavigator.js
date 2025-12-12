@@ -24,6 +24,8 @@ import HistoryScreen from "../screens/HistoryScreen";
 import AlertScreen from "../screens/AlertScreen";
 import ProfileScreen from "../screens/ProfileScreen";
 import DoctorChatScreen from "../screens/DoctorChatScreen";
+import InputMeasurementPatientScreen from "../screens/InputMeasurementPatientScreen";
+
 
 // Nurse
 import NursePatientListScreen from "../screens/NursePatientListScreen";
@@ -72,6 +74,15 @@ function PatientTabNavigator() {
                             />
                         );
                     }
+                    if (route.name === "InputMeasurementPatientScreen") {
+                        return (
+                            <Ionicons
+                                name="create-outline"
+                                size={size}
+                                color={color}
+                            />
+                        );
+                    }
                     if (route.name === "PatientAlerts") {
                         return (
                             <Ionicons
@@ -98,6 +109,11 @@ function PatientTabNavigator() {
                 name="PatientHome"
                 component={HomeScreen}
                 options={{ title: "Trang chủ" }}
+            />
+            <Tab.Screen
+                name="InputMeasurementPatientScreen"
+                component={InputMeasurementPatientScreen}
+                options={{ title: "Nhập Liệu" }}
             />
             <Tab.Screen
                 name="PatientHistory"
@@ -211,7 +227,7 @@ function RootNavigator() {
     // Đã đăng nhập -> chọn bottom tab theo role
     // user.role lấy đúng từ backend (Users.role: "patient", "nurse")
     // const role = user.role;
-    const role = "patient"; // tạm thời fix cứng để test giao diện
+    const role = "nurse"; // tạm thời fix cứng để test giao diện
 
     return (
         <Stack.Navigator screenOptions={{ headerShown: false }}>
