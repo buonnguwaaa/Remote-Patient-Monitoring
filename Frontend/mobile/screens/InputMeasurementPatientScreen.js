@@ -8,33 +8,15 @@ import {
   Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons, FontAwesome5 } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
 
-// ===== MOCK DATA / CONSTANTS =====
-
-// Điều dưỡng đang đăng nhập
-const currentNurseUser = {
-  _id: "u_nurse_1",
-  name: "Điều dưỡng Trần Thị B",
-};
-
-// Giả lập kết quả quét QR -> lấy user + patient_info
-const mockedPatientFromQr = {
-  user: {
-    _id: "u_patient_1",
-    role: "patient",
-    name: "Nguyễn Văn A",
-    emailLower: "a@example.com",
-  },
-  patientInfo: {
-    _id: "pi_1",
-    userId: "u_patient_1",
-    insuranceNumber: "BA123456789",
-    CCCD: "012345678901",
-    emergencyContactName: "Nguyễn Văn B",
-    emergencyContactPhone: "+84 987 654 321",
-  },
+// ===== MOCK: BỆNH NHÂN ĐANG ĐĂNG NHẬP =====
+// Sau này thay bằng user từ AuthContext (user._id, user.name, ...)
+const currentPatientUser = {
+  _id: "u_patient_self_1",
+  name: "Nguyễn Văn A",
+  emailLower: "a@example.com",
 };
 
 // ===== TIỆN ÍCH =====
@@ -52,14 +34,13 @@ function buildMeasurementPayload({
   timing,
   device,
   note,
-  nurseUserId,
 }) {
   const base = {
     patientId: patientUserId, // Ref users
     type, // "bp" | "glucose" | "spo2" | "temp" | "heartRate" | "respiratoryRate"
     timing: timing || null,
     device: device || null,
-    recordedBy: nurseUserId,
+    recordedBy: patientUserId, // bệnh nhân tự nhập
     note: note || null,
   };
 
@@ -139,10 +120,8 @@ function TypeTile({ active, onPress, iconName, label, description }) {
   );
 }
 
-// ===== SCREEN =====
-export default function MeasurementInputScreen() {
-  const [selectedPatient, setSelectedPatient] = useState(null); // { user, patientInfo }
-
+// ===== SCREEN: BỆNH NHÂN TỰ NHẬP CHỈ SỐ =====
+export default function InputMeasurementPatientScreen() {
   // type: đo tách riêng từng loại, cả nhịp tim / nhịp thở là type riêng
   const [type, setType] = useState("bp"); // "bp" | "glucose" | "spo2" | "temp" | "heartRate" | "respiratoryRate"
   const [timing, setTiming] = useState("pre"); // dùng cho glucose
@@ -158,14 +137,9 @@ export default function MeasurementInputScreen() {
   const [heartRate, setHeartRate] = useState("");
   const [respiratoryRate, setRespiratoryRate] = useState("");
 
-  const handleScanQr = () => {
-    setSelectedPatient(mockedPatientFromQr);
-    Alert.alert("Quét QR", "Đã nhận dạng bệnh nhân Nguyễn Văn A (mock).");
-  };
-
   const validateForm = () => {
-    if (!selectedPatient) {
-      Alert.alert("Thiếu thông tin", "Hãy quét QR để chọn bệnh nhân trước.");
+    if (!currentPatientUser || !currentPatientUser._id) {
+      Alert.alert("Lỗi", "Không xác định được tài khoản bệnh nhân.");
       return false;
     }
 
@@ -282,7 +256,7 @@ export default function MeasurementInputScreen() {
     if (!validateForm()) return;
 
     const payload = buildMeasurementPayload({
-      patientUserId: selectedPatient.user._id,
+      patientUserId: currentPatientUser._id,
       type,
       systolic,
       diastolic,
@@ -295,13 +269,12 @@ export default function MeasurementInputScreen() {
       timing,
       device,
       note,
-      nurseUserId: currentNurseUser._id,
     });
 
-    // TODO: gửi payload lên API backend
-    console.log("Measurement payload:", payload);
+    // TODO: gọi API backend để lưu measurement
+    console.log("Patient self-measurement payload:", payload);
 
-    Alert.alert("Thành công", "Đã lưu bản đo (mock).");
+    Alert.alert("Thành công", "Đã gửi bản đo của bạn (mock).");
 
     setSystolic("");
     setDiastolic("");
@@ -312,63 +285,6 @@ export default function MeasurementInputScreen() {
     setHeartRate("");
     setRespiratoryRate("");
     setNote("");
-  };
-
-  const renderPatientCard = () => {
-    if (!selectedPatient) {
-      return (
-        <View style={styles.patientEmptyCard}>
-          <Ionicons
-            name="qr-code-outline"
-            size={26}
-            color="#9CA3AF"
-            style={{ marginBottom: 6 }}
-          />
-          <Text style={styles.patientEmptyText}>
-            Chưa có bệnh nhân được chọn
-          </Text>
-          <Text style={styles.patientEmptySub}>
-            Quét mã QR trên vòng tay / phiếu bệnh án để tải thông tin bệnh nhân.
-          </Text>
-        </View>
-      );
-    }
-
-    const { user, patientInfo } = selectedPatient;
-    return (
-      <View style={styles.patientCard}>
-        <View style={styles.patientRow}>
-          <View style={styles.patientAvatar}>
-            <Text style={styles.patientAvatarText}>
-              {user.name
-                .split(" ")
-                .filter((p) => p.length > 0)
-                .slice(-2)
-                .map((p) => p[0])
-                .join("")
-                .toUpperCase()}
-            </Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.patientName}>{user.name}</Text>
-            <Text style={styles.patientMeta}>
-              BHYT: {patientInfo.insuranceNumber}
-            </Text>
-            <Text style={styles.patientMetaSm}>
-              CCCD: {patientInfo.CCCD} • ID: {user._id}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.patientInfoRow}>
-          <Ionicons name="call-outline" size={14} color="#6B7280" />
-          <Text style={styles.patientMetaSm}>
-            Người liên hệ khẩn cấp: {patientInfo.emergencyContactName} ·{" "}
-            {patientInfo.emergencyContactPhone}
-          </Text>
-        </View>
-      </View>
-    );
   };
 
   const renderTypeFields = () => {
@@ -558,51 +474,25 @@ export default function MeasurementInputScreen() {
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
         {/* HEADER */}
         <View style={styles.headerRow}>
-          <Text style={styles.headerTitle}>Nhập bản đo sinh hiệu</Text>
+          <Text style={styles.headerTitle}>Tự nhập chỉ số sức khỏe</Text>
           <View style={{ width: 40 }} />
         </View>
 
-        {/* THÔNG TIN ĐIỀU DƯỠNG */}
-        <View style={styles.nurseBar}>
-          <View style={styles.nurseLeft}>
-            <View style={styles.nurseAvatar}>
-              <FontAwesome5 name="user-nurse" size={16} color="#FFFFFF" />
+        {/* THANH THÔNG TIN BỆNH NHÂN */}
+        <View style={styles.patientBar}>
+          <View style={styles.patientLeft}>
+            <View style={styles.patientAvatarSmall}>
+              <Ionicons name="person-circle-outline" size={20} color="#FFFFFF" />
             </View>
             <View>
-              <Text style={styles.nurseLabel}>Điều dưỡng</Text>
-              <Text style={styles.nurseName}>{currentNurseUser.name}</Text>
+              <Text style={styles.patientLabel}>Bệnh nhân</Text>
+              <Text style={styles.patientNameBar}>{currentPatientUser.name}</Text>
             </View>
           </View>
-          <View style={styles.nurseTag}>
-            <View style={styles.nurseDot} />
-            <Text style={styles.nurseTagText}>Đang nhập liệu</Text>
+          <View style={styles.patientTag}>
+            <View style={styles.patientDot} />
+            <Text style={styles.patientTagText}>Tự nhập liệu</Text>
           </View>
-        </View>
-
-        {/* QUÉT QR BỆNH NHÂN */}
-        <Text style={styles.sectionTitle}>Thông tin bệnh nhân</Text>
-        <View style={styles.card}>
-          <View style={styles.qrRow}>
-            <View style={styles.qrLeft}>
-              <Ionicons
-                name="qr-code-outline"
-                size={22}
-                color="#2563EB"
-                style={{ marginRight: 8 }}
-              />
-              <View>
-                <Text style={styles.qrTitle}>Quét mã QR bệnh nhân</Text>
-                <Text style={styles.qrSub}>
-                  Sử dụng vòng tay / mã QR trên hồ sơ để auto điền.
-                </Text>
-              </View>
-            </View>
-            <TouchableOpacity style={styles.qrButton} onPress={handleScanQr}>
-              <Text style={styles.qrButtonText}>Quét QR</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={{ marginTop: 14 }}>{renderPatientCard()}</View>
         </View>
 
         {/* CHỌN LOẠI CHỈ SỐ */}
@@ -668,7 +558,7 @@ export default function MeasurementInputScreen() {
             style={styles.input}
             value={device}
             onChangeText={setDevice}
-            placeholder="vd: BP_MONITOR_01, GLUCOSE_METER_02..."
+            placeholder="vd: máy đo cá nhân, model..."
           />
 
           {/* GHI CHÚ */}
@@ -677,7 +567,7 @@ export default function MeasurementInputScreen() {
             style={[styles.input, styles.textArea]}
             value={note}
             onChangeText={setNote}
-            placeholder="Ghi chú thêm (tư thế bệnh nhân, tình trạng, đã dùng thuốc...)"
+            placeholder="Ghi chú thêm (vừa vận động, vừa ăn uống, cảm giác khó chịu...)"
             multiline
           />
         </View>
@@ -690,7 +580,7 @@ export default function MeasurementInputScreen() {
             color="#FFFFFF"
             style={{ marginRight: 6 }}
           />
-          <Text style={styles.saveText}>Lưu bản đo</Text>
+          <Text style={styles.saveText}>Gửi bản đo</Text>
         </TouchableOpacity>
 
         <View style={{ height: 16 }} />
@@ -714,8 +604,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  nurseBar: {
-    backgroundColor: "#EFF6FF",
+  // Thanh bệnh nhân
+  patientBar: {
+    backgroundColor: "#EEF2FF",
     borderRadius: 16,
     padding: 12,
     flexDirection: "row",
@@ -723,46 +614,46 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 16,
   },
-  nurseLeft: {
+  patientLeft: {
     flexDirection: "row",
     alignItems: "center",
   },
-  nurseAvatar: {
+  patientAvatarSmall: {
     width: 32,
     height: 32,
     borderRadius: 999,
-    backgroundColor: "#2563EB",
+    backgroundColor: "#4F46E5",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 10,
   },
-  nurseLabel: {
+  patientLabel: {
     fontSize: 11,
     color: "#6B7280",
   },
-  nurseName: {
+  patientNameBar: {
     fontSize: 13,
     fontWeight: "600",
     color: "#111827",
   },
-  nurseTag: {
+  patientTag: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#DCFCE7",
+    backgroundColor: "#DBEAFE",
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
-  nurseDot: {
+  patientDot: {
     width: 7,
     height: 7,
     borderRadius: 999,
-    backgroundColor: "#22C55E",
+    backgroundColor: "#2563EB",
     marginRight: 6,
   },
-  nurseTagText: {
+  patientTagText: {
     fontSize: 11,
-    color: "#15803D",
+    color: "#1D4ED8",
     fontWeight: "600",
   },
 
@@ -783,108 +674,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.02,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
-  },
-
-  // QR
-  qrRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  qrLeft: {
-    flexDirection: "row",
-    flex: 1,
-    marginRight: 10,
-  },
-  qrTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#111827",
-  },
-  qrSub: {
-    fontSize: 12,
-    color: "#6B7280",
-    marginTop: 2,
-  },
-  qrButton: {
-    backgroundColor: "#2563EB",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-  },
-  qrButtonText: {
-    color: "#FFFFFF",
-    fontSize: 12,
-    fontWeight: "600",
-  },
-
-  // Patient card
-  patientEmptyCard: {
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    padding: 12,
-    marginTop: 6,
-    alignItems: "center",
-  },
-  patientEmptyText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#111827",
-    marginBottom: 2,
-  },
-  patientEmptySub: {
-    fontSize: 12,
-    color: "#6B7280",
-    textAlign: "center",
-  },
-
-  patientCard: {
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    padding: 12,
-    marginTop: 6,
-    backgroundColor: "#F9FAFB",
-  },
-  patientRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  patientAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 16,
-    backgroundColor: "#2563EB",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 10,
-  },
-  patientAvatarText: {
-    color: "#FFFFFF",
-    fontSize: 18,
-    fontWeight: "700",
-  },
-  patientName: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#111827",
-  },
-  patientMeta: {
-    fontSize: 12,
-    color: "#4B5563",
-    marginTop: 2,
-  },
-  patientMetaSm: {
-    fontSize: 11,
-    color: "#6B7280",
-    marginTop: 1,
-  },
-  patientInfoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 8,
-    gap: 4,
   },
 
   // Grid chọn loại chỉ số
