@@ -145,27 +145,27 @@ func evaluateMeasurementAgainstThreshold(m *domain.Measurement, t *domain.Thresh
 // This is only a simple severity calculation based on how much the observed value deviates from the threshold.
 // [TODO] Enhance the logic for each type of sign
 func calculateSeverity(observed, threshold float64) domain.Severity {
-    if threshold == 0 {
-        return domain.SeverityHigh
-    }
+	if threshold == 0 {
+		return domain.SeverityHigh
+	}
 
-    diffRatio := (observed - threshold) / threshold
-    if diffRatio < 0 {
-        diffRatio = -diffRatio
-    }
+	diffRatio := (observed - threshold) / threshold
+	if diffRatio < 0 {
+		diffRatio = -diffRatio
+	}
 
-    if diffRatio < 0.05 { // <5%
-        return domain.SeverityInfo
-    }
+	if diffRatio < 0.05 { // <5%
+		return domain.SeverityInfo
+	}
 
-    return domain.SeverityHigh
+	return domain.SeverityHigh
 }
 
 func aggregateSeverity(vs []domain.ThresholdViolation) domain.Severity {
-    for _, v := range vs {
-        if v.Severity == domain.SeverityHigh {
-            return domain.SeverityHigh
-        }
-    }
-    return domain.SeverityInfo
+	for _, v := range vs {
+		if v.Severity == domain.SeverityHigh {
+			return domain.SeverityHigh
+		}
+	}
+	return domain.SeverityInfo
 }

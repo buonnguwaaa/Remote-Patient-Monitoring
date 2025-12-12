@@ -18,7 +18,7 @@ type userRepository struct {
 
 type UserRepository interface {
 	Create(context.Context, *domain.User) (*domain.User, error)
-	FindAll(context.Context, UserFilter) ([]domain.User, error)
+	FindWithFilter(context.Context, UserFilter) ([]domain.User, error)
 	FindByID(context.Context, primitive.ObjectID) (*domain.User, error)
 	FindByEmail(context.Context, string) (*domain.User, error)
 	SetResetToken(context.Context, string, string, time.Time) error
@@ -61,7 +61,7 @@ func (r *userRepository) Create(ctx context.Context, u *domain.User) (*domain.Us
 	return u, nil
 }
 
-func (r *userRepository) FindAll(ctx context.Context, f UserFilter) ([]domain.User, error) {
+func (r *userRepository) FindWithFilter(ctx context.Context, f UserFilter) ([]domain.User, error) {
 	bsonFilter := bson.M{}
 	opts := options.Find()
 
