@@ -1,20 +1,21 @@
 // pages/PatientDetailPage.tsx
 
-import { useState } from "react"; // Thêm useState
-import { useParams, useNavigate } from "react-router-dom";
+import { useState, useMemo } from "react"; // Thêm useMemo
+import { useNavigate } from "react-router-dom";
 import {
   MdOutlineKeyboardBackspace,
   MdOutlineCake,
   MdPerson,
   MdPhoneInTalk,
   MdContactEmergency,
-  MdShowChart, // Icon biểu đồ
-  MdDateRange, // Icon lịch
+  MdShowChart,
+  MdDateRange,
 } from "react-icons/md";
+import { FaRegMessage } from "react-icons/fa6";
 import { FaHeartbeat, FaTemperatureHigh, FaTint } from "react-icons/fa";
 import { GiHeartBeats } from "react-icons/gi";
 
-// --- 1. IMPORT RECHARTS ---
+// --- IMPORT RECHARTS ---
 import {
   LineChart,
   Line,
@@ -25,6 +26,21 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+
+// --- IMPORT TABLE COMPONENT ---
+// Giả sử file Table của bạn nằm ở components/Table.tsx
+import Table, { type Column } from "../components/ui/Table";
+
+// --- TYPE DEFINITION ---
+// Định nghĩa kiểu dữ liệu cho một bản ghi đo lường để dùng trong Table
+interface MeasurementData {
+  systolic: number;
+  diastolic: number;
+  pulse: number;
+  glucose: number;
+  spo2: number;
+  updateAt: string;
+}
 
 const mockPatient = {
   id: 1,
@@ -41,14 +57,16 @@ const mockPatient = {
     diastolic: { min: 60, max: 80 },
     pulse: { min: 60, max: 100 },
     glucose: { min: 70, max: 140 },
+    spo2: { min: 95, max: 100 },
   },
   measurement: [
-    // Đảo ngược thứ tự để biểu đồ chạy từ trái (cũ) sang phải (mới)
     {
       systolic: 125,
       diastolic: 82,
       pulse: 70,
       glucose: 92,
+
+      spo2: 98,
       updateAt: "2024-04-01 10:00",
     },
     {
@@ -56,6 +74,7 @@ const mockPatient = {
       diastolic: 85,
       pulse: 75,
       glucose: 95,
+      spo2: 97,
       updateAt: "2024-04-02 10:00",
     },
     {
@@ -63,14 +82,15 @@ const mockPatient = {
       diastolic: 80,
       pulse: 72,
       glucose: 90,
+      spo2: 99,
       updateAt: "2024-04-03 10:00",
     },
-    // Thêm dữ liệu giả để biểu đồ nhìn đẹp hơn
     {
       systolic: 118,
       diastolic: 78,
       pulse: 68,
       glucose: 88,
+      spo2: 98,
       updateAt: "2024-04-04 09:00",
     },
     {
@@ -78,6 +98,7 @@ const mockPatient = {
       diastolic: 79,
       pulse: 74,
       glucose: 110,
+      spo2: 97,
       updateAt: "2024-04-05 08:30",
     },
   ],
@@ -103,7 +124,6 @@ const InfoItem = ({
   </div>
 );
 
-// --- Component phụ hiển thị Threshold ---
 const ThresholdCard = ({ icon: Icon, label, data, unit, colorClass }: any) => (
   <div
     className={`p-4 rounded-xl bg-white shadow-sm border-l-4 ${colorClass} flex items-center`}
@@ -132,11 +152,49 @@ const PatientDetailPage = () => {
   const navigate = useNavigate();
   const p = mockPatient;
 
-  // --- State cho biểu đồ ---
-  const [chartType, setChartType] = useState<"bp" | "glucose">("bp"); // 'bp' (Huyết áp) hoặc 'glucose' (Đường huyết)
+  const [chartType, setChartType] = useState<"bp" | "glucose">("bp");
   const [timeRange, setTimeRange] = useState<"week" | "month">("week");
 
-  // Format ngày tháng ngắn gọn cho trục X (VD: 03/04)
+  // --- CẤU HÌNH CỘT CHO TABLE ---
+  const columns = useMemo<Column<MeasurementData>[]>(
+    () => [
+      {
+        header: "Thời gian",
+        accessor: "updateAt",
+        className: "font-medium text-gray-900", // Thêm style
+      },
+      {
+        header: "Huyết áp (mmHg)",
+        render: (item) => (
+          <span className="text-gray-700">
+            {item.systolic} / {item.diastolic}
+          </span>
+        ),
+      },
+      {
+        header: "Nhịp tim (bpm)",
+        render: (item) => (
+          <span className="inline-flex items-center font-semibold text-gray-700">
+            {/* <GiHeartBeats className="mr-1 text-red-400" size={14} /> */}
+            {item.pulse}
+          </span>
+        ),
+      },
+      {
+        header: "Đường huyết (mg/dL)",
+        accessor: "glucose",
+        className: "font-semibold text-gray-700",
+      },
+    ],
+    []
+  );
+
+  // Tạo data cho bảng (đảo ngược để hiển thị mới nhất trước)
+  const tableData = useMemo(
+    () => [...p.measurement].reverse(),
+    [p.measurement]
+  );
+
   const formatXAxis = (tickItem: string) => {
     try {
       const date = new Date(tickItem);
@@ -211,6 +269,24 @@ const PatientDetailPage = () => {
                 >
                   {p.status}
                 </span>
+              </div>
+              <div className="mt-4 flex justify-center sm:justify-start">
+                <button
+                  onClick={() => navigate(`/patient/chat/1`)}
+                  className="relative group p-1"
+                >
+                  <FaRegMessage className="text-2xl text-gray-600 " />
+
+                  <span className="absolute -top-1 -right-1 flex h-5 w-5">
+                    {/* Ping Animation Layer */}
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+
+                    {/* Static Number Layer */}
+                    <span className="relative inline-flex rounded-full h-5 w-5 bg-red-500 text-white text-[10px] font-bold items-center justify-center border-2 border-white">
+                      1
+                    </span>
+                  </span>
+                </button>
               </div>
             </div>
           </div>
@@ -296,12 +372,31 @@ const PatientDetailPage = () => {
                   unit="mg/dL"
                   colorClass="border-blue-400 text-blue-500"
                 />
+                <ThresholdCard
+                  icon={FaTint}
+                  label="SPO2"
+                  data={p.threshold.spo2}
+                  unit="%"
+                  colorClass="border-blue-400 text-blue-500"
+                />
+                {/*Action: update  */}
+
+                <div className="col-span-1 sm:col-span-2 flex justify-center items-center">
+                  <button
+                    onClick={() =>
+                      alert("Chức năng cập nhật ngưỡng chưa được triển khai")
+                    }
+                    className="mt-2 w-full bg-primary hover:bg-primary-dark text-white py-2.5 rounded-lg font-medium transition-colors shadow-lg shadow-purple-200"
+                  >
+                    Cập nhật ngưỡng
+                  </button>
+                </div>
               </div>
             </section>
           </div>
         </div>
 
-        {/* --- SECTION BIỂU ĐỒ (LINE CHART) */}
+        {/* --- SECTION BIỂU ĐỒ (LINE CHART) --- */}
         <section className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 mb-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-gray-200 pb-4 mb-4">
             <h3 className="text-lg font-bold text-gray-800 flex items-center mb-4 md:mb-0">
@@ -311,7 +406,6 @@ const PatientDetailPage = () => {
 
             {/* Controls Filter */}
             <div className="flex flex-wrap gap-2 md:gap-4">
-              {/* Toggle Loại Biểu Đồ */}
               <div className="inline-flex bg-gray-100 rounded-lg p-1">
                 <button
                   onClick={() => setChartType("bp")}
@@ -335,7 +429,6 @@ const PatientDetailPage = () => {
                 </button>
               </div>
 
-              {/* Toggle Thời Gian */}
               <div className="inline-flex bg-gray-100 rounded-lg p-1">
                 <button
                   onClick={() => setTimeRange("week")}
@@ -391,14 +484,13 @@ const PatientDetailPage = () => {
                 />
                 <Legend wrapperStyle={{ paddingTop: "10px" }} />
 
-                {/* Render lines dựa trên chartType */}
                 {chartType === "bp" ? (
                   <>
                     <Line
                       name="Tâm thu (Systolic)"
                       type="monotone"
                       dataKey="systolic"
-                      stroke="#8884d8" // Màu tím
+                      stroke="#8884d8"
                       strokeWidth={3}
                       activeDot={{ r: 6 }}
                     />
@@ -406,7 +498,7 @@ const PatientDetailPage = () => {
                       name="Tâm trương (Diastolic)"
                       type="monotone"
                       dataKey="diastolic"
-                      stroke="#82ca9d" // Màu xanh lá nhạt
+                      stroke="#82ca9d"
                       strokeWidth={3}
                       activeDot={{ r: 6 }}
                     />
@@ -416,7 +508,7 @@ const PatientDetailPage = () => {
                     name="Đường huyết (Glucose)"
                     type="monotone"
                     dataKey="glucose"
-                    stroke="#3b82f6" // Màu xanh dương
+                    stroke="#3b82f6"
                     strokeWidth={3}
                     activeDot={{ r: 6 }}
                   />
@@ -430,64 +522,19 @@ const PatientDetailPage = () => {
           </p>
         </section>
 
-        {/* --- Section: Lịch sử đo gần đây --- */}
+        {/* --- Section: Lịch sử đo gần đây (ĐÃ DÙNG TABLE COMPONENT) --- */}
         <section className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8">
           <div className="p-5 border-b border-gray-200">
             <h3 className="text-lg font-bold text-gray-800">
               Lịch sử đo gần đây
             </h3>
           </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Thời gian
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Huyết áp (mmHg)
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Nhịp tim (bpm)
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Đường huyết (mg/dL)
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {/* Đảo ngược mảng để hiển thị mới nhất lên đầu trong Table, 
-                    nhưng giữ nguyên xuôi thời gian trong Chart */}
-                {[...p.measurement].reverse().map((item, index) => (
-                  <tr
-                    key={index}
-                    className="hover:bg-gray-50 transition-colors"
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
-                      {item.updateAt}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                      {item.systolic} / {item.diastolic}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-semibold">
-                      <span className="inline-flex items-center">
-                        <GiHeartBeats className="mr-1 text-red-400" size={14} />{" "}
-                        {item.pulse}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-semibold">
-                      {item.glucose}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {p.measurement.length === 0 && (
-            <div className="p-6 text-center text-gray-500">
-              Chưa có dữ liệu đo.
-            </div>
-          )}
+
+          <Table<MeasurementData>
+            data={tableData}
+            columns={columns}
+            className="rounded-none shadow-none" // Ghi đè style mặc định nếu cần
+          />
         </section>
       </div>
     </div>

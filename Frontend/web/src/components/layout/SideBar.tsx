@@ -1,9 +1,9 @@
-import { useState } from "react"; // 1. Import useState
+import { useState, useEffect } from "react";
 import {
   TbLayoutSidebarLeftCollapseFilled,
   TbLayoutSidebarRightCollapseFilled,
 } from "react-icons/tb";
-import { FiLogOut } from "react-icons/fi"; // Icon Logout
+import { FiLogOut } from "react-icons/fi";
 import { type NavigationItem } from "../../types/index.ts";
 import { navData } from "../../data/NavData.ts";
 import { Link, useLocation, useNavigate } from "react-router-dom";
@@ -19,8 +19,21 @@ const SideBar = ({ navigationItems = navData }: SideBarProps) => {
   const { user, logout } = useAuth();
   const itemsToDisplay = navigationItems || navData;
 
-  // 2. State quản lý đóng/mở
   const [isCollapsed, setIsCollapsed] = useState(false);
+
+  // Tự động đóng sidebar khi chuyển trang trên mobile (UX tốt hơn)
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 768) {
+        setIsCollapsed(true);
+      }
+    };
+    // Initial check
+    handleResize();
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -28,112 +41,125 @@ const SideBar = ({ navigationItems = navData }: SideBarProps) => {
   };
 
   return (
-    <div
-      // 3. Width động: w-20 khi đóng, w-64 (hoặc w-48) khi mở
-      className={`h-screen bg-white border-r border-gray-200 flex flex-col transition-all duration-300 ${
-        isCollapsed ? "w-14" : "w-80"
-      }`}
-    >
-      {/* --- HEADER --- */}
-      <div
-        className={`flex items-center p-4 ${
-          isCollapsed ? "justify-center" : "justify-between"
-        }`}
-      >
-        {/* Ẩn chữ RPM khi thu nhỏ */}
-        {!isCollapsed && (
-          <h2 className="font-bold text-2xl text-primary-text">RPM</h2>
-        )}
-
-        {/* Nút toggle */}
-        <button
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className="text-primary-text"
-        >
-          {isCollapsed ? (
-            <TbLayoutSidebarRightCollapseFilled size={32} />
-          ) : (
-            <TbLayoutSidebarLeftCollapseFilled size={32} />
-          )}
-        </button>
-      </div>
-
-      {/* --- NAVIGATION --- */}
-      <nav className="flex-1 mt-4 px-2 overflow-y-auto">
-        <ul className="space-y-2">
-          {itemsToDisplay.map((item) => {
-            // Check if the item is active based on current location
-            const isActive = location.pathname === item.path;
-
-            return (
-              <li key={item.path}>
-                <Link
-                  to={item.path}
-                  className={`
-                    flex items-center py-2 rounded-lg transition-colors
-                    ${isCollapsed ? "justify-center px-0" : "px-4 gap-3"}
-                    ${
-                      isActive
-                        ? "bg-btn-clicked text-white"
-                        : "text-gray-600 hover:bg-gray-100"
-                    }
-                  `}
-                  title={isCollapsed ? item.label : ""} // Tooltip khi thu nhỏ
-                >
-                  {/* Icon */}
-                  {item.icon && (
-                    <div className="text-2xl shrink-0">{item.icon}</div>
-                  )}
-
-                  {/* Label: Ẩn hoàn toàn khi collapsed để tránh vỡ layout */}
-                  {!isCollapsed && (
-                    <span className="text-xl font-semibold whitespace-nowrap overflow-hidden">
-                      {item.label}
-                    </span>
-                  )}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
-
-      {/* --- FOOTER (USER & LOGOUT) --- */}
-      <div className="px-2 py-4">
+    <>
+      {}
+      {!isCollapsed && (
         <div
-          className={`flex items-center ${
-            isCollapsed ? "justify-center px-0" : "px-4 gap-3"
+          className="fixed inset-0 bg-black/50 z-40 md:hidden transition-opacity"
+          onClick={() => setIsCollapsed(true)}
+        />
+      )}
+
+      {/* LAYER 2: SIDEBAR */}
+      <div
+        className={`
+          h-screen bg-white border-r border-gray-200 flex flex-col transition-all duration-300
+          
+          /* --- LOGIC QUAN TRỌNG Ở ĐÂY --- */
+          /* Mobile: Luôn Fixed đè lên content, Z-index cao hơn backdrop */
+          fixed left-0 top-0 z-50 
+          
+          /* Desktop (md): Trở về Relative để đẩy content sang phải */
+          md:relative md:z-auto
+
+          ${isCollapsed ? "w-14" : "w-80"}
+        `}
+      >
+        {/* --- HEADER --- */}
+        <div
+          className={`flex items-center p-4 ${
+            isCollapsed ? "justify-center" : "justify-between"
           }`}
         >
-          {/* Avatar giả lập */}
-          <div className="h-12 w-12 rounded-full  shrink-0">
-            <img
-              src="https://avatar.iran.liara.run/public"
-              alt="User Avatar"
-              className="w-full h-full rounded-full object-cover"
-            />
-          </div>
-
-          {/* Thông tin User: Ẩn khi thu nhỏ */}
           {!isCollapsed && (
-            <div className="flex-1 min-w-0">
-              <p className="font-bold text-xl text-primary-text truncate">
-                {user?.username || "Doctor Name"}
-              </p>
-            </div>
+            <h2 className="font-bold text-2xl text-primary-text">RPM</h2>
           )}
+          <button
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="text-primary-text"
+          >
+            {isCollapsed ? (
+              <TbLayoutSidebarRightCollapseFilled size={32} />
+            ) : (
+              <TbLayoutSidebarLeftCollapseFilled size={32} />
+            )}
+          </button>
         </div>
-        {/* Nút Logout */}
-        <button
-          onClick={handleLogout}
-          className="flex w-full items-center justify-center py-2 rounded-md text-xl 
-          text-gray-500 hover:bg-rose-400 hover:text-gray-800 transition duration-400 mt-3"
-        >
-          <FiLogOut className="mr-1" />
-          {!isCollapsed && <span>Đăng xuất</span>}
-        </button>
+
+        {/* --- NAVIGATION --- */}
+        <nav className="flex-1 mt-4 px-2 overflow-y-auto">
+          <ul className="space-y-2">
+            {itemsToDisplay.map((item) => {
+              const isActive = location.pathname === item.path;
+              return (
+                <li key={item.path}>
+                  <Link
+                    to={item.path}
+                    onClick={() => {
+                      if (window.innerWidth < 768) setIsCollapsed(true);
+                    }}
+                    className={`
+                      flex items-center py-2 rounded-lg transition-colors
+                      ${isCollapsed ? "justify-center px-0" : "px-4 gap-3"}
+                      ${
+                        isActive
+                          ? "bg-btn-clicked text-white"
+                          : "text-gray-600 hover:bg-gray-100"
+                      }
+                    `}
+                    title={isCollapsed ? item.label : ""}
+                  >
+                    {item.icon && (
+                      <div className="text-2xl shrink-0">{item.icon}</div>
+                    )}
+                    {!isCollapsed && (
+                      <span className="text-xl font-semibold whitespace-nowrap overflow-hidden">
+                        {item.label}
+                      </span>
+                    )}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+
+        {/* --- FOOTER --- */}
+        <div className="px-2 py-4">
+          <div
+            className={`flex items-center ${
+              isCollapsed ? "justify-center px-0" : "px-4 gap-3"
+            }`}
+            onClick={() => navigate("/doctor-profile")}
+            style={{ cursor: "pointer" }}
+          >
+            <div className="h-12 w-12 rounded-full shrink-0">
+              <img
+                src="https://avatar.iran.liara.run/public"
+                alt="User Avatar"
+                className="w-full h-full rounded-full object-cover"
+              />
+            </div>
+            {!isCollapsed && (
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-xl text-primary-text truncate">
+                  {user?.username || "Doctor Name"}
+                </p>
+              </div>
+            )}
+          </div>
+          <button
+            onClick={handleLogout}
+            className="flex w-full items-center justify-center py-2 rounded-md text-xl 
+            text-gray-500 hover:bg-rose-400 hover:text-gray-800 transition duration-400 mt-3"
+          >
+            <FiLogOut className="mr-1" />
+            {!isCollapsed && <span>Đăng xuất</span>}
+          </button>
+          <div className="mt-16 md:mt-0 "> </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 

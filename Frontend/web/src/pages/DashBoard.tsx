@@ -125,10 +125,13 @@ const DashBoard = () => {
 // Recent Alerts Component
 const RecentAlerts: React.FC = () => {
   const navigate = useNavigate();
-  
+
   // Get only recent 5 alerts, sorted by date
   const recentAlerts = mockAlerts
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    )
     .slice(0, 5);
 
   const formatDate = (dateString: string) => {
@@ -137,10 +140,13 @@ const RecentAlerts: React.FC = () => {
     const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMs / 3600000);
-    
+
     if (diffMins < 60) return `${diffMins} phút trước`;
     if (diffHours < 24) return `${diffHours} giờ trước`;
-    return date.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" });
+    return date.toLocaleDateString("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+    });
   };
 
   return (
@@ -157,7 +163,9 @@ const RecentAlerts: React.FC = () => {
 
       <div className="space-y-3">
         {recentAlerts.length === 0 ? (
-          <p className="text-gray-500 text-center py-8">Không có cảnh báo gần đây</p>
+          <p className="text-gray-500 text-center py-8">
+            Không có cảnh báo gần đây
+          </p>
         ) : (
           recentAlerts.map((alert) => (
             <div
@@ -166,9 +174,11 @@ const RecentAlerts: React.FC = () => {
               onClick={() => navigate("/threshold-alerts")}
             >
               {/* Icon */}
-              <div className={`flex-shrink-0 mt-1 ${
-                alert.severity === "high" ? "text-red-500" : "text-yellow-500"
-              }`}>
+              <div
+                className={`shrink-0 mt-1 ${
+                  alert.severity === "high" ? "text-red-500" : "text-yellow-500"
+                }`}
+              >
                 {alert.severity === "high" ? (
                   <FaExclamationTriangle size={20} />
                 ) : (
@@ -182,7 +192,7 @@ const RecentAlerts: React.FC = () => {
                   <p className="font-medium text-gray-800 truncate">
                     {alert.patientName}
                   </p>
-                  <span className="text-xs text-gray-500 flex-shrink-0">
+                  <span className="text-xs text-gray-500 shrink-0">
                     {formatDate(alert.createdAt)}
                   </span>
                 </div>
@@ -197,11 +207,12 @@ const RecentAlerts: React.FC = () => {
                         {v.type === "glucose" && "Đường huyết"}
                         {v.type === "temperature" && "Nhiệt độ"}
                         {v.type === "spo2" && "SpO2"}
-                      </span>: {v.observed}
+                      </span>
+                      : {v.observed}
                     </span>
                   ))}
                 </p>
-                
+
                 {/* Status Badge */}
                 {alert.status === "ack" && (
                   <span className="inline-block mt-1 text-xs text-green-600 font-medium">

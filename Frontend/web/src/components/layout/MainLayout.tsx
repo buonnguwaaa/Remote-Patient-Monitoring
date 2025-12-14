@@ -5,7 +5,9 @@ const MainLayout = () => {
   return (
     <div className="flex h-screen overflow-hidden">
       <SideBar />
-      <div className="w-full h-full overflow-y-auto">
+
+      {/* Content Area */}
+      <div className="w-full h-full overflow-y-auto pl-14 md:pl-0 transition-all duration-300">
         <Outlet />
       </div>
     </div>

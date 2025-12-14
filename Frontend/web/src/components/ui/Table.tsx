@@ -91,7 +91,7 @@ const Table = <T,>({
         count={10}
         variant="outlined"
         shape="rounded"
-        className="mt-4 flex justify-end pr-12"
+        className="my-8 flex justify-end pr-12"
         color="primary"
         renderItem={(item) => (
           <PaginationItem

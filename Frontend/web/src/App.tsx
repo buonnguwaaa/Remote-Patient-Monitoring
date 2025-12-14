@@ -10,6 +10,8 @@ import ThresholdAlert from "./pages/ThresholdAlert.tsx";
 import ThresholdSettingsPage from "./pages/ThresholdSettingsPage.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import PatientDetailPage from "./pages/PatientDetailPage.tsx";
+import ChatPage from "./pages/ChatPage.tsx";
+import DocterProfile from "./pages/DocterProfile.tsx";
 
 import MainLayout from "./components/layout/MainLayout.tsx";
 import { AuthProvider, useAuth } from "./context/AuthContext";
@@ -41,8 +43,13 @@ function App() {
             <Route path="/" element={<DashBoard />} />
             <Route path="/patient" element={<PatientPage />} />
             <Route path="/patient/:id" element={<PatientDetailPage />} />
+            <Route path="/patient/chat/:id" element={<ChatPage />} />
             <Route path="/threshold-alerts" element={<ThresholdAlert />} />
-            <Route path="/threshold-settings" element={<ThresholdSettingsPage />} />
+            <Route path="/doctor-profile" element={<DocterProfile />} />
+            <Route
+              path="/threshold-settings"
+              element={<ThresholdSettingsPage />}
+            />
             {/* Route cho trang không tìm thấy */}
             <Route path="*" element={<NotFound />} />
           </Route>
