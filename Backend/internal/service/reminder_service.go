@@ -37,17 +37,14 @@ func (s *reminderService) CreateReminder(ctx context.Context, input *usecase.Cre
 		return nil, errors.New("invalid patient ID")
 	}
 
-	patient, err := s.userRepo.FindByID(ctx, patientID)
-	if err != nil {
-		return nil, err
-	}
-	if patient == nil {
-		return nil, errors.New("patient not found")
+	existedPatient, err := s.userRepo.ExistsByIDAndRole(ctx, patientID, domain.RolePatient)
+	if err != nil || !existedPatient {
+		return nil, errors.New("user not found or not patient")
 	}
 
 	createdByID, err := primitive.ObjectIDFromHex(input.CreatedBy)
 	if err != nil {
-		return nil, errors.New("invalid user ID")
+		return nil, err
 	}
 
 	reminder := &domain.Reminder{
@@ -126,7 +123,7 @@ func (s *reminderService) GetReminders(ctx context.Context, input *usecase.GetRe
 func (s *reminderService) UpdateReminderByID(ctx context.Context, input *usecase.UpdateReminderInput) (*dto.ReminderResponse, error) {
 	reminderID, err := util.MustHexToObjectID(input.ID)
 	if err != nil {
-		return nil, errors.New("invalid reminder ID")
+		return nil, err
 	}
 
 	// Check if reminder exists
