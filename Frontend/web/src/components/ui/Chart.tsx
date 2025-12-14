@@ -1,9 +1,20 @@
 import React, { useState } from "react";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
 
 // --- Types ---
 interface ChartDataPoint {
-  label: string;
-  value: number;
+  period: string; // "Tháng 3", "Tuần 1", etc.
+  normalPatients: number;
+  warningPatients: number;
 }
 
 interface StatItem {
@@ -16,7 +27,7 @@ interface StatItem {
 // --- Components ---
 
 /**
- * 1. Stats Header Component - Improved with better accessibility and styling
+ * 1. Stats Header Component
  */
 interface StatsHeaderProps {
   stats: StatItem[];
@@ -37,7 +48,7 @@ const StatsHeader: React.FC<StatsHeaderProps> = ({
           <button
             key={stat.id}
             onClick={() => onTabChange(stat.id)}
-            className="group flex flex-col items-start f rounded-lg px-2 py-1 min-w-max"
+            className="group flex flex-col items-start rounded-lg px-2 py-1 min-w-max"
             role="tab"
             aria-selected={isActive}
             aria-controls={`tabpanel-${stat.id}`}
@@ -75,91 +86,49 @@ const StatsHeader: React.FC<StatsHeaderProps> = ({
 };
 
 /**
- * 2. Enhanced Custom Bar Chart Component
+ * Custom Tooltip Component for Recharts
  */
-interface CustomBarChartProps {
-  data: ChartDataPoint[];
-  maxValue?: number;
-}
+const CustomTooltip: React.FC<any> = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-sm">
+        <p className="font-semibold text-gray-800 mb-1">{label}</p>
+        <div className="space-y-1">
+          <p className="text-sm text-emerald-600">
+            <span className="font-medium">Bệnh nhân bình thường:</span>{" "}
+            {payload[0].value.toLocaleString()}
+          </p>
+          <p className="text-sm text-amber-600">
+            <span className="font-medium">Bệnh nhân cảnh báo:</span>{" "}
+            {payload[1].value.toLocaleString()}
+          </p>
+          <p className="text-sm text-gray-600 mt-1 pt-1 border-t border-gray-100">
+            <span className="font-medium">Tổng:</span>{" "}
+            {(payload[0].value + payload[1].value).toLocaleString()}
+          </p>
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
 
-const CustomBarChart: React.FC<CustomBarChartProps> = ({ data, maxValue }) => {
-  // Calculate max value from data if not provided
-  const calculatedMaxValue =
-    maxValue || Math.max(...data.map((item) => item.value)) * 1.1; // 10% headroom
-
-  // Generate Y-axis ticks dynamically
-  const generateTicks = () => {
-    const tickCount = 5;
-    const ticks = [];
-    for (let i = tickCount; i >= 0; i--) {
-      ticks.push(Math.round((i / tickCount) * calculatedMaxValue));
-    }
-    return ticks;
-  };
-
-  const ticks = generateTicks();
-
+/**
+ * Custom Legend Component
+ */
+const renderLegend = (props: any) => {
+  const { payload } = props;
   return (
-    <div className="w-full h-64 flex">
-      {/* Y-Axis Labels */}
-      <div className="flex flex-col justify-between text-gray-500 text-xs pr-3 pb-6 h-full">
-        {ticks.map((tick) => (
-          <span key={tick}>{tick}</span>
-        ))}
-      </div>
-
-      {/* Chart Area */}
-      <div className="relative flex-1 h-full flex items-end pb-6">
-        {/* Background Grid Lines */}
-        <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
-          {ticks.map((tick, index) => (
-            <div
-              key={tick}
-              className="w-full border-t border-gray-200 h-0"
-              style={{
-                bottom: `${(index / (ticks.length - 1)) * 100}%`,
-                position: "absolute",
-              }}
-            />
-          ))}
+    <div className="flex justify-center space-x-6 mt-4">
+      {payload.map((entry: any, index: number) => (
+        <div key={`item-${index}`} className="flex items-center">
+          <div
+            className="w-3 h-3 rounded-full mr-2"
+            style={{ backgroundColor: entry.color }}
+          />
+          <span className="text-sm text-gray-600">{entry.value}</span>
         </div>
-
-        {/* Bars Container */}
-        <div className="relative z-10 flex justify-between items-end w-full h-full px-2">
-          {data.map((point, index) => {
-            // Calculate height percentage with minimum height for visibility
-            const heightPct = Math.max(
-              (point.value / calculatedMaxValue) * 100,
-              2
-            );
-
-            return (
-              <div
-                key={index}
-                className="flex flex-col items-center justify-end flex-1 mx-1 group relative"
-                style={{ height: "100%" }}
-              >
-                {/* The Bar */}
-                <div
-                  className="w-1/2 bg-blue-400 rounded-t-lg rounded-b-sm transition-all duration-500 hover:bg-blue-500 hover:shadow-md relative min-h-2"
-                  style={{ height: `${heightPct}%` }}
-                >
-                  {/* Tooltip */}
-                  <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 whitespace-nowrap">
-                    <div className="font-semibold">{point.value}</div>
-                    <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45"></div>
-                  </div>
-                </div>
-
-                {/* X-Axis Label */}
-                <div className="absolute -bottom-6 text-xs text-gray-600 whitespace-nowrap font-medium">
-                  {point.label}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      ))}
     </div>
   );
 };
@@ -169,20 +138,43 @@ const CustomBarChart: React.FC<CustomBarChartProps> = ({ data, maxValue }) => {
 export const Chart: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>("all");
 
-  // Mock stats data {month, week, day}
+  // Mock stats data
   const stats: StatItem[] = [
     { id: "all", label: "Tất cả", value: 1240, type: "primary" },
     { id: "month", label: "Tháng", value: 320, type: "neutral" },
     { id: "week", label: "Tuần", value: 80, type: "warning" },
   ];
 
-  // Chart Data (T3 - T8 2025)
-  const chartData: ChartDataPoint[] = [
-    { label: "T5/2025", value: 75 },
-    { label: "T6/2025", value: 60 },
-    { label: "T7/2025", value: 88 },
-    { label: "T8/2025", value: 92 },
+  // Chart Data for last 4 months
+  const monthlyChartData: ChartDataPoint[] = [
+    { period: "T3", normalPatients: 220, warningPatients: 45 },
+    { period: "T4", normalPatients: 180, warningPatients: 60 },
+    { period: "T5", normalPatients: 250, warningPatients: 70 },
+    { period: "T6", normalPatients: 280, warningPatients: 40 },
   ];
+
+  // Chart Data for last 4 weeks
+  const weeklyChartData: ChartDataPoint[] = [
+    { period: "Tuần 1", normalPatients: 65, warningPatients: 15 },
+    { period: "Tuần 2", normalPatients: 70, warningPatients: 10 },
+    { period: "Tuần 3", normalPatients: 85, warningPatients: 20 },
+    { period: "Tuần 4", normalPatients: 60, warningPatients: 20 },
+  ];
+
+  // Select data based on active tab
+  const getChartData = () => {
+    switch (activeTab) {
+      case "month":
+        return weeklyChartData; // Show last 4 weeks
+      case "week":
+        return weeklyChartData; // Show last 4 weeks (you can create daily data if needed)
+      case "all":
+      default:
+        return monthlyChartData; // Show last 4 months
+    }
+  };
+
+  const chartData = getChartData();
 
   return (
     <div className="p-6 bg-white rounded-xl shadow-sm md:w-4/10 font-sans">
@@ -194,8 +186,79 @@ export const Chart: React.FC = () => {
       />
 
       {/* Chart Section */}
-      <div className="mt-8">
-        <CustomBarChart data={chartData} />
+      <div className="mt-8 h-80">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart
+            data={chartData}
+            margin={{ top: 10, right: 30, left: 0, bottom: 10 }}
+          >
+            <CartesianGrid
+              strokeDasharray="3 3"
+              vertical={false}
+              stroke="#f3f4f6"
+            />
+            <XAxis
+              dataKey="period"
+              axisLine={false}
+              tickLine={false}
+              tick={{ fill: "#6b7280", fontSize: 12 }}
+              tickMargin={10}
+            />
+            <YAxis
+              axisLine={false}
+              tickLine={false}
+              tick={{ fill: "#6b7280", fontSize: 12 }}
+              tickMargin={10}
+              tickFormatter={(value) => value.toLocaleString()}
+            />
+            <Tooltip content={<CustomTooltip />} />
+            <Legend content={renderLegend} />
+            <Bar
+              dataKey="normalPatients"
+              name="Bệnh nhân bình thường"
+              fill="#10b981" // emerald-500
+              radius={[4, 4, 0, 0]}
+              barSize={40}
+            />
+            <Bar
+              dataKey="warningPatients"
+              name="Bệnh nhân cảnh báo"
+              fill="#f59e0b" // amber-500
+              radius={[4, 4, 0, 0]}
+              barSize={40}
+            />
+          </BarChart>
+        </ResponsiveContainer>
+
+        {/* Summary Section */}
+        <div className="mt-6 pt-4 border-t border-gray-100">
+          <div className="flex justify-between items-center">
+            <div className="text-sm text-gray-500">
+              Hiển thị{" "}
+              {activeTab === "all" ? "4 tháng gần đây" : "4 tuần gần đây"}
+            </div>
+            <div className="flex space-x-4">
+              <div className="flex items-center">
+                <div className="w-3 h-3 rounded-full bg-emerald-500 mr-2"></div>
+                <span className="text-sm text-gray-600">
+                  Tổng bình thường:{" "}
+                  {chartData
+                    .reduce((sum, item) => sum + item.normalPatients, 0)
+                    .toLocaleString()}
+                </span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-3 h-3 rounded-full bg-amber-500 mr-2"></div>
+                <span className="text-sm text-gray-600">
+                  Tổng cảnh báo:{" "}
+                  {chartData
+                    .reduce((sum, item) => sum + item.warningPatients, 0)
+                    .toLocaleString()}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

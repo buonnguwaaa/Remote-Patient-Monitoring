@@ -5,11 +5,11 @@ import { FaPenToSquare } from "react-icons/fa6";
 interface AcctionButtonProps {
   // className, onClick, ...
   className?: string;
-  onClick?: () => void;
+  onClick?: (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
   iconSize?: number;
 }
 
-export const Annouce = (props: AcctionButtonProps) => {
+export const Chat = (props: AcctionButtonProps) => {
   return (
     <div className={props.className} onClick={props.onClick}>
       <TiMessage size={props.iconSize} />

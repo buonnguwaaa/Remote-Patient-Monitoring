@@ -81,3 +81,24 @@ export interface Threshold {
   effectiveFrom: string;
   effectiveTo?: string;
 }
+
+export interface ChatMessage {
+  id: string;
+  senderId: string;
+  message: string;
+  measurementId?: string; // SPO2, Heart Rate, etc.
+  timestamp: Date;
+}
+
+export interface doctor {
+  id: string;
+  name: string;
+  specialization: string;
+  licenseNumber: string;
+  workplace: string;
+  yearsOfExperience: number;
+  status?: string;
+  profileImageUrl: string;
+  gender: string;
+  dateOfBirth: string;
+}

@@ -5,7 +5,7 @@ import { DatePicker, ConfigProvider } from "antd";
 
 import Table, { type Column } from "../../components/ui/Table";
 
-import { Annouce, Edit } from "./ActionButton";
+import { Chat, Edit } from "./ActionButton";
 
 interface PatientItem {
   id: number;
@@ -83,7 +83,7 @@ const PatientList = () => {
       accessor: "updatedAt",
     },
     {
-      header: "Trạng thái",
+      header: "Tình trạng",
       // Sử dụng render để custom giao diện (Badge)
       render: (user) => (
         <div
@@ -102,10 +102,13 @@ const PatientList = () => {
       // Cột này không có accessor, chỉ có nút bấm
       render: (user) => (
         <div className="flex gap-3">
-          <Annouce
+          <Chat
             className=" cursor-pointer p-1 hover:bg-gray-200 rounded-md"
             iconSize={22}
-            onClick={() => console.log("Announce clicked for", user.name)}
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/patient/chat/${user.id}`);
+            }}
           />
           {/* <View
             className=" cursor-pointer p-1 hover:bg-gray-200 rounded-md"
