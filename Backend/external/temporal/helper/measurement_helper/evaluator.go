@@ -1,11 +1,11 @@
-package activity
+package measurement_helper
 
 import (
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
 )
 
 // This function checks the measurement against the threshold and returns an alert if any rule is violated.
-func evaluateMeasurementAgainstThreshold(m *domain.Measurement, t *domain.Threshold) []domain.ThresholdViolation {
+func EvaluateMeasurementAgainstThreshold(m *domain.Measurement, t *domain.Threshold) []domain.ThresholdViolation {
 	violations := []domain.ThresholdViolation{}
 
 	// Temperature
@@ -161,7 +161,7 @@ func calculateSeverity(observed, threshold float64) domain.Severity {
 	return domain.SeverityHigh
 }
 
-func aggregateSeverity(vs []domain.ThresholdViolation) domain.Severity {
+func AggregateSeverity(vs []domain.ThresholdViolation) domain.Severity {
 	for _, v := range vs {
 		if v.Severity == domain.SeverityHigh {
 			return domain.SeverityHigh

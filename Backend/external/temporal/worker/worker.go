@@ -31,10 +31,14 @@ func Start() error {
 	}()
 
 	container := container.NewTemporalWorkerContainer()
-	acts := activity.NewProcessingAlertActivity(container.MeasurementRepo, container.ThresholdRepo, container.AlertRepo)
-
-	w.RegisterActivity(acts.EvaluateAndSendAlertActivity)
+	alertActs := activity.NewProcessingAlertActivity(container.MeasurementRepo, container.ThresholdRepo, container.AlertRepo)
+	reminderActs := activity.NewReminderActivity(container.ReminderRepo)
+	
+	w.RegisterActivity(alertActs.EvaluateAndSendAlertActivity)
+	w.RegisterActivity(reminderActs.GetReminder)
+	w.RegisterActivity(reminderActs.SendReminder)
 	w.RegisterWorkflow(workflow.AlertWorkflow)
+	w.RegisterWorkflow(workflow.ReminderWorkflow)
 
 	log.Println("Temporal worker started...")
 	return w.Run(worker.InterruptCh())
