@@ -13,13 +13,37 @@ import PatientDetailPage from "./pages/PatientDetailPage.tsx";
 import ChatPage from "./pages/ChatPage.tsx";
 import DocterProfile from "./pages/DocterProfile.tsx";
 
-import MainLayout from "./components/layout/MainLayout.tsx";
-import { AuthProvider, useAuth } from "./context/AuthContext";
+// Admin pages
+import AdminDashboard from "./pages/admin/AdminDashboard.tsx";
+import DoctorManagement from "./pages/admin/DoctorManagement.tsx";
+import PatientManagementAdmin from "./pages/admin/PatientManagementAdmin.tsx";
+import NurseManagement from "./pages/admin/NurseManagement.tsx";
+import SystemSettings from "./pages/admin/SystemSettings.tsx";
+import ActivityHistory from "./pages/admin/ActivityHistory.tsx";
 
-// Protected Route Component
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated } = useAuth();
-  return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
+import MainLayout from "./components/layout/MainLayout.tsx";
+import { AuthProvider, useAuth, type UserRole } from "./context/AuthContext";
+
+// Protected Route Component with role checking
+const ProtectedRoute = ({ 
+  children, 
+  requiredRole 
+}: { 
+  children: React.ReactNode;
+  requiredRole?: UserRole;
+}) => {
+  const { isAuthenticated, user } = useAuth();
+  
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  if (requiredRole && user?.role !== requiredRole) {
+    // Redirect to appropriate dashboard based on role
+    return <Navigate to={user?.role === "admin" ? "/admin" : "/"} replace />;
+  }
+  
+  return <>{children}</>;
 };
 
 function App() {
@@ -31,11 +55,10 @@ function App() {
           {/* --- NHÓM 1: Trang KHÔNG có Sidebar (Login) --- */}
           <Route path="/login" element={<LoginPage />} />
 
-          {/* --- NHÓM 2: Trang CÓ Sidebar (Dùng Layout) - Protected --- */}
-          {/* Route này đóng vai trò là Wrapper, không có path riêng */}
+          {/* --- NHÓM 2: Doctor Routes - Protected for Doctor role --- */}
           <Route
             element={
-              <ProtectedRoute>
+              <ProtectedRoute requiredRole="doctor">
                 <MainLayout />
               </ProtectedRoute>
             }
@@ -50,9 +73,26 @@ function App() {
               path="/threshold-settings"
               element={<ThresholdSettingsPage />}
             />
-            {/* Route cho trang không tìm thấy */}
-            <Route path="*" element={<NotFound />} />
           </Route>
+
+          {/* --- NHÓM 3: Admin Routes - Protected for Admin role --- */}
+          <Route
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <MainLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/doctors" element={<DoctorManagement />} />
+            <Route path="/admin/patients" element={<PatientManagementAdmin />} />
+            <Route path="/admin/nurses" element={<NurseManagement />} />
+            <Route path="/admin/system-settings" element={<SystemSettings />} />
+            <Route path="/admin/activity-history" element={<ActivityHistory />} />
+          </Route>
+
+          {/* Route cho trang không tìm thấy */}
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

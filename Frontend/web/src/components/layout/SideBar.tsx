@@ -5,7 +5,7 @@ import {
 } from "react-icons/tb";
 import { FiLogOut } from "react-icons/fi";
 import { type NavigationItem } from "../../types/index.ts";
-import { navData } from "../../data/NavData.ts";
+import { navData, adminNavData } from "../../data/NavData.ts";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 
@@ -13,11 +13,15 @@ interface SideBarProps {
   navigationItems?: NavigationItem[];
 }
 
-const SideBar = ({ navigationItems = navData }: SideBarProps) => {
+const SideBar = ({ navigationItems }: SideBarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
-  const itemsToDisplay = navigationItems || navData;
+  const { user, logout, getUserRole } = useAuth();
+  
+  // Determine which navigation items to display based on role
+  const userRole = getUserRole();
+  const defaultNavItems = userRole === "admin" ? adminNavData : navData;
+  const itemsToDisplay = navigationItems || defaultNavItems;
 
   const [isCollapsed, setIsCollapsed] = useState(false);
 

@@ -1,13 +1,14 @@
 import { type NavigationItem } from "./../types/index.ts";
 
 import { LuLayoutDashboard } from "react-icons/lu";
-import { FaRegUser } from "react-icons/fa";
+import { FaRegUser, FaUserMd, FaUserNurse } from "react-icons/fa";
 import { RiErrorWarningLine } from "react-icons/ri";
-import { CiViewList } from "react-icons/ci";
 import { IoSettingsOutline } from "react-icons/io5";
+import { MdAdminPanelSettings } from "react-icons/md";
 
 import React from "react";
 
+// Navigation for Doctor role
 export const navData: NavigationItem[] = [
   {
     label: "Bảng điều khiển",
@@ -29,6 +30,33 @@ export const navData: NavigationItem[] = [
     path: "/threshold-settings",
     icon: React.createElement(IoSettingsOutline),
   },
+];
 
-  // Thêm các mục điều hướng khác tại đây
+// Navigation for Admin role
+export const adminNavData: NavigationItem[] = [
+  {
+    label: "Bảng điều khiển",
+    path: "/admin",
+    icon: React.createElement(LuLayoutDashboard),
+  },
+  {
+    label: "Quản lý bác sĩ",
+    path: "/admin/doctors",
+    icon: React.createElement(FaUserMd),
+  },
+  {
+    label: "Quản lý bệnh nhân",
+    path: "/admin/patients",
+    icon: React.createElement(FaRegUser),
+  },
+  {
+    label: "Quản lý y tá",
+    path: "/admin/nurses",
+    icon: React.createElement(FaUserNurse),
+  },
+  {
+    label: "Cài đặt hệ thống",
+    path: "/admin/system-settings",
+    icon: React.createElement(MdAdminPanelSettings),
+  },
 ];

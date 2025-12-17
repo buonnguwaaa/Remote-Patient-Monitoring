@@ -16,7 +16,13 @@ const LoginForm: React.FC = () => {
 
     const success = login(username, password);
     if (success) {
-      navigate("/");
+      // Get user role from localStorage after login
+      const token = localStorage.getItem("authToken");
+      if (token && token.includes("admin")) {
+        navigate("/admin");
+      } else {
+        navigate("/");
+      }
     } else {
       setError("Tên đăng nhập hoặc mật khẩu không đúng!");
     }
@@ -47,9 +53,11 @@ const LoginForm: React.FC = () => {
 
         {/* Hint */}
         <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md text-sm text-blue-700">
-          <p className="font-medium">Thông tin đăng nhập demo:</p>
-          <p>Username: <code className="font-mono bg-white px-1">admin</code></p>
-          <p>Mật khẩu: <code className="font-mono bg-white px-1">123456</code></p>
+          <p className="font-medium mb-2">Thông tin đăng nhập demo:</p>
+          <div className="space-y-1">
+            <p><strong>Admin:</strong> Username: <code className="font-mono bg-white px-1">admin</code> / Mật khẩu: <code className="font-mono bg-white px-1">123456</code></p>
+            <p><strong>Bác sĩ:</strong> Username: <code className="font-mono bg-white px-1">doctor</code> / Mật khẩu: <code className="font-mono bg-white px-1">123456</code></p>
+          </div>
         </div>
 
         {/* Trường Username */}
@@ -68,7 +76,7 @@ const LoginForm: React.FC = () => {
               type="text"
               id="username"
               className="block w-full rounded-md border border-gray-300 bg-white p-3 pl-10 text-gray-900 placeholder-gray-400 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              placeholder="admin"
+              placeholder="Username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
