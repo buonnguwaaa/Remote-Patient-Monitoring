@@ -41,3 +41,8 @@ type UpdateReminderInput struct {
 	StartDate time.Time
 	EndDate   time.Time
 }
+
+type UpdateReminderStatusInput struct {
+	ID     string
+	Status domain.ReminderStatus
+}

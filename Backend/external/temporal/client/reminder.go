@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/workflow"
 	"go.temporal.io/sdk/client"
 )
@@ -25,4 +26,25 @@ func StartReminderWorkflow(input workflow.ReminderWorkflowInput) error {
 		input,
 	)
 	return err
+}
+
+func SignalReminderWorkflow(
+	ctx context.Context,
+	reminderID string,
+) error {
+	c, err := New()
+	if err != nil {
+		return err
+	}
+	defer c.Close()
+
+	workflowID := "reminder-" + reminderID
+
+	return c.SignalWorkflow(
+		ctx,
+		workflowID,
+		"",
+		workflow.ReminderStatusSignal,
+		nil,
+	)
 }

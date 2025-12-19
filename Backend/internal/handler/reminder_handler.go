@@ -150,3 +150,42 @@ func (h *ReminderHandler) UpdateReminderByID(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"data": reminder, "message": "Reminder updated successfully"})
 }
+
+// UpdateReminderStatus updates only the status of a reminder
+// @Summary Update reminder status
+// @Description Update only the status of a reminder (active, paused, expired, canceled)
+// @Tags reminders
+// @Accept json
+// @Produce json
+// @Param id path string true "Reminder ID"
+// @Param update body dto.UpdateReminderStatusRequest true "Status update"
+// @Success 200 {object} map[string]interface{} "Reminder status updated successfully"
+// @Failure 400 {object} map[string]string "Bad request"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 403 {object} map[string]string "Forbidden"
+// @Router /reminders/{id}/status [patch]
+func (h *ReminderHandler) UpdateReminderStatus(c *gin.Context) {
+	reminderID := c.Param("id")
+
+	var req dto.UpdateReminderStatusRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	input := &usecase.UpdateReminderStatusInput{
+		ID:     reminderID,
+		Status: req.Status,
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	reminder, err := h.reminderService.UpdateReminderStatus(ctx, input)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": reminder, "message": "Reminder status updated successfully"})
+}

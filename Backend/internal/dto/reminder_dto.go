@@ -29,6 +29,10 @@ type UpdateReminderRequest struct {
 	EndDate    time.Time             `json:"endDate" binding:"required"`
 }
 
+type UpdateReminderStatusRequest struct {
+	Status domain.ReminderStatus `json:"status" binding:"required"`
+}
+
 type ReminderResponse struct {
 	ID         string                `json:"id"`
 	PatientID  string                `json:"patientId"`

@@ -14,11 +14,12 @@ type ReminderActivity struct {
 	reminderRepo repository.ReminderRepository
 }
 
+// Need to optimize queries logic for below activities later
 func NewReminderActivity(repo repository.ReminderRepository) *ReminderActivity {
 	return &ReminderActivity{reminderRepo: repo}
 }
 
-func (a *ReminderActivity) GetReminder(
+func (a *ReminderActivity) GetReminderActivity(
 	ctx context.Context,
 	reminderID string,
 ) (*domain.Reminder, error) {
@@ -31,7 +32,8 @@ func (a *ReminderActivity) GetReminder(
 	return a.reminderRepo.FindByID(ctx, id)
 }
 
-func (a *ReminderActivity) SendReminder(
+// TODO: Implement actual sending logic (e.g., email, SMS, push notification)
+func (a *ReminderActivity) SendReminderActivity(
 	ctx context.Context,
 	reminderID string,
 ) error {
@@ -53,6 +55,24 @@ func (a *ReminderActivity) SendReminder(
 		reminder.Message,
 		time.Now().UTC(),
 	)
+
+	return nil
+}
+
+func (a *ReminderActivity) UpdateReminderStatusActivity(
+	ctx context.Context,
+	reminderID string,
+	status domain.ReminderStatus,
+) error {
+	id, err := util.MustHexToObjectID(reminderID)
+	if err != nil {
+		return err
+	}
+
+	_, err = a.reminderRepo.UpdateStatusByID(ctx, id, status)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

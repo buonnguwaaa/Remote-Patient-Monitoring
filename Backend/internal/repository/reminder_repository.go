@@ -20,6 +20,7 @@ type ReminderRepository interface {
 	FindWithFilter(ctx context.Context, filter ReminderFilter) ([]domain.Reminder, error)
 	FindByID(ctx context.Context, id primitive.ObjectID) (*domain.Reminder, error)
 	Update(ctx context.Context, r *domain.Reminder) (*domain.Reminder, error)
+	UpdateStatusByID(ctx context.Context, id primitive.ObjectID, status domain.ReminderStatus) (*domain.Reminder, error)
 }
 
 type ReminderFilter struct {
@@ -40,10 +41,12 @@ func (r *reminderRepository) Create(ctx context.Context, reminder *domain.Remind
 	reminder.CreatedAt = now
 	reminder.UpdatedAt = now
 
-	_, err := r.col.InsertOne(ctx, reminder)
+	result, err := r.col.InsertOne(ctx, reminder)
 	if err != nil {
 		return nil, err
 	}
+
+	reminder.ID = result.InsertedID.(primitive.ObjectID)
 	return reminder, nil
 }
 
@@ -128,6 +131,28 @@ func (r *reminderRepository) Update(ctx context.Context, reminder *domain.Remind
 
 	var updatedReminder domain.Reminder
 	err := r.col.FindOneAndUpdate(ctx, bson.M{"_id": reminder.ID}, bson.M{"$set": update}, opts).Decode(&updatedReminder)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &updatedReminder, nil
+}
+
+func (r *reminderRepository) UpdateStatusByID(ctx context.Context, id primitive.ObjectID, status domain.ReminderStatus) (*domain.Reminder, error) {
+	now := time.Now().UTC()
+
+	update := bson.M{
+		"status":    status,
+		"updatedAt": now,
+	}
+
+	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
+
+	var updatedReminder domain.Reminder
+	err := r.col.FindOneAndUpdate(ctx, bson.M{"_id": id}, bson.M{"$set": update}, opts).Decode(&updatedReminder)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return nil, nil

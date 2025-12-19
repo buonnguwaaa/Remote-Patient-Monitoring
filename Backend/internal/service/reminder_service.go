@@ -3,7 +3,10 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/client"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/workflow"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository"
@@ -21,6 +24,7 @@ type ReminderService interface {
 	CreateReminder(ctx context.Context, input *usecase.CreateReminderInput) (*dto.ReminderResponse, error)
 	GetReminders(ctx context.Context, input *usecase.GetRemindersInput) ([]dto.ReminderResponse, error)
 	UpdateReminderByID(ctx context.Context, input *usecase.UpdateReminderInput) (*dto.ReminderResponse, error)
+	UpdateReminderStatus(ctx context.Context, input *usecase.UpdateReminderStatusInput) (*dto.ReminderResponse, error)
 }
 
 func NewReminderService(userRepo repository.UserRepository, reminderRepo repository.ReminderRepository) ReminderService {
@@ -62,6 +66,15 @@ func (s *reminderService) CreateReminder(ctx context.Context, input *usecase.Cre
 	}
 
 	createdReminder, err := s.reminderRepo.Create(ctx, reminder)
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Println("=======================", createdReminder.ID.Hex())
+
+	err = client.StartReminderWorkflow(workflow.ReminderWorkflowInput{
+		ReminderID: createdReminder.ID.Hex(),
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -146,6 +159,64 @@ func (s *reminderService) UpdateReminderByID(ctx context.Context, input *usecase
 	existingReminder.EndDate = input.EndDate
 
 	updatedReminder, err := s.reminderRepo.Update(ctx, existingReminder)
+	if err != nil {
+		return nil, err
+	}
+
+	if input.Status != "" {
+		err := client.SignalReminderWorkflow(
+			ctx,
+			existingReminder.ID.Hex(),
+		)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return &dto.ReminderResponse{
+		ID:         updatedReminder.ID.Hex(),
+		PatientID:  updatedReminder.PatientID.Hex(),
+		Kind:       updatedReminder.Kind,
+		Message:    updatedReminder.Message,
+		Hour:       updatedReminder.Hour,
+		Minute:     updatedReminder.Minute,
+		DaysOfWeek: updatedReminder.DaysOfWeek,
+		Timezone:   updatedReminder.Timezone,
+		Status:     updatedReminder.Status,
+		StartDate:  updatedReminder.StartDate,
+		EndDate:    updatedReminder.EndDate,
+		CreatedBy:  updatedReminder.CreatedBy.Hex(),
+		CreatedAt:  updatedReminder.CreatedAt,
+		UpdatedAt:  updatedReminder.UpdatedAt,
+	}, nil
+}
+
+func (s *reminderService) UpdateReminderStatus(ctx context.Context, input *usecase.UpdateReminderStatusInput) (*dto.ReminderResponse, error) {
+	reminderID, err := util.MustHexToObjectID(input.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check if reminder exists
+	existingReminder, err := s.reminderRepo.FindByID(ctx, reminderID)
+	if err != nil {
+		return nil, err
+	}
+	if existingReminder == nil {
+		return nil, errors.New("reminder not found")
+	}
+
+	// Update status only
+	updatedReminder, err := s.reminderRepo.UpdateStatusByID(ctx, reminderID, input.Status)
+	if err != nil {
+		return nil, err
+	}
+
+	// Signal the workflow if status changed
+	err = client.SignalReminderWorkflow(
+		ctx,
+		reminderID.Hex(),
+	)
 	if err != nil {
 		return nil, err
 	}

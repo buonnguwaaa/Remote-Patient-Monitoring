@@ -19,8 +19,6 @@ func Start() error {
 	}
 	defer c.Close()
 
-	w := worker.New(c, client.AlertTaskQueue, worker.Options{})
-
 	if err := config.ConnectMongo(); err != nil {
 		log.Fatalf("[GIN-fatal] Could not connect to MongoDB: %v", err)
 	}
@@ -33,13 +31,29 @@ func Start() error {
 	container := container.NewTemporalWorkerContainer()
 	alertActs := activity.NewProcessingAlertActivity(container.MeasurementRepo, container.ThresholdRepo, container.AlertRepo)
 	reminderActs := activity.NewReminderActivity(container.ReminderRepo)
-	
-	w.RegisterActivity(alertActs.EvaluateAndSendAlertActivity)
-	w.RegisterActivity(reminderActs.GetReminder)
-	w.RegisterActivity(reminderActs.SendReminder)
-	w.RegisterWorkflow(workflow.AlertWorkflow)
-	w.RegisterWorkflow(workflow.ReminderWorkflow)
 
-	log.Println("Temporal worker started...")
-	return w.Run(worker.InterruptCh())
+	alertWorker := worker.New(c, client.AlertTaskQueue, worker.Options{})
+	reminderWorker := worker.New(c, client.ReminderTaskQueue, worker.Options{})
+
+	alertWorker.RegisterActivity(alertActs.EvaluateAndSendAlertActivity)
+	reminderWorker.RegisterActivity(reminderActs.GetReminderActivity)
+	reminderWorker.RegisterActivity(reminderActs.SendReminderActivity)
+	reminderWorker.RegisterActivity(reminderActs.UpdateReminderStatusActivity)
+
+	alertWorker.RegisterWorkflow(workflow.AlertWorkflow)
+	reminderWorker.RegisterWorkflow(workflow.ReminderWorkflow)
+
+	log.Println("Temporal workers started...")
+
+	errCh := make(chan error, 2)
+
+	go func() {
+		errCh <- alertWorker.Run(worker.InterruptCh())
+	}()
+
+	go func() {
+		errCh <- reminderWorker.Run(worker.InterruptCh())
+	}()
+
+	return <-errCh
 }
