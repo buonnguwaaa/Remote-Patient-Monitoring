@@ -29,15 +29,13 @@ export interface StatItem {
 export interface Patient {
   id: string;
   name: string;
-  img: string;
-
-  status: "normal" | "warning";
-
-  // Patient stat
-  systolic: number;
-  diastolic: number;
-  heartRate: number;
-  bloodSugar: number;
+  profileImageUrl?: string;
+  email: string;
+  phone: string;
+  gender: string;
+  dateOfBirth: string;
+  address?: string;
+  status: "active" | "inactive";
 }
 
 // Alert & Threshold types
@@ -101,4 +99,41 @@ export interface doctor {
   profileImageUrl: string;
   gender: string;
   dateOfBirth: string;
+  email?: string;
+  phone?: string;
+}
+
+export interface Nurse {
+  id: string;
+  name: string;
+  licenseNumber: string;
+  department: string;
+  yearsOfExperience: number;
+  status?: "active" | "inactive";
+  email?: string;
+  phone?: string;
+  profileImageUrl?: string;
+  gender?: string;
+  dateOfBirth?: string;
+}
+
+export interface SystemSettings {
+  id: string;
+  systemStatus: "online" | "offline" | "maintenance";
+  maintenanceMessage?: string;
+  allowNewRegistrations: boolean;
+  maxPatientsPerDoctor: number;
+  alertThresholdGlobal: {
+    temperatureMin: number;
+    temperatureMax: number;
+    systolicMin: number;
+    systolicMax: number;
+    diastolicMin: number;
+    diastolicMax: number;
+    pulseMin: number;
+    pulseMax: number;
+    glucoseMin: number;
+    glucoseMax: number;
+    spo2Min: number;
+  };
 }

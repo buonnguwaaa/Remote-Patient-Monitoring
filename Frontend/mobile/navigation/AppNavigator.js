@@ -227,7 +227,7 @@ function RootNavigator() {
     // Đã đăng nhập -> chọn bottom tab theo role
     // user.role lấy đúng từ backend (Users.role: "patient", "nurse")
     // const role = user.role;
-    const role = "nurse"; // tạm thời fix cứng để test giao diện
+    const role = "patient"; // tạm thời fix cứng để test giao diện
 
     return (
         <Stack.Navigator screenOptions={{ headerShown: false }}>
