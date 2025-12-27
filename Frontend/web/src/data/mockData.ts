@@ -5,6 +5,7 @@ export const mockWarnList = [
     diastolic: 95,
     heartRate: 85,
     bloodSugar: 180,
+    respiratoryRate: 20,
     message: "Huyết áp cao",
   },
   {
@@ -13,6 +14,7 @@ export const mockWarnList = [
     diastolic: 55,
     heartRate: 60,
     bloodSugar: 90,
+    respiratoryRate: 14,
     message: "Huyết áp thấp",
   },
   {
@@ -21,6 +23,7 @@ export const mockWarnList = [
     diastolic: 80,
     heartRate: 110,
     bloodSugar: 150,
+    respiratoryRate: 25,
     message: "Nhịp tim cao",
   },
   {
@@ -29,6 +32,7 @@ export const mockWarnList = [
     diastolic: 85,
     heartRate: 75,
     bloodSugar: 250,
+    respiratoryRate: 18,
     message: "Đường huyết cao",
   },
 ];
@@ -61,6 +65,13 @@ export const mockAlerts: Alert[] = [
     patientName: "Nguyễn Văn A",
     patientAvatar: "https://i.pravatar.cc/150?img=12",
     violations: [
+      {
+        type: "respiratoryRate",
+        rule: "respiratory_rate_max",
+        observed: 25,
+        threshold: 20,
+        severity: "high",
+      },
       {
         type: "systolic",
         rule: "systolic_max",

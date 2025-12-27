@@ -10,6 +10,7 @@ export interface WarnItem {
   diastolic?: number;
   heartRate?: number;
   bloodSugar?: number;
+  respiratoryRate?: number;
 
   message?: string;
 }
@@ -40,7 +41,7 @@ export interface Patient {
 
 // Alert & Threshold types
 export interface ThresholdViolation {
-  type: "temperature" | "systolic" | "diastolic" | "pulse" | "glucose" | "spo2";
+  type: "temperature" | "systolic" | "diastolic" | "pulse" | "glucose" | "spo2" | "respiratoryRate";
   rule: string;
   observed: number;
   threshold: number;
@@ -136,4 +137,26 @@ export interface SystemSettings {
     glucoseMax: number;
     spo2Min: number;
   };
+}
+
+export interface Department {
+  id: string;
+  name: string;
+  description: string;
+  memberCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Assignment {
+  id: string;
+  patientId: string;
+  patientName?: string;
+  doctorId?: string;
+  doctorName?: string;
+  nurseId?: string;
+  nurseName?: string;
+  assignedBy: string;
+  createdAt: string;
+  updatedAt: string;
 }

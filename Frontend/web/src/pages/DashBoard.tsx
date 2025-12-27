@@ -175,9 +175,8 @@ const RecentAlerts: React.FC = () => {
             >
               {/* Icon */}
               <div
-                className={`shrink-0 mt-1 ${
-                  alert.severity === "high" ? "text-red-500" : "text-yellow-500"
-                }`}
+                className={`shrink-0 mt-1 ${alert.severity === "high" ? "text-red-500" : "text-yellow-500"
+                  }`}
               >
                 {alert.severity === "high" ? (
                   <FaExclamationTriangle size={20} />
@@ -207,6 +206,7 @@ const RecentAlerts: React.FC = () => {
                         {v.type === "glucose" && "Đường huyết"}
                         {v.type === "temperature" && "Nhiệt độ"}
                         {v.type === "spo2" && "SpO2"}
+                        {v.type === "respiratoryRate" && "Nhịp thở"}
                       </span>
                       : {v.observed}
                     </span>

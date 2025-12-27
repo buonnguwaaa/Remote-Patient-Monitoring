@@ -27,21 +27,21 @@ const ThresholdAlert = () => {
 
   const handleConfirmAcknowledge = () => {
     if (!currentAlertId) return;
-    
+
     setAlerts((prev) =>
       prev.map((alert) =>
         alert.id === currentAlertId
           ? {
-              ...alert,
-              status: "ack" as const,
-              acknowledgedBy: "Dr. Current",
-              acknowledgedAt: new Date().toISOString(),
-              doctorNote: doctorNote.trim() || undefined,
-            }
+            ...alert,
+            status: "ack" as const,
+            acknowledgedBy: "Dr. Current",
+            acknowledgedAt: new Date().toISOString(),
+            doctorNote: doctorNote.trim() || undefined,
+          }
           : alert
       )
     );
-    
+
     setShowModal(false);
     setCurrentAlertId(null);
     setDoctorNote("");
@@ -56,6 +56,7 @@ const ThresholdAlert = () => {
       pulse: "Nhịp tim",
       glucose: "Đường huyết",
       spo2: "SpO2",
+      respiratoryRate: "Nhịp thở",
     };
     return labels[type] || type;
   };

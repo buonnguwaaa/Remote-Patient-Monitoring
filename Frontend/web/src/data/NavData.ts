@@ -1,7 +1,7 @@
 import { type NavigationItem } from "./../types/index.ts";
 
 import { LuLayoutDashboard } from "react-icons/lu";
-import { FaRegUser, FaUserMd, FaUserNurse } from "react-icons/fa";
+import { FaRegUser, FaUserMd, FaUserNurse, FaBuilding, FaExchangeAlt } from "react-icons/fa";
 import { RiErrorWarningLine } from "react-icons/ri";
 import { IoSettingsOutline } from "react-icons/io5";
 import { MdAdminPanelSettings } from "react-icons/md";
@@ -53,6 +53,16 @@ export const adminNavData: NavigationItem[] = [
     label: "Quản lý y tá",
     path: "/admin/nurses",
     icon: React.createElement(FaUserNurse),
+  },
+  {
+    label: "Quản lý khoa phòng",
+    path: "/admin/departments",
+    icon: React.createElement(FaBuilding),
+  },
+  {
+    label: "Phân công",
+    path: "/admin/assignments",
+    icon: React.createElement(FaExchangeAlt),
   },
   {
     label: "Cài đặt hệ thống",

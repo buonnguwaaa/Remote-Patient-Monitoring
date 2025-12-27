@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { FaRegUser, FaEdit, FaTrash, FaPlus, FaSearch, FaEye } from "react-icons/fa";
+import { FaRegUser, FaEdit, FaTrash, FaPlus, FaSearch } from "react-icons/fa";
 import type { Patient } from "../../types";
 
 const PatientManagementAdmin: React.FC = () => {
@@ -7,7 +7,7 @@ const PatientManagementAdmin: React.FC = () => {
     {
       id: "1",
       name: "Nguyễn Văn An",
-      profileImageUrl: "https://via.placeholder.com/150",
+      profileImageUrl: "/default-avatar.svg",
       email: "nguyenvanan@patient.com",
       phone: "0909123456",
       gender: "Nam",
@@ -18,7 +18,7 @@ const PatientManagementAdmin: React.FC = () => {
     {
       id: "2",
       name: "Trần Thị Bình",
-      profileImageUrl: "https://via.placeholder.com/150",
+      profileImageUrl: "/default-avatar.svg",
       email: "tranthibinh@patient.com",
       phone: "0908765432",
       gender: "Nữ",
@@ -51,6 +51,30 @@ const PatientManagementAdmin: React.FC = () => {
   const filteredPatients = patients.filter((patient) =>
     patient.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+
+    const newPatient: Patient = {
+      id: editingPatient?.id || Math.random().toString(),
+      name: formData.get("name") as string,
+      email: formData.get("email") as string,
+      phone: formData.get("phone") as string,
+      gender: formData.get("gender") as "Nam" | "Nữ",
+      dateOfBirth: formData.get("dateOfBirth") as string,
+      address: formData.get("address") as string,
+      status: formData.get("status") as "active" | "inactive",
+      profileImageUrl: editingPatient?.profileImageUrl || "",
+    };
+
+    if (editingPatient?.id) {
+      setPatients(patients.map((p) => (p.id === newPatient.id ? newPatient : p)));
+    } else {
+      setPatients([...patients, newPatient]);
+    }
+    setShowModal(false);
+  };
 
   return (
     <div className="p-6">
@@ -112,18 +136,21 @@ const PatientManagementAdmin: React.FC = () => {
           <tbody className="bg-white divide-y divide-gray-200">
             {filteredPatients.map((patient, index) => (
               <tr key={patient.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4" style={{minWidth: '250px'}}>
+                <td className="px-6 py-4" style={{ minWidth: '250px' }}>
                   <div className="flex items-center">
                     {patient.profileImageUrl ? (
                       <img
                         className="h-10 w-10 rounded-full object-cover"
                         src={patient.profileImageUrl}
                         alt={patient.name}
+                        onError={(e) => (e.currentTarget.src = "/default-avatar.svg")}
                       />
                     ) : (
-                      <div className="h-10 w-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-semibold">
-                        {index + 1}
-                      </div>
+                      <img
+                        className="h-10 w-10 rounded-full object-cover"
+                        src="/default-avatar.svg"
+                        alt={patient.name}
+                      />
                     )}
                     <div className="ml-4">
                       <div className="text-sm font-medium text-gray-900">
@@ -140,11 +167,10 @@ const PatientManagementAdmin: React.FC = () => {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span
-                    className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      patient.status === "active"
-                        ? "bg-green-100 text-green-800"
-                        : "bg-red-100 text-red-800"
-                    }`}
+                    className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${patient.status === "active"
+                      ? "bg-green-100 text-green-800"
+                      : "bg-red-100 text-red-800"
+                      }`}
                   >
                     {patient.status === "active" ? "Hoạt động" : "Không hoạt động"}
                   </span>
@@ -180,23 +206,15 @@ const PatientManagementAdmin: React.FC = () => {
             <h2 className="text-2xl font-bold mb-4">
               {editingPatient ? "Chỉnh sửa bệnh nhân" : "Thêm bệnh nhân mới"}
             </h2>
-            <form className="space-y-4">
+            <form className="space-y-4" onSubmit={handleSubmit}>
               {/* Upload ảnh */}
               <div className="flex items-center space-x-4 pb-4 border-b">
                 <div className="flex-shrink-0">
-                  {editingPatient?.profileImageUrl ? (
-                    <img
-                      src={editingPatient.profileImageUrl}
-                      alt="Preview"
-                      className="h-20 w-20 rounded-full object-cover border-2 border-gray-300"
-                    />
-                  ) : (
-                    <div className="h-20 w-20 rounded-full bg-blue-100 flex items-center justify-center text-blue-500 border-2 border-gray-300">
-                      <svg className="h-10 w-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                    </div>
-                  )}
+                  <img
+                    src={editingPatient?.profileImageUrl || "/default-avatar.svg"}
+                    alt="Preview"
+                    className="h-20 w-20 rounded-full object-cover border-2 border-gray-300"
+                  />
                 </div>
                 <div className="flex-1">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -205,6 +223,30 @@ const PatientManagementAdmin: React.FC = () => {
                   <input
                     type="file"
                     accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          setEditingPatient((prev) =>
+                            prev
+                              ? { ...prev, profileImageUrl: reader.result as string }
+                              : {
+                                id: Math.random().toString(),
+                                name: "",
+                                email: "",
+                                phone: "",
+                                profileImageUrl: reader.result as string,
+                                gender: "Nam",
+                                dateOfBirth: "",
+                                address: "",
+                                status: "active"
+                              }
+                          );
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
                     className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                   />
                 </div>
@@ -216,7 +258,9 @@ const PatientManagementAdmin: React.FC = () => {
                     Họ tên
                   </label>
                   <input
+                    name="name"
                     type="text"
+                    required
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     defaultValue={editingPatient?.name}
                   />
@@ -226,7 +270,9 @@ const PatientManagementAdmin: React.FC = () => {
                     Email
                   </label>
                   <input
+                    name="email"
                     type="email"
+                    required
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     defaultValue={editingPatient?.email}
                   />
@@ -236,7 +282,9 @@ const PatientManagementAdmin: React.FC = () => {
                     Số điện thoại
                   </label>
                   <input
+                    name="phone"
                     type="tel"
+                    required
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     defaultValue={editingPatient?.phone}
                   />
@@ -246,6 +294,7 @@ const PatientManagementAdmin: React.FC = () => {
                     Giới tính
                   </label>
                   <select
+                    name="gender"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     defaultValue={editingPatient?.gender}
                   >
@@ -258,7 +307,9 @@ const PatientManagementAdmin: React.FC = () => {
                     Ngày sinh
                   </label>
                   <input
+                    name="dateOfBirth"
                     type="date"
+                    required
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     defaultValue={editingPatient?.dateOfBirth}
                   />
@@ -268,6 +319,7 @@ const PatientManagementAdmin: React.FC = () => {
                     Trạng thái
                   </label>
                   <select
+                    name="status"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     defaultValue={editingPatient?.status}
                   >
@@ -280,7 +332,9 @@ const PatientManagementAdmin: React.FC = () => {
                     Địa chỉ
                   </label>
                   <input
+                    name="address"
                     type="text"
+                    required
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     defaultValue={editingPatient?.address}
                   />
@@ -298,7 +352,7 @@ const PatientManagementAdmin: React.FC = () => {
                   type="submit"
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                 >
-                  {editingPatient ? "Cập nhật" : "Thêm mới"}
+                  {editingPatient?.id ? "Cập nhật" : "Thêm mới"}
                 </button>
               </div>
             </form>

@@ -20,29 +20,35 @@ import PatientManagementAdmin from "./pages/admin/PatientManagementAdmin.tsx";
 import NurseManagement from "./pages/admin/NurseManagement.tsx";
 import SystemSettings from "./pages/admin/SystemSettings.tsx";
 import ActivityHistory from "./pages/admin/ActivityHistory.tsx";
+import DepartmentManagement from "./pages/admin/DepartmentManagement.tsx";
+import AssignmentManagement from "./pages/admin/AssignmentManagement.tsx";
 
 import MainLayout from "./components/layout/MainLayout.tsx";
 import { AuthProvider, useAuth, type UserRole } from "./context/AuthContext";
 
 // Protected Route Component with role checking
-const ProtectedRoute = ({ 
-  children, 
-  requiredRole 
-}: { 
+const ProtectedRoute = ({
+  children,
+  requiredRole
+}: {
   children: React.ReactNode;
   requiredRole?: UserRole;
 }) => {
-  const { isAuthenticated, user } = useAuth();
-  
+  const { isAuthenticated, user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <div className="flex h-screen w-full items-center justify-center">Loading...</div>;
+  }
+
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
-  
+
   if (requiredRole && user?.role !== requiredRole) {
     // Redirect to appropriate dashboard based on role
     return <Navigate to={user?.role === "admin" ? "/admin" : "/"} replace />;
   }
-  
+
   return <>{children}</>;
 };
 
@@ -89,6 +95,8 @@ function App() {
             <Route path="/admin/nurses" element={<NurseManagement />} />
             <Route path="/admin/system-settings" element={<SystemSettings />} />
             <Route path="/admin/activity-history" element={<ActivityHistory />} />
+            <Route path="/admin/departments" element={<DepartmentManagement />} />
+            <Route path="/admin/assignments" element={<AssignmentManagement />} />
           </Route>
 
           {/* Route cho trang không tìm thấy */}
