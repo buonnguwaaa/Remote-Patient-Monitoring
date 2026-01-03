@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/helper/measurement_helper"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/util"
@@ -59,7 +60,7 @@ func (a *ProcessingAlertActivity) EvaluateAndSendAlertActivity(ctx context.Conte
 		return "", fmt.Errorf("no threshold set for patient")
 	}
 
-	violations := evaluateMeasurementAgainstThreshold(measurement, &thresholds[0])
+	violations := measurement_helper.EvaluateMeasurementAgainstThreshold(measurement, &thresholds[0])
 	if len(violations) == 0 {
 		return "no-violation", nil // No alert needed
 	}
@@ -70,7 +71,7 @@ func (a *ProcessingAlertActivity) EvaluateAndSendAlertActivity(ctx context.Conte
 		MeasurementID:  measurement.ID,
 		Violations:     violations,
 		Status:         domain.StatusOpen,
-		Severity:       aggregateSeverity(violations),
+		Severity:       measurement_helper.AggregateSeverity(violations),
 		AcknowledgedBy: nil,
 		AcknowledgedAt: nil,
 		CreatedAt:      now,
