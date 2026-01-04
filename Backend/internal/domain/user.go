@@ -32,7 +32,7 @@ type User struct {
 	Provider              string             `json:"provider,omitempty" bson:"provider,omitempty"`
 	Gender                Gender             `json:"gender,omitempty" bson:"gender,omitempty"`
 	Dob                   time.Time          `json:"dob,omitempty" bson:"dob,omitempty"`
-	DepartmentID          primitive.ObjectID `json:"departmentId,omitempty" bson:"departmentId,omitempty"`
+	DepartmentID          *primitive.ObjectID `json:"departmentId,omitempty" bson:"departmentId,omitempty"`
 	IsActive              bool               `json:"isActive" bson:"isActive"`
 	ResetToken            string             `json:"resetToken,omitempty" bson:"resetToken,omitempty"`
 	ResetTokenExpiry      time.Time          `json:"resetTokenExpiry,omitempty" bson:"resetTokenExpiry,omitempty"`

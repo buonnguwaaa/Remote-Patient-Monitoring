@@ -241,7 +241,7 @@ func (r *userRepository) FindByDepartmentID(ctx context.Context, deptID primitiv
 func (r *userRepository) UpdateDepartmentID(ctx context.Context, userID primitive.ObjectID, deptID primitive.ObjectID) error {
 	_, err := r.col.UpdateOne(ctx, bson.M{"_id": userID}, bson.M{
 		"$set": bson.M{
-			"departmentId": deptID,
+			"departmentId": &deptID,
 			"updatedAt":    time.Now().UTC(),
 		},
 	})

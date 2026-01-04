@@ -1,6 +1,5 @@
-import { FaAngleLeft, FaAngleRight } from "react-icons/fa";
-
-import { Pagination, PaginationItem } from "@mui/material";
+import { useState } from "react";
+import Pagination from "./Pagination";
 
 // 1. Định nghĩa cấu trúc của một Cột
 
@@ -17,6 +16,7 @@ interface TableProps<T> {
   columns: Column<T>[];
   onRowClick?: (item: T) => void; // Sự kiện click vào hàng (tùy chọn)
   className?: string;
+  itemsPerPage?: number; // Number of items per page
 }
 
 // 3. Component chính
@@ -26,11 +26,24 @@ const Table = <T,>({
   columns,
   onRowClick,
   className = "",
+  itemsPerPage = 10,
 }: TableProps<T>) => {
-  // const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Calculate pagination
+  const totalPages = Math.ceil(data.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentData = data.slice(startIndex, endIndex);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
   return (
     <>
-      <div className={`overflow-x-auto sm:rounded-lg ${className}`}>
+      {/* Table container with min-height to prevent pagination jumping */}
+      <div className={`overflow-x-auto sm:rounded-lg min-h-[450px] ${className}`}>
         <table className="w-full text-sm text-left text-gray-500">
           {/* --- HEADER --- */}
           <thead className="text-xs text-gray-700 uppercase bg-gray-50">
@@ -49,14 +62,13 @@ const Table = <T,>({
 
           {/* --- BODY --- */}
           <tbody>
-            {data.length > 0 ? (
-              data.map((item, rowIndex) => (
+            {currentData.length > 0 ? (
+              currentData.map((item, rowIndex) => (
                 <tr
                   key={rowIndex}
                   onClick={() => onRowClick && onRowClick(item)}
-                  className={`bg-white border-t border-black/10 hover:bg-gray-50 transition-colors ${
-                    onRowClick ? "cursor-pointer" : ""
-                  }`}
+                  className={`bg-white border-t border-black/10 hover:bg-gray-50 transition-colors ${onRowClick ? "cursor-pointer" : ""
+                    }`}
                 >
                   {columns.map((col, colIndex) => (
                     <td
@@ -67,8 +79,8 @@ const Table = <T,>({
                       {col.render
                         ? col.render(item)
                         : col.accessor
-                        ? (item[col.accessor] as React.ReactNode)
-                        : null}
+                          ? (item[col.accessor] as React.ReactNode)
+                          : null}
                     </td>
                   ))}
                 </tr>
@@ -87,19 +99,18 @@ const Table = <T,>({
           </tbody>
         </table>
       </div>
-      <Pagination
-        count={10}
-        variant="outlined"
-        shape="rounded"
-        className="my-8 flex justify-end pr-12"
-        color="primary"
-        renderItem={(item) => (
-          <PaginationItem
-            slots={{ previous: FaAngleLeft, next: FaAngleRight }}
-            {...item}
+
+      {/* Pagination - Always at bottom right */}
+      {totalPages > 1 && (
+        <div className="flex justify-end">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+            className="my-8"
           />
-        )}
-      />
+        </div>
+      )}
     </>
   );
 };

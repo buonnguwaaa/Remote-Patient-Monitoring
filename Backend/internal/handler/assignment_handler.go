@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/service"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecase"
 	"github.com/gin-gonic/gin"
@@ -25,11 +26,11 @@ func NewAssignmentHandler(service service.AssignmentService) *AssignmentHandler 
 // @Tags assignments
 // @Accept json
 // @Produce json
-// @Param body body usecase.AssignPatientInput true "Assignment info"
+// @Param body body dto.AssignPatientRequest true "Assignment info"
 // @Success 201 {object} map[string]interface{}
 // @Router /assignments/assign [post]
 func (h *AssignmentHandler) AssignPatient(c *gin.Context) {
-	var req usecase.AssignPatientInput
+	var req dto.AssignPatientRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -44,7 +45,14 @@ func (h *AssignmentHandler) AssignPatient(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
-	res, err := h.service.AssignPatient(ctx, &req, adminID.(string))
+	// Map DTO to usecase input
+	input := &usecase.AssignPatientInput{
+		PatientID: req.PatientID,
+		DoctorID:  req.DoctorID,
+		NurseID:   req.NurseID,
+	}
+
+	res, err := h.service.AssignPatient(ctx, input, adminID.(string))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -56,7 +64,7 @@ func (h *AssignmentHandler) AssignPatient(c *gin.Context) {
 // @Tags assignments
 // @Produce json
 // @Success 200 {object} map[string]interface{}
-// @Router /assignments/my [get]
+// @Router /assignments [get]
 func (h *AssignmentHandler) GetMyAssignments(c *gin.Context) {
 	userID, exists := c.Get("userId")
 	role, existsRole := c.Get("role")
@@ -69,22 +77,15 @@ func (h *AssignmentHandler) GetMyAssignments(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
-	var res []*usecase.AssignmentResponse
-	var err error
-
-	// Check if role is string or domain.Role
 	roleVal := role.(domain.Role)
-
-	if roleVal == domain.RoleDoctor {
-		res, err = h.service.GetAssignmentsByDoctor(ctx, userID.(string))
-	} else if roleVal == domain.RoleNurse {
-		res, err = h.service.GetAssignmentsByNurse(ctx, userID.(string))
-	} else {
-		// Admin might want to see all or irrelevant here for "my"
+	
+	// Only doctor or nurse can see their assignments
+	if roleVal != domain.RoleDoctor && roleVal != domain.RoleNurse {
 		c.JSON(http.StatusForbidden, gin.H{"error": "only doctor or nurse can see assigned patients"})
 		return
 	}
 
+	res, err := h.service.GetAssignmentsByRole(ctx, userID.(string), roleVal)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

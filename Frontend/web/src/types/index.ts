@@ -95,6 +95,7 @@ export interface doctor {
   specialization: string;
   licenseNumber: string;
   workplace: string;
+  department?: string; // Phòng ban
   yearsOfExperience: number;
   status?: string;
   profileImageUrl: string;

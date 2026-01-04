@@ -1,8 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 
-import { DatePicker, ConfigProvider } from "antd";
-
 import Table, { type Column } from "../../components/ui/Table";
 
 import { Chat, Edit } from "./ActionButton";
@@ -87,11 +85,10 @@ const PatientList = () => {
       // Sử dụng render để custom giao diện (Badge)
       render: (user) => (
         <div
-          className={`px-2 py-1 rounded-full w-fit text-xs font-semibold ${
-            user.status === "Bình thường"
-              ? "bg-green-100 text-green-800"
-              : "bg-red-100 text-red-800"
-          }`}
+          className={`px-2 py-1 rounded-full w-fit text-xs font-semibold ${user.status === "Bình thường"
+            ? "bg-green-100 text-green-800"
+            : "bg-red-100 text-red-800"
+            }`}
         >
           <span>{user.status}</span>
         </div>
@@ -143,32 +140,15 @@ const PatientList = () => {
           {/* {Theo ngày} */}
 
           <div className=" w-39">
-            <ConfigProvider
-              theme={{
-                components: {
-                  DatePicker: {
-                    // Chỉnh màu border mặc định
-                    colorBorder: "#99a1af",
-
-                    lineWidth: 2,
-                    // Chỉnh màu border khi hover
-                    colorPrimaryHover: "#ff0000",
-                    // Chỉnh bo góc
-                    borderRadius: 8,
-                    // Chỉnh chiều cao input
-                    controlHeight: 44,
-
-                    colorTextPlaceholder: "#888888",
-                  },
-                },
+            <input
+              type="date"
+              placeholder="Chọn ngày cập nhật"
+              className="w-full border-2 border-gray-400 rounded-lg p-2.5 outline-none bg-white text-gray-700 hover:border-red-500 focus:border-blue-500 transition-colors"
+              onChange={(e) => {
+                const date = e.target.value;
+                console.log(date);
               }}
-            >
-              <DatePicker
-                placeholder="Chọn ngày cập nhật"
-                className="w-full" // Vẫn dùng tailwind cho layout (width, margin)
-                onChange={(date) => console.log(date)}
-              />
-            </ConfigProvider>
+            />
           </div>
 
           {/* { Theo trạng thái normal/warn } */}
@@ -201,7 +181,7 @@ const PatientList = () => {
           />
         </div>
       </div>
-      <Table data={patients} columns={columns} onRowClick={clickedRow} />
+      <Table data={patients} columns={columns} onRowClick={clickedRow} itemsPerPage={8} />
       {/* {selectedPatient && (
         <PatientProfile patient={selectedPatient} />
       )} */}

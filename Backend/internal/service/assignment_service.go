@@ -14,8 +14,7 @@ import (
 
 type AssignmentService interface {
 	AssignPatient(ctx context.Context, input *usecase.AssignPatientInput, assignedBy string) (*usecase.AssignmentResponse, error)
-	GetAssignmentsByDoctor(ctx context.Context, doctorID string) ([]*usecase.AssignmentResponse, error)
-	GetAssignmentsByNurse(ctx context.Context, nurseID string) ([]*usecase.AssignmentResponse, error)
+	GetAssignmentsByRole(ctx context.Context, userID string, role domain.Role) ([]*usecase.AssignmentResponse, error)
 }
 
 type assignmentService struct {
@@ -89,27 +88,27 @@ func (s *assignmentService) AssignPatient(ctx context.Context, input *usecase.As
 	return s.mapToResponse(ctx, created), nil
 }
 
-func (s *assignmentService) GetAssignmentsByDoctor(ctx context.Context, doctorIDStr string) ([]*usecase.AssignmentResponse, error) {
-	doctorID, err := util.MustHexToObjectID(doctorIDStr)
+func (s *assignmentService) GetAssignmentsByRole(ctx context.Context, userIDStr string, role domain.Role) ([]*usecase.AssignmentResponse, error) {
+	userID, err := util.MustHexToObjectID(userIDStr)
 	if err != nil {
 		return nil, err
 	}
-	assignments, err := s.assignmentRepo.FindByDoctorID(ctx, doctorID)
-	if err != nil {
-		return nil, err
-	}
-	return s.mapListToResponse(ctx, assignments), nil
-}
 
-func (s *assignmentService) GetAssignmentsByNurse(ctx context.Context, nurseIDStr string) ([]*usecase.AssignmentResponse, error) {
-	nurseID, err := util.MustHexToObjectID(nurseIDStr)
+	var assignments []*domain.Assignment
+	
+	switch role {
+	case domain.RoleDoctor:
+		assignments, err = s.assignmentRepo.FindByDoctorID(ctx, userID)
+	case domain.RoleNurse:
+		assignments, err = s.assignmentRepo.FindByNurseID(ctx, userID)
+	default:
+		return nil, errors.New("invalid role for getting assignments")
+	}
+
 	if err != nil {
 		return nil, err
 	}
-	assignments, err := s.assignmentRepo.FindByNurseID(ctx, nurseID)
-	if err != nil {
-		return nil, err
-	}
+	
 	return s.mapListToResponse(ctx, assignments), nil
 }
 
