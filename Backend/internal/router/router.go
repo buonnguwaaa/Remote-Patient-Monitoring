@@ -16,6 +16,7 @@ func RegisterRoutes(r *gin.Engine, c *container.MainServerContainer) {
 	RegisterAlertRoutes(r, c)
 	RegisterDepartmentRoutes(r, c)
 	RegisterAssignmentRoutes(r, c)
+	RegisterReminderRoutes(r, c)
 	// Health check endpoint
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{

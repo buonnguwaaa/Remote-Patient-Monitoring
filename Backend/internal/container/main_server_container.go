@@ -20,6 +20,7 @@ type MainServerContainer struct {
 	AlertRepo       repository.AlertRepository
 	DepartmentRepo  repository.DepartmentRepository
 	AssignmentRepo  repository.AssignmentRepository
+	ReminderRepo    repository.ReminderRepository
 
 	// Services
 	AuthService        service.AuthService
@@ -29,6 +30,7 @@ type MainServerContainer struct {
 	AlertService       service.AlertService
 	DepartmentService  service.DepartmentService
 	AssignmentService  service.AssignmentService
+	ReminderService    service.ReminderService
 
 	// Handlers
 	AuthHandler        *handler.AuthHandler
@@ -38,6 +40,7 @@ type MainServerContainer struct {
 	AlertHandler       *handler.AlertHandler
 	DepartmentHandler  *handler.DepartmentHandler
 	AssignmentHandler  *handler.AssignmentHandler
+	ReminderHandler    *handler.ReminderHandler
 
 	// Utils
 	JWTManager *util.JWTManager
@@ -60,6 +63,7 @@ func NewMainServerContainer() *MainServerContainer {
 	c.AlertRepo = repository.NewAlertRepository(db)
 	c.DepartmentRepo = repository.NewDepartmentRepository(db)
 	c.AssignmentRepo = repository.NewAssignmentRepository(db)
+	c.ReminderRepo = repository.NewReminderRepository(db)
 
 	// Initialize services
 	c.AuthService = service.NewAuthService(c.UserRepo, c.TokenRepo, c.JWTManager)
@@ -69,6 +73,7 @@ func NewMainServerContainer() *MainServerContainer {
 	c.AlertService = service.NewAlertService(c.AlertRepo)
 	c.DepartmentService = service.NewDepartmentService(c.DepartmentRepo, c.UserRepo)
 	c.AssignmentService = service.NewAssignmentService(c.AssignmentRepo, c.UserRepo)
+	c.ReminderService = service.NewReminderService(c.UserRepo, c.ReminderRepo)
 
 	// Initialize handlers
 	c.AuthHandler = handler.NewAuthHandler(c.AuthService)
@@ -78,5 +83,6 @@ func NewMainServerContainer() *MainServerContainer {
 	c.AlertHandler = handler.NewAlertHandler(c.AlertService)
 	c.DepartmentHandler = handler.NewDepartmentHandler(c.DepartmentService)
 	c.AssignmentHandler = handler.NewAssignmentHandler(c.AssignmentService)
+	c.ReminderHandler = handler.NewReminderHandler(c.ReminderService)
 	return c
 }

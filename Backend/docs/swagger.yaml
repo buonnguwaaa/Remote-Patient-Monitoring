@@ -19,6 +19,14 @@ definitions:
     - GenderMale
     - GenderFemale
     - GenderOther
+  domain.Kind:
+    enum:
+    - measure
+    - medication
+    type: string
+    x-enum-varnames:
+    - KindMeasure
+    - KindMedication
   domain.MeasurementType:
     enum:
     - bp
@@ -27,6 +35,18 @@ definitions:
     x-enum-varnames:
     - TypeBloodPressure
     - TypeGlucose
+  domain.ReminderStatus:
+    enum:
+    - active
+    - paused
+    - expired
+    - canceled
+    type: string
+    x-enum-varnames:
+    - StatusActive
+    - StatusPaused
+    - StatusExpired
+    - StatusCanceled
   domain.Role:
     enum:
     - user.patient
@@ -87,6 +107,41 @@ definitions:
     required:
     - patientId
     - type
+    type: object
+  dto.CreateReminderRequest:
+    properties:
+      daysOfWeek:
+        items:
+          type: integer
+        type: array
+      endDate:
+        type: string
+      hour:
+        maximum: 23
+        minimum: 0
+        type: integer
+      kind:
+        $ref: '#/definitions/domain.Kind'
+      message:
+        type: string
+      minute:
+        maximum: 59
+        minimum: 0
+        type: integer
+      patientId:
+        type: string
+      startDate:
+        type: string
+      timezone:
+        type: string
+    required:
+    - daysOfWeek
+    - endDate
+    - kind
+    - message
+    - patientId
+    - startDate
+    - timezone
     type: object
   dto.CreateThresholdRequest:
     properties:
@@ -248,6 +303,38 @@ definitions:
         - bp
         - glucose
     type: object
+  dto.UpdateReminderRequest:
+    properties:
+      daysOfWeek:
+        items:
+          type: integer
+        type: array
+      endDate:
+        type: string
+      hour:
+        maximum: 23
+        minimum: 0
+        type: integer
+      message:
+        type: string
+      minute:
+        maximum: 59
+        minimum: 0
+        type: integer
+      startDate:
+        type: string
+      status:
+        $ref: '#/definitions/domain.ReminderStatus'
+      timezone:
+        type: string
+    required:
+    - daysOfWeek
+    - endDate
+    - message
+    - startDate
+    - status
+    - timezone
+    type: object
   dto.UpdateThresholdRequest:
     properties:
       diaMax:
@@ -295,6 +382,91 @@ info:
   title: Remote Patient Monitoring API
   version: "1.0"
 paths:
+  /alerts:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve alerts based on query parameters
+      parameters:
+      - description: Patient ID
+        in: query
+        name: patientId
+        type: string
+      - description: Alert status
+        in: query
+        name: status
+        type: string
+      - description: Alert severity
+        in: query
+        name: severity
+        type: string
+      - description: Is latest alert
+        in: query
+        name: isLatest
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Alerts retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get alerts
+      tags:
+      - alerts
+  /alerts/{id}/acknowledge:
+    patch:
+      consumes:
+      - application/json
+      description: Update the acknowledgement of an alert by its ID
+      parameters:
+      - description: Alert ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Alert acknowledged successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Alert not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Acknowledge an alert
+      tags:
+      - alerts
   /auth/activate:
     post:
       description: Activate user account created from local strategy using token from
@@ -705,6 +877,127 @@ paths:
       summary: Update an existing measurement
       tags:
       - measurements
+  /reminders:
+    get:
+      consumes:
+      - application/json
+      description: Get reminders filtered by patient ID, status, or kind
+      parameters:
+      - description: Patient ID
+        in: query
+        name: patientId
+        type: string
+      - description: Reminder status (active, paused, expired, canceled)
+        in: query
+        name: status
+        type: string
+      - description: Reminder kind (measure, medication)
+        in: query
+        name: kind
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Reminders retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get reminders
+      tags:
+      - reminders
+    post:
+      consumes:
+      - application/json
+      description: Create a reminder for medication or measurement
+      parameters:
+      - description: Reminder details
+        in: body
+        name: reminder
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateReminderRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Reminder created successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a new reminder
+      tags:
+      - reminders
+  /reminders/{id}:
+    patch:
+      consumes:
+      - application/json
+      description: Update reminder status, message, or active state (doctor only)
+      parameters:
+      - description: Reminder ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update fields
+        in: body
+        name: update
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateReminderRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Reminder updated successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update reminder
+      tags:
+      - reminders
   /thresholds:
     get:
       consumes:

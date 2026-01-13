@@ -9,6 +9,7 @@ type TemporalWorkerContainer struct {
 	MeasurementRepo repository.MeasurementRepository
 	ThresholdRepo   repository.ThresholdRepository
 	AlertRepo       repository.AlertRepository
+	ReminderRepo    repository.ReminderRepository
 }
 
 func NewTemporalWorkerContainer() *TemporalWorkerContainer {
@@ -19,6 +20,7 @@ func NewTemporalWorkerContainer() *TemporalWorkerContainer {
 	c.MeasurementRepo = repository.NewMeasurementRepository(db)
 	c.ThresholdRepo = repository.NewThresholdRepository(db)
 	c.AlertRepo = repository.NewAlertRepository(db)
+	c.ReminderRepo = repository.NewReminderRepository(db)
 
 	return c
 }

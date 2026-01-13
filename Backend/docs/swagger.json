@@ -22,6 +22,134 @@
     "host": "localhost:8080",
     "basePath": "/",
     "paths": {
+        "/alerts": {
+            "get": {
+                "description": "Retrieve alerts based on query parameters",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "alerts"
+                ],
+                "summary": "Get alerts",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Patient ID",
+                        "name": "patientId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Alert status",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Alert severity",
+                        "name": "severity",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Is latest alert",
+                        "name": "isLatest",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Alerts retrieved successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/alerts/{id}/acknowledge": {
+            "patch": {
+                "description": "Update the acknowledgement of an alert by its ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "alerts"
+                ],
+                "summary": "Acknowledge an alert",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Alert ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Alert acknowledged successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Alert not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/auth/activate": {
             "post": {
                 "description": "Activate user account created from local strategy using token from email link",
@@ -639,6 +767,188 @@
                 }
             }
         },
+        "/reminders": {
+            "get": {
+                "description": "Get reminders filtered by patient ID, status, or kind",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "reminders"
+                ],
+                "summary": "Get reminders",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Patient ID",
+                        "name": "patientId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Reminder status (active, paused, expired, canceled)",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Reminder kind (measure, medication)",
+                        "name": "kind",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Reminders retrieved successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a reminder for medication or measurement",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "reminders"
+                ],
+                "summary": "Create a new reminder",
+                "parameters": [
+                    {
+                        "description": "Reminder details",
+                        "name": "reminder",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.CreateReminderRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Reminder created successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/reminders/{id}": {
+            "patch": {
+                "description": "Update reminder status, message, or active state (doctor only)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "reminders"
+                ],
+                "summary": "Update reminder",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Reminder ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Update fields",
+                        "name": "update",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateReminderRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Reminder updated successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/thresholds": {
             "get": {
                 "description": "Retrieve thresholds for a patient or doctor",
@@ -951,6 +1261,17 @@
                 "GenderOther"
             ]
         },
+        "domain.Kind": {
+            "type": "string",
+            "enum": [
+                "measure",
+                "medication"
+            ],
+            "x-enum-varnames": [
+                "KindMeasure",
+                "KindMedication"
+            ]
+        },
         "domain.MeasurementType": {
             "type": "string",
             "enum": [
@@ -960,6 +1281,21 @@
             "x-enum-varnames": [
                 "TypeBloodPressure",
                 "TypeGlucose"
+            ]
+        },
+        "domain.ReminderStatus": {
+            "type": "string",
+            "enum": [
+                "active",
+                "paused",
+                "expired",
+                "canceled"
+            ],
+            "x-enum-varnames": [
+                "StatusActive",
+                "StatusPaused",
+                "StatusExpired",
+                "StatusCanceled"
             ]
         },
         "domain.Role": {
@@ -1052,6 +1388,54 @@
                             "$ref": "#/definitions/domain.MeasurementType"
                         }
                     ]
+                }
+            }
+        },
+        "dto.CreateReminderRequest": {
+            "type": "object",
+            "required": [
+                "daysOfWeek",
+                "endDate",
+                "kind",
+                "message",
+                "patientId",
+                "startDate",
+                "timezone"
+            ],
+            "properties": {
+                "daysOfWeek": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "endDate": {
+                    "type": "string"
+                },
+                "hour": {
+                    "type": "integer",
+                    "maximum": 23,
+                    "minimum": 0
+                },
+                "kind": {
+                    "$ref": "#/definitions/domain.Kind"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "minute": {
+                    "type": "integer",
+                    "maximum": 59,
+                    "minimum": 0
+                },
+                "patientId": {
+                    "type": "string"
+                },
+                "startDate": {
+                    "type": "string"
+                },
+                "timezone": {
+                    "type": "string"
                 }
             }
         },
@@ -1291,6 +1675,50 @@
                             "$ref": "#/definitions/domain.MeasurementType"
                         }
                     ]
+                }
+            }
+        },
+        "dto.UpdateReminderRequest": {
+            "type": "object",
+            "required": [
+                "daysOfWeek",
+                "endDate",
+                "message",
+                "startDate",
+                "status",
+                "timezone"
+            ],
+            "properties": {
+                "daysOfWeek": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "endDate": {
+                    "type": "string"
+                },
+                "hour": {
+                    "type": "integer",
+                    "maximum": 23,
+                    "minimum": 0
+                },
+                "message": {
+                    "type": "string"
+                },
+                "minute": {
+                    "type": "integer",
+                    "maximum": 59,
+                    "minimum": 0
+                },
+                "startDate": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/domain.ReminderStatus"
+                },
+                "timezone": {
+                    "type": "string"
                 }
             }
         },
