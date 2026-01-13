@@ -5,7 +5,7 @@ import "./styles/App.css";
 
 // Eager load only critical components
 import MainLayout from "./components/layout/MainLayout.tsx";
-import { AuthProvider, useAuth, type UserRole } from "./context/AuthContext";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 
 // Loading component
 const PageLoader = () => (
@@ -31,25 +31,14 @@ const PatientDetailPage = lazy(() => import("./pages/PatientDetailPage.tsx"));
 const ChatPage = lazy(() => import("./pages/ChatPage.tsx"));
 const DocterProfile = lazy(() => import("./pages/DocterProfile.tsx"));
 
-// Admin pages - only loaded when admin accesses them
-const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard.tsx"));
-const DoctorManagement = lazy(() => import("./pages/admin/DoctorManagement.tsx"));
-const PatientManagementAdmin = lazy(() => import("./pages/admin/PatientManagementAdmin.tsx"));
-const NurseManagement = lazy(() => import("./pages/admin/NurseManagement.tsx"));
-const SystemSettings = lazy(() => import("./pages/admin/SystemSettings.tsx"));
-const ActivityHistory = lazy(() => import("./pages/admin/ActivityHistory.tsx"));
-const DepartmentManagement = lazy(() => import("./pages/admin/DepartmentManagement.tsx"));
-const AssignmentManagement = lazy(() => import("./pages/admin/AssignmentManagement.tsx"));
 
-// Protected Route Component with role checking
+// Protected Route Component - only for doctors
 const ProtectedRoute = ({
   children,
-  requiredRole
 }: {
   children: React.ReactNode;
-  requiredRole?: UserRole;
 }) => {
-  const { isAuthenticated, user, isLoading } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
     return <div className="flex h-screen w-full items-center justify-center">Loading...</div>;
@@ -57,11 +46,6 @@ const ProtectedRoute = ({
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
-  }
-
-  if (requiredRole && user?.role !== requiredRole) {
-    // Redirect to appropriate dashboard based on role
-    return <Navigate to={user?.role === "admin" ? "/admin" : "/"} replace />;
   }
 
   return <>{children}</>;
@@ -77,10 +61,10 @@ function App() {
             {/* --- NHÓM 1: Trang KHÔNG có Sidebar (Login) --- */}
             <Route path="/login" element={<LoginPage />} />
 
-            {/* --- NHÓM 2: Doctor Routes - Protected for Doctor role --- */}
+            {/* --- NHÓM 2: Doctor Routes - Protected --- */}
             <Route
               element={
-                <ProtectedRoute requiredRole="doctor">
+                <ProtectedRoute>
                   <MainLayout />
                 </ProtectedRoute>
               }
@@ -97,24 +81,6 @@ function App() {
               />
             </Route>
 
-            {/* --- NHÓM 3: Admin Routes - Protected for Admin role --- */}
-            <Route
-              element={
-                <ProtectedRoute requiredRole="admin">
-                  <MainLayout />
-                </ProtectedRoute>
-              }
-            >
-              <Route path="/admin" element={<AdminDashboard />} />
-              <Route path="/admin/doctors" element={<DoctorManagement />} />
-              <Route path="/admin/patients" element={<PatientManagementAdmin />} />
-              <Route path="/admin/nurses" element={<NurseManagement />} />
-              <Route path="/admin/system-settings" element={<SystemSettings />} />
-              <Route path="/admin/activity-history" element={<ActivityHistory />} />
-              <Route path="/admin/departments" element={<DepartmentManagement />} />
-              <Route path="/admin/assignments" element={<AssignmentManagement />} />
-            </Route>
-
             {/* Route cho trang không tìm thấy */}
             <Route path="*" element={<NotFound />} />
           </Routes>
@@ -125,3 +91,4 @@ function App() {
 }
 
 export default App;
+

@@ -132,7 +132,7 @@ const PatientList = () => {
 
   return (
     <div className="p-8 bg-gray-100 min-h-screen">
-      <h1 className="text-2xl font-bold mb-4">Danh sách bệnh nhân</h1>
+      <h1 className="text-3xl font-bold mb-4">Danh sách bệnh nhân</h1>
       {/* {Section Filter & Search} */}
 
       <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-4">

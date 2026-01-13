@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect } from "react";
 import type { ReactNode } from "react";
 import api from "../services/api";
 
-export type UserRole = "doctor";
+export type UserRole = "doctor" | "admin" | "patient";
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -20,10 +20,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<{ username: string; role: UserRole } | null>(null);
 
-  // Helper to map backend role to frontend role - only doctor supported
-  const mapRole = (backendRole: string): UserRole | null => {
+  // Helper to map backend role to frontend role
+  const mapRole = (backendRole: string): UserRole => {
+    if (backendRole === "admin") return "admin";
     if (backendRole === "user.doctor") return "doctor";
-    return null; // Only doctors can access this app
+    return "patient";
   };
 
   // Check if already logged in on mount
@@ -34,14 +35,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const userData = response.data.data;
         if (userData) {
           const role = mapRole(userData.role);
-          if (role) {
-            setIsAuthenticated(true);
-            setUser({ username: userData.name, role });
-          } else {
-            // Not a doctor, reject
-            setIsAuthenticated(false);
-            setUser(null);
-          }
+          setIsAuthenticated(true);
+          setUser({ username: userData.name, role });
         }
       } catch (error) {
         // Not authenticated
@@ -63,12 +58,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const userData = response.data.data;
 
       const role = mapRole(userData.role);
-
-      // Only allow doctors
-      if (!role) {
-        await api.post("/auth/logout"); // Logout non-doctor users
-        return null;
-      }
 
       // Clean up old local storage if any, just in case
       localStorage.removeItem("accessToken");

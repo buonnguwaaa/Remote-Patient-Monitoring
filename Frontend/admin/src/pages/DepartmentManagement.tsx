@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { FaBuilding, FaPlus, FaSearch, FaUserMd, FaUserNurse, FaArrowLeft } from "react-icons/fa";
-import api from "../../services/api";
-import type { Department, doctor, Nurse } from "../../types";
+import api from "../services/api";
+import type { Department, doctor, Nurse } from "../types";
 
 interface Member {
     id: string;

@@ -20,10 +20,13 @@ const LoginForm: React.FC = () => {
     setIsLoading(false);
 
     if (role) {
-      // Only doctors can access this app
-      navigate("/");
+      if (role === "admin") {
+        navigate("/");
+      } else {
+        setError("Bạn không có quyền truy cập vào trang quản trị!");
+      }
     } else {
-      setError("Email hoặc mật khẩu không đúng.");
+      setError("Email hoặc mật khẩu không đúng!");
     }
   };
 
@@ -35,7 +38,7 @@ const LoginForm: React.FC = () => {
         RPM
       </div>
       <p className="mb-6 text-lg font-medium text-gray-600 text-center">
-        Xin chào bạn đến với hệ thống RPM
+        Xin chào bạn đến với hệ thống Quản Lý RPM
       </p>
 
       {/* Tiêu đề */}

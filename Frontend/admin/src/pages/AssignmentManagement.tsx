@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { FaUserMd, FaUserNurse, FaExchangeAlt, FaSave } from "react-icons/fa";
-import api from "../../services/api";
-import type { Patient, doctor, Nurse } from "../../types";
+import api from "../services/api";
+import type { Patient, doctor, Nurse } from "../types";
 
 // Helper interfaces for selection
 interface SelectionOption {

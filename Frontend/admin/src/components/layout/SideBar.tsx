@@ -5,7 +5,7 @@ import {
 } from "react-icons/tb";
 import { FiLogOut } from "react-icons/fi";
 import { type NavigationItem } from "../../types/index.ts";
-import { navData } from "../../data/NavData.ts";
+import { navData, adminNavData } from "../../data/NavData.ts";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 
@@ -16,10 +16,12 @@ interface SideBarProps {
 const SideBar = ({ navigationItems }: SideBarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, logout, getUserRole } = useAuth();
 
-  // Use provided navigation items or default doctor navigation
-  const itemsToDisplay = navigationItems || navData;
+  // Determine which navigation items to display based on role
+  const userRole = getUserRole();
+  const defaultNavItems = userRole === "admin" ? adminNavData : navData;
+  const itemsToDisplay = navigationItems || defaultNavItems;
 
   const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -55,7 +57,7 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
       {/* LAYER 2: SIDEBAR */}
       <div
         className={`
-          h-screen bg-white border-r border-gray-200 flex flex-col transition-all duration-300
+          h-screen bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col transition-all duration-300
           
           /* --- LOGIC QUAN TRỌNG Ở ĐÂY --- */
           /* Mobile: Luôn Fixed đè lên content, Z-index cao hơn backdrop */
@@ -73,11 +75,11 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
             }`}
         >
           {!isCollapsed && (
-            <h2 className="font-bold text-2xl text-primary-text">RPM</h2>
+            <h2 className="font-bold text-2xl text-primary-text dark:text-white">RPM</h2>
           )}
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="text-primary-text"
+            className="text-primary-text dark:text-gray-200"
           >
             {isCollapsed ? (
               <TbLayoutSidebarRightCollapseFilled size={32} />
@@ -104,7 +106,7 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
                       ${isCollapsed ? "justify-center px-0" : "px-4 gap-3"}
                       ${isActive
                         ? "bg-btn-clicked text-white"
-                        : "text-gray-600 hover:bg-gray-100"
+                        : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                       }
                     `}
                     title={isCollapsed ? item.label : ""}
@@ -141,7 +143,7 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
             </div>
             {!isCollapsed && (
               <div className="flex-1 min-w-0">
-                <p className="font-bold text-xl text-primary-text truncate">
+                <p className="font-bold text-xl text-primary-text dark:text-white truncate">
                   {user?.username || "Doctor Name"}
                 </p>
               </div>
