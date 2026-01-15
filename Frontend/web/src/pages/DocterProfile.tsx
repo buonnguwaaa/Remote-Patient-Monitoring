@@ -6,20 +6,28 @@ import {
   FileBadge,
   User,
   Clock,
+  Mail,
+  Phone,
+  Briefcase,
+  Stethoscope,
+  MapPin,
 } from "lucide-react";
 
-// Dữ liệu mẫu (Giữ nguyên)
+// Dữ liệu mẫu
 const mockDoctor: doctor = {
   id: "1",
   name: "Dr. John Doe",
   specialization: "Cardiology (Tim mạch)",
   licenseNumber: "MD123456",
   workplace: "Bệnh viện Đa khoa Thành phố",
+  department: "Khoa Tim Mạch",
   yearsOfExperience: 10,
   status: "active",
   profileImageUrl: "https://avatar.iran.liara.run/public/boy",
   gender: "male",
   dateOfBirth: "1980-01-01",
+  email: "dr.johndoe@hospital.com",
+  phone: "+84 123 456 789",
 };
 
 // Component hiển thị từng dòng thông tin
@@ -27,133 +35,206 @@ const InfoItem = ({
   icon: Icon,
   label,
   value,
-  colorClass = "text-gray-700",
+  colorClass = "text-gray-800",
 }: any) => (
-  <div className="flex items-start gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-    <div className={`p-2 rounded-full bg-purple-50 text-purple-600`}>
-      <Icon size={18} />
+  <div className="group flex items-start gap-3 p-4 rounded-xl hover:bg-gray-50 transition-all duration-300 cursor-default border border-gray-100 hover:border-purple-200 hover:shadow-sm">
+    <div className="p-2.5 rounded-lg bg-purple-100 text-purple-600 group-hover:scale-110 transition-transform duration-300">
+      <Icon size={20} strokeWidth={2.5} />
     </div>
-    <div>
-      <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">
+    <div className="flex-1">
+      <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-1">
         {label}
       </p>
-      <p className={`font-medium ${colorClass}`}>{value}</p>
+      <p className={`font-semibold ${colorClass} text-sm`}>{value}</p>
+    </div>
+  </div>
+);
+
+// Stats Card Component - No Gradient
+const StatCard = ({ icon: Icon, label, value, bgColor, textColor }: any) => (
+  <div className={`relative overflow-hidden rounded-2xl ${bgColor} p-6 ${textColor} shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1`}>
+    <div className="relative">
+      <Icon size={28} className="mb-3 opacity-90" strokeWidth={2} />
+      <p className="text-3xl font-bold mb-1">{value}</p>
+      <p className="text-sm font-medium opacity-90">{label}</p>
     </div>
   </div>
 );
 
 const DoctorProfile = () => {
-  // Tính tuổi (Optional)
   const age =
     new Date().getFullYear() - new Date(mockDoctor.dateOfBirth).getFullYear();
-
-  // Xử lý hiển thị trạng thái
   const isActive = mockDoctor.status === "active";
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-start justify-center p-6">
-      {/* Main Card Container */}
-      <div className="mt-12 bg-white w-full  rounded-3xl shadow-xl overflow-hidden flex flex-col md:flex-row border border-gray-100">
-        {/* === LEFT SIDEBAR: Avatar & Primary Info === */}
-        <div className="w-full md:w-1/3 bg-linear-to-br from-indigo-500 via-purple-500 to-pink-500 text-white p-8 flex flex-col items-center justify-center relative">
-          {/* Decorative Background Circles */}
-          <div className="absolute top-0 left-0 w-32 h-32 bg-white/10 rounded-full -translate-x-10 -translate-y-10 blur-xl"></div>
-          <div className="absolute bottom-0 right-0 w-40 h-40 bg-purple-900/10 rounded-full translate-x-10 translate-y-10 blur-xl"></div>
-
-          {/* Avatar Area */}
-          <div className="relative group">
-            <div className="w-36 h-36 rounded-full p-1 bg-white/20 backdrop-blur-sm shadow-lg mb-4">
-              <img
-                src={mockDoctor.profileImageUrl}
-                alt={mockDoctor.name}
-                className="w-full h-full rounded-full object-cover border-4 border-white shadow-sm group-hover:scale-105 transition-transform duration-300"
-              />
-            </div>
-
-            {/* Status Badge */}
-            <div
-              className={`absolute bottom-6 right-2 px-3 py-1 rounded-full text-xs font-bold border-2 border-white shadow-sm flex items-center gap-1
-              ${
-                isActive ? "bg-green-500 text-white" : "bg-gray-400 text-white"
-              }`}
-            >
-              <span
-                className={`w-2 h-2 rounded-full bg-white ${
-                  isActive ? "animate-pulse" : ""
-                }`}
-              ></span>
-              {isActive ? "Đang hoạt động" : "Nghỉ"}
-            </div>
-          </div>
-
-          <h2 className="text-2xl font-bold text-center mb-1 text-shadow">
-            {mockDoctor.name}
-          </h2>
-          <p className="text-purple-100 font-medium bg-white/10 px-4 py-1 rounded-full text-sm backdrop-blur-md">
-            {mockDoctor.specialization}
-          </p>
+    <div className="min-h-screen bg-gray-100 p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Header Section */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">Hồ sơ bác sĩ</h1>
+          <p className="text-gray-600">Thông tin chi tiết và chuyên môn</p>
         </div>
 
-        {/* === RIGHT CONTENT: Detailed Info === */}
-        <div className="w-full md:w-2/3 p-8">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-              <User className="text-purple-500" />
-              Hồ sơ bác sĩ
-            </h3>
-            <span className="text-sm text-gray-400">ID: #{mockDoctor.id}</span>
+        {/* Main Profile Card */}
+        <div className="bg-white rounded-3xl shadow-xl overflow-hidden mb-6">
+          {/* Cover Image - Solid Purple */}
+          <div className="h-48 bg-blue-600 relative">
+            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0iZ3JpZCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cGF0aCBkPSJNIDQwIDAgTCAwIDAgMCA0MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLW9wYWNpdHk9IjAuMSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-20"></div>
           </div>
 
-          <hr className="border-gray-100 mb-6" />
+          <div className="px-8 pb-8">
+            {/* Avatar Section */}
+            <div className="flex flex-col md:flex-row items-start md:items-end gap-6 -mt-20 relative z-10">
+              <div className="relative group">
+                <div className="w-40 h-40 rounded-2xl overflow-hidden border-4 border-white shadow-2xl bg-white">
+                  <img
+                    src={mockDoctor.profileImageUrl}
+                    alt={mockDoctor.name}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                  />
+                </div>
+                {/* Status Badge */}
+                <div
+                  className={`absolute -bottom-2 -right-2 px-4 py-1.5 rounded-full text-xs font-bold shadow-lg flex items-center gap-1.5 ${isActive
+                    ? "bg-green-500 text-white"
+                    : "bg-gray-400 text-white"
+                    }`}
+                >
+                  <span
+                    className={`w-2 h-2 rounded-full bg-white ${isActive ? "animate-pulse" : ""
+                      }`}
+                  ></span>
+                  {isActive ? "Đang hoạt động" : "Nghỉ"}
+                </div>
+              </div>
 
-          {/* Grid Layout cho thông tin chi tiết */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Cột 1: Thông tin hành nghề */}
-            <div className="space-y-2">
-              <InfoItem
-                icon={FileBadge}
-                label="Số chứng chỉ hành nghề"
-                value={mockDoctor.licenseNumber}
-              />
-              <InfoItem
-                icon={Building2}
-                label="Nơi làm việc"
-                value={mockDoctor.workplace}
-              />
-              <InfoItem
+              <div className="flex-1">
+                <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
+                  <h2 className="text-3xl font-bold text-gray-800 mb-2">
+                    {mockDoctor.name}
+                  </h2>
+                  <div className="flex flex-wrap items-center gap-3 mb-4">
+                    <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-100 text-purple-700 font-semibold text-sm">
+                      <Stethoscope size={16} />
+                      {mockDoctor.specialization}
+                    </span>
+                    <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-100 text-blue-700 font-semibold text-sm">
+                      <Briefcase size={16} />
+                      {mockDoctor.department}
+                    </span>
+                  </div>
+                  <p className="text-gray-600 text-sm flex items-center gap-2">
+                    <span className="text-gray-400">ID:</span>
+                    <span className="font-mono font-semibold">#{mockDoctor.id}</span>
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Stats Cards - Solid Colors */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
+              <StatCard
                 icon={Award}
                 label="Kinh nghiệm"
-                value={`${mockDoctor.yearsOfExperience} Năm`}
-                colorClass="text-purple-600 font-bold"
+                value={`${mockDoctor.yearsOfExperience} năm`}
+                bgColor="bg-blue-600"
+                textColor="text-white"
+              />
+              <StatCard
+                icon={Clock}
+                label="Tuổi"
+                value={`${age} tuổi`}
+                bgColor="bg-purple-600"
+                textColor="text-white"
+              />
+              <StatCard
+                icon={FileBadge}
+                label="Chứng chỉ"
+                value={mockDoctor.licenseNumber}
+                bgColor="bg-indigo-600"
+                textColor="text-white"
               />
             </div>
 
-            {/* Cột 2: Thông tin cá nhân */}
-            <div className="space-y-2">
-              <InfoItem
-                icon={User}
-                label="Giới tính"
-                value={mockDoctor.gender === "male" ? "Nam" : "Nữ"}
-                colorClass="capitalize"
-              />
-              <InfoItem
-                icon={Calendar}
-                label="Ngày sinh"
-                value={mockDoctor.dateOfBirth}
-              />
-              <InfoItem icon={Clock} label="Tuổi" value={`${age} tuổi`} />
+            {/* Information Grid */}
+            <div className="mt-8">
+              <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+                <div className="w-1 h-6 bg-purple-600 rounded-full"></div>
+                Thông tin chi tiết
+              </h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {/* Column 1: Personal Info */}
+                <div className="space-y-2">
+                  <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <User size={16} />
+                    Thông tin cá nhân
+                  </h4>
+                  <InfoItem
+                    icon={User}
+                    label="Giới tính"
+                    value={mockDoctor.gender === "male" ? "Nam" : "Nữ"}
+                  />
+                  <InfoItem
+                    icon={Calendar}
+                    label="Ngày sinh"
+                    value={new Date(mockDoctor.dateOfBirth).toLocaleDateString('vi-VN')}
+                  />
+                </div>
+
+                {/* Column 2: Work Info */}
+                <div className="space-y-2">
+                  <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <Building2 size={16} />
+                    Thông tin công việc
+                  </h4>
+                  <InfoItem
+                    icon={MapPin}
+                    label="Nơi làm việc"
+                    value={mockDoctor.workplace}
+                  />
+                  <InfoItem
+                    icon={Briefcase}
+                    label="Phòng ban"
+                    value={mockDoctor.department || "Chưa phân công"}
+                    colorClass="text-purple-600"
+                  />
+                </div>
+
+                {/* Column 3: Contact Info */}
+                <div className="space-y-2">
+                  <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <Phone size={16} />
+                    Thông tin liên hệ
+                  </h4>
+                  <InfoItem
+                    icon={Mail}
+                    label="Email"
+                    value={mockDoctor.email || "Chưa cập nhật"}
+                    colorClass="text-blue-600"
+                  />
+                  <InfoItem
+                    icon={Phone}
+                    label="Số điện thoại"
+                    value={mockDoctor.phone || "Chưa cập nhật"}
+                    colorClass="text-green-600"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons - Solid Colors */}
+            <div className="mt-8 pt-6 border-t border-gray-100 flex flex-col sm:flex-row gap-4">
+              <button className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-3.5 px-6 rounded-xl font-semibold transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-0.5 flex items-center justify-center gap-2">
+                <Mail size={18} />
+                Gửi tin nhắn
+              </button>
+              <button className="flex-1 bg-white border-2 border-gray-200 hover:border-purple-300 hover:bg-purple-50 text-gray-700 py-3.5 px-6 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-2">
+                <Calendar size={18} />
+                Xem lịch làm việc
+              </button>
             </div>
           </div>
-
-          {/* Action Buttons (Ví dụ thêm)
-          <div className="mt-8 pt-6 border-t border-gray-100 flex gap-4">
-            <button className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2.5 rounded-lg font-medium transition-colors shadow-lg shadow-purple-200">
-              Đặt lịch hẹn
-            </button>
-            <button className="flex-1 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 py-2.5 rounded-lg font-medium transition-colors">
-              Xem lịch sử
-            </button>
-          </div> */}
         </div>
       </div>
     </div>

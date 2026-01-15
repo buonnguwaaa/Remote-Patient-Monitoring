@@ -7,35 +7,36 @@ const LoginForm: React.FC = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
+    setIsLoading(true);
 
-    const success = login(username, password);
-    if (success) {
-      // Get user role from localStorage after login
-      const token = localStorage.getItem("authToken");
-      if (token && token.includes("admin")) {
-        navigate("/admin");
-      } else {
-        navigate("/");
-      }
+    const role = await login(username, password);
+    setIsLoading(false);
+
+    if (role) {
+      // Only doctors can access this app
+      navigate("/");
     } else {
-      setError("Tên đăng nhập hoặc mật khẩu không đúng!");
+      setError("Email hoặc mật khẩu không đúng.");
     }
   };
 
   return (
     // Sử dụng nền của trang (bg-gray-100) hoặc nền của card (bg-white/bg-gray-50)
-    // Ở đây tôi dùng bg-gray-50 (xám rất nhạt) giống như ảnh
     <div className="flex w-full max-w-md min-h-100 flex-col items-center bg-gray-50 p-8 rounded">
       {/* Logo */}
-      <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-lg bg-gray-900 text-2xl font-bold text-white">
+      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-lg bg-gray-900 text-2xl font-bold text-white">
         RPM
       </div>
+      <p className="mb-6 text-lg font-medium text-gray-600 text-center">
+        Xin chào bạn đến với hệ thống RPM
+      </p>
 
       {/* Tiêu đề */}
       <h2 className="mb-8 text-2xl font-semibold text-gray-800">
@@ -51,22 +52,13 @@ const LoginForm: React.FC = () => {
           </div>
         )}
 
-        {/* Hint */}
-        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md text-sm text-blue-700">
-          <p className="font-medium mb-2">Thông tin đăng nhập demo:</p>
-          <div className="space-y-1">
-            <p><strong>Admin:</strong> Username: <code className="font-mono bg-white px-1">admin</code> / Mật khẩu: <code className="font-mono bg-white px-1">123456</code></p>
-            <p><strong>Bác sĩ:</strong> Username: <code className="font-mono bg-white px-1">doctor</code> / Mật khẩu: <code className="font-mono bg-white px-1">123456</code></p>
-          </div>
-        </div>
-
         {/* Trường Username */}
         <div className="mb-5">
           <label
             htmlFor="username"
             className="mb-2 block text-sm font-medium text-gray-700"
           >
-            Tên đăng nhập
+            Email
           </label>
           <div className="relative">
             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
@@ -76,7 +68,7 @@ const LoginForm: React.FC = () => {
               type="text"
               id="username"
               className="block w-full rounded-md border border-gray-300 bg-white p-3 pl-10 text-gray-900 placeholder-gray-400 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              placeholder="Username"
+              placeholder="user@example.com"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
@@ -118,9 +110,10 @@ const LoginForm: React.FC = () => {
         {/* Nút Đăng nhập */}
         <button
           type="submit"
-          className="w-full rounded-md bg-gray-900 px-4 py-3 text-base font-semibold text-white shadow-sm transition duration-200 ease-in-out hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2"
+          disabled={isLoading}
+          className="w-full rounded-md bg-gray-900 px-4 py-3 text-base font-semibold text-white shadow-sm transition duration-200 ease-in-out hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed"
         >
-          Đăng nhập
+          {isLoading ? "Đang xử lý..." : "Đăng nhập"}
         </button>
       </form>
     </div>

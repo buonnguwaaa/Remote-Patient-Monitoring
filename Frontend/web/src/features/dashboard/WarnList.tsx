@@ -27,6 +27,9 @@ const WarnList = ({ warns = mockWarnList }: WarnListProps) => {
                 Nhịp tim
               </th>
               <th className="px-4 py-3 text-center font-semibold text-text">
+                Nhịp thở
+              </th>
+              <th className="px-4 py-3 text-center font-semibold text-text">
                 Đường huyết
               </th>
             </tr>
@@ -42,6 +45,7 @@ const WarnList = ({ warns = mockWarnList }: WarnListProps) => {
                 <td className="px-4 py-3 text-center">{warn.systolic}mg/dL</td>
                 <td className="px-4 py-3 text-center">{warn.diastolic}mg/dL</td>
                 <td className="px-4 py-3 text-center">{warn.heartRate}bpm</td>
+                <td className="px-4 py-3 text-center">{warn.respiratoryRate ?? "--"}bpm</td>
                 <td className="px-4 py-3 text-center">
                   {warn.bloodSugar}mg/dL
                 </td>

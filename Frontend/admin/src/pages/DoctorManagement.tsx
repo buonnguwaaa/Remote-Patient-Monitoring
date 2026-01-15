@@ -14,7 +14,7 @@ const DoctorManagement: React.FC = () => {
       status: "active",
       email: "nguyenvana@hospital.com",
       phone: "0901234567",
-      profileImageUrl: "https://via.placeholder.com/150",
+      profileImageUrl: "/default-avatar.svg",
       gender: "Nam",
       dateOfBirth: "1985-05-15",
     },
@@ -28,7 +28,7 @@ const DoctorManagement: React.FC = () => {
       status: "active",
       email: "tranthib@hospital.com",
       phone: "0907654321",
-      profileImageUrl: "https://via.placeholder.com/150",
+      profileImageUrl: "/default-avatar.svg",
       gender: "Nữ",
       dateOfBirth: "1987-08-20",
     },
@@ -58,6 +58,33 @@ const DoctorManagement: React.FC = () => {
     doctor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     doctor.specialization.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+
+    const newDoctor: doctor = {
+      id: editingDoctor?.id || Math.random().toString(),
+      name: formData.get("name") as string,
+      specialization: formData.get("specialization") as string,
+      licenseNumber: formData.get("licenseNumber") as string,
+      workplace: formData.get("workplace") as string,
+      yearsOfExperience: parseInt(formData.get("yearsOfExperience") as string) || 0,
+      status: "active", // Defaulting to active as there is no status field in UI yet, or add it? Unsure, mock data has it.
+      email: formData.get("email") as string,
+      phone: formData.get("phone") as string,
+      gender: formData.get("gender") as "Nam" | "Nữ",
+      dateOfBirth: "1990-01-01", // Default/Placeholder as not in form
+      profileImageUrl: editingDoctor?.profileImageUrl || "",
+    };
+
+    if (editingDoctor?.id) {
+      setDoctors(doctors.map((d) => (d.id === newDoctor.id ? newDoctor : d)));
+    } else {
+      setDoctors([...doctors, newDoctor]);
+    }
+    setShowModal(false);
+  };
 
   return (
     <div className="p-6">
@@ -94,7 +121,7 @@ const DoctorManagement: React.FC = () => {
         </div>
       </div>
 
-      {/* Doctors Table */}
+      {/* Doctors Table - keeping as is, assuming it works */}
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         <table className="w-full">
           <thead className="bg-gray-50 border-b">
@@ -125,17 +152,19 @@ const DoctorManagement: React.FC = () => {
           <tbody className="bg-white divide-y divide-gray-200">
             {filteredDoctors.map((doctor, index) => (
               <tr key={doctor.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4" style={{minWidth: '250px'}}>
+                <td className="px-6 py-4" style={{ minWidth: '250px' }}>
                   <div className="flex items-center">
                     {doctor.profileImageUrl ? (
                       <img
                         className="h-10 w-10 rounded-full object-cover"
                         src={doctor.profileImageUrl}
+                        onError={(e) => (e.currentTarget.src = "/default-avatar.svg")}
                       />
                     ) : (
-                      <div className="h-10 w-10 rounded-full bg-green-500 flex items-center justify-center text-white font-semibold">
-                        {index + 1}
-                      </div>
+                      <img
+                        className="h-10 w-10 rounded-full object-cover"
+                        src="/default-avatar.svg"
+                      />
                     )}
                     <div className="ml-4">
                       <div className="text-sm font-medium text-gray-900">
@@ -190,23 +219,15 @@ const DoctorManagement: React.FC = () => {
             <h2 className="text-2xl font-bold mb-4">
               {editingDoctor ? "Chỉnh sửa bác sĩ" : "Thêm bác sĩ mới"}
             </h2>
-            <form className="space-y-4">
+            <form className="space-y-4" onSubmit={handleSubmit}>
               {/* Upload ảnh */}
               <div className="flex items-center space-x-4 pb-4 border-b">
                 <div className="flex-shrink-0">
-                  {editingDoctor?.profileImageUrl ? (
-                    <img
-                      src={editingDoctor.profileImageUrl}
-                      alt="Preview"
-                      className="h-20 w-20 rounded-full object-cover border-2 border-gray-300"
-                    />
-                  ) : (
-                    <div className="h-20 w-20 rounded-full bg-green-100 flex items-center justify-center text-green-500 border-2 border-gray-300">
-                      <svg className="h-10 w-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                    </div>
-                  )}
+                  <img
+                    src={editingDoctor?.profileImageUrl || "/default-avatar.svg"}
+                    alt="Preview"
+                    className="h-20 w-20 rounded-full object-cover border-2 border-gray-300"
+                  />
                 </div>
                 <div className="flex-1">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -215,6 +236,33 @@ const DoctorManagement: React.FC = () => {
                   <input
                     type="file"
                     accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          setEditingDoctor((prev) =>
+                            prev
+                              ? { ...prev, profileImageUrl: reader.result as string }
+                              : {
+                                id: Math.random().toString(),
+                                name: "",
+                                specialization: "",
+                                licenseNumber: "",
+                                workplace: "",
+                                yearsOfExperience: 0,
+                                status: "active",
+                                email: "",
+                                phone: "",
+                                profileImageUrl: reader.result as string,
+                                gender: "Nam",
+                                dateOfBirth: ""
+                              }
+                          );
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
                     className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                   />
                 </div>
@@ -226,7 +274,9 @@ const DoctorManagement: React.FC = () => {
                     Họ tên
                   </label>
                   <input
+                    name="name"
                     type="text"
+                    required
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     defaultValue={editingDoctor?.name}
                   />
@@ -236,7 +286,9 @@ const DoctorManagement: React.FC = () => {
                     Chuyên khoa
                   </label>
                   <input
+                    name="specialization"
                     type="text"
+                    required
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     defaultValue={editingDoctor?.specialization}
                   />
@@ -246,7 +298,9 @@ const DoctorManagement: React.FC = () => {
                     Số giấy phép
                   </label>
                   <input
+                    name="licenseNumber"
                     type="text"
+                    required
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     defaultValue={editingDoctor?.licenseNumber}
                   />
@@ -256,7 +310,9 @@ const DoctorManagement: React.FC = () => {
                     Nơi làm việc
                   </label>
                   <input
+                    name="workplace"
                     type="text"
+                    required
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     defaultValue={editingDoctor?.workplace}
                   />
@@ -266,7 +322,9 @@ const DoctorManagement: React.FC = () => {
                     Kinh nghiệm (năm)
                   </label>
                   <input
+                    name="yearsOfExperience"
                     type="number"
+                    required
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     defaultValue={editingDoctor?.yearsOfExperience}
                   />
@@ -276,7 +334,9 @@ const DoctorManagement: React.FC = () => {
                     Email
                   </label>
                   <input
+                    name="email"
                     type="email"
+                    required
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     defaultValue={editingDoctor?.email}
                   />
@@ -286,7 +346,9 @@ const DoctorManagement: React.FC = () => {
                     Số điện thoại
                   </label>
                   <input
+                    name="phone"
                     type="tel"
+                    required
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     defaultValue={editingDoctor?.phone}
                   />
@@ -296,6 +358,7 @@ const DoctorManagement: React.FC = () => {
                     Giới tính
                   </label>
                   <select
+                    name="gender"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     defaultValue={editingDoctor?.gender}
                   >
@@ -321,9 +384,9 @@ const DoctorManagement: React.FC = () => {
               </div>
             </form>
           </div>
-        </div>
+        </div >
       )}
-    </div>
+    </div >
   );
 };
 

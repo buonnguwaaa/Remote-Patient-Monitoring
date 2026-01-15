@@ -15,6 +15,8 @@ interface ThresholdFormData {
   glucoseMin: string;
   glucoseMax: string;
   spo2Min: string;
+  respiratoryRateMin: string;
+  respiratoryRateMax: string;
   effectiveFrom: string;
   effectiveTo: string;
 }
@@ -33,6 +35,8 @@ const ThresholdSettingsPage = () => {
     glucoseMin: "70",
     glucoseMax: "180",
     spo2Min: "90",
+    respiratoryRateMin: "12",
+    respiratoryRateMax: "20",
     effectiveFrom: new Date().toISOString().split("T")[0],
     effectiveTo: "",
   });
@@ -48,10 +52,10 @@ const ThresholdSettingsPage = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Simulate saving
     console.log("Saving threshold settings:", formData);
-    
+
     setShowSuccess(true);
     setTimeout(() => setShowSuccess(false), 3000);
   };
@@ -70,6 +74,8 @@ const ThresholdSettingsPage = () => {
       glucoseMin: "70",
       glucoseMax: "180",
       spo2Min: "90",
+      respiratoryRateMin: "12",
+      respiratoryRateMax: "20",
       effectiveFrom: new Date().toISOString().split("T")[0],
       effectiveTo: "",
     });
@@ -288,6 +294,37 @@ const ThresholdSettingsPage = () => {
                   onChange={handleChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="90"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Respiratory Rate */}
+          <div className="col-span-2">
+            <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">
+              🫁 Nhịp thở (lần/phút)
+            </h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Tối thiểu</label>
+                <input
+                  type="number"
+                  name="respiratoryRateMin"
+                  value={formData.respiratoryRateMin}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="12"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Tối đa</label>
+                <input
+                  type="number"
+                  name="respiratoryRateMax"
+                  value={formData.respiratoryRateMax}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="20"
                 />
               </div>
             </div>

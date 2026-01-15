@@ -18,6 +18,8 @@ type MainServerContainer struct {
 	MeasurementRepo repository.MeasurementRepository
 	ThresholdRepo   repository.ThresholdRepository
 	AlertRepo       repository.AlertRepository
+	DepartmentRepo  repository.DepartmentRepository
+	AssignmentRepo  repository.AssignmentRepository
 	ReminderRepo    repository.ReminderRepository
 
 	// Services
@@ -26,6 +28,8 @@ type MainServerContainer struct {
 	MeasurementService service.MeasurementService
 	ThresholdService   service.ThresholdService
 	AlertService       service.AlertService
+	DepartmentService  service.DepartmentService
+	AssignmentService  service.AssignmentService
 	ReminderService    service.ReminderService
 
 	// Handlers
@@ -34,6 +38,8 @@ type MainServerContainer struct {
 	MeasurementHandler *handler.MeasurementHandler
 	ThresholdHandler   *handler.ThresholdHandler
 	AlertHandler       *handler.AlertHandler
+	DepartmentHandler  *handler.DepartmentHandler
+	AssignmentHandler  *handler.AssignmentHandler
 	ReminderHandler    *handler.ReminderHandler
 
 	// Utils
@@ -55,6 +61,8 @@ func NewMainServerContainer() *MainServerContainer {
 	c.MeasurementRepo = repository.NewMeasurementRepository(db)
 	c.ThresholdRepo = repository.NewThresholdRepository(db)
 	c.AlertRepo = repository.NewAlertRepository(db)
+	c.DepartmentRepo = repository.NewDepartmentRepository(db)
+	c.AssignmentRepo = repository.NewAssignmentRepository(db)
 	c.ReminderRepo = repository.NewReminderRepository(db)
 
 	// Initialize services
@@ -63,6 +71,8 @@ func NewMainServerContainer() *MainServerContainer {
 	c.MeasurementService = service.NewMeasurementService(c.UserRepo, c.MeasurementRepo)
 	c.ThresholdService = service.NewThresholdService(c.UserRepo, c.ThresholdRepo)
 	c.AlertService = service.NewAlertService(c.AlertRepo)
+	c.DepartmentService = service.NewDepartmentService(c.DepartmentRepo, c.UserRepo)
+	c.AssignmentService = service.NewAssignmentService(c.AssignmentRepo, c.UserRepo)
 	c.ReminderService = service.NewReminderService(c.UserRepo, c.ReminderRepo)
 
 	// Initialize handlers
@@ -71,6 +81,8 @@ func NewMainServerContainer() *MainServerContainer {
 	c.MeasurementHandler = handler.NewMeasurementHandler(c.MeasurementService)
 	c.ThresholdHandler = handler.NewThresholdHandler(c.ThresholdService)
 	c.AlertHandler = handler.NewAlertHandler(c.AlertService)
+	c.DepartmentHandler = handler.NewDepartmentHandler(c.DepartmentService)
+	c.AssignmentHandler = handler.NewAssignmentHandler(c.AssignmentService)
 	c.ReminderHandler = handler.NewReminderHandler(c.ReminderService)
 	return c
 }

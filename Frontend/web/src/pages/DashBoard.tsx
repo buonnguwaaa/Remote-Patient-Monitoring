@@ -103,7 +103,7 @@ const DashBoard = () => {
     <div className="p-6 bg-gray-50 min-h-screen">
       {/* Header Section */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Tổng quan</h1>
+        <h1 className="text-3xl font-bold text-gray-800">Tổng quan</h1>
         <p className="text-gray-500">Thống kê dữ liệu bệnh nhân hôm nay</p>
       </div>
 
@@ -175,9 +175,8 @@ const RecentAlerts: React.FC = () => {
             >
               {/* Icon */}
               <div
-                className={`shrink-0 mt-1 ${
-                  alert.severity === "high" ? "text-red-500" : "text-yellow-500"
-                }`}
+                className={`shrink-0 mt-1 ${alert.severity === "high" ? "text-red-500" : "text-yellow-500"
+                  }`}
               >
                 {alert.severity === "high" ? (
                   <FaExclamationTriangle size={20} />
@@ -207,6 +206,7 @@ const RecentAlerts: React.FC = () => {
                         {v.type === "glucose" && "Đường huyết"}
                         {v.type === "temperature" && "Nhiệt độ"}
                         {v.type === "spo2" && "SpO2"}
+                        {v.type === "respiratoryRate" && "Nhịp thở"}
                       </span>
                       : {v.observed}
                     </span>

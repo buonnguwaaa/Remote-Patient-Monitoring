@@ -29,6 +29,9 @@ type UserRepository interface {
 	FindByActivationHash(ctx context.Context, hash string) (*domain.User, error)
 	ActivateUserByEmail(ctx context.Context, email string) error
 	ExistsByIDAndRole(ctx context.Context, id primitive.ObjectID, role domain.Role) (bool, error)
+	CountByDepartmentID(ctx context.Context, deptID primitive.ObjectID) (int64, error)
+	FindByDepartmentID(ctx context.Context, deptID primitive.ObjectID) ([]domain.User, error)
+	UpdateDepartmentID(ctx context.Context, userID primitive.ObjectID, deptID primitive.ObjectID) error
 }
 
 type UserFilter struct {
@@ -215,4 +218,32 @@ func (r *userRepository) ExistsByIDAndRole(ctx context.Context, id primitive.Obj
 		return false, err
 	}
 	return true, nil
+}
+
+func (r *userRepository) CountByDepartmentID(ctx context.Context, deptID primitive.ObjectID) (int64, error) {
+	return r.col.CountDocuments(ctx, bson.M{"departmentId": deptID})
+}
+
+func (r *userRepository) FindByDepartmentID(ctx context.Context, deptID primitive.ObjectID) ([]domain.User, error) {
+	cursor, err := r.col.Find(ctx, bson.M{"departmentId": deptID})
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var users []domain.User
+	if err := cursor.All(ctx, &users); err != nil {
+		return nil, err
+	}
+	return users, nil
+}
+
+func (r *userRepository) UpdateDepartmentID(ctx context.Context, userID primitive.ObjectID, deptID primitive.ObjectID) error {
+	_, err := r.col.UpdateOne(ctx, bson.M{"_id": userID}, bson.M{
+		"$set": bson.M{
+			"departmentId": &deptID,
+			"updatedAt":    time.Now().UTC(),
+		},
+	})
+	return err
 }

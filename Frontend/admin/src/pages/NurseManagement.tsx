@@ -13,7 +13,7 @@ const NurseManagement: React.FC = () => {
       status: "active",
       email: "lecamtu@hospital.com",
       phone: "0908888888",
-      profileImageUrl: "https://via.placeholder.com/150",
+      profileImageUrl: "/default-avatar.svg",
       gender: "Nữ",
       dateOfBirth: "1990-03-10",
     },
@@ -26,7 +26,7 @@ const NurseManagement: React.FC = () => {
       status: "active",
       email: "phamvanduc@hospital.com",
       phone: "0907777777",
-      profileImageUrl: "https://via.placeholder.com/150",
+      profileImageUrl: "/default-avatar.svg",
       gender: "Nam",
       dateOfBirth: "1992-07-25",
     },
@@ -56,6 +56,32 @@ const NurseManagement: React.FC = () => {
     nurse.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     nurse.department.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+
+    const newNurse: Nurse = {
+      id: editingNurse?.id || Math.random().toString(),
+      name: formData.get("name") as string,
+      department: formData.get("department") as string,
+      licenseNumber: formData.get("licenseNumber") as string,
+      yearsOfExperience: parseInt(formData.get("yearsOfExperience") as string) || 0,
+      status: formData.get("status") as "active" | "inactive",
+      email: formData.get("email") as string,
+      phone: formData.get("phone") as string,
+      gender: formData.get("gender") as "Nam" | "Nữ",
+      dateOfBirth: "1990-01-01", // Default/Placeholder as not in form
+      profileImageUrl: editingNurse?.profileImageUrl || "",
+    };
+
+    if (editingNurse?.id) {
+      setNurses(nurses.map((n) => (n.id === newNurse.id ? newNurse : n)));
+    } else {
+      setNurses([...nurses, newNurse]);
+    }
+    setShowModal(false);
+  };
 
   return (
     <div className="p-6">
@@ -123,17 +149,19 @@ const NurseManagement: React.FC = () => {
           <tbody className="bg-white divide-y divide-gray-200">
             {filteredNurses.map((nurse, index) => (
               <tr key={nurse.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4" style={{minWidth: '250px'}}>
+                <td className="px-6 py-4" style={{ minWidth: '250px' }}>
                   <div className="flex items-center">
                     {nurse.profileImageUrl ? (
                       <img
                         className="h-10 w-10 rounded-full object-cover"
                         src={nurse.profileImageUrl}
+                        onError={(e) => (e.currentTarget.src = "/default-avatar.svg")}
                       />
                     ) : (
-                      <div className="h-10 w-10 rounded-full bg-purple-500 flex items-center justify-center text-white font-semibold">
-                        {index + 1}
-                      </div>
+                      <img
+                        className="h-10 w-10 rounded-full object-cover"
+                        src="/default-avatar.svg"
+                      />
                     )}
                     <div className="ml-4">
                       <div className="text-sm font-medium text-gray-900">
@@ -156,11 +184,10 @@ const NurseManagement: React.FC = () => {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span
-                    className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      nurse.status === "active"
-                        ? "bg-green-100 text-green-800"
-                        : "bg-red-100 text-red-800"
-                    }`}
+                    className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${nurse.status === "active"
+                      ? "bg-green-100 text-green-800"
+                      : "bg-red-100 text-red-800"
+                      }`}
                   >
                     {nurse.status === "active" ? "Hoạt động" : "Không hoạt động"}
                   </span>
@@ -196,23 +223,15 @@ const NurseManagement: React.FC = () => {
             <h2 className="text-2xl font-bold mb-4">
               {editingNurse ? "Chỉnh sửa y tá" : "Thêm y tá mới"}
             </h2>
-            <form className="space-y-4">
+            <form className="space-y-4" onSubmit={handleSubmit}>
               {/* Upload ảnh */}
               <div className="flex items-center space-x-4 pb-4 border-b">
                 <div className="flex-shrink-0">
-                  {editingNurse?.profileImageUrl ? (
-                    <img
-                      src={editingNurse.profileImageUrl}
-                      alt="Preview"
-                      className="h-20 w-20 rounded-full object-cover border-2 border-gray-300"
-                    />
-                  ) : (
-                    <div className="h-20 w-20 rounded-full bg-purple-100 flex items-center justify-center text-purple-500 border-2 border-gray-300">
-                      <svg className="h-10 w-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                    </div>
-                  )}
+                  <img
+                    src={editingNurse?.profileImageUrl || "/default-avatar.svg"}
+                    alt="Preview"
+                    className="h-20 w-20 rounded-full object-cover border-2 border-gray-300"
+                  />
                 </div>
                 <div className="flex-1">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -221,6 +240,32 @@ const NurseManagement: React.FC = () => {
                   <input
                     type="file"
                     accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          setEditingNurse((prev) =>
+                            prev
+                              ? { ...prev, profileImageUrl: reader.result as string }
+                              : {
+                                id: Math.random().toString(),
+                                name: "",
+                                department: "",
+                                licenseNumber: "",
+                                yearsOfExperience: 0,
+                                status: "active",
+                                email: "",
+                                phone: "",
+                                profileImageUrl: reader.result as string,
+                                gender: "Nữ",
+                                dateOfBirth: ""
+                              }
+                          );
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
                     className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
                   />
                 </div>
@@ -232,7 +277,9 @@ const NurseManagement: React.FC = () => {
                     Họ tên
                   </label>
                   <input
+                    name="name"
                     type="text"
+                    required
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                     defaultValue={editingNurse?.name}
                   />
@@ -242,7 +289,9 @@ const NurseManagement: React.FC = () => {
                     Khoa
                   </label>
                   <input
+                    name="department"
                     type="text"
+                    required
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                     defaultValue={editingNurse?.department}
                   />
@@ -252,7 +301,9 @@ const NurseManagement: React.FC = () => {
                     Số giấy phép
                   </label>
                   <input
+                    name="licenseNumber"
                     type="text"
+                    required
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                     defaultValue={editingNurse?.licenseNumber}
                   />
@@ -262,7 +313,9 @@ const NurseManagement: React.FC = () => {
                     Kinh nghiệm (năm)
                   </label>
                   <input
+                    name="yearsOfExperience"
                     type="number"
+                    required
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                     defaultValue={editingNurse?.yearsOfExperience}
                   />
@@ -272,6 +325,7 @@ const NurseManagement: React.FC = () => {
                     Trạng thái
                   </label>
                   <select
+                    name="status"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                     defaultValue={editingNurse?.status}
                   >
@@ -284,7 +338,9 @@ const NurseManagement: React.FC = () => {
                     Email
                   </label>
                   <input
+                    name="email"
                     type="email"
+                    required
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                     defaultValue={editingNurse?.email}
                   />
@@ -294,7 +350,9 @@ const NurseManagement: React.FC = () => {
                     Số điện thoại
                   </label>
                   <input
+                    name="phone"
                     type="tel"
+                    required
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                     defaultValue={editingNurse?.phone}
                   />
@@ -304,6 +362,7 @@ const NurseManagement: React.FC = () => {
                     Giới tính
                   </label>
                   <select
+                    name="gender"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                     defaultValue={editingNurse?.gender}
                   >

@@ -1,65 +1,97 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import type { ReactNode } from "react";
+import api from "../services/api";
 
-export type UserRole = "doctor" | "admin";
+export type UserRole = "doctor";
 
 interface AuthContextType {
   isAuthenticated: boolean;
   user: { username: string; role: UserRole } | null;
-  login: (username: string, password: string) => boolean;
+  login: (username: string, password: string) => Promise<UserRole | null>;
+  isLoading: boolean;
   logout: () => void;
   getUserRole: () => UserRole | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Helper function to decode role from token (mock implementation)
-const decodeRoleFromToken = (token: string): UserRole => {
-  // In a real app, you would decode JWT token here
-  // For now, we'll check a simple pattern
-  if (token.includes("admin")) {
-    return "admin";
-  }
-  return "doctor";
-};
-
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<{ username: string; role: UserRole } | null>(null);
+
+  // Helper to map backend role to frontend role - only doctor supported
+  const mapRole = (backendRole: string): UserRole | null => {
+    if (backendRole === "user.doctor") return "doctor";
+    return null; // Only doctors can access this app
+  };
 
   // Check if already logged in on mount
   useEffect(() => {
-    const token = localStorage.getItem("authToken");
-    const username = localStorage.getItem("username");
-    if (token && username) {
-      const role = decodeRoleFromToken(token);
-      setIsAuthenticated(true);
-      setUser({ username, role });
-    }
+    const checkAuth = async () => {
+      try {
+        const response = await api.get("/auth/me");
+        const userData = response.data.data;
+        if (userData) {
+          const role = mapRole(userData.role);
+          if (role) {
+            setIsAuthenticated(true);
+            setUser({ username: userData.name, role });
+          } else {
+            // Not a doctor, reject
+            setIsAuthenticated(false);
+            setUser(null);
+          }
+        }
+      } catch (error) {
+        // Not authenticated
+        setIsAuthenticated(false);
+        setUser(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    checkAuth();
   }, []);
 
-  const login = (username: string, password: string): boolean => {
-    // Mock credentials - different roles for different accounts
-    let token = "";
-    
-    if (username === "admin" && password === "123456") {
-      token = "mock-token-admin-12345";
-    } else if (username === "doctor" && password === "123456") {
-      token = "mock-token-doctor-12345";
-    } else {
-      return false;
-    }
+  const login = async (email: string, password: string): Promise<UserRole | null> => {
+    try {
+      await api.post("/auth/login", { email, password });
 
-    const role = decodeRoleFromToken(token);
-    localStorage.setItem("authToken", token);
-    localStorage.setItem("username", username);
-    setIsAuthenticated(true);
-    setUser({ username, role });
-    return true;
+      // After successful login (cookies set), fetch user info
+      const response = await api.get("/auth/me");
+      const userData = response.data.data;
+
+      const role = mapRole(userData.role);
+
+      // Only allow doctors
+      if (!role) {
+        await api.post("/auth/logout"); // Logout non-doctor users
+        return null;
+      }
+
+      // Clean up old local storage if any, just in case
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
+      localStorage.removeItem("username");
+
+      setIsAuthenticated(true);
+      setUser({ username: userData.name, role });
+      return role;
+    } catch (error) {
+      console.error("Login error:", error);
+      return null;
+    }
   };
 
-  const logout = () => {
-    localStorage.removeItem("authToken");
+  const logout = async () => {
+    try {
+      await api.post("/auth/logout");
+    } catch (error) {
+      console.error("Logout error", error);
+    }
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
     localStorage.removeItem("username");
     setIsAuthenticated(false);
     setUser(null);
@@ -70,7 +102,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, login, logout, getUserRole }}>
+    <AuthContext.Provider value={{ isAuthenticated, isLoading, user, login, logout, getUserRole }}>
       {children}
     </AuthContext.Provider>
   );
