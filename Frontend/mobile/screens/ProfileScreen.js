@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons, MaterialIcons, FontAwesome5 } from "@expo/vector-icons";
 import { useState } from "react";
+import { useAuth } from "../context/AuthContext";
 
 // Mock user + Patient_Info theo schema
 const initialUser = {
@@ -47,6 +48,7 @@ function formatDateTime(iso) {
 }
 
 export default function ProfileScreen() {
+  const { logout } = useAuth();
   const [notify, setNotify] = useState(true);
 
   const [editMode, setEditMode] = useState(false);
@@ -88,12 +90,12 @@ export default function ProfileScreen() {
   const avatarInitial =
     userForm.name && userForm.name.trim().length > 0
       ? userForm.name
-          .split(" ")
-          .filter((p) => p.length > 0)
-          .slice(-2)
-          .map((p) => p[0])
-          .join("")
-          .toUpperCase()
+        .split(" ")
+        .filter((p) => p.length > 0)
+        .slice(-2)
+        .map((p) => p[0])
+        .join("")
+        .toUpperCase()
       : "NA";
 
   return (
@@ -455,7 +457,7 @@ export default function ProfileScreen() {
         )}
 
         {/* LOGOUT */}
-        <TouchableOpacity style={styles.logoutBtn}>
+        <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
           <Text style={styles.logoutText}>Đăng xuất</Text>
         </TouchableOpacity>
 

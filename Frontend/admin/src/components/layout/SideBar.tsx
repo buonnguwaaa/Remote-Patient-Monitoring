@@ -89,9 +89,8 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
           </button>
         </div>
 
-        {/* --- NAVIGATION --- */}
         <nav className="flex-1 mt-4 px-2 overflow-y-auto">
-          <ul className="space-y-2">
+          <ul className="space-y-1">
             {itemsToDisplay.map((item) => {
               const isActive = location.pathname === item.path;
               return (
@@ -102,22 +101,28 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
                       if (window.innerWidth < 768) setIsCollapsed(true);
                     }}
                     className={`
-                      flex items-center py-2 rounded-lg transition-colors
+                      flex items-center py-2.5 rounded-lg transition-all duration-200
                       ${isCollapsed ? "justify-center px-0" : "px-4 gap-3"}
                       ${isActive
-                        ? "bg-btn-clicked text-white"
-                        : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        ? "bg-btn-clicked text-white shadow-md shadow-blue-200 dark:shadow-blue-900 scale-[1.02]"
+                        : "text-gray-500 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-gray-700 hover:text-btn-clicked dark:hover:text-white"
                       }
                     `}
                     title={isCollapsed ? item.label : ""}
                   >
                     {item.icon && (
-                      <div className="text-2xl shrink-0">{item.icon}</div>
+                      <div className={`text-2xl shrink-0 transition-transform duration-200 ${isActive ? "scale-110" : ""}`}>
+                        {item.icon}
+                      </div>
                     )}
                     {!isCollapsed && (
-                      <span className="text-xl font-semibold whitespace-nowrap overflow-hidden">
+                      <span className={`text-base font-semibold whitespace-nowrap overflow-hidden ${isActive ? "font-bold" : ""}`}>
                         {item.label}
                       </span>
+                    )}
+                    {/* Active indicator dot khi collapsed */}
+                    {isCollapsed && isActive && (
+                      <span className="absolute left-1 w-1 h-8 bg-btn-clicked rounded-r-full" />
                     )}
                   </Link>
                 </li>
@@ -125,6 +130,7 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
             })}
           </ul>
         </nav>
+
 
         {/* --- FOOTER --- */}
         <div className="px-2 py-4">

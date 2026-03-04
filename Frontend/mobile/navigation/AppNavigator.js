@@ -215,7 +215,7 @@ function RootNavigator() {
     }
 
     // Chưa đăng nhập -> stack Auth
-    if (user) {
+    if (!user) {
         return (
             <Stack.Navigator screenOptions={{ headerShown: false }}>
                 <Stack.Screen name="Login" component={LoginScreen} />
@@ -225,16 +225,14 @@ function RootNavigator() {
     }
 
     // Đã đăng nhập -> chọn bottom tab theo role
-    // user.role lấy đúng từ backend (Users.role: "patient", "nurse")
-    // const role = user.role;
-    const role = "patient"; // tạm thời fix cứng để test giao diện
+    const role = user?.role || "patient";
 
     return (
         <Stack.Navigator screenOptions={{ headerShown: false }}>
             <Stack.Screen
                 name="MainTabs"
                 component={
-                    role === "nurse"
+                    role === "user.nurse" || role === "nurse"
                         ? NurseTabNavigator
                         : PatientTabNavigator // default: patient
                 }

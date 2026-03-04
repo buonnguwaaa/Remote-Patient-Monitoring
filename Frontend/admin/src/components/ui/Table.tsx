@@ -1,26 +1,20 @@
 import { useState } from "react";
 import Pagination from "./Pagination";
 
-// 1. Định nghĩa cấu trúc của một Cột
-
 export type Column<T> = {
-  header: string; // Tiêu đề cột (VD: "Tên", "Email")
-  accessor?: keyof T; // Key truy cập dữ liệu trong object (VD: "name", "email")
-  render?: (item: T) => React.ReactNode; // Hàm render tùy chỉnh (cho nút bấm, ảnh, badge...)
-  className?: string; // Class CSS tùy chỉnh cho cột này
+  header: string;
+  accessor?: keyof T;
+  render?: (item: T) => React.ReactNode;
+  className?: string;
 };
 
-// 2. Định nghĩa Props của Table
 interface TableProps<T> {
   data: T[];
   columns: Column<T>[];
-  onRowClick?: (item: T) => void; // Sự kiện click vào hàng (tùy chọn)
+  onRowClick?: (item: T) => void;
   className?: string;
-  itemsPerPage?: number; // Number of items per page
+  itemsPerPage?: number;
 }
-
-// 3. Component chính
-// Sử dụng Generics <T,> để component hiểu kiểu dữ liệu động
 const Table = <T,>({
   data,
   columns,
@@ -42,10 +36,8 @@ const Table = <T,>({
 
   return (
     <>
-      {/* Table container with min-height to prevent pagination jumping */}
       <div className={`overflow-x-auto sm:rounded-lg min-h-[450px] ${className}`}>
         <table className="w-full text-sm text-left text-gray-500">
-          {/* --- HEADER --- */}
           <thead className="text-xs text-gray-700 uppercase bg-gray-50">
             <tr>
               {columns.map((col, index) => (
@@ -75,7 +67,6 @@ const Table = <T,>({
                       key={colIndex}
                       className={`px-6 py-4 ${col.className || ""}`}
                     >
-                      {/* Logic hiển thị: Nếu có hàm render thì dùng hàm đó, không thì lấy text từ accessor */}
                       {col.render
                         ? col.render(item)
                         : col.accessor

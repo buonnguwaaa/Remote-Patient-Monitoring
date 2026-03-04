@@ -96,6 +96,7 @@ func (s *authService) Register(ctx context.Context, input *usecase.RegisterInput
 		Role:     input.Role,
 		Gender:   input.Gender,
 		Dob:      input.Dob,
+		IsActive: input.Role == domain.RolePatient,
 	}
 	insertedUser, err := s.userRepo.Create(ctx, u)
 	if err != nil {

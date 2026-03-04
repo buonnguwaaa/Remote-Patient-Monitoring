@@ -15,7 +15,7 @@ import styles from '../styles/login';
 import { useAuth } from '../context/AuthContext';
 import * as GoogleAuth from '../api/googleAuth';
 
-export default function LoginScreen({ onSwitchToRegister, onLoginSuccess }) {
+export default function LoginScreen({ navigation, onLoginSuccess }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -93,7 +93,7 @@ export default function LoginScreen({ onSwitchToRegister, onLoginSuccess }) {
             </View>
           </View>
 
-          <TouchableOpacity style={styles.forgot} onPress={() => {}}>
+          <TouchableOpacity style={styles.forgot} onPress={() => { }}>
             <Text style={styles.forgotText}>Forgot Password?</Text>
           </TouchableOpacity>
 
@@ -138,7 +138,7 @@ export default function LoginScreen({ onSwitchToRegister, onLoginSuccess }) {
               <FontAwesome name="google" size={18} color="#000" style={{ marginRight: 8 }} />
               <Text style={{ color: '#030213', fontWeight: '600' }}>{loading ? 'Signing in...' : 'Google'}</Text>
             </ButtonPrimary>
-            <ButtonPrimary variant="outline" onPress={() => {}} disabled={loading} style={{ flex: 1, marginLeft: 8 }}>
+            <ButtonPrimary variant="outline" onPress={() => { }} disabled={loading} style={{ flex: 1, marginLeft: 8 }}>
               <FontAwesome name="apple" size={18} color="#000" style={{ marginRight: 8 }} />
               <Text style={{ color: '#030213', fontWeight: '600' }}>Apple</Text>
             </ButtonPrimary>
@@ -146,10 +146,10 @@ export default function LoginScreen({ onSwitchToRegister, onLoginSuccess }) {
         </View>
 
         {/* Footer */}
-          <View style={styles.footer}>
+        <View style={styles.footer}>
           <Text style={styles.footerText}>
             Don't have an account?{' '}
-            <Text style={styles.signUp} onPress={() => onSwitchToRegister && onSwitchToRegister()}>Sign Up</Text>
+            <Text style={styles.signUp} onPress={() => navigation.navigate('Register')}>Sign Up</Text>
           </Text>
         </View>
       </ScrollView>

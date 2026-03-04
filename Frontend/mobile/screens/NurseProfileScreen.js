@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons, MaterialIcons, FontAwesome5 } from "@expo/vector-icons";
 import { useState } from "react";
+import { useAuth } from "../context/AuthContext";
 
 // Mock user + Nurse_Info theo schema
 const initialUser = {
@@ -62,6 +63,7 @@ function getStatusMeta(status) {
 }
 
 export default function NurseProfileScreen() {
+  const { logout } = useAuth();
   const [editMode, setEditMode] = useState(false);
   const [notify, setNotify] = useState(true);
 
@@ -71,12 +73,12 @@ export default function NurseProfileScreen() {
   const avatarInitial =
     userForm.name && userForm.name.trim().length > 0
       ? userForm.name
-          .split(" ")
-          .filter((p) => p.length > 0)
-          .slice(-2)
-          .map((p) => p[0])
-          .join("")
-          .toUpperCase()
+        .split(" ")
+        .filter((p) => p.length > 0)
+        .slice(-2)
+        .map((p) => p[0])
+        .join("")
+        .toUpperCase()
       : "N";
 
   const statusMeta = getStatusMeta(nurseForm.status);
@@ -107,8 +109,7 @@ export default function NurseProfileScreen() {
   };
 
   const handleLogout = () => {
-    // TODO: logic logout thực tế
-    Alert.alert("Đăng xuất", "Đã gọi hành động đăng xuất (mock).");
+    logout();
   };
 
   return (
@@ -298,7 +299,7 @@ export default function NurseProfileScreen() {
                   style={styles.inputPrimary}
                   value={
                     nurseForm.yearsOfExperience !== undefined &&
-                    nurseForm.yearsOfExperience !== null
+                      nurseForm.yearsOfExperience !== null
                       ? String(nurseForm.yearsOfExperience)
                       : ""
                   }
@@ -331,7 +332,7 @@ export default function NurseProfileScreen() {
                   style={[
                     styles.statusToggleBtn,
                     nurseForm.status === "active" &&
-                      styles.statusToggleBtnActive,
+                    styles.statusToggleBtnActive,
                   ]}
                   onPress={() => handleChangeNurse("status", "active")}
                 >
@@ -339,7 +340,7 @@ export default function NurseProfileScreen() {
                     style={[
                       styles.statusToggleText,
                       nurseForm.status === "active" &&
-                        styles.statusToggleTextActive,
+                      styles.statusToggleTextActive,
                     ]}
                   >
                     Active
@@ -349,7 +350,7 @@ export default function NurseProfileScreen() {
                   style={[
                     styles.statusToggleBtn,
                     nurseForm.status === "inactive" &&
-                      styles.statusToggleBtnActiveInactive,
+                    styles.statusToggleBtnActiveInactive,
                   ]}
                   onPress={() => handleChangeNurse("status", "inactive")}
                 >
@@ -357,7 +358,7 @@ export default function NurseProfileScreen() {
                     style={[
                       styles.statusToggleText,
                       nurseForm.status === "inactive" &&
-                        styles.statusToggleTextInactive,
+                      styles.statusToggleTextInactive,
                     ]}
                   >
                     Inactive

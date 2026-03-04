@@ -15,15 +15,13 @@ const Pagination = ({
 }: PaginationProps) => {
     const getPageNumbers = () => {
         const pages: (number | string)[] = [];
-        const maxVisible = 7; // Maximum number of page buttons to show
+        const maxVisible = 7;
 
         if (totalPages <= maxVisible) {
-            // Show all pages if total is small
             for (let i = 1; i <= totalPages; i++) {
                 pages.push(i);
             }
         } else {
-            // Always show first page
             pages.push(1);
 
             if (currentPage > 3) {
@@ -42,7 +40,6 @@ const Pagination = ({
                 pages.push("...");
             }
 
-            // Always show last page
             pages.push(totalPages);
         }
 
