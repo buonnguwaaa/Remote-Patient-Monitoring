@@ -44,6 +44,9 @@ type MainServerContainer struct {
 
 	// Utils
 	JWTManager *util.JWTManager
+
+	CloudinaryService service.CloudinaryService
+	UploadHandler     *handler.UploadHandler
 }
 
 // NewMainServerContainer initializes all dependencies once
@@ -84,5 +87,14 @@ func NewMainServerContainer() *MainServerContainer {
 	c.DepartmentHandler = handler.NewDepartmentHandler(c.DepartmentService)
 	c.AssignmentHandler = handler.NewAssignmentHandler(c.AssignmentService)
 	c.ReminderHandler = handler.NewReminderHandler(c.ReminderService)
+
+	// Cloudinary — log warning nếu chưa cấu hình
+	if cloudSvc, err := service.NewCloudinaryService(); err != nil {
+		println("[WARN] Cloudinary not configured:", err.Error())
+	} else {
+		c.CloudinaryService = cloudSvc
+		c.UploadHandler = handler.NewUploadHandler(c.CloudinaryService, c.UserService)
+	}
+
 	return c
 }

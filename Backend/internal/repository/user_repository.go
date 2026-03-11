@@ -24,6 +24,8 @@ type UserRepository interface {
 	SetResetToken(context.Context, string, string, time.Time) error
 	FindByResetToken(context.Context, string) (*domain.User, error)
 	ResetPassword(context.Context, primitive.ObjectID, string) error
+	Update(context.Context, primitive.ObjectID, map[string]interface{}) error
+	Delete(context.Context, primitive.ObjectID) error
 
 	SetActivationToken(ctx context.Context, email, hash string, expires time.Time) error
 	FindByActivationHash(ctx context.Context, hash string) (*domain.User, error)
@@ -163,6 +165,19 @@ func (r *userRepository) ResetPassword(ctx context.Context, id primitive.ObjectI
 			"resetTokenExpiry": "",
 		},
 	})
+	return err
+}
+
+func (r *userRepository) Update(ctx context.Context, id primitive.ObjectID, updateData map[string]interface{}) error {
+	updateData["updatedAt"] = time.Now().UTC()
+	_, err := r.col.UpdateOne(ctx, bson.M{"_id": id}, bson.M{
+		"$set": updateData,
+	})
+	return err
+}
+
+func (r *userRepository) Delete(ctx context.Context, id primitive.ObjectID) error {
+	_, err := r.col.DeleteOne(ctx, bson.M{"_id": id})
 	return err
 }
 

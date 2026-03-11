@@ -1,56 +1,71 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { FaUserMd, FaEdit, FaTrash, FaPlus, FaSearch } from "react-icons/fa";
-import type { doctor } from "../../types";
+import api from "../services/api";
+import { uploadAvatar } from "../services/uploadService";
+import { useToast } from "../hooks/useToast";
+import Toast from "../components/ui/Toast";
+import AvatarUploader from "../components/ui/AvatarUploader";
+import type { doctor } from "../types";
 
 const DoctorManagement: React.FC = () => {
-  const [doctors, setDoctors] = useState<doctor[]>([
-    {
-      id: "1",
-      name: "Dr. Nguyễn Văn A",
-      specialization: "Tim mạch",
-      licenseNumber: "BS-001",
-      workplace: "Bệnh viện Chợ Rẫy",
-      yearsOfExperience: 10,
-      status: "active",
-      email: "nguyenvana@hospital.com",
-      phone: "0901234567",
-      profileImageUrl: "/default-avatar.svg",
-      gender: "Nam",
-      dateOfBirth: "1985-05-15",
-    },
-    {
-      id: "2",
-      name: "Dr. Trần Thị B",
-      specialization: "Nội khoa",
-      licenseNumber: "BS-002",
-      workplace: "Bệnh viện 115",
-      yearsOfExperience: 8,
-      status: "active",
-      email: "tranthib@hospital.com",
-      phone: "0907654321",
-      profileImageUrl: "/default-avatar.svg",
-      gender: "Nữ",
-      dateOfBirth: "1987-08-20",
-    },
-  ]);
-
+  const [doctors, setDoctors] = useState<doctor[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [editingDoctor, setEditingDoctor] = useState<doctor | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const { toast, showToast } = useToast();
 
-  const handleEdit = (doctor: doctor) => {
-    setEditingDoctor(doctor);
-    setShowModal(true);
+  const fetchDoctors = async () => {
+    try {
+      const response = await api.get("/users?role=user.doctor");
+      if (response.data && response.data.data) {
+        const apiDoctors = response.data.data.map((u: any) => ({
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          gender: u.gender === "M" ? "Nam" : u.gender === "F" ? "Nữ" : u.gender,
+          dateOfBirth: u.dob,
+          phone: u.phone || "",
+          specialization: u.doctorProfile?.specialization || "",
+          licenseNumber: u.doctorProfile?.licenseNumber || "",
+          workplace: u.doctorProfile?.workplace || "",
+          yearsOfExperience: u.doctorProfile?.yearsOfExperience || 0,
+          status: "active",
+          profileImageUrl: u.avatarUrl || "/default-avatar.svg",
+        }));
+        setDoctors(apiDoctors);
+      }
+    } catch (err) {
+      console.error("Lỗi khi tải danh sách bác sĩ", err);
+    }
   };
 
-  const handleDelete = (id: string) => {
+  useEffect(() => {
+    fetchDoctors();
+  }, []);
+
+  const handleDelete = async (id: string) => {
     if (window.confirm("Bạn có chắc chắn muốn xóa bác sĩ này?")) {
-      setDoctors(doctors.filter((doc) => doc.id !== id));
+      try {
+        await api.delete(`/users/${id}`);
+        setDoctors(doctors.filter((doc) => doc.id !== id));
+      } catch (err) {
+        console.error("Lỗi xóa bác sĩ", err);
+        alert("Có lỗi xảy ra khi xóa.");
+      }
     }
   };
 
   const handleAdd = () => {
     setEditingDoctor(null);
+    setAvatarFile(null);
+    setShowModal(true);
+  };
+
+  const handleEdit = (doctor: doctor) => {
+    setEditingDoctor(doctor);
+    setAvatarFile(null);
     setShowModal(true);
   };
 
@@ -59,42 +74,80 @@ const DoctorManagement: React.FC = () => {
     doctor.specialization.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
 
-    const newDoctor: doctor = {
-      id: editingDoctor?.id || Math.random().toString(),
-      name: formData.get("name") as string,
-      specialization: formData.get("specialization") as string,
-      licenseNumber: formData.get("licenseNumber") as string,
-      workplace: formData.get("workplace") as string,
-      yearsOfExperience: parseInt(formData.get("yearsOfExperience") as string) || 0,
-      status: "active", // Defaulting to active as there is no status field in UI yet, or add it? Unsure, mock data has it.
-      email: formData.get("email") as string,
-      phone: formData.get("phone") as string,
-      gender: formData.get("gender") as "Nam" | "Nữ",
-      dateOfBirth: "1990-01-01", // Default/Placeholder as not in form
-      profileImageUrl: editingDoctor?.profileImageUrl || "",
-    };
+    const name = formData.get("name") as string;
+    const email = formData.get("email") as string;
+    const gender = formData.get("gender") as "Nam" | "Nữ";
+    const phone = formData.get("phone") as string;
+    const specialization = formData.get("specialization") as string;
+    const licenseNumber = formData.get("licenseNumber") as string;
+    const workplace = formData.get("workplace") as string;
+    const yearsOfExperience = parseInt(formData.get("yearsOfExperience") as string) || 0;
 
-    if (editingDoctor?.id) {
-      setDoctors(doctors.map((d) => (d.id === newDoctor.id ? newDoctor : d)));
-    } else {
-      setDoctors([...doctors, newDoctor]);
+    // Convert UI gender to API enum
+    let apiGender = "O";
+    if (gender === "Nam") apiGender = "M";
+    if (gender === "Nữ") apiGender = "F";
+
+    try {
+      let savedUserId = editingDoctor?.id;
+
+      if (editingDoctor?.id) {
+        // Update
+        await api.put(`/users/${editingDoctor.id}`, {
+          name, email, gender: apiGender, phone, specialization,
+          licenseNumber, workplace, yearsOfExperience, roles: ["user.doctor"],
+        });
+      } else {
+        // Create - dùng password admin nhập
+        const password = formData.get("password") as string;
+        if (!password || password.length < 8) {
+          alert("Mật khẩu phải có ít nhất 8 ký tự!");
+          return;
+        }
+        await api.post("/auth/register", {
+          name, email, password, confirmedPassword: password,
+          role: "user.doctor", gender: apiGender, dob: "1980-01-01",
+        });
+        // Lấy user mới nhất
+        const resp = await api.get("/users?role=user.doctor&sortOrder=desc&limit=1");
+        const newUser = resp.data?.data?.[0];
+        savedUserId = newUser?.id;
+        if (savedUserId) {
+          await api.put(`/users/${savedUserId}`, {
+            phone, specialization, licenseNumber, workplace, yearsOfExperience,
+          });
+        }
+      }
+
+      // Upload avatar nếu chọn file
+      if (avatarFile && savedUserId) {
+        await uploadAvatar(savedUserId, avatarFile);
+      }
+
+      fetchDoctors();
+      setShowModal(false);
+      setAvatarFile(null);
+      showToast(editingDoctor?.id ? "Cập nhật bác sĩ thành công!" : "Thêm bác sĩ thành công!");
+    } catch (err: any) {
+      console.error(err);
+      showToast("Lỗi: " + (err.response?.data?.error || err.message), "error");
     }
-    setShowModal(false);
   };
 
   return (
     <div className="p-6">
+      <Toast toast={toast} />
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800 flex items-center">
+          <h1 className="text-3xl font-bold text-gray-800 dark:text-white flex items-center">
             <FaUserMd className="mr-3 text-blue-600" />
             Quản lý bác sĩ
           </h1>
-          <p className="text-gray-600 mt-2">
+          <p className="text-gray-600 dark:text-gray-400 mt-2">
             Tổng số: {doctors.length} bác sĩ
           </p>
         </div>
@@ -108,13 +161,13 @@ const DoctorManagement: React.FC = () => {
       </div>
 
       {/* Search Bar */}
-      <div className="mb-6 bg-white rounded-lg shadow-md p-4">
+      <div className="mb-6 bg-white dark:bg-gray-800 rounded-lg shadow-md p-4">
         <div className="relative">
           <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
           <input
             type="text"
             placeholder="Tìm kiếm theo tên hoặc chuyên khoa..."
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -122,75 +175,70 @@ const DoctorManagement: React.FC = () => {
       </div>
 
       {/* Doctors Table - keeping as is, assuming it works */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
         <table className="w-full">
-          <thead className="bg-gray-50 border-b">
+          <thead className="bg-gray-50 dark:bg-gray-700 border-b dark:border-gray-600">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Bác sĩ
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Chuyên khoa
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Số giấy phép
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Nơi làm việc
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Kinh nghiệm
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Liên hệ
               </th>
-              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Hành động
               </th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {filteredDoctors.map((doctor, index) => (
-              <tr key={doctor.id} className="hover:bg-gray-50">
+          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+            {filteredDoctors.map((doctor) => (
+              <tr key={doctor.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                 <td className="px-6 py-4" style={{ minWidth: '250px' }}>
                   <div className="flex items-center">
-                    {doctor.profileImageUrl ? (
-                      <img
-                        className="h-10 w-10 rounded-full object-cover"
-                        src={doctor.profileImageUrl}
-                        onError={(e) => (e.currentTarget.src = "/default-avatar.svg")}
-                      />
-                    ) : (
-                      <img
-                        className="h-10 w-10 rounded-full object-cover"
-                        src="/default-avatar.svg"
-                      />
-                    )}
+                    <img
+                      className="h-10 w-10 rounded-full object-cover cursor-pointer hover:ring-2 hover:ring-blue-400 hover:scale-110 transition-transform duration-150"
+                      src={doctor.profileImageUrl || "/avartar.jpg"}
+                      onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = "/avartar.jpg"; }}
+                      onClick={() => setPreviewImage(doctor.profileImageUrl || "/avartar.jpg")}
+                      title="Nhấn để xem ảnh"
+                    />
                     <div className="ml-4">
-                      <div className="text-sm font-medium text-gray-900">
+                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
                         {doctor.name}
                       </div>
-                      <div className="text-sm text-gray-500">
+                      <div className="text-sm text-gray-500 dark:text-gray-400">
                         {doctor.gender} - {doctor.dateOfBirth}
                       </div>
                     </div>
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                   {doctor.specialization}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                   {doctor.licenseNumber}
                 </td>
-                <td className="px-6 py-4 text-sm text-gray-900">
+                <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
                   {doctor.workplace}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                   {doctor.yearsOfExperience} năm
                 </td>
-                <td className="px-6 py-4 text-sm text-gray-900">
+                <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
                   <div>{doctor.email}</div>
-                  <div className="text-gray-500">{doctor.phone}</div>
+                  <div className="text-gray-500 dark:text-gray-400">{doctor.phone}</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                   <button
@@ -215,163 +263,136 @@ const DoctorManagement: React.FC = () => {
       {/* Modal for Add/Edit Doctor */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-20 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold mb-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <h2 className="text-2xl font-bold mb-4 dark:text-white">
               {editingDoctor ? "Chỉnh sửa bác sĩ" : "Thêm bác sĩ mới"}
             </h2>
             <form className="space-y-4" onSubmit={handleSubmit}>
-              {/* Upload ảnh */}
-              <div className="flex items-center space-x-4 pb-4 border-b">
-                <div className="flex-shrink-0">
-                  <img
-                    src={editingDoctor?.profileImageUrl || "/default-avatar.svg"}
-                    alt="Preview"
-                    className="h-20 w-20 rounded-full object-cover border-2 border-gray-300"
-                  />
-                </div>
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Ảnh đại diện
-                  </label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const reader = new FileReader();
-                        reader.onloadend = () => {
-                          setEditingDoctor((prev) =>
-                            prev
-                              ? { ...prev, profileImageUrl: reader.result as string }
-                              : {
-                                id: Math.random().toString(),
-                                name: "",
-                                specialization: "",
-                                licenseNumber: "",
-                                workplace: "",
-                                yearsOfExperience: 0,
-                                status: "active",
-                                email: "",
-                                phone: "",
-                                profileImageUrl: reader.result as string,
-                                gender: "Nam",
-                                dateOfBirth: ""
-                              }
-                          );
-                        };
-                        reader.readAsDataURL(file);
-                      }
-                    }}
-                    className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                  />
-                </div>
-              </div>
+              {/* Upload ảnh — dùng AvatarUploader tái sử dụng */}
+              <AvatarUploader
+                currentUrl={editingDoctor?.profileImageUrl}
+                onFileSelect={(file) => setAvatarFile(file)}
+              />
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Họ tên
                   </label>
                   <input
                     name="name"
                     type="text"
                     required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     defaultValue={editingDoctor?.name}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Chuyên khoa
                   </label>
                   <input
                     name="specialization"
                     type="text"
                     required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     defaultValue={editingDoctor?.specialization}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Số giấy phép
                   </label>
                   <input
                     name="licenseNumber"
                     type="text"
                     required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     defaultValue={editingDoctor?.licenseNumber}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Nơi làm việc
                   </label>
                   <input
                     name="workplace"
                     type="text"
                     required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     defaultValue={editingDoctor?.workplace}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Kinh nghiệm (năm)
                   </label>
                   <input
                     name="yearsOfExperience"
                     type="number"
                     required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     defaultValue={editingDoctor?.yearsOfExperience}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Email
                   </label>
                   <input
                     name="email"
                     type="email"
                     required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     defaultValue={editingDoctor?.email}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Số điện thoại
                   </label>
                   <input
                     name="phone"
                     type="tel"
                     required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     defaultValue={editingDoctor?.phone}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Giới tính
                   </label>
                   <select
                     name="gender"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     defaultValue={editingDoctor?.gender}
                   >
                     <option value="Nam">Nam</option>
                     <option value="Nữ">Nữ</option>
                   </select>
                 </div>
+                {!editingDoctor && (
+                  <div className="col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Mật khẩu <span className="text-gray-400 font-normal">(tài khoản đăng nhập)</span>
+                    </label>
+                    <input
+                      name="password"
+                      type="password"
+                      required
+                      minLength={8}
+                      placeholder="Tối thiểu 8 ký tự"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                )}
               </div>
               <div className="flex justify-end space-x-3 mt-6">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
                 >
                   Hủy
                 </button>
@@ -386,7 +407,42 @@ const DoctorManagement: React.FC = () => {
           </div>
         </div >
       )}
-    </div >
+
+      {/* Lightbox xem ảnh to */}
+      {previewImage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)" }}
+          onClick={() => setPreviewImage(null)}
+        >
+          <div
+            className="relative"
+            onClick={(e) => e.stopPropagation()}
+            style={{ animation: "scaleIn 0.2s ease" }}
+          >
+            <button
+              onClick={() => setPreviewImage(null)}
+              className="absolute -top-4 -right-4 bg-white text-gray-700 rounded-full w-8 h-8 flex items-center justify-center text-lg font-bold shadow-lg hover:bg-gray-100 transition"
+            >
+              ✕
+            </button>
+            <img
+              src={previewImage}
+              alt="Ảnh đại diện"
+              className="rounded-2xl shadow-2xl object-cover"
+              style={{ maxWidth: "80vw", maxHeight: "80vh", minWidth: 200, minHeight: 200 }}
+              onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = "/avartar.jpg"; }}
+            />
+          </div>
+          <style>{`
+            @keyframes scaleIn {
+              from { transform: scale(0.85); opacity: 0; }
+              to   { transform: scale(1);    opacity: 1; }
+            }
+          `}</style>
+        </div>
+      )}
+    </div>
   );
 };
 

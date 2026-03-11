@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/service"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecase"
 	"github.com/gin-gonic/gin"
@@ -100,4 +101,62 @@ func (h *UserHandler) GetUserByID(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": u, "message": "user retrieved successfully"})
+}
+
+// UpdateUser updates a user
+func (h *UserHandler) UpdateUser(c *gin.Context) {
+	id := c.Param("id")
+
+	var req dto.UpdateUserRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	input := &usecase.UpdateUserInput{
+		ID:     id,
+		Name:   req.Name,
+		Email:  req.Email,
+		Roles:  req.Roles,
+		Gender: req.Gender,
+		Phone:  req.Phone,
+		// Doctor profile
+		Specialization:    req.Specialization,
+		LicenseNumber:     req.LicenseNumber,
+		Workplace:         req.Workplace,
+		YearsOfExperience: req.YearsOfExperience,
+		// Nurse profile
+		NurseLicenseNumber:     req.NurseLicenseNumber,
+		NurseDepartment:        req.Department,
+		NurseYearsOfExperience: req.NurseYearsOfExperience,
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	if err := h.service.UpdateUser(ctx, input); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "User updated successfully"})
+}
+
+// DeleteUser deletes a user
+func (h *UserHandler) DeleteUser(c *gin.Context) {
+	id := c.Param("id")
+
+	input := &usecase.DeleteUserInput{
+		ID: id,
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	if err := h.service.DeleteUser(ctx, input); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "User deleted successfully"})
 }

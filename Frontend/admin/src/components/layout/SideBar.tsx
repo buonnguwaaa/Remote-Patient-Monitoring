@@ -4,10 +4,12 @@ import {
   TbLayoutSidebarRightCollapseFilled,
 } from "react-icons/tb";
 import { FiLogOut } from "react-icons/fi";
+import { MdDarkMode, MdLightMode } from "react-icons/md";
 import { type NavigationItem } from "../../types/index.ts";
 import { navData, adminNavData } from "../../data/NavData.ts";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { useTheme } from "../../context/ThemeContext";
 
 interface SideBarProps {
   navigationItems?: NavigationItem[];
@@ -17,6 +19,7 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout, getUserRole } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   // Determine which navigation items to display based on role
   const userRole = getUserRole();
@@ -155,10 +158,33 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
               </div>
             )}
           </div>
+          {/* Toggle Dark/Light Mode */}
+          <button
+            onClick={toggleTheme}
+            title={theme === "dark" ? "Chuyển sang Light Mode" : "Chuyển sang Dark Mode"}
+            className={`
+              flex w-full items-center py-2 rounded-lg mt-1
+              text-gray-500 dark:text-gray-300
+              hover:bg-blue-50 dark:hover:bg-gray-700
+              hover:text-btn-clicked dark:hover:text-yellow-300
+              transition-all duration-200
+              ${isCollapsed ? "justify-center px-0" : "px-4 gap-3"}
+            `}
+          >
+            <span className="text-2xl transition-transform duration-300">
+              {theme === "dark" ? <MdDarkMode /> : <MdLightMode className="text-orange-400" />}
+            </span>
+            {!isCollapsed && (
+              <span className="text-base font-semibold">
+                {theme === "dark" ? "Dark Mode" : "Light Mode"}
+              </span>
+            )}
+          </button>
+
           <button
             onClick={handleLogout}
             className="flex w-full items-center justify-center py-2 rounded-md text-xl 
-            text-gray-500 hover:bg-rose-400 hover:text-gray-800 transition duration-400 mt-3"
+            text-gray-500 hover:bg-rose-400 hover:text-gray-800 transition duration-400 mt-1"
           >
             <FiLogOut className="mr-1" />
             {!isCollapsed && <span>Đăng xuất</span>}
