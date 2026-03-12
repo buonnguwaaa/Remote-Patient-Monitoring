@@ -29,5 +29,10 @@ func RegisterUserRoutes(r *gin.Engine, c *container.MainServerContainer) {
 			middleware.RequireRoles(domain.RoleAdmin),
 			c.UserHandler.DeleteUser,
 		)
+		userGroup.POST("/:id/avatar",
+			middleware.JWTAuthMiddleware(c.JWTManager),
+			middleware.RequireRoles(domain.RoleAdmin),
+			c.UserHandler.UploadAvatar,
+		)
 	}
 }

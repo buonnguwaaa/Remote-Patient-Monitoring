@@ -2,7 +2,8 @@ import Constants from 'expo-constants';
 
 
 const extras = (Constants?.manifest?.extra) || (Constants?.expoConfig?.extra) || {};
-const BASE_URL = process.env.EXPO_PUBLIC_BASE_URL || extras.BASE_URL || 'http://192.168.1.47:8080';
+const BASE_URL = process.env.EXPO_PUBLIC_BASE_URL || extras.BASE_URL || 'http://10.0.2.2:8080';
+
 
 async function request(path, opts = {}) {
   const headers = { 'Content-Type': 'application/json' };

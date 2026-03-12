@@ -3,9 +3,7 @@ package service
 import (
 	"context"
 	"mime/multipart"
-	"os"
 	"strings"
-
 	"github.com/cloudinary/cloudinary-go/v2"
 	"github.com/cloudinary/cloudinary-go/v2/api/uploader"
 )
@@ -19,16 +17,8 @@ type cloudinaryService struct {
 	cld *cloudinary.Cloudinary
 }
 
-func NewCloudinaryService() (CloudinaryService, error) {
-	cloudName := os.Getenv("CLOUDINARY_CLOUD_NAME")
-	apiKey := os.Getenv("CLOUDINARY_API_KEY")
-	apiSecret := os.Getenv("CLOUDINARY_API_SECRET")
-
-	cld, err := cloudinary.NewFromParams(cloudName, apiKey, apiSecret)
-	if err != nil {
-		return nil, err
-	}
-	return &cloudinaryService{cld: cld}, nil
+func NewCloudinaryService(cld *cloudinary.Cloudinary) CloudinaryService {
+	return &cloudinaryService{cld: cld}
 }
 
 func (s *cloudinaryService) UploadAvatar(ctx context.Context, file multipart.File, folder string) (string, error) {
