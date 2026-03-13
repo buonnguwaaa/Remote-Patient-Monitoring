@@ -2,3 +2,5 @@ debug.log
 .env.production
 .env
 .idea/
+.vscode/
+*.exe
