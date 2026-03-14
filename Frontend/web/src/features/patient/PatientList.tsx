@@ -1,75 +1,92 @@
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 
 import Table, { type Column } from "../../components/ui/Table";
-
 import { Chat, Edit } from "./ActionButton";
-
-interface PatientItem {
-  id: number;
-  name: string;
-  updatedAt?: string;
-
-  status: "Bình thường" | "Cảnh báo";
-}
-
-// mock data
-const patients: PatientItem[] = [
-  {
-    id: 1,
-    name: "Nguyễn Văn A",
-    updatedAt: "2024-04-01",
-
-    status: "Bình thường",
-  },
-  {
-    id: 2,
-    name: "Trần Thị B",
-    updatedAt: "2024-04-02",
-
-    status: "Cảnh báo",
-  },
-  {
-    id: 3,
-    name: "Lê Văn C",
-    updatedAt: "2024-04-03",
-
-    status: "Bình thường",
-  },
-  {
-    id: 4,
-    name: "Phạm Thị D",
-    updatedAt: "2024-04-04",
-
-    status: "Bình thường",
-  },
-  {
-    id: 5,
-    name: "Hoàng Văn E",
-    updatedAt: "2024-04-05",
-
-    status: "Cảnh báo",
-  },
-  {
-    id: 6,
-    name: "Vũ Thị F",
-    updatedAt: "2024-04-06",
-    status: "Bình thường",
-  },
-  {
-    id: 7,
-    name: "Đặng Thị G",
-    updatedAt: "2024-04-07",
-    status: "Cảnh báo",
-  },
-];
+import { getMyPatients, getLatestAlertForPatient } from "../../services/patientService";
+import type { PatientItem } from "../../types/patient";
 
 const PatientList = () => {
+  const navigate = useNavigate();
+
+  // Data states
+  const [patients, setPatients] = useState<PatientItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Filter states
+  const [filterDate, setFilterDate] = useState<string>("");
+  const [filterStatus, setFilterStatus] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+
+  // Fetch patients on mount
+  useEffect(() => {
+    const fetchPatients = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // 1. Get assigned patients
+        const assignments = await getMyPatients();
+
+        // 2. For each patient, check latest alert to determine status
+        const patientItems: PatientItem[] = await Promise.all(
+          assignments.map(async (assignment) => {
+            let status: PatientItem["status"] = "Bình thường";
+
+            try {
+              const latestAlert = await getLatestAlertForPatient(assignment.patientId);
+              if (latestAlert && latestAlert.severity === "high" && latestAlert.status === "open") {
+                status = "Cảnh báo";
+              }
+            } catch {
+              // If alert fetch fails for a patient, default to "Bình thường"
+            }
+
+            return {
+              id: assignment.patientId,
+              name: assignment.patientName || "Không rõ tên",
+              updatedAt: assignment.updatedAt
+                ? new Date(assignment.updatedAt).toISOString().split("T")[0]
+                : undefined,
+              status,
+            };
+          })
+        );
+
+        setPatients(patientItems);
+      } catch (err: any) {
+        setError(err?.response?.data?.error || err?.message || "Không thể tải danh sách bệnh nhân");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPatients();
+  }, []);
+
+  // Client-side filtering
+  const filteredPatients = useMemo(() => {
+    return patients.filter((p) => {
+      // Filter by date
+      if (filterDate && p.updatedAt !== filterDate) return false;
+      // Filter by status
+      if (filterStatus && p.status !== filterStatus) return false;
+      // Filter by search query (name)
+      if (searchQuery && !p.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+      return true;
+    });
+  }, [patients, filterDate, filterStatus, searchQuery]);
+
   const columns: Column<PatientItem>[] = [
     {
-      header: "ID",
-      accessor: "id",
-      className: "w-10 font-bold",
+      header: "STT",
+      render: (user) => (
+        <span className="font-bold">
+          {filteredPatients.indexOf(user) + 1}
+        </span>
+      ),
+      className: "w-10",
     },
     {
       header: "Họ và Tên",
@@ -82,7 +99,6 @@ const PatientList = () => {
     },
     {
       header: "Tình trạng",
-      // Sử dụng render để custom giao diện (Badge)
       render: (user) => (
         <div
           className={`px-2 py-1 rounded-full w-fit text-xs font-semibold ${user.status === "Bình thường"
@@ -96,7 +112,6 @@ const PatientList = () => {
     },
     {
       header: "Hành động",
-      // Cột này không có accessor, chỉ có nút bấm
       render: (user) => (
         <div className="flex gap-3">
           <Chat
@@ -107,11 +122,6 @@ const PatientList = () => {
               navigate(`/patient/chat/${user.id}`);
             }}
           />
-          {/* <View
-            className=" cursor-pointer p-1 hover:bg-gray-200 rounded-md"
-            iconSize={20}
-            onClick={() => console.log("View clicked for", user.name)}
-          /> */}
           <Edit
             className=" cursor-pointer p-1 hover:bg-gray-200 rounded-md"
             iconSize={20}
@@ -123,43 +133,55 @@ const PatientList = () => {
   ];
 
   const clickedRow = (patient: PatientItem) => {
-    // Chuyển hướng đến trang chi tiết bệnh nhân
-    //navigate(`/patient/${patient.id}`);
-    navigate(`/patient/1`);
+    navigate(`/patient/${patient.id}`);
   };
-  const navigate = useNavigate();
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+
+  if (loading) {
+    return (
+      <div className="p-8 bg-gray-100 min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-500 border-r-transparent" />
+          <p className="mt-2 text-sm text-gray-600">Đang tải danh sách bệnh nhân...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-8 bg-gray-100 min-h-screen">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
+          <p className="font-semibold">Lỗi</p>
+          <p>{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8 bg-gray-100 min-h-screen">
       <h1 className="text-3xl font-bold mb-4">Danh sách bệnh nhân</h1>
-      {/* {Section Filter & Search} */}
 
+      {/* Section Filter & Search */}
       <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-4">
         <div className="flex flex-col md:flex-row items-center gap-4">
-          {/* {Theo ngày} */}
-
+          {/* Theo ngày */}
           <div className=" w-39">
             <input
               type="date"
               placeholder="Chọn ngày cập nhật"
               className="w-full border-2 border-gray-400 rounded-lg p-2.5 outline-none bg-white text-gray-700 hover:border-red-500 focus:border-blue-500 transition-colors"
-              onChange={(e) => {
-                const date = e.target.value;
-                console.log(date);
-              }}
+              value={filterDate}
+              onChange={(e) => setFilterDate(e.target.value)}
             />
           </div>
 
-          {/* { Theo trạng thái normal/warn } */}
+          {/* Theo trạng thái */}
           <div className=" w-39">
-            {/* {Status Filter} */}
             <select
-              className="border-2 border-gray-400 rounded-md p-2 outline:-none bg-white"
-              onChange={(e) => {
-                const status = e.target.value;
-                console.log("Filter by status:", status);
-              }}
+              className="border-2 border-gray-400 rounded-md p-2 outline-none bg-white"
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
             >
               <option value="">Tất cả trạng thái</option>
               <option value="Bình thường">Bình thường</option>
@@ -167,24 +189,20 @@ const PatientList = () => {
             </select>
           </div>
         </div>
-        {/* {Search} */}
+
+        {/* Search */}
         <div>
-          {/* {Search} */}
           <input
             type="text"
             placeholder="Tìm kiếm bệnh nhân..."
             className="border-2 border-gray-400 rounded-md p-2 outline-none"
-            onChange={(e) => {
-              const query = e.target.value;
-              console.log("Search query:", query);
-            }}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
       </div>
-      <Table data={patients} columns={columns} onRowClick={clickedRow} itemsPerPage={8} />
-      {/* {selectedPatient && (
-        <PatientProfile patient={selectedPatient} />
-      )} */}
+
+      <Table data={filteredPatients} columns={columns} onRowClick={clickedRow} itemsPerPage={8} />
     </div>
   );
 };
