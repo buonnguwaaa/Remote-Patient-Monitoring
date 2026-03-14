@@ -145,37 +145,37 @@ const ActivityHistory: React.FC = () => {
   return (
     <div className="p-6">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-800 flex items-center">
+        <h1 className="text-3xl font-bold text-gray-800 dark:text-white flex items-center">
           <FaHistory className="mr-3 text-indigo-600" />
           Lịch sử hoạt động
         </h1>
-        <p className="text-gray-600 mt-2">
+        <p className="text-gray-600 dark:text-gray-400 mt-2">
           Theo dõi tất cả hoạt động trong hệ thống
         </p>
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               <FaFilter className="inline mr-2" />
               Chọn ngày
             </label>
             <input
               type="date"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Loại hoạt động
             </label>
             <select
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
             >
@@ -192,42 +192,42 @@ const ActivityHistory: React.FC = () => {
 
       {/* Summary Stats */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-        <div className="bg-white rounded-lg shadow-md p-4">
-          <div className="text-sm text-gray-600 mb-1">Tổng hoạt động</div>
-          <div className="text-2xl font-bold text-gray-800">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4">
+          <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">Tổng hoạt động</div>
+          <div className="text-2xl font-bold text-gray-800 dark:text-white">
             {filteredActivities.length}
           </div>
         </div>
-        <div className="bg-green-50 rounded-lg shadow-md p-4">
-          <div className="text-sm text-green-700 mb-1">Đăng nhập</div>
-          <div className="text-2xl font-bold text-green-800">
+        <div className="bg-green-50 dark:bg-green-900/20 rounded-lg shadow-md p-4">
+          <div className="text-sm text-green-700 dark:text-green-400 mb-1">Đăng nhập</div>
+          <div className="text-2xl font-bold text-green-800 dark:text-green-300">
             {filteredActivities.filter((a) => a.type === "login").length}
           </div>
         </div>
-        <div className="bg-blue-50 rounded-lg shadow-md p-4">
-          <div className="text-sm text-blue-700 mb-1">Tạo mới</div>
-          <div className="text-2xl font-bold text-blue-800">
+        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg shadow-md p-4">
+          <div className="text-sm text-blue-700 dark:text-blue-400 mb-1">Tạo mới</div>
+          <div className="text-2xl font-bold text-blue-800 dark:text-blue-300">
             {filteredActivities.filter((a) => a.type === "create").length}
           </div>
         </div>
-        <div className="bg-yellow-50 rounded-lg shadow-md p-4">
-          <div className="text-sm text-yellow-700 mb-1">Cập nhật</div>
-          <div className="text-2xl font-bold text-yellow-800">
+        <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg shadow-md p-4">
+          <div className="text-sm text-yellow-700 dark:text-yellow-400 mb-1">Cập nhật</div>
+          <div className="text-2xl font-bold text-yellow-800 dark:text-yellow-300">
             {filteredActivities.filter((a) => a.type === "update").length}
           </div>
         </div>
-        <div className="bg-red-50 rounded-lg shadow-md p-4">
-          <div className="text-sm text-red-700 mb-1">Xóa</div>
-          <div className="text-2xl font-bold text-red-800">
+        <div className="bg-red-50 dark:bg-red-900/20 rounded-lg shadow-md p-4">
+          <div className="text-sm text-red-700 dark:text-red-400 mb-1">Xóa</div>
+          <div className="text-2xl font-bold text-red-800 dark:text-red-300">
             {filteredActivities.filter((a) => a.type === "delete").length}
           </div>
         </div>
       </div>
 
       {/* Activity List */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <div className="px-6 py-4 bg-gray-50 border-b">
-          <h2 className="text-lg font-semibold text-gray-800">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
+        <div className="px-6 py-4 bg-gray-50 dark:bg-gray-700 border-b dark:border-gray-600">
+          <h2 className="text-lg font-semibold text-gray-800 dark:text-white">
             Danh sách hoạt động - {new Date(selectedDate).toLocaleDateString("vi-VN", {
               weekday: "long",
               year: "numeric",
@@ -245,13 +245,13 @@ const ActivityHistory: React.FC = () => {
             </p>
           </div>
         ) : (
-          <div className="divide-y divide-gray-200">
+          <div className="divide-y divide-gray-200 dark:divide-gray-700">
             {filteredActivities.map((activity) => {
               const style = getActivityStyle(activity.type);
               return (
                 <div
                   key={activity.id}
-                  className="px-6 py-4 hover:bg-gray-50 transition"
+                  className="px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition"
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex items-start space-x-4 flex-1">
@@ -262,33 +262,32 @@ const ActivityHistory: React.FC = () => {
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center space-x-3 mb-1">
-                          <span className="font-medium text-gray-900">
+                          <span className="font-medium text-gray-900 dark:text-gray-100">
                             {activity.user}
                           </span>
                           <span
-                            className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                              activity.type === "login"
-                                ? "bg-green-100 text-green-800"
+                            className={`px-2 py-1 text-xs font-semibold rounded-full ${activity.type === "login"
+                                ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
                                 : activity.type === "create"
-                                ? "bg-blue-100 text-blue-800"
-                                : activity.type === "update"
-                                ? "bg-yellow-100 text-yellow-800"
-                                : activity.type === "delete"
-                                ? "bg-red-100 text-red-800"
-                                : "bg-purple-100 text-purple-800"
-                            }`}
+                                  ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
+                                  : activity.type === "update"
+                                    ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300"
+                                    : activity.type === "delete"
+                                      ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
+                                      : "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300"
+                              }`}
                           >
                             {getActivityTypeLabel(activity.type)}
                           </span>
                         </div>
-                        <p className="text-gray-700">{activity.action}</p>
+                        <p className="text-gray-700 dark:text-gray-300">{activity.action}</p>
                       </div>
                     </div>
                     <div className="text-right ml-4 flex-shrink-0">
-                      <div className="text-sm font-medium text-gray-900">
+                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
                         {activity.timestamp}
                       </div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
                         {new Date(activity.date).toLocaleDateString("vi-VN")}
                       </div>
                     </div>

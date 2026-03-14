@@ -1,4 +1,3 @@
-// Badge.tsx - Component phụ trợ với React Icons
 import React from "react";
 import { FaCheck, FaTimes, FaExclamation, FaInfoCircle } from "react-icons/fa";
 
@@ -9,7 +8,7 @@ type BadgeProps = {
   icon?: boolean;
 };
 
-const Badge: React.FC<BadgeProps> = ({
+const Badge: React.FC<BadgeProps> = ({  
   variant = "primary",
   children,
   className = "",

@@ -153,3 +153,12 @@ For issues or questions:
 1. Check existing issues in the project repository
 2. Review application logs for error messages
 3. Consult the team's internal documentation
+
+# Password
+admin: [admin@gmail.com] / Admin@123
+doctor: [doctor@gmail.com] / Doctor12345@
+patient: [patient@gmail.com] / Patient12345@
+nurse: [nurse@gmail.com] / Nurse@123
+
+# Run for windows
+go run cmd/server/main.go

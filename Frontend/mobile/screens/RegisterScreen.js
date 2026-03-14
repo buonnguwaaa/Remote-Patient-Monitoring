@@ -16,7 +16,7 @@ import { Alert } from 'react-native';
 
 import { useAuth } from '../context/AuthContext';
 
-export default function RegisterScreen({ onSwitchToLogin }) {
+export default function RegisterScreen({ navigation, onSwitchToLogin }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [gender, setGender] = useState('');
@@ -66,7 +66,7 @@ export default function RegisterScreen({ onSwitchToLogin }) {
       setLoading(false);
       if (ok) {
         alert('Register successful. Please sign in.');
-        onSwitchToLogin && onSwitchToLogin();
+        navigation.navigate('Login');
       } else {
         alert('Register failed: ' + JSON.stringify(error));
       }
@@ -172,7 +172,25 @@ export default function RegisterScreen({ onSwitchToLogin }) {
               />
             )}
 
-            {DateTimePicker && showDatePicker && (
+            {DateTimePicker && showDatePicker && Platform.OS === 'android' && (
+              <DateTimePicker
+                value={tempDate}
+                mode="date"
+                display="default"
+                maximumDate={new Date()}
+                minimumDate={new Date('1900-01-01')}
+                onChange={(event, selected) => {
+                  setShowDatePicker(false);
+                  if (event.type === 'set' && selected) {
+                    setTempDate(selected);
+                    const iso = selected.toISOString().slice(0, 10);
+                    setDob(iso);
+                  }
+                }}
+              />
+            )}
+
+            {DateTimePicker && showDatePicker && Platform.OS === 'ios' && (
               <Modal
                 transparent
                 animationType="slide"
@@ -185,18 +203,11 @@ export default function RegisterScreen({ onSwitchToLogin }) {
                     <DateTimePicker
                       value={tempDate}
                       mode="date"
-                      display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                      display="spinner"
                       maximumDate={new Date()}
                       minimumDate={new Date('1900-01-01')}
                       onChange={(event, selected) => {
-                        if (Platform.OS === 'android') {
-                          if (selected) {
-                            const iso = selected.toISOString().slice(0, 10);
-                            setDob(iso);
-                          }
-                        } else {
-                          if (selected) setTempDate(selected);
-                        }
+                        if (selected) setTempDate(selected);
                       }}
                     />
 
@@ -270,8 +281,8 @@ export default function RegisterScreen({ onSwitchToLogin }) {
                 try {
                   const url = 'https://example.com/terms';
                   const { Linking } = require('react-native');
-                  Linking.openURL(url).catch(() => {});
-                } catch (e) {}
+                  Linking.openURL(url).catch(() => { });
+                } catch (e) { }
               }}
             >
               Terms
@@ -283,8 +294,8 @@ export default function RegisterScreen({ onSwitchToLogin }) {
                 try {
                   const url = 'https://example.com/privacy';
                   const { Linking } = require('react-native');
-                  Linking.openURL(url).catch(() => {});
-                } catch (e) {}
+                  Linking.openURL(url).catch(() => { });
+                } catch (e) { }
               }}
             >
               Privacy Policy
@@ -295,7 +306,7 @@ export default function RegisterScreen({ onSwitchToLogin }) {
         <View style={styles.footer}>
           <Text style={styles.footerText}>
             Already have an account?{' '}
-            <Text style={styles.signUp} onPress={() => onSwitchToLogin && onSwitchToLogin()}>Sign In</Text>
+            <Text style={styles.signUp} onPress={() => navigation.navigate('Login')}>Sign In</Text>
           </Text>
         </View>
       </ScrollView>

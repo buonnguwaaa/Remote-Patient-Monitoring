@@ -3,11 +3,11 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "start": "expo start --port 3000",
-    "android": "expo start --android --port 3000",
-    "ios": "expo start --ios --port 3000",
-    "web": "expo start --web --port 3000",
-    "web:3000": "expo start --web --port 3000"
+    "start": "dotenv -e .env -- expo start --port 3000",
+    "android": "dotenv -e .env -- expo start --android --port 3000",
+    "ios": "dotenv -e .env -- expo start --ios --port 3000",
+    "web": "dotenv -e .env -- expo start --web --port 3000",
+    "web:3000": "dotenv -e .env -- expo start --web --port 3000"
   },
   "dependencies": {
     "@expo/ngrok": "^4.1.3",

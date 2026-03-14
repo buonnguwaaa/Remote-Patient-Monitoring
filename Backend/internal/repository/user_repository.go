@@ -24,6 +24,8 @@ type UserRepository interface {
 	SetResetToken(context.Context, string, string, time.Time) error
 	FindByResetToken(context.Context, string) (*domain.User, error)
 	ResetPassword(context.Context, primitive.ObjectID, string) error
+	Update(context.Context, primitive.ObjectID, map[string]interface{}) error
+	Delete(context.Context, primitive.ObjectID) error
 
 	SetActivationToken(ctx context.Context, email, hash string, expires time.Time) error
 	FindByActivationHash(ctx context.Context, hash string) (*domain.User, error)
@@ -166,6 +168,19 @@ func (r *userRepository) ResetPassword(ctx context.Context, id primitive.ObjectI
 	return err
 }
 
+func (r *userRepository) Update(ctx context.Context, id primitive.ObjectID, updateData map[string]interface{}) error {
+	updateData["updatedAt"] = time.Now().UTC()
+	_, err := r.col.UpdateOne(ctx, bson.M{"_id": id}, bson.M{
+		"$set": updateData,
+	})
+	return err
+}
+
+func (r *userRepository) Delete(ctx context.Context, id primitive.ObjectID) error {
+	_, err := r.col.DeleteOne(ctx, bson.M{"_id": id})
+	return err
+}
+
 func (r *userRepository) SetActivationToken(ctx context.Context, email, hash string, expires time.Time) error {
 	_, err := r.col.UpdateOne(ctx, bson.M{"email": email}, bson.M{
 		"$set": bson.M{
@@ -221,11 +236,21 @@ func (r *userRepository) ExistsByIDAndRole(ctx context.Context, id primitive.Obj
 }
 
 func (r *userRepository) CountByDepartmentID(ctx context.Context, deptID primitive.ObjectID) (int64, error) {
-	return r.col.CountDocuments(ctx, bson.M{"departmentId": deptID})
+	return r.col.CountDocuments(ctx, bson.M{
+		"$or": []bson.M{
+			{"doctorProfile.departmentId": deptID},
+			{"nurseProfile.departmentId": deptID},
+		},
+	})
 }
 
 func (r *userRepository) FindByDepartmentID(ctx context.Context, deptID primitive.ObjectID) ([]domain.User, error) {
-	cursor, err := r.col.Find(ctx, bson.M{"departmentId": deptID})
+	cursor, err := r.col.Find(ctx, bson.M{
+		"$or": []bson.M{
+			{"doctorProfile.departmentId": deptID},
+			{"nurseProfile.departmentId": deptID},
+		},
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -239,11 +264,25 @@ func (r *userRepository) FindByDepartmentID(ctx context.Context, deptID primitiv
 }
 
 func (r *userRepository) UpdateDepartmentID(ctx context.Context, userID primitive.ObjectID, deptID primitive.ObjectID) error {
-	_, err := r.col.UpdateOne(ctx, bson.M{"_id": userID}, bson.M{
-		"$set": bson.M{
-			"departmentId": &deptID,
-			"updatedAt":    time.Now().UTC(),
-		},
+	var u domain.User
+	err := r.col.FindOne(ctx, bson.M{"_id": userID}).Decode(&u)
+	if err != nil {
+		return err
+	}
+
+	updateDoc := bson.M{"updatedAt": time.Now().UTC()}
+
+	if u.Role == domain.RoleDoctor {
+		updateDoc["doctorProfile.departmentId"] = &deptID
+	} else if u.Role == domain.RoleNurse {
+		updateDoc["nurseProfile.departmentId"] = &deptID
+	} else {
+		// Only doctors and nurses can have departments
+		return nil
+	}
+
+	_, err = r.col.UpdateOne(ctx, bson.M{"_id": userID}, bson.M{
+		"$set": updateDoc,
 	})
 	return err
 }

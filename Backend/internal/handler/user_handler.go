@@ -2,23 +2,27 @@ package handler
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/service"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecase"
 	"github.com/gin-gonic/gin"
 )
 
 type UserHandler struct {
-	service service.UserService
+	service       service.UserService
+	cloudinarySvc service.CloudinaryService
 }
 
-func NewUserHandler(service service.UserService) *UserHandler {
+func NewUserHandler(userService service.UserService, cloudinarySvc service.CloudinaryService) *UserHandler {
 	return &UserHandler{
-		service: service,
+		service:       userService,
+		cloudinarySvc: cloudinarySvc,
 	}
 }
 
@@ -100,4 +104,129 @@ func (h *UserHandler) GetUserByID(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": u, "message": "user retrieved successfully"})
+}
+
+// UpdateUser updates a user
+func (h *UserHandler) UpdateUser(c *gin.Context) {
+	id := c.Param("id")
+
+	var req dto.UpdateUserRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	input := &usecase.UpdateUserInput{
+		ID:     id,
+		Name:   req.Name,
+		Email:  req.Email,
+		Roles:  req.Roles,
+		Gender: req.Gender,
+		Phone:  req.Phone,
+		// Doctor profile
+		Specialization:    req.Specialization,
+		LicenseNumber:     req.LicenseNumber,
+		Workplace:         req.Workplace,
+		YearsOfExperience: req.YearsOfExperience,
+		// Nurse profile
+		NurseLicenseNumber:     req.NurseLicenseNumber,
+		NurseDepartment:        req.Department,
+		NurseYearsOfExperience: req.NurseYearsOfExperience,
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	if err := h.service.UpdateUser(ctx, input); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "User updated successfully"})
+}
+
+// DeleteUser deletes a user
+func (h *UserHandler) DeleteUser(c *gin.Context) {
+	id := c.Param("id")
+
+	input := &usecase.DeleteUserInput{
+		ID: id,
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	if err := h.service.DeleteUser(ctx, input); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "User deleted successfully"})
+}
+
+func (h *UserHandler) UploadAvatar(c *gin.Context) {
+	userID := c.Param("id")
+
+	fileHeader, err := c.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Vui lòng chọn file ảnh: " + err.Error()})
+		return
+	}
+
+	if fileHeader.Header.Get("Content-Type") != "" {
+		contentType := fileHeader.Header.Get("Content-Type")
+		if len(contentType) < 5 || contentType[:6] != "image/" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Chỉ chấp nhận file ảnh"})
+			return
+		}
+	}
+
+	file, err := fileHeader.Open()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Không thể mở file: " + err.Error()})
+		return
+	}
+	defer file.Close()
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 30*time.Second)
+	defer cancel()
+
+	oldAvatarURL := ""
+	if currentUser, err := h.service.GetUserByID(ctx, userID); err == nil {
+		oldAvatarURL = currentUser.AvatarUrl
+	}
+
+	avatarUrl, err := h.cloudinarySvc.UploadAvatar(ctx, file, "rpm/avatars")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Upload thất bại: " + err.Error()})
+		return
+	}
+
+	if err := h.service.UpdateUser(ctx, &usecase.UpdateUserInput{
+		ID:        userID,
+		AvatarUrl: avatarUrl,
+	}); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Lưu avatar thất bại: " + err.Error()})
+		return
+	}
+
+	if oldAvatarURL != "" {
+		oldPublicID := service.ExtractPublicID(oldAvatarURL)
+		if oldPublicID != "" {
+			go func() {
+				deleteCtx, deleteCancel := context.WithTimeout(context.Background(), 15*time.Second)
+				defer deleteCancel()
+				if err := h.cloudinarySvc.DeleteAsset(deleteCtx, oldPublicID); err != nil {
+					log.Printf("[Cloudinary] Không thể xóa ảnh cũ %s: %v", oldPublicID, err)
+				} else {
+					log.Printf("[Cloudinary] Đã xóa ảnh cũ: %s", oldPublicID)
+				}
+			}()
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"avatarUrl": avatarUrl,
+		"message":   "Upload avatar thành công",
+	})
 }

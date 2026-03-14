@@ -1,50 +1,69 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { FaRegUser, FaEdit, FaTrash, FaPlus, FaSearch } from "react-icons/fa";
-import type { Patient } from "../../types";
+import api from "../services/api";
+import { uploadAvatar } from "../services/uploadService";
+import { useToast } from "../hooks/useToast";
+import Toast from "../components/ui/Toast";
+import AvatarUploader from "../components/ui/AvatarUploader";
+import type { Patient } from "../types";
 
 const PatientManagementAdmin: React.FC = () => {
-  const [patients, setPatients] = useState<Patient[]>([
-    {
-      id: "1",
-      name: "Nguyễn Văn An",
-      profileImageUrl: "/default-avatar.svg",
-      email: "nguyenvanan@patient.com",
-      phone: "0909123456",
-      gender: "Nam",
-      dateOfBirth: "1980-05-15",
-      address: "123 Nguyễn Văn Linh, Q7, TP.HCM",
-      status: "active",
-    },
-    {
-      id: "2",
-      name: "Trần Thị Bình",
-      profileImageUrl: "/default-avatar.svg",
-      email: "tranthibinh@patient.com",
-      phone: "0908765432",
-      gender: "Nữ",
-      dateOfBirth: "1985-08-20",
-      address: "456 Lê Văn Việt, Q9, TP.HCM",
-      status: "active",
-    },
-  ]);
-
+  const [patients, setPatients] = useState<Patient[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const { toast, showToast } = useToast();
+
+  const fetchPatients = async () => {
+    try {
+      const response = await api.get("/users?role=user.patient");
+      if (response.data?.data) {
+        const apiPatients = response.data.data.map((u: any) => ({
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          gender: u.gender === "M" ? "Nam" : u.gender === "F" ? "Nữ" : u.gender,
+          dateOfBirth: u.dob,
+          phone: u.phone || "",
+          address: "",
+          status: u.isActive ? "active" : "inactive",
+          profileImageUrl: u.avatarUrl || "/avartar.jpg",
+        }));
+        setPatients(apiPatients);
+      }
+    } catch (err) {
+      console.error("Lỗi khi tải danh sách bệnh nhân", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchPatients();
+  }, []);
 
   const handleEdit = (patient: Patient) => {
     setEditingPatient(patient);
+    setAvatarFile(null);
     setShowModal(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (window.confirm("Bạn có chắc chắn muốn xóa bệnh nhân này?")) {
-      setPatients(patients.filter((p) => p.id !== id));
+      try {
+        await api.delete(`/users/${id}`);
+        setPatients(patients.filter((p) => p.id !== id));
+        showToast("Xóa bệnh nhân thành công!");
+      } catch (err) {
+        console.error("Lỗi xóa bệnh nhân", err);
+        showToast("Có lỗi xảy ra khi xóa.", "error");
+      }
     }
   };
 
   const handleAdd = () => {
     setEditingPatient(null);
+    setAvatarFile(null);
     setShowModal(true);
   };
 
@@ -52,146 +71,138 @@ const PatientManagementAdmin: React.FC = () => {
     patient.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
 
-    const newPatient: Patient = {
-      id: editingPatient?.id || Math.random().toString(),
-      name: formData.get("name") as string,
-      email: formData.get("email") as string,
-      phone: formData.get("phone") as string,
-      gender: formData.get("gender") as "Nam" | "Nữ",
-      dateOfBirth: formData.get("dateOfBirth") as string,
-      address: formData.get("address") as string,
-      status: formData.get("status") as "active" | "inactive",
-      profileImageUrl: editingPatient?.profileImageUrl || "",
-    };
+    const name = formData.get("name") as string;
+    const email = formData.get("email") as string;
+    const gender = formData.get("gender") as "Nam" | "Nữ";
+    const phone = formData.get("phone") as string;
+    const dateOfBirth = formData.get("dateOfBirth") as string;
 
-    if (editingPatient?.id) {
-      setPatients(patients.map((p) => (p.id === newPatient.id ? newPatient : p)));
-    } else {
-      setPatients([...patients, newPatient]);
+    let apiGender = "O";
+    if (gender === "Nam") apiGender = "M";
+    if (gender === "Nữ") apiGender = "F";
+
+    try {
+      let savedUserId = editingPatient?.id;
+
+      if (editingPatient?.id) {
+        // Update
+        await api.put(`/users/${editingPatient.id}`, {
+          name, email, gender: apiGender, phone,
+          roles: ["user.patient"],
+        });
+      } else {
+        // Create
+        const password = formData.get("password") as string;
+        if (!password || password.length < 8) {
+          showToast("Mật khẩu phải có ít nhất 8 ký tự!", "error");
+          return;
+        }
+        await api.post("/auth/register", {
+          name, email, password, confirmedPassword: password,
+          role: "user.patient", gender: apiGender,
+          dob: dateOfBirth || "1990-01-01",
+        });
+        const resp = await api.get("/users?role=user.patient&sortOrder=desc&limit=1");
+        savedUserId = resp.data?.data?.[0]?.id;
+        if (savedUserId) {
+          await api.put(`/users/${savedUserId}`, { phone });
+        }
+      }
+
+      // Upload avatar nếu có
+      if (avatarFile && savedUserId) {
+        await uploadAvatar(savedUserId, avatarFile);
+      }
+
+      fetchPatients();
+      setShowModal(false);
+      setAvatarFile(null);
+      showToast(editingPatient?.id ? "Cập nhật bệnh nhân thành công!" : "Thêm bệnh nhân thành công!");
+    } catch (err: any) {
+      console.error(err);
+      showToast("Lỗi: " + (err.response?.data?.error || err.message), "error");
     }
-    setShowModal(false);
   };
 
   return (
     <div className="p-6">
+      <Toast toast={toast} />
+
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800 flex items-center">
+          <h1 className="text-3xl font-bold text-gray-800 dark:text-white flex items-center">
             <FaRegUser className="mr-3 text-green-600" />
             Quản lý bệnh nhân
           </h1>
-          <p className="text-gray-600 mt-2">
-            Tổng số: {patients.length} bệnh nhân
-          </p>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">Tổng số: {patients.length} bệnh nhân</p>
         </div>
-        <button
-          onClick={handleAdd}
-          className="flex items-center bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition"
-        >
-          <FaPlus className="mr-2" />
-          Thêm bệnh nhân
+        <button onClick={handleAdd} className="flex items-center bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition">
+          <FaPlus className="mr-2" />Thêm bệnh nhân
         </button>
       </div>
 
       {/* Search Bar */}
-      <div className="mb-6 bg-white rounded-lg shadow-md p-4">
+      <div className="mb-6 bg-white dark:bg-gray-800 rounded-lg shadow-md p-4">
         <div className="relative">
           <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
           <input
             type="text"
             placeholder="Tìm kiếm theo tên bệnh nhân..."
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
       </div>
 
-      {/* Patients Table */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      {/* Table */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
         <table className="w-full">
-          <thead className="bg-gray-50 border-b">
+          <thead className="bg-gray-50 dark:bg-gray-700 border-b dark:border-gray-600">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Bệnh nhân
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Địa chỉ
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Trạng thái
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Liên hệ
-              </th>
-              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Hành động
-              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Bệnh nhân</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Địa chỉ</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Trạng thái</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Liên hệ</th>
+              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Hành động</th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {filteredPatients.map((patient, index) => (
-              <tr key={patient.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4" style={{ minWidth: '250px' }}>
+          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+            {filteredPatients.map((patient) => (
+              <tr key={patient.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                <td className="px-6 py-4" style={{ minWidth: "250px" }}>
                   <div className="flex items-center">
-                    {patient.profileImageUrl ? (
-                      <img
-                        className="h-10 w-10 rounded-full object-cover"
-                        src={patient.profileImageUrl}
-                        alt={patient.name}
-                        onError={(e) => (e.currentTarget.src = "/default-avatar.svg")}
-                      />
-                    ) : (
-                      <img
-                        className="h-10 w-10 rounded-full object-cover"
-                        src="/default-avatar.svg"
-                        alt={patient.name}
-                      />
-                    )}
+                    <img
+                      className="h-10 w-10 rounded-full object-cover cursor-pointer hover:ring-2 hover:ring-green-400 hover:scale-110 transition-transform duration-150"
+                      src={patient.profileImageUrl || "/avartar.jpg"}
+                      alt={patient.name}
+                      onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = "/avartar.jpg"; }}
+                      onClick={() => setPreviewImage(patient.profileImageUrl || "/avartar.jpg")}
+                      title="Nhấn để xem ảnh"
+                    />
                     <div className="ml-4">
-                      <div className="text-sm font-medium text-gray-900">
-                        {patient.name}
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        {patient.gender} - {patient.dateOfBirth}
-                      </div>
+                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{patient.name}</div>
+                      <div className="text-sm text-gray-500 dark:text-gray-400">{patient.gender} - {patient.dateOfBirth}</div>
                     </div>
                   </div>
                 </td>
-                <td className="px-6 py-4 text-sm text-gray-900">
-                  {patient.address || "Chưa cập nhật"}
-                </td>
+                <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">{patient.address || "Chưa cập nhật"}</td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <span
-                    className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${patient.status === "active"
-                      ? "bg-green-100 text-green-800"
-                      : "bg-red-100 text-red-800"
-                      }`}
-                  >
+                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${patient.status === "active" ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"}`}>
                     {patient.status === "active" ? "Hoạt động" : "Không hoạt động"}
                   </span>
                 </td>
-                <td className="px-6 py-4 text-sm text-gray-900">
+                <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
                   <div>{patient.email}</div>
-                  <div className="text-gray-500">{patient.phone}</div>
+                  <div className="text-gray-500 dark:text-gray-400">{patient.phone}</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                  <button
-                    onClick={() => handleEdit(patient)}
-                    className="text-blue-600 hover:text-blue-900 mr-3"
-                  >
-                    <FaEdit className="inline" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(patient.id)}
-                    className="text-red-600 hover:text-red-900"
-                  >
-                    <FaTrash className="inline" />
-                  </button>
+                  <button onClick={() => handleEdit(patient)} className="text-blue-600 hover:text-blue-900 mr-3"><FaEdit className="inline" /></button>
+                  <button onClick={() => handleDelete(patient.id)} className="text-red-600 hover:text-red-900"><FaTrash className="inline" /></button>
                 </td>
               </tr>
             ))}
@@ -199,164 +210,64 @@ const PatientManagementAdmin: React.FC = () => {
         </table>
       </div>
 
-      {/* Modal for Add/Edit Patient */}
+      {/* Modal Add/Edit */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-30 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl">
-            <h2 className="text-2xl font-bold mb-4">
-              {editingPatient ? "Chỉnh sửa bệnh nhân" : "Thêm bệnh nhân mới"}
-            </h2>
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <h2 className="text-2xl font-bold mb-4 dark:text-white">{editingPatient ? "Chỉnh sửa bệnh nhân" : "Thêm bệnh nhân mới"}</h2>
             <form className="space-y-4" onSubmit={handleSubmit}>
-              {/* Upload ảnh */}
-              <div className="flex items-center space-x-4 pb-4 border-b">
-                <div className="flex-shrink-0">
-                  <img
-                    src={editingPatient?.profileImageUrl || "/default-avatar.svg"}
-                    alt="Preview"
-                    className="h-20 w-20 rounded-full object-cover border-2 border-gray-300"
-                  />
-                </div>
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Ảnh đại diện
-                  </label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const reader = new FileReader();
-                        reader.onloadend = () => {
-                          setEditingPatient((prev) =>
-                            prev
-                              ? { ...prev, profileImageUrl: reader.result as string }
-                              : {
-                                id: Math.random().toString(),
-                                name: "",
-                                email: "",
-                                phone: "",
-                                profileImageUrl: reader.result as string,
-                                gender: "Nam",
-                                dateOfBirth: "",
-                                address: "",
-                                status: "active"
-                              }
-                          );
-                        };
-                        reader.readAsDataURL(file);
-                      }
-                    }}
-                    className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                  />
-                </div>
-              </div>
-
+              <AvatarUploader
+                currentUrl={editingPatient?.profileImageUrl}
+                onFileSelect={(file) => setAvatarFile(file)}
+              />
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Họ tên
-                  </label>
-                  <input
-                    name="name"
-                    type="text"
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    defaultValue={editingPatient?.name}
-                  />
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Họ tên</label>
+                  <input name="name" type="text" required className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" defaultValue={editingPatient?.name} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Email
-                  </label>
-                  <input
-                    name="email"
-                    type="email"
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    defaultValue={editingPatient?.email}
-                  />
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
+                  <input name="email" type="email" required className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" defaultValue={editingPatient?.email} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Số điện thoại
-                  </label>
-                  <input
-                    name="phone"
-                    type="tel"
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    defaultValue={editingPatient?.phone}
-                  />
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Số điện thoại</label>
+                  <input name="phone" type="tel" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" defaultValue={editingPatient?.phone} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Giới tính
-                  </label>
-                  <select
-                    name="gender"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    defaultValue={editingPatient?.gender}
-                  >
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Giới tính</label>
+                  <select name="gender" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" defaultValue={editingPatient?.gender}>
                     <option value="Nam">Nam</option>
                     <option value="Nữ">Nữ</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Ngày sinh
-                  </label>
-                  <input
-                    name="dateOfBirth"
-                    type="date"
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    defaultValue={editingPatient?.dateOfBirth}
-                  />
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Ngày sinh</label>
+                  <input name="dateOfBirth" type="date" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" defaultValue={editingPatient?.dateOfBirth} />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Trạng thái
-                  </label>
-                  <select
-                    name="status"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    defaultValue={editingPatient?.status}
-                  >
-                    <option value="active">Hoạt động</option>
-                    <option value="inactive">Không hoạt động</option>
-                  </select>
-                </div>
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Địa chỉ
-                  </label>
-                  <input
-                    name="address"
-                    type="text"
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    defaultValue={editingPatient?.address}
-                  />
-                </div>
+                {!editingPatient && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Mật khẩu <span className="text-gray-400 font-normal">(tài khoản đăng nhập)</span></label>
+                    <input name="password" type="password" required minLength={8} placeholder="Tối thiểu 8 ký tự" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" />
+                  </div>
+                )}
               </div>
               <div className="flex justify-end space-x-3 mt-6">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                >
-                  {editingPatient?.id ? "Cập nhật" : "Thêm mới"}
-                </button>
+                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 border border-gray-300 dark:border-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">Hủy</button>
+                <button type="submit" className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">{editingPatient?.id ? "Cập nhật" : "Thêm mới"}</button>
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* Lightbox */}
+      {previewImage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)" }} onClick={() => setPreviewImage(null)}>
+          <div className="relative" onClick={(e) => e.stopPropagation()} style={{ animation: "scaleIn 0.2s ease" }}>
+            <button onClick={() => setPreviewImage(null)} className="absolute -top-4 -right-4 bg-white text-gray-700 rounded-full w-8 h-8 flex items-center justify-center text-lg font-bold shadow-lg hover:bg-gray-100 transition">✕</button>
+            <img src={previewImage} alt="Ảnh đại diện" className="rounded-2xl shadow-2xl object-contain" style={{ maxWidth: "80vw", maxHeight: "80vh" }} onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = "/avartar.jpg"; }} />
+          </div>
+          <style>{`@keyframes scaleIn { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }`}</style>
         </div>
       )}
     </div>

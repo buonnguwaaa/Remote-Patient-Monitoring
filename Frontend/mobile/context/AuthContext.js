@@ -30,7 +30,7 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     const res = await authApi.login({ email, password });
-    if (!res.ok) return { ok: false, error: res.body };
+    if (!res.ok) return { ok: false, error: res.error || res.body };
 
     // After login, backend likely set cookies; fetch current user
     const meRes = await authApi.me();
@@ -50,7 +50,7 @@ export function AuthProvider({ children }) {
 
   const register = async (payload) => {
     const res = await authApi.register(payload);
-    if (!res.ok) return { ok: false, error: res.body };
+    if (!res.ok) return { ok: false, error: res.error || res.body };
     // Optionally auto-login: some backends set cookies on register
     const meRes = await authApi.me();
     if (meRes.ok && meRes.body && meRes.body.data) setUser(meRes.body.data);

@@ -89,13 +89,16 @@ func (s *authService) Register(ctx context.Context, input *usecase.RegisterInput
 		return nil, err
 	}
 	u := &domain.User{
-		Name:     input.Name,
-		Email:    email,
-		Password: hashedPwd,
-		Provider: LocalProvider,
-		Role:     input.Role,
-		Gender:   input.Gender,
-		Dob:      input.Dob,
+		BaseUser: domain.BaseUser{
+			Name:     input.Name,
+			Email:    email,
+			Password: hashedPwd,
+			Provider: LocalProvider,
+			Role:     input.Role,
+			Gender:   input.Gender,
+			Dob:      input.Dob,
+			IsActive: input.Role == domain.RolePatient,
+		},
 	}
 	insertedUser, err := s.userRepo.Create(ctx, u)
 	if err != nil {
@@ -299,13 +302,15 @@ func (s *authService) HandleGoogleOAuth2Callback(ctx context.Context, input *use
 		}
 
 		newUser := &domain.User{
-			Name:     userInfo.Name,
-			Email:    email,
-			Role:     domain.RolePatient,
-			Provider: GoogleProvider,
-			Gender:   gender,
-			Dob:      dob,
-			IsActive: true,
+			BaseUser: domain.BaseUser{
+				Name:     userInfo.Name,
+				Email:    email,
+				Role:     domain.RolePatient,
+				Provider: GoogleProvider,
+				Gender:   gender,
+				Dob:      dob,
+				IsActive: true,
+			},
 		}
 		u, err = s.userRepo.Create(ctx, newUser)
 		if err != nil {

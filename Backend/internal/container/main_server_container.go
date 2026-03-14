@@ -44,6 +44,8 @@ type MainServerContainer struct {
 
 	// Utils
 	JWTManager *util.JWTManager
+
+	CloudinaryService service.CloudinaryService
 }
 
 // NewMainServerContainer initializes all dependencies once
@@ -77,12 +79,21 @@ func NewMainServerContainer() *MainServerContainer {
 
 	// Initialize handlers
 	c.AuthHandler = handler.NewAuthHandler(c.AuthService)
-	c.UserHandler = handler.NewUserHandler(c.UserService)
 	c.MeasurementHandler = handler.NewMeasurementHandler(c.MeasurementService)
 	c.ThresholdHandler = handler.NewThresholdHandler(c.ThresholdService)
 	c.AlertHandler = handler.NewAlertHandler(c.AlertService)
 	c.DepartmentHandler = handler.NewDepartmentHandler(c.DepartmentService)
 	c.AssignmentHandler = handler.NewAssignmentHandler(c.AssignmentService)
 	c.ReminderHandler = handler.NewReminderHandler(c.ReminderService)
+
+	// Cloudinary — log warning nếu chưa cấu hình
+	if cldClient, err := config.NewCloudinaryClient(); err != nil {
+		println("[WARN] Cloudinary not configured:", err.Error())
+		c.UserHandler = handler.NewUserHandler(c.UserService, nil)
+	} else {
+		c.CloudinaryService = service.NewCloudinaryService(cldClient)
+		c.UserHandler = handler.NewUserHandler(c.UserService, c.CloudinaryService)
+	}
+
 	return c
 }

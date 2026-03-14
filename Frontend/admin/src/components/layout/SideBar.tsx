@@ -4,10 +4,12 @@ import {
   TbLayoutSidebarRightCollapseFilled,
 } from "react-icons/tb";
 import { FiLogOut } from "react-icons/fi";
+import { MdDarkMode, MdLightMode } from "react-icons/md";
 import { type NavigationItem } from "../../types/index.ts";
 import { navData, adminNavData } from "../../data/NavData.ts";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { useTheme } from "../../context/ThemeContext";
 
 interface SideBarProps {
   navigationItems?: NavigationItem[];
@@ -17,6 +19,7 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout, getUserRole } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   // Determine which navigation items to display based on role
   const userRole = getUserRole();
@@ -89,9 +92,8 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
           </button>
         </div>
 
-        {/* --- NAVIGATION --- */}
         <nav className="flex-1 mt-4 px-2 overflow-y-auto">
-          <ul className="space-y-2">
+          <ul className="space-y-1">
             {itemsToDisplay.map((item) => {
               const isActive = location.pathname === item.path;
               return (
@@ -102,22 +104,28 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
                       if (window.innerWidth < 768) setIsCollapsed(true);
                     }}
                     className={`
-                      flex items-center py-2 rounded-lg transition-colors
+                      flex items-center py-2.5 rounded-lg transition-all duration-200
                       ${isCollapsed ? "justify-center px-0" : "px-4 gap-3"}
                       ${isActive
-                        ? "bg-btn-clicked text-white"
-                        : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        ? "bg-btn-clicked text-white shadow-md shadow-blue-200 dark:shadow-blue-900 scale-[1.02]"
+                        : "text-gray-500 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-gray-700 hover:text-btn-clicked dark:hover:text-white"
                       }
                     `}
                     title={isCollapsed ? item.label : ""}
                   >
                     {item.icon && (
-                      <div className="text-2xl shrink-0">{item.icon}</div>
+                      <div className={`text-2xl shrink-0 transition-transform duration-200 ${isActive ? "scale-110" : ""}`}>
+                        {item.icon}
+                      </div>
                     )}
                     {!isCollapsed && (
-                      <span className="text-xl font-semibold whitespace-nowrap overflow-hidden">
+                      <span className={`text-base font-semibold whitespace-nowrap overflow-hidden ${isActive ? "font-bold" : ""}`}>
                         {item.label}
                       </span>
+                    )}
+                    {/* Active indicator dot khi collapsed */}
+                    {isCollapsed && isActive && (
+                      <span className="absolute left-1 w-1 h-8 bg-btn-clicked rounded-r-full" />
                     )}
                   </Link>
                 </li>
@@ -125,6 +133,7 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
             })}
           </ul>
         </nav>
+
 
         {/* --- FOOTER --- */}
         <div className="px-2 py-4">
@@ -149,10 +158,33 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
               </div>
             )}
           </div>
+          {/* Toggle Dark/Light Mode */}
+          <button
+            onClick={toggleTheme}
+            title={theme === "dark" ? "Chuyển sang Light Mode" : "Chuyển sang Dark Mode"}
+            className={`
+              flex w-full items-center py-2 rounded-lg mt-1
+              text-gray-500 dark:text-gray-300
+              hover:bg-blue-50 dark:hover:bg-gray-700
+              hover:text-btn-clicked dark:hover:text-yellow-300
+              transition-all duration-200
+              ${isCollapsed ? "justify-center px-0" : "px-4 gap-3"}
+            `}
+          >
+            <span className="text-2xl transition-transform duration-300">
+              {theme === "dark" ? <MdDarkMode /> : <MdLightMode className="text-orange-400" />}
+            </span>
+            {!isCollapsed && (
+              <span className="text-base font-semibold">
+                {theme === "dark" ? "Dark Mode" : "Light Mode"}
+              </span>
+            )}
+          </button>
+
           <button
             onClick={handleLogout}
             className="flex w-full items-center justify-center py-2 rounded-md text-xl 
-            text-gray-500 hover:bg-rose-400 hover:text-gray-800 transition duration-400 mt-3"
+            text-gray-500 hover:bg-rose-400 hover:text-gray-800 transition duration-400 mt-1"
           >
             <FiLogOut className="mr-1" />
             {!isCollapsed && <span>Đăng xuất</span>}
