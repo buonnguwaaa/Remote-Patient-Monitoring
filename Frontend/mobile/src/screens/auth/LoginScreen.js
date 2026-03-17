@@ -8,12 +8,12 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import ButtonPrimary from '../components/ButtonPrimary';
+import ButtonPrimary from '../../components/ButtonPrimary';
 import { Feather, FontAwesome } from '@expo/vector-icons';
-import styles from '../styles/login';
+import styles from '../../styles/login';
 
-import { useAuth } from '../context/AuthContext';
-import * as GoogleAuth from '../api/googleAuth';
+import { useAuth } from '../../hooks/useAuth';
+import * as GoogleAuth from '../../api/googleAuth';
 
 export default function LoginScreen({ navigation, onLoginSuccess }) {
   const [email, setEmail] = useState('');

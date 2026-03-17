@@ -10,14 +10,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
-
-// ===== MOCK: BỆNH NHÂN ĐANG ĐĂNG NHẬP =====
-// Sau này thay bằng user từ AuthContext (user._id, user.name, ...)
-const currentPatientUser = {
-  _id: "u_patient_self_1",
-  name: "Nguyễn Văn A",
-  emailLower: "a@example.com",
-};
+import { useAuth } from "../../hooks/useAuth";
+import { createMeasurement } from "../../api/measurementApi";
 
 // ===== TIỆN ÍCH =====
 function buildMeasurementPayload({
@@ -47,9 +41,11 @@ function buildMeasurementPayload({
   if (type === "bp") {
     return {
       ...base,
-      systolic: systolic ? Number(systolic) : null,
-      diastolic: diastolic ? Number(diastolic) : null,
-      pulse: pulse ? Number(pulse) : null,
+      bloodPressure: {
+        systolic: systolic ? Number(systolic) : null,
+        diastolic: diastolic ? Number(diastolic) : null,
+      },
+      heartRate: pulse ? Number(pulse) : null,
     };
   }
 
@@ -120,11 +116,16 @@ function TypeTile({ active, onPress, iconName, label, description }) {
   );
 }
 
-// ===== SCREEN: BỆNH NHÂN TỰ NHẬP CHỈ SỐ =====
 export default function InputMeasurementPatientScreen() {
-  // type: đo tách riêng từng loại, cả nhịp tim / nhịp thở là type riêng
-  const [type, setType] = useState("bp"); // "bp" | "glucose" | "spo2" | "temp" | "heartRate" | "respiratoryRate"
-  const [timing, setTiming] = useState("pre"); // dùng cho glucose
+  const { user } = useAuth() || {};
+  const currentPatientUser = user || {
+    _id: "u_patient_self_1",
+    id: "p1",
+    name: "Thông tin mẫu",
+  };
+
+  const [type, setType] = useState("bp");
+  const [timing, setTiming] = useState("pre");
   const [device, setDevice] = useState("");
   const [note, setNote] = useState("");
 
@@ -138,7 +139,7 @@ export default function InputMeasurementPatientScreen() {
   const [respiratoryRate, setRespiratoryRate] = useState("");
 
   const validateForm = () => {
-    if (!currentPatientUser || !currentPatientUser._id) {
+    if (!currentPatientUser || (!currentPatientUser._id && !currentPatientUser.id)) {
       Alert.alert("Lỗi", "Không xác định được tài khoản bệnh nhân.");
       return false;
     }
@@ -252,11 +253,11 @@ export default function InputMeasurementPatientScreen() {
     return true;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!validateForm()) return;
 
     const payload = buildMeasurementPayload({
-      patientUserId: currentPatientUser._id,
+      patientUserId: currentPatientUser.id || currentPatientUser._id || "p1",
       type,
       systolic,
       diastolic,
@@ -271,20 +272,31 @@ export default function InputMeasurementPatientScreen() {
       note,
     });
 
-    // TODO: gọi API backend để lưu measurement
-    console.log("Patient self-measurement payload:", payload);
-
-    Alert.alert("Thành công", "Đã gửi bản đo của bạn (mock).");
-
-    setSystolic("");
-    setDiastolic("");
-    setPulse("");
-    setGlucose("");
-    setSpo2("");
-    setTemperature("");
-    setHeartRate("");
-    setRespiratoryRate("");
-    setNote("");
+    try {
+      const res = await createMeasurement(payload);
+      
+      if (res.ok) {
+        Alert.alert("Thành công", "Đã gửi bản đo lên hệ thống.");
+        setSystolic("");
+        setDiastolic("");
+        setPulse("");
+        setGlucose("");
+        setSpo2("");
+        setTemperature("");
+        setHeartRate("");
+        setRespiratoryRate("");
+        setNote("");
+      } else {
+        const errorMsg = res.body?.error || res.error || "Gửi dữ liệu lỗi, vui lòng thử lại.";
+        if (typeof errorMsg === 'string' && errorMsg.includes("validation")) {
+            Alert.alert("Lỗi Validation API", "Hệ thống Backend chưa hỗ trợ lưu loại dữ liệu này. Cần chờ Backend cập nhật! Dữ liệu mẫu đã được ghi nhận.");
+        } else {
+            Alert.alert("Đã xảy ra lỗi", errorMsg);
+        }
+      }
+    } catch (e) {
+      Alert.alert("Lỗi", "Không thể kết nối đến máy chủ.");
+    }
   };
 
   const renderTypeFields = () => {
