@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
@@ -34,7 +33,6 @@ func NewUserHandler(userService service.UserService, cloudinarySvc service.Cloud
 // @Produce json
 // @Param name query string false "Filter by users' name"
 // @Param email query string false "Filter by users' email"
-// @Param role query string false "Filter by users' roles, comma-separated (e.g., admin,user)"
 // @Param gender query string false "Filter by users' gender"
 // @Param page query int false "Page number, default 1"
 // @Param limit query int false "Number of items per page, default 10"
@@ -43,10 +41,6 @@ func NewUserHandler(userService service.UserService, cloudinarySvc service.Cloud
 // @Failure 500 {object} map[string]string "Internal server error"
 // @Router /users [get]
 func (h *UserHandler) GetUsers(c *gin.Context) {
-	roles := []string{}
-	if roleParam := c.Query("role"); roleParam != "" {
-		roles = strings.Split(roleParam, ",")
-	}
 	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
 	if err != nil || page < 1 {
 		page = 1
@@ -64,7 +58,6 @@ func (h *UserHandler) GetUsers(c *gin.Context) {
 	input := &usecase.GetUsersInput{
 		Name:      c.Query("name"),
 		Email:     c.Query("email"),
-		Roles:     roles,
 		Gender:    c.Query("gender"),
 		Page:      page,
 		Limit:     limit,
@@ -72,7 +65,7 @@ func (h *UserHandler) GetUsers(c *gin.Context) {
 		SortOrder: sortOrder,
 	}
 
-	users, err := h.service.GetUsers(ctx, input)
+	users, err := h.service.GetBaseUsers(ctx, input)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -97,7 +90,7 @@ func (h *UserHandler) GetUserByID(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
-	u, err := h.service.GetUserByID(ctx, id)
+	u, err := h.service.GetBaseUserByID(ctx, id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
@@ -106,7 +99,7 @@ func (h *UserHandler) GetUserByID(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": u, "message": "user retrieved successfully"})
 }
 
-// UpdateUser updates a user
+// UpdateUser updates a base user
 func (h *UserHandler) UpdateUser(c *gin.Context) {
 	id := c.Param("id")
 
@@ -120,24 +113,14 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 		ID:     id,
 		Name:   req.Name,
 		Email:  req.Email,
-		Roles:  req.Roles,
 		Gender: req.Gender,
 		Phone:  req.Phone,
-		// Doctor profile
-		Specialization:    req.Specialization,
-		LicenseNumber:     req.LicenseNumber,
-		Workplace:         req.Workplace,
-		YearsOfExperience: req.YearsOfExperience,
-		// Nurse profile
-		NurseLicenseNumber:     req.NurseLicenseNumber,
-		NurseDepartment:        req.Department,
-		NurseYearsOfExperience: req.NurseYearsOfExperience,
 	}
 
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
-	if err := h.service.UpdateUser(ctx, input); err != nil {
+	if err := h.service.UpdateBaseUser(ctx, input); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -145,7 +128,7 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "User updated successfully"})
 }
 
-// DeleteUser deletes a user
+// DeleteUser deletes a base user
 func (h *UserHandler) DeleteUser(c *gin.Context) {
 	id := c.Param("id")
 
@@ -156,7 +139,7 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
-	if err := h.service.DeleteUser(ctx, input); err != nil {
+	if err := h.service.DeleteBaseUser(ctx, input); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -192,7 +175,7 @@ func (h *UserHandler) UploadAvatar(c *gin.Context) {
 	defer cancel()
 
 	oldAvatarURL := ""
-	if currentUser, err := h.service.GetUserByID(ctx, userID); err == nil {
+	if currentUser, err := h.service.GetBaseUserByID(ctx, userID); err == nil {
 		oldAvatarURL = currentUser.AvatarUrl
 	}
 
@@ -202,7 +185,7 @@ func (h *UserHandler) UploadAvatar(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.UpdateUser(ctx, &usecase.UpdateUserInput{
+	if err := h.service.UpdateBaseUser(ctx, &usecase.UpdateUserInput{
 		ID:        userID,
 		AvatarUrl: avatarUrl,
 	}); err != nil {
@@ -229,4 +212,248 @@ func (h *UserHandler) UploadAvatar(c *gin.Context) {
 		"avatarUrl": avatarUrl,
 		"message":   "Upload avatar thành công",
 	})
+}
+
+// GetPatients retrieves a list of patients
+func (h *UserHandler) GetPatients(c *gin.Context) {
+	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
+	if err != nil || page < 1 {
+		page = 1
+	}
+	limit, err := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	if err != nil || limit < 1 {
+		limit = 10
+	}
+	offset := (page - 1) * limit
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	input := &usecase.GetUsersInput{
+		Name:      c.Query("name"),
+		Email:     c.Query("email"),
+		Gender:    c.Query("gender"),
+		Page:      page,
+		Limit:     limit,
+		Offset:    offset,
+		SortOrder: c.DefaultQuery("sortOrder", "asc"),
+	}
+
+	patients, err := h.service.GetPatients(ctx, input)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": patients, "message": "list of patients retrieved successfully"})
+}
+
+// GetPatientByID retrieves a patient by ID
+func (h *UserHandler) GetPatientByID(c *gin.Context) {
+	id := c.Param("id")
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	patient, err := h.service.GetPatientByID(ctx, id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": patient, "message": "patient retrieved successfully"})
+}
+
+// UpdatePatient updates a patient
+func (h *UserHandler) UpdatePatient(c *gin.Context) {
+	id := c.Param("id")
+
+	var req dto.UpdateUserRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	input := &usecase.UpdateUserInput{
+		ID:     id,
+		Name:   req.Name,
+		Email:  req.Email,
+		Gender: req.Gender,
+		Phone:  req.Phone,
+	}
+
+	if err := h.service.UpdatePatient(ctx, input); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Patient updated successfully"})
+}
+
+// GetDoctors retrieves a list of doctors
+func (h *UserHandler) GetDoctors(c *gin.Context) {
+	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
+	if err != nil || page < 1 {
+		page = 1
+	}
+	limit, err := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	if err != nil || limit < 1 {
+		limit = 10
+	}
+	offset := (page - 1) * limit
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	input := &usecase.GetUsersInput{
+		Name:      c.Query("name"),
+		Email:     c.Query("email"),
+		Gender:    c.Query("gender"),
+		Page:      page,
+		Limit:     limit,
+		Offset:    offset,
+		SortOrder: c.DefaultQuery("sortOrder", "asc"),
+	}
+
+	doctors, err := h.service.GetDoctors(ctx, input)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": doctors, "message": "list of doctors retrieved successfully"})
+}
+
+// GetDoctorByID retrieves a doctor by ID
+func (h *UserHandler) GetDoctorByID(c *gin.Context) {
+	id := c.Param("id")
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	doctor, err := h.service.GetDoctorByID(ctx, id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": doctor, "message": "doctor retrieved successfully"})
+}
+
+// UpdateDoctor updates a doctor
+func (h *UserHandler) UpdateDoctor(c *gin.Context) {
+	id := c.Param("id")
+
+	var req dto.UpdateUserRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	input := &usecase.UpdateUserInput{
+		ID:                id,
+		Name:              req.Name,
+		Email:             req.Email,
+		Gender:            req.Gender,
+		Phone:             req.Phone,
+		Specialization:    req.Specialization,
+		LicenseNumber:     req.LicenseNumber,
+		Workplace:         req.Workplace,
+		YearsOfExperience: req.YearsOfExperience,
+	}
+
+	if err := h.service.UpdateDoctor(ctx, input); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Doctor updated successfully"})
+}
+
+// GetNurses retrieves a list of nurses
+func (h *UserHandler) GetNurses(c *gin.Context) {
+	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
+	if err != nil || page < 1 {
+		page = 1
+	}
+	limit, err := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	if err != nil || limit < 1 {
+		limit = 10
+	}
+	offset := (page - 1) * limit
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	input := &usecase.GetUsersInput{
+		Name:      c.Query("name"),
+		Email:     c.Query("email"),
+		Gender:    c.Query("gender"),
+		Page:      page,
+		Limit:     limit,
+		Offset:    offset,
+		SortOrder: c.DefaultQuery("sortOrder", "asc"),
+	}
+
+	nurses, err := h.service.GetNurses(ctx, input)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": nurses, "message": "list of nurses retrieved successfully"})
+}
+
+// GetNurseByID retrieves a nurse by ID
+func (h *UserHandler) GetNurseByID(c *gin.Context) {
+	id := c.Param("id")
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	nurse, err := h.service.GetNurseByID(ctx, id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": nurse, "message": "nurse retrieved successfully"})
+}
+
+// UpdateNurse updates a nurse
+func (h *UserHandler) UpdateNurse(c *gin.Context) {
+	id := c.Param("id")
+
+	var req dto.UpdateUserRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	input := &usecase.UpdateUserInput{
+		ID:                     id,
+		Name:                   req.Name,
+		Email:                  req.Email,
+		Gender:                 req.Gender,
+		Phone:                  req.Phone,
+		NurseLicenseNumber:     req.NurseLicenseNumber,
+		NurseDepartment:        req.Department,
+		NurseYearsOfExperience: req.NurseYearsOfExperience,
+	}
+
+	if err := h.service.UpdateNurse(ctx, input); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Nurse updated successfully"})
 }

@@ -2,7 +2,7 @@ package router
 
 import (
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/container"
-	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
+	domain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/middleware"
 	"github.com/gin-gonic/gin"
 )
@@ -15,7 +15,7 @@ func RegisterDepartmentRoutes(r *gin.Engine, c *container.MainServerContainer) {
 		deptGroup.POST("", middleware.RequireRoles(domain.RoleAdmin), c.DepartmentHandler.CreateDepartment)
 		// Everyone (Admin, Doctor, Nurse) can list departments to pick one
 		deptGroup.GET("", c.DepartmentHandler.GetDepartments)
-		
+
 		deptGroup.GET("/:id/members", c.DepartmentHandler.GetDepartmentMembers)
 		deptGroup.POST("/:id/members", middleware.RequireRoles(domain.RoleAdmin), c.DepartmentHandler.AddMemberToDepartment)
 	}

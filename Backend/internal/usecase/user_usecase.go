@@ -3,7 +3,6 @@ package usecase
 type GetUsersInput struct {
 	Name      string
 	Email     string
-	Roles     []string
 	Gender    string
 	Page      int
 	Limit     int
@@ -15,7 +14,6 @@ type UpdateUserInput struct {
 	ID     string
 	Name   string
 	Email  string
-	Roles  []string
 	Gender string
 	Phone  string
 	// Doctor profile

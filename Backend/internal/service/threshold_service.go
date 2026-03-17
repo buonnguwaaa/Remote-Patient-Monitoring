@@ -5,14 +5,17 @@ import (
 	"fmt"
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
+	userDomain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository"
+	userRepository "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecase"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/util"
 )
 
 type thresholdService struct {
-	userRepo      repository.UserRepository
+	patientRepo   userRepository.PatientRepository
+	doctorRepo    userRepository.StaffRepository[userDomain.Doctor]
 	thresholdRepo repository.ThresholdRepository
 }
 
@@ -22,9 +25,10 @@ type ThresholdService interface {
 	GetThresholds(context.Context, *usecase.GetThresholdsInput) ([]dto.ThresholdResponse, error)
 }
 
-func NewThresholdService(userRepo repository.UserRepository, thresholdRepo repository.ThresholdRepository) ThresholdService {
+func NewThresholdService(patientRepo userRepository.PatientRepository, doctorRepo userRepository.StaffRepository[userDomain.Doctor], thresholdRepo repository.ThresholdRepository) ThresholdService {
 	return &thresholdService{
-		userRepo:      userRepo,
+		patientRepo:   patientRepo,
+		doctorRepo:    doctorRepo,
 		thresholdRepo: thresholdRepo,
 	}
 }
@@ -34,7 +38,7 @@ func (s *thresholdService) CreateThreshold(ctx context.Context, input *usecase.C
 	if err != nil {
 		return nil, err
 	}
-	existedPatient, err := s.userRepo.ExistsByIDAndRole(ctx, patientID, domain.RolePatient)
+	existedPatient, err := s.patientRepo.ExistsByIDAndRole(ctx, patientID, userDomain.RolePatient)
 	if err != nil || !existedPatient {
 		return nil, fmt.Errorf("user not found or not patient")
 	}
@@ -43,7 +47,7 @@ func (s *thresholdService) CreateThreshold(ctx context.Context, input *usecase.C
 	if err != nil {
 		return nil, err
 	}
-	existedDoctor, err := s.userRepo.ExistsByIDAndRole(ctx, doctorID, domain.RoleDoctor)
+	existedDoctor, err := s.doctorRepo.ExistsByIDAndRole(ctx, doctorID, userDomain.RoleDoctor)
 	if err != nil || !existedDoctor {
 		return nil, fmt.Errorf("user not found or not doctor")
 	}

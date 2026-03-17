@@ -4,8 +4,10 @@ import (
 	"os"
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/config"
+	domain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/handler"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository"
+	userRepository "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/service"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/util"
 )
@@ -13,7 +15,10 @@ import (
 // Container holds all the dependencies
 type MainServerContainer struct {
 	// Repositories
-	UserRepo        repository.UserRepository
+	BaseUserRepo    userRepository.BaseUserRepository
+	PatientRepo     userRepository.PatientRepository
+	DoctorRepo      userRepository.StaffRepository[domain.Doctor]
+	NurseRepo       userRepository.StaffRepository[domain.Nurse]
 	TokenRepo       repository.TokenRepository
 	MeasurementRepo repository.MeasurementRepository
 	ThresholdRepo   repository.ThresholdRepository
@@ -58,7 +63,11 @@ func NewMainServerContainer() *MainServerContainer {
 
 	// Initialize repositories
 	db := config.Mongo.Database
-	c.UserRepo = repository.NewUserRepository(db)
+	c.BaseUserRepo = userRepository.NewBaseUserRepository(db)
+	c.PatientRepo = userRepository.NewPatientRepository(db)
+	c.DoctorRepo = userRepository.NewStaffRepository[domain.Doctor](db)
+	c.NurseRepo = userRepository.NewStaffRepository[domain.Nurse](db)
+
 	c.TokenRepo = repository.NewTokenRepository(db)
 	c.MeasurementRepo = repository.NewMeasurementRepository(db)
 	c.ThresholdRepo = repository.NewThresholdRepository(db)
@@ -68,14 +77,14 @@ func NewMainServerContainer() *MainServerContainer {
 	c.ReminderRepo = repository.NewReminderRepository(db)
 
 	// Initialize services
-	c.AuthService = service.NewAuthService(c.UserRepo, c.TokenRepo, c.JWTManager)
-	c.UserService = service.NewUserService(c.UserRepo)
-	c.MeasurementService = service.NewMeasurementService(c.UserRepo, c.MeasurementRepo)
-	c.ThresholdService = service.NewThresholdService(c.UserRepo, c.ThresholdRepo)
+	c.AuthService = service.NewAuthService(c.BaseUserRepo, c.PatientRepo, c.DoctorRepo, c.NurseRepo, c.TokenRepo, c.JWTManager)
+	c.UserService = service.NewUserService(c.BaseUserRepo, c.PatientRepo, c.NurseRepo, c.DoctorRepo)
+	c.MeasurementService = service.NewMeasurementService(c.PatientRepo, c.MeasurementRepo)
+	c.ThresholdService = service.NewThresholdService(c.PatientRepo, c.DoctorRepo, c.ThresholdRepo)
 	c.AlertService = service.NewAlertService(c.AlertRepo)
-	c.DepartmentService = service.NewDepartmentService(c.DepartmentRepo, c.UserRepo)
-	c.AssignmentService = service.NewAssignmentService(c.AssignmentRepo, c.UserRepo)
-	c.ReminderService = service.NewReminderService(c.UserRepo, c.ReminderRepo)
+	c.DepartmentService = service.NewDepartmentService(c.DepartmentRepo, c.DoctorRepo, c.NurseRepo)
+	c.AssignmentService = service.NewAssignmentService(c.AssignmentRepo, c.BaseUserRepo)
+	c.ReminderService = service.NewReminderService(c.PatientRepo, c.ReminderRepo)
 
 	// Initialize handlers
 	c.AuthHandler = handler.NewAuthHandler(c.AuthService)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"mime/multipart"
 	"strings"
+
 	"github.com/cloudinary/cloudinary-go/v2"
 	"github.com/cloudinary/cloudinary-go/v2/api/uploader"
 )
@@ -25,7 +26,7 @@ func (s *cloudinaryService) UploadAvatar(ctx context.Context, file multipart.Fil
 	uploadResult, err := s.cld.Upload.Upload(ctx, file, uploader.UploadParams{
 		Folder:         folder,
 		ResourceType:   "image",
-		Transformation: "c_limit,w_800,h_800,q_auto,f_auto", 
+		Transformation: "c_limit,w_800,h_800,q_auto,f_auto",
 	})
 	if err != nil {
 		return "", err
@@ -50,7 +51,7 @@ func ExtractPublicID(rawURL string) string {
 	if len(parts) < 2 {
 		return ""
 	}
-	rest := parts[1] 
+	rest := parts[1]
 
 	segments := strings.Split(rest, "/")
 	startIdx := 0

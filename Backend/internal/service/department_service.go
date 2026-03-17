@@ -6,9 +6,12 @@ import (
 	"time"
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
+	userDomain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository"
+	userRepository "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecase"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type DepartmentService interface {
@@ -19,14 +22,20 @@ type DepartmentService interface {
 }
 
 type departmentService struct {
-	deptRepo repository.DepartmentRepository
-	userRepo repository.UserRepository
+	deptRepo   repository.DepartmentRepository
+	doctorRepo userRepository.StaffRepository[userDomain.Doctor]
+	nurseRepo  userRepository.StaffRepository[userDomain.Nurse]
 }
 
-func NewDepartmentService(deptRepo repository.DepartmentRepository, userRepo repository.UserRepository) DepartmentService {
+func NewDepartmentService(
+	deptRepo repository.DepartmentRepository,
+	doctorRepo userRepository.StaffRepository[userDomain.Doctor],
+	nurseRepo userRepository.StaffRepository[userDomain.Nurse],
+) DepartmentService {
 	return &departmentService{
-		deptRepo: deptRepo,
-		userRepo: userRepo,
+		deptRepo:   deptRepo,
+		doctorRepo: doctorRepo,
+		nurseRepo:  nurseRepo,
 	}
 }
 
@@ -66,13 +75,27 @@ func (s *departmentService) GetMembers(ctx context.Context, deptID string) ([]*u
 		return nil, err
 	}
 
-	users, err := s.userRepo.FindByDepartmentID(ctx, oid)
+	doctors, err := s.doctorRepo.FindByDepartmentID(ctx, oid)
+	if err != nil {
+		return nil, err
+	}
+	nurses, err := s.nurseRepo.FindByDepartmentID(ctx, oid)
 	if err != nil {
 		return nil, err
 	}
 
 	var members []*usecase.Member
-	for _, u := range users {
+	for _, u := range doctors {
+		members = append(members, &usecase.Member{
+			ID:        u.ID.Hex(),
+			Name:      u.Name,
+			Email:     u.Email,
+			Role:      string(u.Role),
+			Avatar:    "", // Placeholder if avatar not available in user struct
+			CreatedAt: u.CreatedAt.Format(time.RFC3339),
+		})
+	}
+	for _, u := range nurses {
 		members = append(members, &usecase.Member{
 			ID:        u.ID.Hex(),
 			Name:      u.Name,
@@ -95,31 +118,31 @@ func (s *departmentService) AddMember(ctx context.Context, deptID string, userID
 		return err
 	}
 
-	// Check user role
-	user, err := s.userRepo.FindByID(ctx, userOID)
-	if err != nil {
+	if _, err := s.doctorRepo.FindByID(ctx, userOID); err == nil {
+		return s.doctorRepo.UpdateDepartmentID(ctx, userOID, deptOID)
+	} else if !errors.Is(err, mongo.ErrNoDocuments) {
 		return err
 	}
-	if user == nil {
-		return errors.New("user not found")
+
+	if _, err := s.nurseRepo.FindByID(ctx, userOID); err == nil {
+		return s.nurseRepo.UpdateDepartmentID(ctx, userOID, deptOID)
+	} else if !errors.Is(err, mongo.ErrNoDocuments) {
+		return err
 	}
 
-	if user.Role != domain.RoleDoctor && user.Role != domain.RoleNurse {
-		return errors.New("only doctors and nurses can be assigned to departments")
-	}
-
-	return s.userRepo.UpdateDepartmentID(ctx, userOID, deptOID)
+	return errors.New("only doctors and nurses can be assigned to departments")
 }
 
 func (s *departmentService) mapToResponse(ctx context.Context, d *domain.Department) *usecase.DepartmentResponse {
 	// Count members
-	count, _ := s.userRepo.CountByDepartmentID(ctx, d.ID)
+	doctorCount, _ := s.doctorRepo.CountByDepartmentID(ctx, d.ID)
+	nurseCount, _ := s.nurseRepo.CountByDepartmentID(ctx, d.ID)
 
 	return &usecase.DepartmentResponse{
 		ID:          d.ID,
 		Name:        d.Name,
 		Description: d.Description,
-		MemberCount: int(count),
+		MemberCount: int(doctorCount + nurseCount),
 		CreatedAt:   d.CreatedAt,
 		UpdatedAt:   d.UpdatedAt,
 	}

@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
+	domain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/util"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"

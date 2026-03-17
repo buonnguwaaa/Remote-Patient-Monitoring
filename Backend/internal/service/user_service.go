@@ -1,104 +1,311 @@
 package service
 
 import (
+	"fmt"
 	"context"
 	"time"
 
-	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
+	domain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
-	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository"
+	repository "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecase"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type userService struct {
-	repo repository.UserRepository
+	baseUserRepo repository.BaseUserRepository
+	patientRepo  repository.PatientRepository
+	nurseRepo    repository.StaffRepository[domain.Nurse]
+	doctorRepo   repository.StaffRepository[domain.Doctor]
 }
 
 type UserService interface {
-	GetUsers(context.Context, *usecase.GetUsersInput) ([]dto.UserInfoResponse, error)
-	GetUserByID(context.Context, string) (*dto.UserInfoResponse, error)
-	UpdateUser(context.Context, *usecase.UpdateUserInput) error
-	DeleteUser(context.Context, *usecase.DeleteUserInput) error
+	// BaseUser operations
+	GetBaseUsers(context.Context, *usecase.GetUsersInput) ([]dto.BaseUserInfoResponse, error)
+	GetBaseUserByID(context.Context, string) (*dto.BaseUserInfoResponse, error)
+	UpdateBaseUser(context.Context, *usecase.UpdateUserInput) error
+	DeleteBaseUser(context.Context, *usecase.DeleteUserInput) error
+	// Patient operations
+	GetPatients(context.Context, *usecase.GetUsersInput) ([]dto.PatientInfoResponse, error)
+	GetPatientByID(context.Context, string) (*dto.PatientInfoResponse, error)
+	UpdatePatient(context.Context, *usecase.UpdateUserInput) error
+	// Doctor operations
+	GetDoctors(context.Context, *usecase.GetUsersInput) ([]dto.DoctorInfoResponse, error)
+	GetDoctorByID(context.Context, string) (*dto.DoctorInfoResponse, error)
+	UpdateDoctor(context.Context, *usecase.UpdateUserInput) error
+	// Nurse operations
+	GetNurses(context.Context, *usecase.GetUsersInput) ([]dto.NurseInfoResponse, error)
+	GetNurseByID(context.Context, string) (*dto.NurseInfoResponse, error)
+	UpdateNurse(context.Context, *usecase.UpdateUserInput) error
 }
 
-func NewUserService(repo repository.UserRepository) UserService {
+func NewUserService(baseUserRepo repository.BaseUserRepository, patientRepo repository.PatientRepository, nurseRepo repository.StaffRepository[domain.Nurse], doctorRepo repository.StaffRepository[domain.Doctor]) UserService {
 	return &userService{
-		repo: repo,
+		baseUserRepo: baseUserRepo,
+		patientRepo:  patientRepo,
+		nurseRepo:    nurseRepo,
+		doctorRepo:   doctorRepo,
 	}
 }
 
-func (s *userService) GetUsers(ctx context.Context, input *usecase.GetUsersInput) ([]dto.UserInfoResponse, error) {
+func (s *userService) GetBaseUsers(ctx context.Context, input *usecase.GetUsersInput) ([]dto.BaseUserInfoResponse, error) {
 	repoFilter := repository.UserFilter{
 		Name:      input.Name,
 		Email:     input.Email,
-		Roles:     input.Roles,
 		Gender:    input.Gender,
 		Limit:     input.Limit,
 		Offset:    input.Offset,
 		SortOrder: input.SortOrder,
 	}
 
-	users, err := s.repo.FindWithFilter(ctx, repoFilter)
+	users, err := s.baseUserRepo.FindWithFilter(ctx, repoFilter)
 	if err != nil {
 		return nil, err
 	}
 
-	var result []dto.UserInfoResponse
+	var result []dto.BaseUserInfoResponse
 	for _, user := range users {
-		dp := user.DoctorProfile
-		np := user.NurseProfile
-		result = append(result, dto.UserInfoResponse{
-			ID:        user.ID.Hex(),
-			Name:      user.Name,
-			Email:     user.Email,
-			Provider:  user.Provider,
-			Role:      user.Role,
-			Gender:    user.Gender,
-			Dob:       user.Dob.Format("2006-01-02"),
-			Phone:     user.Phone,
-			AvatarUrl: user.AvatarUrl,
-			DoctorProfile: func() *dto.DoctorProfileResponse {
-				if dp == nil {
-					return nil
-				}
-				return &dto.DoctorProfileResponse{
-					Specialization:    dp.Specialization,
-					LicenseNumber:     dp.LicenseNumber,
-					Workplace:         dp.Workplace,
-					YearsOfExperience: dp.YearsOfExperience,
-				}
-			}(),
-			NurseProfile: func() *dto.NurseProfileResponse {
-				if np == nil {
-					return nil
-				}
-				return &dto.NurseProfileResponse{
-					LicenseNumber:     np.LicenseNumber,
-					Department:        np.Department,
-					YearsOfExperience: np.YearsOfExperience,
-				}
-			}(),
-			CreatedAt: user.CreatedAt.Format(time.RFC3339),
-			UpdatedAt: user.UpdatedAt.Format(time.RFC3339),
-		})
+		result = append(result, mapBaseUser(user))
 	}
-
 	return result, nil
 }
 
-func (s *userService) GetUserByID(ctx context.Context, id string) (*dto.UserInfoResponse, error) {
+func (s *userService) GetBaseUserByID(ctx context.Context, id string) (*dto.BaseUserInfoResponse, error) {
 	objID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		return nil, err
 	}
-	user, err := s.repo.FindByID(ctx, objID)
+	user, err := s.baseUserRepo.FindByID(ctx, objID)
 	if err != nil {
 		return nil, err
 	}
-	dp := user.DoctorProfile
-	np := user.NurseProfile
-	return &dto.UserInfoResponse{
+	resp := mapBaseUser(*user)
+	return &resp, nil
+}
+
+func (s *userService) GetPatients(ctx context.Context, input *usecase.GetUsersInput) ([]dto.PatientInfoResponse, error) {
+	repoFilter := repository.UserFilter{
+		Name:      input.Name,
+		Email:     input.Email,
+		Gender:    input.Gender,
+		Page:      input.Page,
+		Limit:     input.Limit,
+		Offset:    input.Offset,
+		SortOrder: input.SortOrder,
+	}
+
+	users, err := s.patientRepo.FindPatients(ctx, repoFilter)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]dto.PatientInfoResponse, 0, len(users))
+	for _, user := range users {
+		result = append(result, *mapPatient(&user))
+	}
+	return result, nil
+}
+
+func (s *userService) GetDoctors(ctx context.Context, input *usecase.GetUsersInput) ([]dto.DoctorInfoResponse, error) {
+	repoFilter := repository.UserFilter{
+		Name:      input.Name,
+		Email:     input.Email,
+		Gender:    input.Gender,
+		Page:      input.Page,
+		Limit:     input.Limit,
+		Offset:    input.Offset,
+		SortOrder: input.SortOrder,
+	}
+	fmt.Println("UserService.GetDoctors - repoFilter:", repoFilter)
+	users, err := s.doctorRepo.FindStaffs(ctx, repoFilter)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]dto.DoctorInfoResponse, 0, len(users))
+	for _, user := range users {
+		result = append(result, *mapDoctor(&user))
+	}
+	return result, nil
+}
+
+func (s *userService) GetNurses(ctx context.Context, input *usecase.GetUsersInput) ([]dto.NurseInfoResponse, error) {
+	repoFilter := repository.UserFilter{
+		Name:      input.Name,
+		Email:     input.Email,
+		Gender:    input.Gender,
+		Page:      input.Page,
+		Limit:     input.Limit,
+		Offset:    input.Offset,
+		SortOrder: input.SortOrder,
+	}
+
+	users, err := s.nurseRepo.FindStaffs(ctx, repoFilter)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]dto.NurseInfoResponse, 0, len(users))
+	for _, user := range users {
+		result = append(result, *mapNurse(&user))
+	}
+	return result, nil
+}
+
+func (s *userService) GetPatientByID(ctx context.Context, id string) (*dto.PatientInfoResponse, error) {
+	objID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return nil, err
+	}
+	u, err := s.patientRepo.FindPatientByID(ctx, objID)
+	if err != nil {
+		return nil, err
+	}
+	return mapPatient(u), nil
+}
+
+func (s *userService) UpdatePatient(ctx context.Context, input *usecase.UpdateUserInput) error {
+	objID, err := primitive.ObjectIDFromHex(input.ID)
+	if err != nil {
+		return err
+	}
+	updateData := buildBaseUpdateData(input)
+	return s.patientRepo.Update(ctx, objID, updateData)
+}
+
+func (s *userService) GetDoctorByID(ctx context.Context, id string) (*dto.DoctorInfoResponse, error) {
+	objID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return nil, err
+	}
+	u, err := s.doctorRepo.FindStaffByID(ctx, objID)
+	if err != nil {
+		return nil, err
+	}
+	return mapDoctor(u), nil
+}
+
+func (s *userService) GetNurseByID(ctx context.Context, id string) (*dto.NurseInfoResponse, error) {
+	objID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return nil, err
+	}
+	u, err := s.nurseRepo.FindStaffByID(ctx, objID)
+	if err != nil {
+		return nil, err
+	}
+	return mapNurse(u), nil
+}
+
+func (s *userService) UpdateBaseUser(ctx context.Context, input *usecase.UpdateUserInput) error {
+	objID, err := primitive.ObjectIDFromHex(input.ID)
+	if err != nil {
+		return err
+	}
+	updateData := buildBaseUpdateData(input)
+	return s.patientRepo.Update(ctx, objID, updateData)
+}
+
+func (s *userService) UpdateDoctor(ctx context.Context, input *usecase.UpdateUserInput) error {
+	objID, err := primitive.ObjectIDFromHex(input.ID)
+	if err != nil {
+		return err
+	}
+	updateData := buildBaseUpdateData(input)
+	if input.Specialization != "" {
+		updateData["specialization"] = input.Specialization
+	}
+	if input.LicenseNumber != "" {
+		updateData["licenseNumber"] = input.LicenseNumber
+	}
+	if input.Workplace != "" {
+		updateData["workplace"] = input.Workplace
+	}
+	if input.YearsOfExperience > 0 {
+		updateData["yearsOfExperience"] = input.YearsOfExperience
+	}
+	return s.doctorRepo.Update(ctx, objID, updateData)
+}
+
+func (s *userService) UpdateNurse(ctx context.Context, input *usecase.UpdateUserInput) error {
+	objID, err := primitive.ObjectIDFromHex(input.ID)
+	if err != nil {
+		return err
+	}
+	updateData := buildBaseUpdateData(input)
+	if input.NurseLicenseNumber != "" {
+		updateData["licenseNumber"] = input.NurseLicenseNumber
+	}
+	if input.NurseDepartment != "" {
+		updateData["ward"] = input.NurseDepartment
+	}
+	if input.NurseYearsOfExperience > 0 {
+		updateData["yearsOfExperience"] = input.NurseYearsOfExperience
+	}
+	return s.nurseRepo.Update(ctx, objID, updateData)
+}
+
+func (s *userService) DeleteBaseUser(ctx context.Context, input *usecase.DeleteUserInput) error {
+	objID, err := primitive.ObjectIDFromHex(input.ID)
+	if err != nil {
+		return err
+	}
+	return s.patientRepo.Delete(ctx, objID)
+}
+
+func buildBaseUpdateData(input *usecase.UpdateUserInput) map[string]interface{} {
+	updateData := make(map[string]interface{})
+	if input.Name != "" {
+		updateData["name"] = input.Name
+	}
+	if input.Email != "" {
+		updateData["email"] = input.Email
+	}
+	if input.Gender != "" {
+		updateData["gender"] = domain.Gender(input.Gender)
+	}
+	if input.Phone != "" {
+		updateData["phone"] = input.Phone
+	}
+	if input.AvatarUrl != "" {
+		updateData["avatarUrl"] = input.AvatarUrl
+	}
+	return updateData
+}
+
+func mapPatient(u *domain.Patient) *dto.PatientInfoResponse {
+	return &dto.PatientInfoResponse{
+		BaseUserInfoResponse: mapBaseUser(u.BaseUser),
+	}
+}
+
+func mapDoctor(u *domain.Doctor) *dto.DoctorInfoResponse {
+	return &dto.DoctorInfoResponse{
+		StaffInfoResponse: dto.StaffInfoResponse{
+			BaseUserInfoResponse: mapBaseUser(u.BaseUser),
+			DepartmentID:         u.DepartmentID.Hex(),
+			Workplace:            u.Workplace,
+			LicenseNumber:        u.LicenseNumber,
+		},
+		Specialization:    u.Specialization,
+		YearsOfExperience: u.YearsOfExperience,
+	}
+}
+
+func mapNurse(u *domain.Nurse) *dto.NurseInfoResponse {
+	return &dto.NurseInfoResponse{
+		StaffInfoResponse: dto.StaffInfoResponse{
+			BaseUserInfoResponse: mapBaseUser(u.BaseUser),
+			DepartmentID:         u.DepartmentID.Hex(),
+			Workplace:            u.Workplace,
+			LicenseNumber:        u.LicenseNumber,
+		},
+		Ward: u.Ward,
+	}
+}
+
+func mapBaseUser(user domain.BaseUser) dto.BaseUserInfoResponse {
+	return dto.BaseUserInfoResponse{
 		ID:        user.ID.Hex(),
 		Name:      user.Name,
 		Email:     user.Email,
@@ -108,86 +315,7 @@ func (s *userService) GetUserByID(ctx context.Context, id string) (*dto.UserInfo
 		Dob:       user.Dob.Format("2006-01-02"),
 		Phone:     user.Phone,
 		AvatarUrl: user.AvatarUrl,
-		DoctorProfile: func() *dto.DoctorProfileResponse {
-			if dp == nil {
-				return nil
-			}
-			return &dto.DoctorProfileResponse{
-				Specialization:    dp.Specialization,
-				LicenseNumber:     dp.LicenseNumber,
-				Workplace:         dp.Workplace,
-				YearsOfExperience: dp.YearsOfExperience,
-			}
-		}(),
-		NurseProfile: func() *dto.NurseProfileResponse {
-			if np == nil {
-				return nil
-			}
-			return &dto.NurseProfileResponse{
-				LicenseNumber:     np.LicenseNumber,
-				Department:        np.Department,
-				YearsOfExperience: np.YearsOfExperience,
-			}
-		}(),
 		CreatedAt: user.CreatedAt.Format(time.RFC3339),
 		UpdatedAt: user.UpdatedAt.Format(time.RFC3339),
-	}, nil
-}
-
-func (s *userService) UpdateUser(ctx context.Context, input *usecase.UpdateUserInput) error {
-	objID, err := primitive.ObjectIDFromHex(input.ID)
-	if err != nil {
-		return err
 	}
-
-	updateData := make(map[string]interface{})
-	if input.Name != "" {
-		updateData["name"] = input.Name
-	}
-	if input.Email != "" {
-		updateData["email"] = input.Email
-	}
-	if len(input.Roles) > 0 {
-		updateData["role"] = domain.Role(input.Roles[0])
-	}
-	if input.Gender != "" {
-		updateData["gender"] = domain.Gender(input.Gender)
-	}
-	if input.Phone != "" {
-		updateData["phone"] = input.Phone
-	}
-	hasDocProfile := input.Specialization != "" || input.LicenseNumber != "" ||
-		input.Workplace != "" || input.YearsOfExperience > 0
-	if hasDocProfile {
-		doctorProfile := domain.DoctorProfile{
-			Specialization:    input.Specialization,
-			LicenseNumber:     input.LicenseNumber,
-			Workplace:         input.Workplace,
-			YearsOfExperience: input.YearsOfExperience,
-		}
-		updateData["doctorProfile"] = doctorProfile
-	}
-	hasNurseProfile := input.NurseLicenseNumber != "" || input.NurseDepartment != "" ||
-		input.NurseYearsOfExperience > 0
-	if hasNurseProfile {
-		nurseProfile := domain.NurseProfile{
-			LicenseNumber:     input.NurseLicenseNumber,
-			Department:        input.NurseDepartment,
-			YearsOfExperience: input.NurseYearsOfExperience,
-		}
-		updateData["nurseProfile"] = nurseProfile
-	}
-	if input.AvatarUrl != "" {
-		updateData["avatarUrl"] = input.AvatarUrl
-	}
-
-	return s.repo.Update(ctx, objID, updateData)
-}
-
-func (s *userService) DeleteUser(ctx context.Context, input *usecase.DeleteUserInput) error {
-	objID, err := primitive.ObjectIDFromHex(input.ID)
-	if err != nil {
-		return err
-	}
-	return s.repo.Delete(ctx, objID)
 }

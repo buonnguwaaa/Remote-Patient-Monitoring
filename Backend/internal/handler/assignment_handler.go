@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
+	domain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/service"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecase"
@@ -78,7 +78,7 @@ func (h *AssignmentHandler) GetMyAssignments(c *gin.Context) {
 	defer cancel()
 
 	roleVal := role.(domain.Role)
-	
+
 	// Only doctor or nurse can see their assignments
 	if roleVal != domain.RoleDoctor && roleVal != domain.RoleNurse {
 		c.JSON(http.StatusForbidden, gin.H{"error": "only doctor or nurse can see assigned patients"})
