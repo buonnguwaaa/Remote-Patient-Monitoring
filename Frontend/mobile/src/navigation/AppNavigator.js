@@ -11,27 +11,27 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../hooks/useAuth";
 
 // ==== IMPORT CÁC SCREEN ====
 // Auth
-import LoginScreen from "../screens/LoginScreen";
-import RegisterScreen from "../screens/RegisterScreen";
+import LoginScreen from "../screens/auth/LoginScreen";
+import RegisterScreen from "../screens/auth/RegisterScreen";
 
 // Patient
-import HomeScreen from "../screens/HomeScreen";
-import HistoryScreen from "../screens/HistoryScreen";
-import AlertScreen from "../screens/AlertScreen";
-import ProfileScreen from "../screens/ProfileScreen";
-import DoctorChatScreen from "../screens/DoctorChatScreen";
-import InputMeasurementPatientScreen from "../screens/InputMeasurementPatientScreen";
+import HomeScreen from "../screens/patient/HomeScreen";
+import HistoryScreen from "../screens/patient/HistoryScreen";
+import AlertScreen from "../screens/patient/AlertScreen";
+import ProfileScreen from "../screens/patient/ProfileScreen";
+import DoctorChatScreen from "../screens/patient/DoctorChatScreen";
+import InputMeasurementPatientScreen from "../screens/patient/InputMeasurementPatientScreen";
 
 
 // Nurse
-import NursePatientListScreen from "../screens/NursePatientListScreen";
-import MeasurementInputScreen from "../screens/MeasurementInputScreen";
-import NurseProfileScreen from "../screens/NurseProfileScreen";
-import PatientDetailScreen from "../screens/PatientDetailScreen";
+import NursePatientListScreen from "../screens/nurse/NursePatientListScreen";
+import MeasurementInputScreen from "../screens/nurse/MeasurementInputScreen";
+import NurseProfileScreen from "../screens/nurse/NurseProfileScreen";
+import PatientDetailScreen from "../screens/nurse/PatientDetailScreen";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();

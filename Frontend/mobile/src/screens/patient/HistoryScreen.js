@@ -1,161 +1,12 @@
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons, FontAwesome5 } from "@expo/vector-icons";
-import { useState } from "react";
-import { LineChart } from "react-native-chart-kit";
+import { useAuth } from "../../hooks/useAuth";
+import { getMeasurements } from "../../api/measurementApi";
+import { useFocusEffect } from "@react-navigation/native";
+import React, { useCallback, useState } from "react";
 
 const screenWidth = Dimensions.get("window").width - 40;
-
-// Mock data theo schema Measurements
-// type: "bp", "glucose", "spo2", "temp"
-const measurements = [
-  {
-    id: "m1",
-    patientId: "p1",
-    type: "bp",
-    systolic: 132,
-    diastolic: 86,
-    pulse: 78,
-    device: "BP_MONITOR_01",
-    timing: "sáng",
-    recordedBy: "u1",
-    measuredAt: "2025-10-18T08:30:00",
-    createdAt: "2025-10-18T08:30:05",
-    updatedAt: "2025-10-18T08:30:05",
-  },
-  {
-    id: "m2",
-    patientId: "p1",
-    type: "bp",
-    systolic: 140,
-    diastolic: 90,
-    pulse: 82,
-    device: "BP_MONITOR_01",
-    timing: "chiều",
-    recordedBy: "u1",
-    measuredAt: "2025-10-19T16:10:00",
-    createdAt: "2025-10-19T16:10:05",
-    updatedAt: "2025-10-19T16:10:05",
-  },
-  {
-    id: "m3",
-    patientId: "p1",
-    type: "bp",
-    systolic: 126,
-    diastolic: 80,
-    pulse: 74,
-    device: "BP_MONITOR_01",
-    timing: "sáng",
-    recordedBy: "u1",
-    measuredAt: "2025-10-20T07:45:00",
-    createdAt: "2025-10-20T07:45:05",
-    updatedAt: "2025-10-20T07:45:05",
-  },
-  {
-    id: "m4",
-    patientId: "p1",
-    type: "glucose",
-    glucose: 95,
-    timing: "lúc đói",
-    device: "GLUCOSE_METER_01",
-    recordedBy: "u1",
-    measuredAt: "2025-10-18T07:00:00",
-    createdAt: "2025-10-18T07:00:05",
-    updatedAt: "2025-10-18T07:00:05",
-  },
-  {
-    id: "m5",
-    patientId: "p1",
-    type: "glucose",
-    glucose: 132,
-    timing: "sau ăn",
-    device: "GLUCOSE_METER_01",
-    recordedBy: "u1",
-    measuredAt: "2025-10-19T12:30:00",
-    createdAt: "2025-10-19T12:30:05",
-    updatedAt: "2025-10-19T12:30:05",
-  },
-  {
-    id: "m6",
-    patientId: "p1",
-    type: "glucose",
-    glucose: 110,
-    timing: "lúc đói",
-    device: "GLUCOSE_METER_01",
-    recordedBy: "u1",
-    measuredAt: "2025-10-20T06:50:00",
-    createdAt: "2025-10-20T06:50:05",
-    updatedAt: "2025-10-20T06:50:05",
-  },
-  // SpO2 – nhiều bản ghi
-  {
-    id: "m7",
-    patientId: "p1",
-    type: "spo2",
-    spo2: 97,
-    device: "SPO2_01",
-    recordedBy: "u1",
-    measuredAt: "2025-10-18T09:15:00",
-    createdAt: "2025-10-18T09:15:05",
-    updatedAt: "2025-10-18T09:15:05",
-  },
-  {
-    id: "m8",
-    patientId: "p1",
-    type: "spo2",
-    spo2: 96,
-    device: "SPO2_01",
-    recordedBy: "u1",
-    measuredAt: "2025-10-19T09:20:00",
-    createdAt: "2025-10-19T09:20:05",
-    updatedAt: "2025-10-19T09:20:05",
-  },
-  {
-    id: "m9",
-    patientId: "p1",
-    type: "spo2",
-    spo2: 98,
-    device: "SPO2_01",
-    recordedBy: "u1",
-    measuredAt: "2025-10-20T09:25:00",
-    createdAt: "2025-10-20T09:25:05",
-    updatedAt: "2025-10-20T09:25:05",
-  },
-  // Nhiệt độ – nhiều bản ghi
-  {
-    id: "m10",
-    patientId: "p1",
-    type: "temp",
-    temperature: 36.7,
-    device: "THERMO_01",
-    recordedBy: "u1",
-    measuredAt: "2025-10-18T21:00:00",
-    createdAt: "2025-10-18T21:00:05",
-    updatedAt: "2025-10-18T21:00:05",
-  },
-  {
-    id: "m11",
-    patientId: "p1",
-    type: "temp",
-    temperature: 37.2,
-    device: "THERMO_01",
-    recordedBy: "u1",
-    measuredAt: "2025-10-19T21:10:00",
-    createdAt: "2025-10-19T21:10:05",
-    updatedAt: "2025-10-19T21:10:05",
-  },
-  {
-    id: "m12",
-    patientId: "p1",
-    type: "temp",
-    temperature: 36.8,
-    device: "THERMO_01",
-    recordedBy: "u1",
-    measuredAt: "2025-10-20T21:05:00",
-    createdAt: "2025-10-20T21:05:05",
-    updatedAt: "2025-10-20T21:05:05",
-  },
-];
 
 function formatDate(iso) {
   const d = new Date(iso);
@@ -179,14 +30,32 @@ function formatShortLabel(iso) {
   return `${dd}/${mm}`;
 }
 
-export default function HistoryScreen() {
-  const [tab, setTab] = useState("bp"); // "bp" | "glucose" | "spo2" | "temp"
-  const [showMore, setShowMore] = useState(false); // false: 1 bản ghi, true: 5 bản ghi
+export default function HistoryScreen({ route }) {
+  const { user } = useAuth() || {};
+  const patientId = route?.params?.patientId || user?._id || user?.id || "p1";
+
+  const [tab, setTab] = useState("bp");
+  const [showMore, setShowMore] = useState(false);
+  const [measurements, setMeasurements] = useState([]);
+
+  const fetchMeasurements = async () => {
+    // Lấy tất cả loại đo cùng lúc
+    const res = await getMeasurements(patientId);
+    if (res.ok && res.body.data) {
+      setMeasurements(res.body.data);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchMeasurements();
+    }, [patientId])
+  );
 
   const activeMeasurements = measurements
     .filter((m) => m.type === tab)
     .sort(
-      (a, b) => new Date(a.measuredAt).getTime() - new Date(b.measuredAt).getTime()
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
     );
 
   let chartLabels = [];
@@ -194,11 +63,11 @@ export default function HistoryScreen() {
   let legend = [];
 
   if (activeMeasurements.length > 0) {
-    chartLabels = activeMeasurements.map((m) => formatShortLabel(m.measuredAt));
+    chartLabels = activeMeasurements.map((m) => formatShortLabel(m.createdAt));
 
-    if (tab === "bp") {
-      const systolicArr = activeMeasurements.map((m) => m.systolic);
-      const diastolicArr = activeMeasurements.map((m) => m.diastolic);
+    if (tab === "bp") { 
+      const systolicArr = activeMeasurements.map((m) => m.bloodPressure?.systolic || m.systolic || 0);
+      const diastolicArr = activeMeasurements.map((m) => m.bloodPressure?.diastolic || m.diastolic || 0);
       chartDatasets = [
         {
           data: systolicArr,
@@ -213,7 +82,7 @@ export default function HistoryScreen() {
       ];
       legend = ["Tâm thu", "Tâm trương"];
     } else if (tab === "glucose") {
-      const glucoseArr = activeMeasurements.map((m) => m.glucose);
+      const glucoseArr = activeMeasurements.map((m) => m.glucose || 0);
       chartDatasets = [
         {
           data: glucoseArr,
@@ -223,7 +92,7 @@ export default function HistoryScreen() {
       ];
       legend = ["Đường huyết (mg/dL)"];
     } else if (tab === "spo2") {
-      const spo2Arr = activeMeasurements.map((m) => m.spo2);
+      const spo2Arr = activeMeasurements.map((m) => m.spo2 || 0);
       chartDatasets = [
         {
           data: spo2Arr,
@@ -233,7 +102,7 @@ export default function HistoryScreen() {
       ];
       legend = ["SpO₂ (%)"];
     } else if (tab === "temp") {
-      const tempArr = activeMeasurements.map((m) => m.temperature);
+      const tempArr = activeMeasurements.map((m) => m.temperature || 0);
       chartDatasets = [
         {
           data: tempArr,
@@ -242,13 +111,33 @@ export default function HistoryScreen() {
         },
       ];
       legend = ["Nhiệt độ (°C)"];
+    } else if (tab === "heartRate") {
+      const heartRateArr = activeMeasurements.map((m) => m.heartRate || 0);
+      chartDatasets = [
+        {
+          data: heartRateArr,
+          strokeWidth: 2,
+          color: (opacity = 1) => `rgba(139, 92, 246, ${opacity})`,
+        },
+      ];
+      legend = ["Nhịp tim (bpm)"];
+    } else if (tab === "respiratoryRate") {
+      const respiratoryRateArr = activeMeasurements.map((m) => m.respiratoryRate || 0);
+      chartDatasets = [
+        {
+          data: respiratoryRateArr,
+          strokeWidth: 2,
+          color: (opacity = 1) => `rgba(14, 165, 233, ${opacity})`,
+        },
+      ];
+      legend = ["Nhịp thở (lần/ph)"];
     }
   }
 
   const visibleMeasurements = activeMeasurements
     .slice()
     .sort(
-      (a, b) => new Date(b.measuredAt).getTime() - new Date(a.measuredAt).getTime()
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     )
     .slice(0, showMore ? 5 : 1);
 
@@ -264,76 +153,116 @@ export default function HistoryScreen() {
         </View>
 
         {/* TABS */}
-        <View style={styles.tabs}>
-          <TouchableOpacity
-            onPress={() => {
-              setTab("bp");
-              setShowMore(false);
-            }}
-            style={[styles.tabItem, tab === "bp" && styles.tabActive]}
-          >
-            <Ionicons
-              name="heart"
-              size={16}
-              color={tab === "bp" ? "#2563EB" : "#6B7280"}
-            />
-            <Text style={[styles.tabText, tab === "bp" && styles.tabTextActive]}>
-              Huyết áp
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => {
-              setTab("glucose");
-              setShowMore(false);
-            }}
-            style={[styles.tabItem, tab === "glucose" && styles.tabActive]}
-          >
-            <Ionicons
-              name="water"
-              size={16}
-              color={tab === "glucose" ? "#2563EB" : "#6B7280"}
-            />
-            <Text
-              style={[styles.tabText, tab === "glucose" && styles.tabTextActive]}
+        <View style={styles.tabsContainer}>
+          {/* Row 1 */}
+          <View style={styles.tabsRow}>
+            <TouchableOpacity
+              onPress={() => {
+                setTab("bp");
+                setShowMore(false);
+              }}
+              style={[styles.tabItem, tab === "bp" && styles.tabActive]}
             >
-              Đường huyết
-            </Text>
-          </TouchableOpacity>
+              <Ionicons
+                name="heart"
+                size={16}
+                color={tab === "bp" ? "#2563EB" : "#6B7280"}
+              />
+              <Text style={[styles.tabText, tab === "bp" && styles.tabTextActive]}>
+                Huyết áp
+              </Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            onPress={() => {
-              setTab("spo2");
-              setShowMore(false);
-            }}
-            style={[styles.tabItem, tab === "spo2" && styles.tabActive]}
-          >
-            <Ionicons
-              name="pulse"
-              size={16}
-              color={tab === "spo2" ? "#2563EB" : "#6B7280"}
-            />
-            <Text style={[styles.tabText, tab === "spo2" && styles.tabTextActive]}>
-              SpO₂
-            </Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => {
+                setTab("glucose");
+                setShowMore(false);
+              }}
+              style={[styles.tabItem, tab === "glucose" && styles.tabActive]}
+            >
+              <Ionicons
+                name="water"
+                size={16}
+                color={tab === "glucose" ? "#2563EB" : "#6B7280"}
+              />
+              <Text
+                style={[styles.tabText, tab === "glucose" && styles.tabTextActive]}
+              >
+                Đường huyết
+              </Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            onPress={() => {
-              setTab("temp");
-              setShowMore(false);
-            }}
-            style={[styles.tabItem, tab === "temp" && styles.tabActive]}
-          >
-            <Ionicons
-              name="thermometer"
-              size={16}
-              color={tab === "temp" ? "#2563EB" : "#6B7280"}
-            />
-            <Text style={[styles.tabText, tab === "temp" && styles.tabTextActive]}>
-              Nhiệt độ
-            </Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => {
+                setTab("spo2");
+                setShowMore(false);
+              }}
+              style={[styles.tabItem, tab === "spo2" && styles.tabActive]}
+            >
+              <Ionicons
+                name="pulse"
+                size={16}
+                color={tab === "spo2" ? "#2563EB" : "#6B7280"}
+              />
+              <Text style={[styles.tabText, tab === "spo2" && styles.tabTextActive]}>
+                SpO₂
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Row 2 */}
+          <View style={styles.tabsRow}>
+            <TouchableOpacity
+              onPress={() => {
+                setTab("temp");
+                setShowMore(false);
+              }}
+              style={[styles.tabItem, tab === "temp" && styles.tabActive]}
+            >
+              <Ionicons
+                name="thermometer"
+                size={16}
+                color={tab === "temp" ? "#2563EB" : "#6B7280"}
+              />
+              <Text style={[styles.tabText, tab === "temp" && styles.tabTextActive]}>
+                Nhiệt độ
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => {
+                setTab("heartRate");
+                setShowMore(false);
+              }}
+              style={[styles.tabItem, tab === "heartRate" && styles.tabActive]}
+            >
+              <Ionicons
+                name="fitness"
+                size={16}
+                color={tab === "heartRate" ? "#2563EB" : "#6B7280"}
+              />
+              <Text style={[styles.tabText, tab === "heartRate" && styles.tabTextActive]}>
+                Nhịp tim
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => {
+                setTab("respiratoryRate");
+                setShowMore(false);
+              }}
+              style={[styles.tabItem, tab === "respiratoryRate" && styles.tabActive]}
+            >
+              <Ionicons
+                name="cloud"
+                size={16}
+                color={tab === "respiratoryRate" ? "#2563EB" : "#6B7280"}
+              />
+              <Text style={[styles.tabText, tab === "respiratoryRate" && styles.tabTextActive]}>
+                Nhịp thở
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* TREND CARD */}
@@ -395,8 +324,8 @@ export default function HistoryScreen() {
 
         {/* RECORD LIST */}
         {visibleMeasurements.map((m) => {
-          const dateStr = formatDate(m.measuredAt);
-          const timeStr = formatTime(m.measuredAt);
+          const dateStr = formatDate(m.createdAt);
+          const timeStr = formatTime(m.createdAt);
 
           const accentStyle =
             m.type === "bp"
@@ -429,17 +358,17 @@ export default function HistoryScreen() {
                 {m.type === "bp" && (
                   <>
                     <View style={styles.recordValueBox}>
-                      <Text style={styles.recordValueNumber}>{m.systolic}</Text>
+                      <Text style={styles.recordValueNumber}>{m.bloodPressure?.systolic || m.systolic}</Text>
                       <Text style={styles.recordValueUnit}>mmHg</Text>
                       <Text style={styles.recordValueLabel}>Tâm thu</Text>
                     </View>
                     <View style={styles.recordValueBox}>
-                      <Text style={styles.recordValueNumber}>{m.diastolic}</Text>
+                      <Text style={styles.recordValueNumber}>{m.bloodPressure?.diastolic || m.diastolic}</Text>
                       <Text style={styles.recordValueUnit}>mmHg</Text>
                       <Text style={styles.recordValueLabel}>Tâm trương</Text>
                     </View>
                     <View style={styles.recordValueBox}>
-                      <Text style={styles.recordValueNumber}>{m.pulse}</Text>
+                      <Text style={styles.recordValueNumber}>{m.heartRate || m.pulse}</Text>
                       <Text style={styles.recordValueUnit}>bpm</Text>
                       <Text style={styles.recordValueLabel}>Mạch</Text>
                     </View>
@@ -467,6 +396,22 @@ export default function HistoryScreen() {
                     <Text style={styles.recordValueNumber}>{m.temperature}</Text>
                     <Text style={styles.recordValueUnit}>°C</Text>
                     <Text style={styles.recordValueLabel}>Nhiệt độ</Text>
+                  </View>
+                )}
+
+                {m.type === "heartRate" && (
+                  <View style={styles.recordValueBox}>
+                    <Text style={styles.recordValueNumber}>{m.heartRate}</Text>
+                    <Text style={styles.recordValueUnit}>bpm</Text>
+                    <Text style={styles.recordValueLabel}>Nhịp tim</Text>
+                  </View>
+                )}
+
+                {m.type === "respiratoryRate" && (
+                  <View style={styles.recordValueBox}>
+                    <Text style={styles.recordValueNumber}>{m.respiratoryRate}</Text>
+                    <Text style={styles.recordValueUnit}>lần/phút</Text>
+                    <Text style={styles.recordValueLabel}>Nhịp thở</Text>
                   </View>
                 )}
               </View>
@@ -519,12 +464,15 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 18, fontWeight: "700", color: "#111827" },
   headerSub: { fontSize: 12, color: "#6B7280", marginTop: 4 },
 
-  tabs: {
+  tabsContainer: {
+    marginBottom: 20,
+    gap: 8,
+  },
+  tabsRow: {
     flexDirection: "row",
     backgroundColor: "#E5EDFF",
     padding: 4,
     borderRadius: 999,
-    marginBottom: 20,
   },
   tabItem: {
     flex: 1,

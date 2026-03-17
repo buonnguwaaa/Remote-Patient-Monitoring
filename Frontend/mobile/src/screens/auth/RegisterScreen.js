@@ -9,12 +9,12 @@ import {
   Platform,
   Modal,
 } from 'react-native';
-import ButtonPrimary from '../components/ButtonPrimary';
+import ButtonPrimary from '../../components/ButtonPrimary';
 import { Feather } from '@expo/vector-icons';
-import styles from '../styles/login';
+import styles from '../../styles/login';
 import { Alert } from 'react-native';
 
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 
 export default function RegisterScreen({ navigation, onSwitchToLogin }) {
   const [name, setName] = useState('');
