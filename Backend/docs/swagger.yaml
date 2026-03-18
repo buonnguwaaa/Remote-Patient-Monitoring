@@ -9,16 +9,6 @@ definitions:
       systolic:
         type: number
     type: object
-  domain.Gender:
-    enum:
-    - M
-    - F
-    - O
-    type: string
-    x-enum-varnames:
-    - GenderMale
-    - GenderFemale
-    - GenderOther
   domain.Kind:
     enum:
     - measure
@@ -47,16 +37,6 @@ definitions:
     - StatusPaused
     - StatusExpired
     - StatusCanceled
-  domain.Role:
-    enum:
-    - user.patient
-    - user.doctor
-    - admin
-    type: string
-    x-enum-varnames:
-    - RolePatient
-    - RoleDoctor
-    - RoleAdmin
   domain.Timing:
     enum:
     - pre
@@ -71,6 +51,19 @@ definitions:
         type: string
     required:
     - activateToken
+    type: object
+  dto.AssignPatientRequest:
+    properties:
+      doctorId:
+        description: Can be empty if only assigning nurse
+        type: string
+      nurseId:
+        description: Can be empty if only assigning doctor
+        type: string
+      patientId:
+        type: string
+    required:
+    - patientId
     type: object
   dto.CreateMeasurementRequest:
     properties:
@@ -219,40 +212,6 @@ definitions:
     - refreshToken
     type: object
   dto.RegisterRequest:
-    properties:
-      confirmedPassword:
-        example: SecurePass123!
-        minLength: 8
-        type: string
-      dob:
-        example: "1990-05-15"
-        type: string
-      email:
-        example: john.doe@example.com
-        type: string
-      gender:
-        allOf:
-        - $ref: '#/definitions/domain.Gender'
-        example: M
-      name:
-        example: John Doe
-        type: string
-      password:
-        example: SecurePass123!
-        minLength: 6
-        type: string
-      role:
-        allOf:
-        - $ref: '#/definitions/domain.Role'
-        example: patient
-    required:
-    - confirmedPassword
-    - dob
-    - email
-    - gender
-    - name
-    - password
-    - role
     type: object
   dto.ResendActivationEmailRequest:
     properties:
@@ -275,6 +234,38 @@ definitions:
     - confirmedNewPassword
     - newPassword
     - resetToken
+    type: object
+  dto.UpdateBaseUserRequest:
+    properties:
+      email:
+        type: string
+      gender:
+        type: string
+      name:
+        type: string
+      phone:
+        type: string
+    type: object
+  dto.UpdateDoctorRequest:
+    properties:
+      departmentId:
+        type: string
+      email:
+        type: string
+      gender:
+        type: string
+      licenseNumber:
+        type: string
+      name:
+        type: string
+      phone:
+        type: string
+      specialization:
+        type: string
+      workplace:
+        type: string
+      yearsOfExperience:
+        type: integer
     type: object
   dto.UpdateMeasurementRequest:
     properties:
@@ -302,6 +293,36 @@ definitions:
         enum:
         - bp
         - glucose
+    type: object
+  dto.UpdateNurseRequest:
+    properties:
+      departmentId:
+        type: string
+      email:
+        type: string
+      gender:
+        type: string
+      licenseNumber:
+        type: string
+      name:
+        type: string
+      phone:
+        type: string
+      ward:
+        type: string
+      workplace:
+        type: string
+    type: object
+  dto.UpdatePatientRequest:
+    properties:
+      email:
+        type: string
+      gender:
+        type: string
+      name:
+        type: string
+      phone:
+        type: string
     type: object
   dto.UpdateReminderRequest:
     properties:
@@ -335,6 +356,13 @@ definitions:
     - status
     - timezone
     type: object
+  dto.UpdateReminderStatusRequest:
+    properties:
+      status:
+        $ref: '#/definitions/domain.ReminderStatus'
+    required:
+    - status
+    type: object
   dto.UpdateThresholdRequest:
     properties:
       diaMax:
@@ -367,6 +395,15 @@ definitions:
         type: number
       temperatureMin:
         type: number
+    type: object
+  usecase.CreateDepartmentInput:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+    required:
+    - name
     type: object
 host: localhost:8080
 info:
@@ -467,6 +504,41 @@ paths:
       summary: Acknowledge an alert
       tags:
       - alerts
+  /assignments:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get assignments for the current doctor/nurse
+      tags:
+      - assignments
+  /assignments/assign:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Assignment info
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.AssignPatientRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Assign patient to doctor/nurse
+      tags:
+      - assignments
   /auth/activate:
     post:
       description: Activate user account created from local strategy using token from
@@ -761,6 +833,57 @@ paths:
       summary: Reset Password
       tags:
       - auth
+  /departments:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get all departments
+      tags:
+      - departments
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Department info
+        in: body
+        name: department
+        required: true
+        schema:
+          $ref: '#/definitions/usecase.CreateDepartmentInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Create department
+      tags:
+      - departments
+  /departments/{id}/members:
+    get:
+      produces:
+      - application/json
+      responses: {}
+      summary: Get department members
+      tags:
+      - departments
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses: {}
+      summary: Add member to department
+      tags:
+      - departments
   /measurements:
     get:
       consumes:
@@ -998,6 +1121,53 @@ paths:
       summary: Update reminder
       tags:
       - reminders
+  /reminders/{id}/status:
+    patch:
+      consumes:
+      - application/json
+      description: Update only the status of a reminder (active, paused, expired,
+        canceled)
+      parameters:
+      - description: Reminder ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Status update
+        in: body
+        name: update
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateReminderStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Reminder status updated successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update reminder status
+      tags:
+      - reminders
   /thresholds:
     get:
       consumes:
@@ -1111,7 +1281,7 @@ paths:
     get:
       consumes:
       - application/json
-      description: Get a list of users with optional filters and pagination
+      description: Get a list of base users with optional filters and pagination
       parameters:
       - description: Filter by users' name
         in: query
@@ -1120,10 +1290,6 @@ paths:
       - description: Filter by users' email
         in: query
         name: email
-        type: string
-      - description: Filter by users' roles, comma-separated (e.g., admin,user)
-        in: query
-        name: role
         type: string
       - description: Filter by users' gender
         in: query
@@ -1155,14 +1321,47 @@ paths:
             additionalProperties:
               type: string
             type: object
-      summary: Get list of users
+      summary: Get list of base users
       tags:
       - users
   /users/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a base user by their ID
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User deleted successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete base user by ID
+      tags:
+      - users
     get:
       consumes:
       - application/json
-      description: Get a user by their ID
+      description: Get a base user by their ID
       parameters:
       - description: User ID
         in: path
@@ -1183,9 +1382,454 @@ paths:
             additionalProperties:
               type: string
             type: object
-      summary: Get user by ID
+      summary: Get base user by ID
       tags:
       - users
+    patch:
+      consumes:
+      - application/json
+      description: Update a base user's information by their ID
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated user information
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateBaseUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User updated successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update base user by ID
+      tags:
+      - users
+  /users/{id}/avatar:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Upload an avatar image for a user by their ID
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Avatar image file
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Avatar uploaded successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Upload avatar for a user
+      tags:
+      - users
+  /users/doctors:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of doctors with optional filters and pagination
+      parameters:
+      - description: Filter by doctors' name
+        in: query
+        name: name
+        type: string
+      - description: Filter by doctors' email
+        in: query
+        name: email
+        type: string
+      - description: Filter by doctors' gender
+        in: query
+        name: gender
+        type: string
+      - description: Page number, default 1
+        in: query
+        name: page
+        type: integer
+      - description: Number of items per page, default 10
+        in: query
+        name: limit
+        type: integer
+      - description: Sort order, asc or desc, default asc
+        in: query
+        name: sortOrder
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of doctors retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get list of doctors
+      tags:
+      - doctors
+  /users/doctors/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a doctor's information by their ID
+      parameters:
+      - description: Doctor ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Doctor retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Doctor not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get doctor by ID
+      tags:
+      - doctors
+    patch:
+      consumes:
+      - application/json
+      description: Update a doctor's information by their ID
+      parameters:
+      - description: Doctor ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated doctor information
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateDoctorRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Doctor updated successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update doctor by ID
+      tags:
+      - doctors
+  /users/nurses:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of nurses with optional filters and pagination
+      parameters:
+      - description: Filter by nurses' name
+        in: query
+        name: name
+        type: string
+      - description: Filter by nurses' email
+        in: query
+        name: email
+        type: string
+      - description: Filter by nurses' gender
+        in: query
+        name: gender
+        type: string
+      - description: Page number, default 1
+        in: query
+        name: page
+        type: integer
+      - description: Number of items per page, default 10
+        in: query
+        name: limit
+        type: integer
+      - description: Sort order, asc or desc, default asc
+        in: query
+        name: sortOrder
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of nurses retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get list of nurses
+      tags:
+      - nurses
+  /users/nurses/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a nurse's information by their ID
+      parameters:
+      - description: Nurse ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Nurse retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Nurse not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get nurse by ID
+      tags:
+      - nurses
+    put:
+      consumes:
+      - application/json
+      description: Update a nurse's information
+      parameters:
+      - description: Nurse ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Nurse update information
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateNurseRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Nurse updated successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Nurse not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update nurse
+      tags:
+      - nurses
+  /users/patients:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of patients with optional filters and pagination
+      parameters:
+      - description: Filter by patients' name
+        in: query
+        name: name
+        type: string
+      - description: Filter by patients' email
+        in: query
+        name: email
+        type: string
+      - description: Filter by patients' gender
+        in: query
+        name: gender
+        type: string
+      - description: Page number, default 1
+        in: query
+        name: page
+        type: integer
+      - description: Number of items per page, default 10
+        in: query
+        name: limit
+        type: integer
+      - description: Sort order, asc or desc, default asc
+        in: query
+        name: sortOrder
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of patients retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get list of patients
+      tags:
+      - patients
+  /users/patients/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Get a patient by their ID
+      parameters:
+      - description: Patient ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Patient retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Patient not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get patient by ID
+      tags:
+      - patients
+    patch:
+      consumes:
+      - application/json
+      description: Update a patient's information
+      parameters:
+      - description: Patient ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Patient update data
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdatePatientRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Patient updated successfully
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid request data
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Patient not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update patient
+      tags:
+      - patients
 schemes:
 - http
 - https

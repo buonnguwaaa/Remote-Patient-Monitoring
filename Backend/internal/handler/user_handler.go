@@ -25,9 +25,9 @@ func NewUserHandler(userService service.UserService, cloudinarySvc service.Cloud
 	}
 }
 
-// GetUsers retrieves a list of users
-// @Summary Get list of users
-// @Description Get a list of users with optional filters and pagination
+// GetBaseUsers retrieves a list of base users
+// @Summary Get list of base users
+// @Description Get a list of base users with optional filters and pagination
 // @Tags users
 // @Accept json
 // @Produce json
@@ -40,7 +40,7 @@ func NewUserHandler(userService service.UserService, cloudinarySvc service.Cloud
 // @Success 200 {object} map[string]interface{} "List of users retrieved successfully"
 // @Failure 500 {object} map[string]string "Internal server error"
 // @Router /users [get]
-func (h *UserHandler) GetUsers(c *gin.Context) {
+func (h *UserHandler) GetBaseUsers(c *gin.Context) {
 	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
 	if err != nil || page < 1 {
 		page = 1
@@ -71,12 +71,12 @@ func (h *UserHandler) GetUsers(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": users, "message": "list of users retrieved successfully"})
+	c.JSON(http.StatusOK, gin.H{"data": users, "message": "List of users retrieved successfully"})
 }
 
-// GetUserByID retrieves a user by ID
-// @Summary Get user by ID
-// @Description Get a user by their ID
+// GetBaseUserByID retrieves a base user by ID
+// @Summary Get base user by ID
+// @Description Get a base user by their ID
 // @Tags users
 // @Accept json
 // @Produce json
@@ -84,26 +84,37 @@ func (h *UserHandler) GetUsers(c *gin.Context) {
 // @Success 200 {object} map[string]interface{} "User retrieved successfully"
 // @Failure 404 {object} map[string]string "User not found"
 // @Router /users/{id} [get]
-func (h *UserHandler) GetUserByID(c *gin.Context) {
+func (h *UserHandler) GetBaseUserByID(c *gin.Context) {
 	id := c.Param("id")
 
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
-	u, err := h.service.GetBaseUserByID(ctx, id)
+	u, err := h.service.GetBaseUserByID(ctx, &usecase.GetUserByIDInput{ID: id})
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": u, "message": "user retrieved successfully"})
+	c.JSON(http.StatusOK, gin.H{"data": u, "message": "User retrieved successfully"})
 }
 
-// UpdateUser updates a base user
-func (h *UserHandler) UpdateUser(c *gin.Context) {
+// UpdateBaseUserByID updates a base user by ID
+// @Summary Update base user by ID
+// @Description Update a base user's information by their ID
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param id path string true "User ID"
+// @Param body body dto.UpdateBaseUserRequest true "Updated user information"
+// @Success 200 {object} map[string]interface{} "User updated successfully"
+// @Failure 400 {object} map[string]string "Bad request"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /users/{id} [patch]
+func (h *UserHandler) UpdateBaseUserByID(c *gin.Context) {
 	id := c.Param("id")
 
-	var req dto.UpdateUserRequest
+	var req dto.UpdateBaseUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -128,8 +139,18 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "User updated successfully"})
 }
 
-// DeleteUser deletes a base user
-func (h *UserHandler) DeleteUser(c *gin.Context) {
+// DeleteBaseUserByID deletes a base user by ID
+// @Summary Delete base user by ID
+// @Description Delete a base user by their ID
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param id path string true "User ID"
+// @Success 200 {object} map[string]interface{} "User deleted successfully"
+// @Failure 400 {object} map[string]string "Bad request"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /users/{id} [delete]
+func (h *UserHandler) DeleteBaseUserByID(c *gin.Context) {
 	id := c.Param("id")
 
 	input := &usecase.DeleteUserInput{
@@ -147,6 +168,18 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "User deleted successfully"})
 }
 
+// UploadAvatar handles avatar upload for a user
+// @Summary Upload avatar for a user
+// @Description Upload an avatar image for a user by their ID
+// @Tags users
+// @Accept multipart/form-data
+// @Produce json
+// @Param id path string true "User ID"
+// @Param file formData file true "Avatar image file"
+// @Success 200 {object} map[string]interface{} "Avatar uploaded successfully"
+// @Failure 400 {object} map[string]string "Bad request"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /users/{id}/avatar [post]
 func (h *UserHandler) UploadAvatar(c *gin.Context) {
 	userID := c.Param("id")
 
@@ -159,14 +192,14 @@ func (h *UserHandler) UploadAvatar(c *gin.Context) {
 	if fileHeader.Header.Get("Content-Type") != "" {
 		contentType := fileHeader.Header.Get("Content-Type")
 		if len(contentType) < 5 || contentType[:6] != "image/" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Chỉ chấp nhận file ảnh"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Only image files are allowed"})
 			return
 		}
 	}
 
 	file, err := fileHeader.Open()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Không thể mở file: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot open file: " + err.Error()})
 		return
 	}
 	defer file.Close()
@@ -175,13 +208,13 @@ func (h *UserHandler) UploadAvatar(c *gin.Context) {
 	defer cancel()
 
 	oldAvatarURL := ""
-	if currentUser, err := h.service.GetBaseUserByID(ctx, userID); err == nil {
+	if currentUser, err := h.service.GetBaseUserByID(ctx, &usecase.GetUserByIDInput{ID: userID}); err == nil {
 		oldAvatarURL = currentUser.AvatarUrl
 	}
 
 	avatarUrl, err := h.cloudinarySvc.UploadAvatar(ctx, file, "rpm/avatars")
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Upload thất bại: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Upload failed: " + err.Error()})
 		return
 	}
 
@@ -189,7 +222,7 @@ func (h *UserHandler) UploadAvatar(c *gin.Context) {
 		ID:        userID,
 		AvatarUrl: avatarUrl,
 	}); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Lưu avatar thất bại: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save avatar: " + err.Error()})
 		return
 	}
 
@@ -200,9 +233,9 @@ func (h *UserHandler) UploadAvatar(c *gin.Context) {
 				deleteCtx, deleteCancel := context.WithTimeout(context.Background(), 15*time.Second)
 				defer deleteCancel()
 				if err := h.cloudinarySvc.DeleteAsset(deleteCtx, oldPublicID); err != nil {
-					log.Printf("[Cloudinary] Không thể xóa ảnh cũ %s: %v", oldPublicID, err)
+					log.Printf("[Cloudinary] Cannot delete old image %s: %v", oldPublicID, err)
 				} else {
-					log.Printf("[Cloudinary] Đã xóa ảnh cũ: %s", oldPublicID)
+					log.Printf("[Cloudinary] Successfully deleted old image: %s", oldPublicID)
 				}
 			}()
 		}
@@ -210,11 +243,25 @@ func (h *UserHandler) UploadAvatar(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"avatarUrl": avatarUrl,
-		"message":   "Upload avatar thành công",
+		"message":   "Avatar uploaded successfully",
 	})
 }
 
 // GetPatients retrieves a list of patients
+// @Summary Get list of patients
+// @Description Get a list of patients with optional filters and pagination
+// @Tags patients
+// @Accept json
+// @Produce json
+// @Param name query string false "Filter by patients' name"
+// @Param email query string false "Filter by patients' email"
+// @Param gender query string false "Filter by patients' gender"
+// @Param page query int false "Page number, default 1"
+// @Param limit query int false "Number of items per page, default 10"
+// @Param sortOrder query string false "Sort order, asc or desc, default asc"
+// @Success 200 {object} map[string]interface{} "List of patients retrieved successfully"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /users/patients [get]
 func (h *UserHandler) GetPatients(c *gin.Context) {
 	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
 	if err != nil || page < 1 {
@@ -249,13 +296,22 @@ func (h *UserHandler) GetPatients(c *gin.Context) {
 }
 
 // GetPatientByID retrieves a patient by ID
+// @Summary Get patient by ID
+// @Description Get a patient by their ID
+// @Tags patients
+// @Accept json
+// @Produce json
+// @Param id path string true "Patient ID"
+// @Success 200 {object} map[string]interface{} "Patient retrieved successfully"
+// @Failure 404 {object} map[string]string "Patient not found"
+// @Router /users/patients/{id} [get]
 func (h *UserHandler) GetPatientByID(c *gin.Context) {
 	id := c.Param("id")
 
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
-	patient, err := h.service.GetPatientByID(ctx, id)
+	patient, err := h.service.GetPatientByID(ctx, &usecase.GetUserByIDInput{ID: id})
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
@@ -264,11 +320,23 @@ func (h *UserHandler) GetPatientByID(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": patient, "message": "patient retrieved successfully"})
 }
 
-// UpdatePatient updates a patient
-func (h *UserHandler) UpdatePatient(c *gin.Context) {
+// UpdatePatientByID updates a patient by ID
+// @Summary Update patient
+// @Description Update a patient's information
+// @Tags patients
+// @Accept json
+// @Produce json
+// @Param id path string true "Patient ID"
+// @Param input body dto.UpdatePatientRequest true "Patient update data"
+// @Success 200 {object} map[string]string "Patient updated successfully"
+// @Failure 400 {object} map[string]string "Invalid request data"
+// @Failure 404 {object} map[string]string "Patient not found"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /users/patients/{id} [patch]
+func (h *UserHandler) UpdatePatientByID(c *gin.Context) {
 	id := c.Param("id")
 
-	var req dto.UpdateUserRequest
+	var req dto.UpdatePatientRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -294,6 +362,20 @@ func (h *UserHandler) UpdatePatient(c *gin.Context) {
 }
 
 // GetDoctors retrieves a list of doctors
+// @Summary Get list of doctors
+// @Description Get a list of doctors with optional filters and pagination
+// @Tags doctors
+// @Accept json
+// @Produce json
+// @Param name query string false "Filter by doctors' name"
+// @Param email query string false "Filter by doctors' email"
+// @Param gender query string false "Filter by doctors' gender"
+// @Param page query int false "Page number, default 1"
+// @Param limit query int false "Number of items per page, default 10"
+// @Param sortOrder query string false "Sort order, asc or desc, default asc"
+// @Success 200 {object} map[string]interface{} "List of doctors retrieved successfully"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /users/doctors [get]
 func (h *UserHandler) GetDoctors(c *gin.Context) {
 	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
 	if err != nil || page < 1 {
@@ -328,13 +410,23 @@ func (h *UserHandler) GetDoctors(c *gin.Context) {
 }
 
 // GetDoctorByID retrieves a doctor by ID
+// @Summary Get doctor by ID
+// @Description Retrieve a doctor's information by their ID
+// @Tags doctors
+// @Accept json
+// @Produce json
+// @Param id path string true "Doctor ID"
+// @Success 200 {object} map[string]interface{} "Doctor retrieved successfully"
+// @Failure 404 {object} map[string]string "Doctor not found"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /users/doctors/{id} [get]
 func (h *UserHandler) GetDoctorByID(c *gin.Context) {
 	id := c.Param("id")
 
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
-	doctor, err := h.service.GetDoctorByID(ctx, id)
+	doctor, err := h.service.GetDoctorByID(ctx, &usecase.GetUserByIDInput{ID: id})
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
@@ -343,11 +435,22 @@ func (h *UserHandler) GetDoctorByID(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": doctor, "message": "doctor retrieved successfully"})
 }
 
-// UpdateDoctor updates a doctor
-func (h *UserHandler) UpdateDoctor(c *gin.Context) {
+// UpdateDoctorByID updates a doctor by ID
+// @Summary Update doctor by ID
+// @Description Update a doctor's information by their ID
+// @Tags doctors
+// @Accept json
+// @Produce json
+// @Param id path string true "Doctor ID"
+// @Param body body dto.UpdateDoctorRequest true "Updated doctor information"
+// @Success 200 {object} map[string]interface{} "Doctor updated successfully"
+// @Failure 400 {object} map[string]string "Bad request"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /users/doctors/{id} [patch]
+func (h *UserHandler) UpdateDoctorByID(c *gin.Context) {
 	id := c.Param("id")
 
-	var req dto.UpdateUserRequest
+	var req dto.UpdateDoctorRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -362,9 +465,10 @@ func (h *UserHandler) UpdateDoctor(c *gin.Context) {
 		Email:             req.Email,
 		Gender:            req.Gender,
 		Phone:             req.Phone,
-		Specialization:    req.Specialization,
+		DepartmentID:      req.DepartmentID,
 		LicenseNumber:     req.LicenseNumber,
 		Workplace:         req.Workplace,
+		Specialization:    req.Specialization,
 		YearsOfExperience: req.YearsOfExperience,
 	}
 
@@ -377,6 +481,20 @@ func (h *UserHandler) UpdateDoctor(c *gin.Context) {
 }
 
 // GetNurses retrieves a list of nurses
+// @Summary Get list of nurses
+// @Description Get a list of nurses with optional filters and pagination
+// @Tags nurses
+// @Accept json
+// @Produce json
+// @Param name query string false "Filter by nurses' name"
+// @Param email query string false "Filter by nurses' email"
+// @Param gender query string false "Filter by nurses' gender"
+// @Param page query int false "Page number, default 1"
+// @Param limit query int false "Number of items per page, default 10"
+// @Param sortOrder query string false "Sort order, asc or desc, default asc"
+// @Success 200 {object} map[string]interface{} "List of nurses retrieved successfully"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /users/nurses [get]
 func (h *UserHandler) GetNurses(c *gin.Context) {
 	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
 	if err != nil || page < 1 {
@@ -411,13 +529,23 @@ func (h *UserHandler) GetNurses(c *gin.Context) {
 }
 
 // GetNurseByID retrieves a nurse by ID
+// @Summary Get nurse by ID
+// @Description Retrieve a nurse's information by their ID
+// @Tags nurses
+// @Accept json
+// @Produce json
+// @Param id path string true "Nurse ID"
+// @Success 200 {object} map[string]interface{} "Nurse retrieved successfully"
+// @Failure 404 {object} map[string]string "Nurse not found"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /users/nurses/{id} [get]
 func (h *UserHandler) GetNurseByID(c *gin.Context) {
 	id := c.Param("id")
 
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
-	nurse, err := h.service.GetNurseByID(ctx, id)
+	nurse, err := h.service.GetNurseByID(ctx, &usecase.GetUserByIDInput{ID: id})
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
@@ -426,11 +554,23 @@ func (h *UserHandler) GetNurseByID(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": nurse, "message": "nurse retrieved successfully"})
 }
 
-// UpdateNurse updates a nurse
-func (h *UserHandler) UpdateNurse(c *gin.Context) {
+// UpdateNurseByID updates a nurse by ID
+// @Summary Update nurse
+// @Description Update a nurse's information
+// @Tags nurses
+// @Accept json
+// @Produce json
+// @Param id path string true "Nurse ID"
+// @Param input body dto.UpdateNurseRequest true "Nurse update information"
+// @Success 200 {object} map[string]interface{} "Nurse updated successfully"
+// @Failure 400 {object} map[string]string "Bad request"
+// @Failure 404 {object} map[string]string "Nurse not found"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /users/nurses/{id} [patch]
+func (h *UserHandler) UpdateNurseByID(c *gin.Context) {
 	id := c.Param("id")
 
-	var req dto.UpdateUserRequest
+	var req dto.UpdateNurseRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -440,14 +580,15 @@ func (h *UserHandler) UpdateNurse(c *gin.Context) {
 	defer cancel()
 
 	input := &usecase.UpdateUserInput{
-		ID:                     id,
-		Name:                   req.Name,
-		Email:                  req.Email,
-		Gender:                 req.Gender,
-		Phone:                  req.Phone,
-		NurseLicenseNumber:     req.NurseLicenseNumber,
-		NurseDepartment:        req.Department,
-		NurseYearsOfExperience: req.NurseYearsOfExperience,
+		ID:            id,
+		Name:          req.Name,
+		Email:         req.Email,
+		Gender:        req.Gender,
+		Phone:         req.Phone,
+		DepartmentID:  req.DepartmentID,
+		LicenseNumber: req.LicenseNumber,
+		Workplace:     req.Workplace,
+		Ward:          req.Ward,
 	}
 
 	if err := h.service.UpdateNurse(ctx, input); err != nil {

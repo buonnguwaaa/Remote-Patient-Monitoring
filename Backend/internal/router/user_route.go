@@ -13,22 +13,22 @@ func RegisterUserRoutes(r *gin.Engine, c *container.MainServerContainer) {
 		// Base user routes
 		userGroup.GET("",
 			middleware.JWTAuthMiddleware(c.JWTManager),
-			// middleware.RequireRoles(domain.RoleAdmin),
-			c.UserHandler.GetUsers,
+			middleware.RequireRoles(domain.RoleAdmin),
+			c.UserHandler.GetBaseUsers,
 		)
 		userGroup.GET("/:id",
 			middleware.JWTAuthMiddleware(c.JWTManager),
-			c.UserHandler.GetUserByID,
+			c.UserHandler.GetBaseUserByID,
 		)
-		userGroup.PUT("/:id",
+		userGroup.PATCH("/:id",
 			middleware.JWTAuthMiddleware(c.JWTManager),
 			middleware.RequireRoles(domain.RoleAdmin),
-			c.UserHandler.UpdateUser,
+			c.UserHandler.UpdateBaseUserByID,
 		)
 		userGroup.DELETE("/:id",
 			middleware.JWTAuthMiddleware(c.JWTManager),
 			middleware.RequireRoles(domain.RoleAdmin),
-			c.UserHandler.DeleteUser,
+			c.UserHandler.DeleteBaseUserByID,
 		)
 		userGroup.POST("/:id/avatar",
 			middleware.JWTAuthMiddleware(c.JWTManager),
@@ -40,7 +40,7 @@ func RegisterUserRoutes(r *gin.Engine, c *container.MainServerContainer) {
 		{
 			patientGroup.GET("",
 				middleware.JWTAuthMiddleware(c.JWTManager),
-				// middleware.RequireRoles(domain.RoleAdmin, domain.RoleDoctor, domain.RoleNurse),
+				middleware.RequireRoles(domain.RoleAdmin, domain.RoleDoctor, domain.RoleNurse),
 				c.UserHandler.GetPatients,
 			)
 			patientGroup.GET("/:id",
@@ -48,10 +48,10 @@ func RegisterUserRoutes(r *gin.Engine, c *container.MainServerContainer) {
 				middleware.RequireRoles(domain.RoleAdmin, domain.RoleDoctor, domain.RoleNurse),
 				c.UserHandler.GetPatientByID,
 			)
-			patientGroup.PUT("/:id",
+			patientGroup.PATCH("/:id",
 				middleware.JWTAuthMiddleware(c.JWTManager),
 				middleware.RequireRoles(domain.RoleAdmin),
-				c.UserHandler.UpdatePatient,
+				c.UserHandler.UpdatePatientByID,
 			)
 		}
 		// Doctor-specific routes
@@ -59,18 +59,18 @@ func RegisterUserRoutes(r *gin.Engine, c *container.MainServerContainer) {
 		{
 			doctorGroup.GET("",
 				middleware.JWTAuthMiddleware(c.JWTManager),
-				// middleware.RequireRoles(domain.RoleAdmin, domain.RoleDoctor, domain.RoleNurse),
+				middleware.RequireRoles(domain.RoleAdmin, domain.RoleDoctor, domain.RoleNurse),
 				c.UserHandler.GetDoctors,
 			)
 			doctorGroup.GET("/:id",
 				middleware.JWTAuthMiddleware(c.JWTManager),
-				// middleware.RequireRoles(domain.RoleAdmin, domain.RoleDoctor, domain.RoleNurse),
+				middleware.RequireRoles(domain.RoleAdmin, domain.RoleDoctor, domain.RoleNurse),
 				c.UserHandler.GetDoctorByID,
 			)
-			doctorGroup.PUT("/:id",
+			doctorGroup.PATCH("/:id",
 				middleware.JWTAuthMiddleware(c.JWTManager),
 				middleware.RequireRoles(domain.RoleAdmin),
-				c.UserHandler.UpdateDoctor,
+				c.UserHandler.UpdateDoctorByID,
 			)
 		}
 		// Nurse-specific routes
@@ -78,7 +78,7 @@ func RegisterUserRoutes(r *gin.Engine, c *container.MainServerContainer) {
 		{
 			nurseGroup.GET("",
 				middleware.JWTAuthMiddleware(c.JWTManager),
-				// middleware.RequireRoles(domain.RoleAdmin, domain.RoleDoctor, domain.RoleNurse),
+				middleware.RequireRoles(domain.RoleAdmin, domain.RoleDoctor, domain.RoleNurse),
 				c.UserHandler.GetNurses,
 			)
 			nurseGroup.GET("/:id",
@@ -86,10 +86,10 @@ func RegisterUserRoutes(r *gin.Engine, c *container.MainServerContainer) {
 				middleware.RequireRoles(domain.RoleAdmin, domain.RoleDoctor, domain.RoleNurse),
 				c.UserHandler.GetNurseByID,
 			)
-			nurseGroup.PUT("/:id",
+			nurseGroup.PATCH("/:id",
 				middleware.JWTAuthMiddleware(c.JWTManager),
 				middleware.RequireRoles(domain.RoleAdmin),
-				c.UserHandler.UpdateNurse,
+				c.UserHandler.UpdateNurseByID,
 			)
 		}
 	}

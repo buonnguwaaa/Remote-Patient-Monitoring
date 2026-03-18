@@ -17,8 +17,8 @@ import (
 type DepartmentService interface {
 	Create(ctx context.Context, input *usecase.CreateDepartmentInput) (*usecase.DepartmentResponse, error)
 	FindAll(ctx context.Context) ([]*usecase.DepartmentResponse, error)
-	GetMembers(ctx context.Context, deptID string) ([]*usecase.Member, error)
-	AddMember(ctx context.Context, deptID string, userID string) error
+	GetMembers(ctx context.Context, input *usecase.GetDepartmentMembersInput) ([]*usecase.Member, error)
+	AddMember(ctx context.Context, input *usecase.AddDepartmentMemberInput) error
 }
 
 type departmentService struct {
@@ -69,8 +69,8 @@ func (s *departmentService) FindAll(ctx context.Context) ([]*usecase.DepartmentR
 	return responses, nil
 }
 
-func (s *departmentService) GetMembers(ctx context.Context, deptID string) ([]*usecase.Member, error) {
-	oid, err := primitive.ObjectIDFromHex(deptID)
+func (s *departmentService) GetMembers(ctx context.Context, input *usecase.GetDepartmentMembersInput) ([]*usecase.Member, error) {
+	oid, err := primitive.ObjectIDFromHex(input.DepartmentID)
 	if err != nil {
 		return nil, err
 	}
@@ -108,12 +108,12 @@ func (s *departmentService) GetMembers(ctx context.Context, deptID string) ([]*u
 	return members, nil
 }
 
-func (s *departmentService) AddMember(ctx context.Context, deptID string, userID string) error {
-	deptOID, err := primitive.ObjectIDFromHex(deptID)
+func (s *departmentService) AddMember(ctx context.Context, input *usecase.AddDepartmentMemberInput) error {
+	deptOID, err := primitive.ObjectIDFromHex(input.DepartmentID)
 	if err != nil {
 		return err
 	}
-	userOID, err := primitive.ObjectIDFromHex(userID)
+	userOID, err := primitive.ObjectIDFromHex(input.UserID)
 	if err != nil {
 		return err
 	}

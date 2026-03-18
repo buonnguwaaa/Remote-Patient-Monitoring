@@ -15,8 +15,8 @@ import (
 )
 
 type AssignmentService interface {
-	AssignPatient(ctx context.Context, input *usecase.AssignPatientInput, assignedBy string) (*usecase.AssignmentResponse, error)
-	GetAssignmentsByRole(ctx context.Context, userID string, role userDomain.Role) ([]*usecase.AssignmentResponse, error)
+	AssignPatient(ctx context.Context, input *usecase.AssignPatientInput) (*usecase.AssignmentResponse, error)
+	GetAssignmentsByRole(ctx context.Context, input *usecase.GetAssignmentsByRoleInput) ([]*usecase.AssignmentResponse, error)
 }
 
 type assignmentService struct {
@@ -31,12 +31,12 @@ func NewAssignmentService(assignmentRepo repository.AssignmentRepository, userRe
 	}
 }
 
-func (s *assignmentService) AssignPatient(ctx context.Context, input *usecase.AssignPatientInput, assignedBy string) (*usecase.AssignmentResponse, error) {
+func (s *assignmentService) AssignPatient(ctx context.Context, input *usecase.AssignPatientInput) (*usecase.AssignmentResponse, error) {
 	patientID, err := util.MustHexToObjectID(input.PatientID)
 	if err != nil {
 		return nil, err
 	}
-	assignerID, err := util.MustHexToObjectID(assignedBy)
+	assignerID, err := util.MustHexToObjectID(input.AssignedBy)
 	if err != nil {
 		return nil, err
 	}
@@ -90,15 +90,15 @@ func (s *assignmentService) AssignPatient(ctx context.Context, input *usecase.As
 	return s.mapToResponse(ctx, created), nil
 }
 
-func (s *assignmentService) GetAssignmentsByRole(ctx context.Context, userIDStr string, role userDomain.Role) ([]*usecase.AssignmentResponse, error) {
-	userID, err := util.MustHexToObjectID(userIDStr)
+func (s *assignmentService) GetAssignmentsByRole(ctx context.Context, input *usecase.GetAssignmentsByRoleInput) ([]*usecase.AssignmentResponse, error) {
+	userID, err := util.MustHexToObjectID(input.UserID)
 	if err != nil {
 		return nil, err
 	}
 
 	var assignments []*domain.Assignment
 
-	switch role {
+	switch input.Role {
 	case userDomain.RoleDoctor:
 		assignments, err = s.assignmentRepo.FindByDoctorID(ctx, userID)
 	case userDomain.RoleNurse:

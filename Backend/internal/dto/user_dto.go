@@ -40,19 +40,31 @@ type NurseInfoResponse struct {
 	Ward string `json:"ward,omitempty"`
 }
 
-type UpdateUserRequest struct {
-	Name   string   `json:"name"`
-	Email  string   `json:"email"`
-	Roles  []string `json:"roles"`
-	Gender string   `json:"gender"`
-	Phone  string   `json:"phone"`
-	// Doctor profile
+type UpdateBaseUserRequest struct {
+	Name   string `json:"name"`
+	Email  string `json:"email"`
+	Gender string `json:"gender"`
+	Phone  string `json:"phone"`
+}
+
+type UpdatePatientRequest struct {
+	UpdateBaseUserRequest
+}
+
+type UpdateMedicalStaffRequest struct {
+	UpdateBaseUserRequest
+	DepartmentID  string `json:"departmentId"`
+	LicenseNumber string `json:"licenseNumber"`
+	Workplace     string `json:"workplace"`
+}
+
+type UpdateDoctorRequest struct {
+	UpdateMedicalStaffRequest
 	Specialization    string `json:"specialization"`
-	LicenseNumber     string `json:"licenseNumber"`
-	Workplace         string `json:"workplace"`
 	YearsOfExperience int    `json:"yearsOfExperience"`
-	// Nurse profile
-	Department             string `json:"department"`
-	NurseLicenseNumber     string `json:"nurseLicenseNumber"`
-	NurseYearsOfExperience int    `json:"nurseYearsOfExperience"`
+}
+
+type UpdateNurseRequest struct {
+	UpdateMedicalStaffRequest
+	Ward string `json:"ward"`
 }

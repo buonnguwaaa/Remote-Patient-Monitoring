@@ -1,7 +1,6 @@
 package service
 
 import (
-	"fmt"
 	"context"
 	"time"
 
@@ -22,20 +21,20 @@ type userService struct {
 type UserService interface {
 	// BaseUser operations
 	GetBaseUsers(context.Context, *usecase.GetUsersInput) ([]dto.BaseUserInfoResponse, error)
-	GetBaseUserByID(context.Context, string) (*dto.BaseUserInfoResponse, error)
+	GetBaseUserByID(context.Context, *usecase.GetUserByIDInput) (*dto.BaseUserInfoResponse, error)
 	UpdateBaseUser(context.Context, *usecase.UpdateUserInput) error
 	DeleteBaseUser(context.Context, *usecase.DeleteUserInput) error
 	// Patient operations
 	GetPatients(context.Context, *usecase.GetUsersInput) ([]dto.PatientInfoResponse, error)
-	GetPatientByID(context.Context, string) (*dto.PatientInfoResponse, error)
+	GetPatientByID(context.Context, *usecase.GetUserByIDInput) (*dto.PatientInfoResponse, error)
 	UpdatePatient(context.Context, *usecase.UpdateUserInput) error
 	// Doctor operations
 	GetDoctors(context.Context, *usecase.GetUsersInput) ([]dto.DoctorInfoResponse, error)
-	GetDoctorByID(context.Context, string) (*dto.DoctorInfoResponse, error)
+	GetDoctorByID(context.Context, *usecase.GetUserByIDInput) (*dto.DoctorInfoResponse, error)
 	UpdateDoctor(context.Context, *usecase.UpdateUserInput) error
 	// Nurse operations
 	GetNurses(context.Context, *usecase.GetUsersInput) ([]dto.NurseInfoResponse, error)
-	GetNurseByID(context.Context, string) (*dto.NurseInfoResponse, error)
+	GetNurseByID(context.Context, *usecase.GetUserByIDInput) (*dto.NurseInfoResponse, error)
 	UpdateNurse(context.Context, *usecase.UpdateUserInput) error
 }
 
@@ -70,8 +69,8 @@ func (s *userService) GetBaseUsers(ctx context.Context, input *usecase.GetUsersI
 	return result, nil
 }
 
-func (s *userService) GetBaseUserByID(ctx context.Context, id string) (*dto.BaseUserInfoResponse, error) {
-	objID, err := primitive.ObjectIDFromHex(id)
+func (s *userService) GetBaseUserByID(ctx context.Context, input *usecase.GetUserByIDInput) (*dto.BaseUserInfoResponse, error) {
+	objID, err := primitive.ObjectIDFromHex(input.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +115,7 @@ func (s *userService) GetDoctors(ctx context.Context, input *usecase.GetUsersInp
 		Offset:    input.Offset,
 		SortOrder: input.SortOrder,
 	}
-	fmt.Println("UserService.GetDoctors - repoFilter:", repoFilter)
+
 	users, err := s.doctorRepo.FindStaffs(ctx, repoFilter)
 	if err != nil {
 		return nil, err
@@ -152,8 +151,8 @@ func (s *userService) GetNurses(ctx context.Context, input *usecase.GetUsersInpu
 	return result, nil
 }
 
-func (s *userService) GetPatientByID(ctx context.Context, id string) (*dto.PatientInfoResponse, error) {
-	objID, err := primitive.ObjectIDFromHex(id)
+func (s *userService) GetPatientByID(ctx context.Context, input *usecase.GetUserByIDInput) (*dto.PatientInfoResponse, error) {
+	objID, err := primitive.ObjectIDFromHex(input.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -173,8 +172,8 @@ func (s *userService) UpdatePatient(ctx context.Context, input *usecase.UpdateUs
 	return s.patientRepo.Update(ctx, objID, updateData)
 }
 
-func (s *userService) GetDoctorByID(ctx context.Context, id string) (*dto.DoctorInfoResponse, error) {
-	objID, err := primitive.ObjectIDFromHex(id)
+func (s *userService) GetDoctorByID(ctx context.Context, input *usecase.GetUserByIDInput) (*dto.DoctorInfoResponse, error) {
+	objID, err := primitive.ObjectIDFromHex(input.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -185,8 +184,8 @@ func (s *userService) GetDoctorByID(ctx context.Context, id string) (*dto.Doctor
 	return mapDoctor(u), nil
 }
 
-func (s *userService) GetNurseByID(ctx context.Context, id string) (*dto.NurseInfoResponse, error) {
-	objID, err := primitive.ObjectIDFromHex(id)
+func (s *userService) GetNurseByID(ctx context.Context, input *usecase.GetUserByIDInput) (*dto.NurseInfoResponse, error) {
+	objID, err := primitive.ObjectIDFromHex(input.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -233,14 +232,14 @@ func (s *userService) UpdateNurse(ctx context.Context, input *usecase.UpdateUser
 		return err
 	}
 	updateData := buildBaseUpdateData(input)
-	if input.NurseLicenseNumber != "" {
-		updateData["licenseNumber"] = input.NurseLicenseNumber
+	if input.LicenseNumber != "" {
+		updateData["licenseNumber"] = input.LicenseNumber
 	}
-	if input.NurseDepartment != "" {
-		updateData["ward"] = input.NurseDepartment
+	if input.Workplace != "" {
+		updateData["workplace"] = input.Workplace
 	}
-	if input.NurseYearsOfExperience > 0 {
-		updateData["yearsOfExperience"] = input.NurseYearsOfExperience
+	if input.Ward != "" {
+		updateData["ward"] = input.Ward
 	}
 	return s.nurseRepo.Update(ctx, objID, updateData)
 }

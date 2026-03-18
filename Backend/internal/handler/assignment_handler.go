@@ -47,12 +47,13 @@ func (h *AssignmentHandler) AssignPatient(c *gin.Context) {
 
 	// Map DTO to usecase input
 	input := &usecase.AssignPatientInput{
-		PatientID: req.PatientID,
-		DoctorID:  req.DoctorID,
-		NurseID:   req.NurseID,
+		PatientID:  req.PatientID,
+		DoctorID:   req.DoctorID,
+		NurseID:    req.NurseID,
+		AssignedBy: adminID.(string),
 	}
 
-	res, err := h.service.AssignPatient(ctx, input, adminID.(string))
+	res, err := h.service.AssignPatient(ctx, input)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -85,7 +86,12 @@ func (h *AssignmentHandler) GetMyAssignments(c *gin.Context) {
 		return
 	}
 
-	res, err := h.service.GetAssignmentsByRole(ctx, userID.(string), roleVal)
+	input := &usecase.GetAssignmentsByRoleInput{
+		UserID: userID.(string),
+		Role:   roleVal,
+	}
+
+	res, err := h.service.GetAssignmentsByRole(ctx, input)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

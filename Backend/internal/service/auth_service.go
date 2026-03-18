@@ -113,21 +113,21 @@ func (s *authService) Register(ctx context.Context, input *usecase.RegisterInput
 		Role:     input.Role,
 		Gender:   input.Gender,
 		Dob:      input.Dob,
-		IsActive: input.Role == domain.RolePatient,
+		// IsActive: input.Role != domain.RolePatient,
+		IsActive: true, // Temporarily auto-activate all accounts for testing; change to above line in production
 	}
 
-	// Tạo đúng type theo role, trả về BaseUser để dùng chung phần còn lại
 	insertedBase, err := s.createUserByRole(ctx, base)
 	if err != nil {
 		return nil, err
 	}
 
-	// Gửi activation email cho non-patient
-	if input.Role != domain.RolePatient {
-		if err := s.sendActivationEmail(ctx, email, insertedBase.Name); err != nil {
-			return nil, err
-		}
-	}
+	// Temporarily skip activation email for all roles
+	// if input.Role == domain.RolePatient {
+	// 	if err := s.sendActivationEmail(ctx, email, insertedBase.Name); err != nil {
+	// 		return nil, err
+	// 	}
+	// }
 
 	return mapBaseUserToResponse(insertedBase), nil
 }
