@@ -2,7 +2,7 @@ package router
 
 import (
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/container"
-	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
+	domain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/middleware"
 	"github.com/gin-gonic/gin"
 )

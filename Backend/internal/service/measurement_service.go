@@ -6,17 +6,19 @@ import (
 	"time"
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
+	userDomain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/client"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/workflow"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository"
+	userRepository "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecase"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/util"
 )
 
 type measurementService struct {
-	userRepo        repository.UserRepository
+	patientRepo     userRepository.PatientRepository
 	measurementRepo repository.MeasurementRepository
 }
 
@@ -26,9 +28,9 @@ type MeasurementService interface {
 	GetMeasurements(context.Context, *usecase.GetMeasurementsInput) ([]dto.MeasurementResponse, error)
 }
 
-func NewMeasurementService(userRepo repository.UserRepository, measurementRepo repository.MeasurementRepository) MeasurementService {
+func NewMeasurementService(patientRepo userRepository.PatientRepository, measurementRepo repository.MeasurementRepository) MeasurementService {
 	return &measurementService{
-		userRepo:        userRepo,
+		patientRepo:     patientRepo,
 		measurementRepo: measurementRepo,
 	}
 }
@@ -39,7 +41,7 @@ func (s *measurementService) CreateMeasurement(ctx context.Context, input *useca
 		return nil, err
 	}
 
-	existedPatient, err := s.userRepo.ExistsByIDAndRole(ctx, patientId, domain.RolePatient)
+	existedPatient, err := s.patientRepo.ExistsByIDAndRole(ctx, patientId, userDomain.RolePatient)
 	if err != nil || !existedPatient {
 		return nil, fmt.Errorf("user not found or not patient")
 	}

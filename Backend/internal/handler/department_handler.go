@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/service"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecase"
 	"github.com/gin-gonic/gin"
@@ -28,16 +29,21 @@ func NewDepartmentHandler(service service.DepartmentService) *DepartmentHandler 
 // @Success 201 {object} map[string]interface{}
 // @Router /departments [post]
 func (h *DepartmentHandler) CreateDepartment(c *gin.Context) {
-	var req usecase.CreateDepartmentInput
+	var req dto.CreateDepartmentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
+	input := &usecase.CreateDepartmentInput{
+		Name:        req.Name,
+		Description: req.Description,
+	}
+
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
-	res, err := h.service.Create(ctx, &req)
+	res, err := h.service.Create(ctx, input)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -68,10 +74,12 @@ func (h *DepartmentHandler) GetDepartments(c *gin.Context) {
 // @Router /departments/{id}/members [get]
 func (h *DepartmentHandler) GetDepartmentMembers(c *gin.Context) {
 	id := c.Param("id")
+	input := &usecase.GetDepartmentMembersInput{DepartmentID: id}
+
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
-	members, err := h.service.GetMembers(ctx, id)
+	members, err := h.service.GetMembers(ctx, input)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -85,19 +93,21 @@ func (h *DepartmentHandler) GetDepartmentMembers(c *gin.Context) {
 // @Produce json
 // @Router /departments/{id}/members [post]
 func (h *DepartmentHandler) AddMemberToDepartment(c *gin.Context) {
-	id := c.Param("id")
-	var req struct {
-		UserID string `json:"userId" binding:"required"`
-	}
+	var req dto.AddDepartmentMemberRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
+	input := &usecase.AddDepartmentMemberInput{
+		DepartmentID: c.Param("id"),
+		UserID:       req.UserID,
+	}
+
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
-	err := h.service.AddMember(ctx, id, req.UserID)
+	err := h.service.AddMember(ctx, input)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

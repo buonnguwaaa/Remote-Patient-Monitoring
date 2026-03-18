@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
+	domain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
 	"github.com/golang-jwt/jwt/v5"
 )
 

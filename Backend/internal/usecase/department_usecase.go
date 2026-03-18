@@ -16,6 +16,15 @@ type UpdateDepartmentInput struct {
 	Description string `json:"description"`
 }
 
+type GetDepartmentMembersInput struct {
+	DepartmentID string
+}
+
+type AddDepartmentMemberInput struct {
+	DepartmentID string
+	UserID       string
+}
+
 type DepartmentResponse struct {
 	ID          primitive.ObjectID `json:"id"`
 	Name        string             `json:"name"`

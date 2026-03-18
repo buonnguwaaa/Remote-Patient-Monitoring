@@ -1,7 +1,7 @@
 package dto
 
 import (
-	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
+	domain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
 )
 
 type RegisterRequest struct {

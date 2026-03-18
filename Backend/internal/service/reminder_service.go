@@ -8,15 +8,17 @@ import (
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/client"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/workflow"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
+	userDomain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository"
+	userRepository "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecase"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/util"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type reminderService struct {
-	userRepo     repository.UserRepository
+	patientRepo  userRepository.PatientRepository
 	reminderRepo repository.ReminderRepository
 }
 
@@ -27,9 +29,9 @@ type ReminderService interface {
 	UpdateReminderStatus(ctx context.Context, input *usecase.UpdateReminderStatusInput) (*dto.ReminderResponse, error)
 }
 
-func NewReminderService(userRepo repository.UserRepository, reminderRepo repository.ReminderRepository) ReminderService {
+func NewReminderService(patientRepo userRepository.PatientRepository, reminderRepo repository.ReminderRepository) ReminderService {
 	return &reminderService{
-		userRepo:     userRepo,
+		patientRepo:  patientRepo,
 		reminderRepo: reminderRepo,
 	}
 }
@@ -41,7 +43,7 @@ func (s *reminderService) CreateReminder(ctx context.Context, input *usecase.Cre
 		return nil, errors.New("invalid patient ID")
 	}
 
-	existedPatient, err := s.userRepo.ExistsByIDAndRole(ctx, patientID, domain.RolePatient)
+	existedPatient, err := s.patientRepo.ExistsByIDAndRole(ctx, patientID, userDomain.RolePatient)
 	if err != nil || !existedPatient {
 		return nil, errors.New("user not found or not patient")
 	}

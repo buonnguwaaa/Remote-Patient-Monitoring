@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
+	domain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/service"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecase"
@@ -47,12 +47,13 @@ func (h *AssignmentHandler) AssignPatient(c *gin.Context) {
 
 	// Map DTO to usecase input
 	input := &usecase.AssignPatientInput{
-		PatientID: req.PatientID,
-		DoctorID:  req.DoctorID,
-		NurseID:   req.NurseID,
+		PatientID:  req.PatientID,
+		DoctorID:   req.DoctorID,
+		NurseID:    req.NurseID,
+		AssignedBy: adminID.(string),
 	}
 
-	res, err := h.service.AssignPatient(ctx, input, adminID.(string))
+	res, err := h.service.AssignPatient(ctx, input)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -78,14 +79,19 @@ func (h *AssignmentHandler) GetMyAssignments(c *gin.Context) {
 	defer cancel()
 
 	roleVal := role.(domain.Role)
-	
+
 	// Only doctor or nurse can see their assignments
 	if roleVal != domain.RoleDoctor && roleVal != domain.RoleNurse {
 		c.JSON(http.StatusForbidden, gin.H{"error": "only doctor or nurse can see assigned patients"})
 		return
 	}
 
-	res, err := h.service.GetAssignmentsByRole(ctx, userID.(string), roleVal)
+	input := &usecase.GetAssignmentsByRoleInput{
+		UserID: userID.(string),
+		Role:   roleVal,
+	}
+
+	res, err := h.service.GetAssignmentsByRole(ctx, input)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

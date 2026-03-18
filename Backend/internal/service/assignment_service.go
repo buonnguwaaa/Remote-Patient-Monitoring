@@ -6,41 +6,43 @@ import (
 	"time"
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
+	userDomain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository"
+	userRepository "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecase"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/util"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type AssignmentService interface {
-	AssignPatient(ctx context.Context, input *usecase.AssignPatientInput, assignedBy string) (*usecase.AssignmentResponse, error)
-	GetAssignmentsByRole(ctx context.Context, userID string, role domain.Role) ([]*usecase.AssignmentResponse, error)
+	AssignPatient(ctx context.Context, input *usecase.AssignPatientInput) (*usecase.AssignmentResponse, error)
+	GetAssignmentsByRole(ctx context.Context, input *usecase.GetAssignmentsByRoleInput) ([]*usecase.AssignmentResponse, error)
 }
 
 type assignmentService struct {
 	assignmentRepo repository.AssignmentRepository
-	userRepo       repository.UserRepository
+	userRepo       userRepository.BaseUserRepository
 }
 
-func NewAssignmentService(assignmentRepo repository.AssignmentRepository, userRepo repository.UserRepository) AssignmentService {
+func NewAssignmentService(assignmentRepo repository.AssignmentRepository, userRepo userRepository.BaseUserRepository) AssignmentService {
 	return &assignmentService{
 		assignmentRepo: assignmentRepo,
 		userRepo:       userRepo,
 	}
 }
 
-func (s *assignmentService) AssignPatient(ctx context.Context, input *usecase.AssignPatientInput, assignedBy string) (*usecase.AssignmentResponse, error) {
+func (s *assignmentService) AssignPatient(ctx context.Context, input *usecase.AssignPatientInput) (*usecase.AssignmentResponse, error) {
 	patientID, err := util.MustHexToObjectID(input.PatientID)
 	if err != nil {
 		return nil, err
 	}
-	assignerID, err := util.MustHexToObjectID(assignedBy)
+	assignerID, err := util.MustHexToObjectID(input.AssignedBy)
 	if err != nil {
 		return nil, err
 	}
 
 	// Verify Patient Exists
-	if exists, err := s.userRepo.ExistsByIDAndRole(ctx, patientID, domain.RolePatient); err != nil || !exists {
+	if exists, err := s.userRepo.ExistsByIDAndRole(ctx, patientID, userDomain.RolePatient); err != nil || !exists {
 		return nil, errors.New("patient not found")
 	}
 
@@ -50,7 +52,7 @@ func (s *assignmentService) AssignPatient(ctx context.Context, input *usecase.As
 		if err != nil {
 			return nil, err
 		}
-		if exists, err := s.userRepo.ExistsByIDAndRole(ctx, doctorID, domain.RoleDoctor); err != nil || !exists {
+		if exists, err := s.userRepo.ExistsByIDAndRole(ctx, doctorID, userDomain.RoleDoctor); err != nil || !exists {
 			return nil, errors.New("doctor not found")
 		}
 	}
@@ -61,7 +63,7 @@ func (s *assignmentService) AssignPatient(ctx context.Context, input *usecase.As
 		if err != nil {
 			return nil, err
 		}
-		if exists, err := s.userRepo.ExistsByIDAndRole(ctx, nurseID, domain.RoleNurse); err != nil || !exists {
+		if exists, err := s.userRepo.ExistsByIDAndRole(ctx, nurseID, userDomain.RoleNurse); err != nil || !exists {
 			return nil, errors.New("nurse not found")
 		}
 	}
@@ -88,18 +90,18 @@ func (s *assignmentService) AssignPatient(ctx context.Context, input *usecase.As
 	return s.mapToResponse(ctx, created), nil
 }
 
-func (s *assignmentService) GetAssignmentsByRole(ctx context.Context, userIDStr string, role domain.Role) ([]*usecase.AssignmentResponse, error) {
-	userID, err := util.MustHexToObjectID(userIDStr)
+func (s *assignmentService) GetAssignmentsByRole(ctx context.Context, input *usecase.GetAssignmentsByRoleInput) ([]*usecase.AssignmentResponse, error) {
+	userID, err := util.MustHexToObjectID(input.UserID)
 	if err != nil {
 		return nil, err
 	}
 
 	var assignments []*domain.Assignment
-	
-	switch role {
-	case domain.RoleDoctor:
+
+	switch input.Role {
+	case userDomain.RoleDoctor:
 		assignments, err = s.assignmentRepo.FindByDoctorID(ctx, userID)
-	case domain.RoleNurse:
+	case userDomain.RoleNurse:
 		assignments, err = s.assignmentRepo.FindByNurseID(ctx, userID)
 	default:
 		return nil, errors.New("invalid role for getting assignments")
@@ -108,7 +110,7 @@ func (s *assignmentService) GetAssignmentsByRole(ctx context.Context, userIDStr 
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return s.mapListToResponse(ctx, assignments), nil
 }
 

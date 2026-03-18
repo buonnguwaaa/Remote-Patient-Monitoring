@@ -59,7 +59,7 @@ func ReminderWorkflow(ctx workflow.Context, input ReminderWorkflowInput) error {
 			})
 			selector.AddFuture(timer, func(f workflow.Future) {})
 			selector.Select(ctx)
-			
+
 			// Reload after wake up
 			if err := workflow.ExecuteActivity(ctx, "GetReminderActivity", input.ReminderID).Get(ctx, &reminder); err != nil {
 				return err
