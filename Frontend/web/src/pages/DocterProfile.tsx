@@ -13,7 +13,6 @@ import {
   MapPin,
 } from "lucide-react";
 
-// Dữ liệu mẫu
 const mockDoctor: doctor = {
   id: "1",
   name: "Dr. John Doe",
@@ -30,7 +29,6 @@ const mockDoctor: doctor = {
   phone: "+84 123 456 789",
 };
 
-// Component hiển thị từng dòng thông tin
 const InfoItem = ({
   icon: Icon,
   label,
@@ -50,7 +48,6 @@ const InfoItem = ({
   </div>
 );
 
-// Stats Card Component - No Gradient
 const StatCard = ({ icon: Icon, label, value, bgColor, textColor }: any) => (
   <div className={`relative overflow-hidden rounded-2xl ${bgColor} p-6 ${textColor} shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1`}>
     <div className="relative">
@@ -69,21 +66,16 @@ const DoctorProfile = () => {
   return (
     <div className="min-h-screen bg-gray-100 p-6">
       <div className="max-w-7xl mx-auto">
-        {/* Header Section */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-800 mb-2">Hồ sơ bác sĩ</h1>
           <p className="text-gray-600">Thông tin chi tiết và chuyên môn</p>
         </div>
-
-        {/* Main Profile Card */}
         <div className="bg-white rounded-3xl shadow-xl overflow-hidden mb-6">
-          {/* Cover Image - Solid Purple */}
           <div className="h-48 bg-blue-600 relative">
             <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0iZ3JpZCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cGF0aCBkPSJNIDQwIDAgTCAwIDAgMCA0MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLW9wYWNpdHk9IjAuMSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-20"></div>
           </div>
 
           <div className="px-8 pb-8">
-            {/* Avatar Section */}
             <div className="flex flex-col md:flex-row items-start md:items-end gap-6 -mt-20 relative z-10">
               <div className="relative group">
                 <div className="w-40 h-40 rounded-2xl overflow-hidden border-4 border-white shadow-2xl bg-white">
@@ -93,7 +85,6 @@ const DoctorProfile = () => {
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                   />
                 </div>
-                {/* Status Badge */}
                 <div
                   className={`absolute -bottom-2 -right-2 px-4 py-1.5 rounded-full text-xs font-bold shadow-lg flex items-center gap-1.5 ${isActive
                     ? "bg-green-500 text-white"
@@ -131,7 +122,6 @@ const DoctorProfile = () => {
               </div>
             </div>
 
-            {/* Stats Cards - Solid Colors */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
               <StatCard
                 icon={Award}
@@ -156,7 +146,6 @@ const DoctorProfile = () => {
               />
             </div>
 
-            {/* Information Grid */}
             <div className="mt-8">
               <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
                 <div className="w-1 h-6 bg-purple-600 rounded-full"></div>
@@ -164,7 +153,6 @@ const DoctorProfile = () => {
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {/* Column 1: Personal Info */}
                 <div className="space-y-2">
                   <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
                     <User size={16} />
@@ -182,7 +170,6 @@ const DoctorProfile = () => {
                   />
                 </div>
 
-                {/* Column 2: Work Info */}
                 <div className="space-y-2">
                   <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
                     <Building2 size={16} />
@@ -201,7 +188,6 @@ const DoctorProfile = () => {
                   />
                 </div>
 
-                {/* Column 3: Contact Info */}
                 <div className="space-y-2">
                   <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
                     <Phone size={16} />
@@ -223,7 +209,6 @@ const DoctorProfile = () => {
               </div>
             </div>
 
-            {/* Action Buttons - Solid Colors */}
             <div className="mt-8 pt-6 border-t border-gray-100 flex flex-col sm:flex-row gap-4">
               <button className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-3.5 px-6 rounded-xl font-semibold transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-0.5 flex items-center justify-center gap-2">
                 <Mail size={18} />

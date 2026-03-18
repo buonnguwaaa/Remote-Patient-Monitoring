@@ -32,13 +32,10 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
         return;
       }
 
-      // If caller provided onLoginSuccess, call it with user data (if any)
       if (onLoginSuccess) {
         try {
-          // res.data may contain user when AuthContext fetched /auth/me; otherwise caller can read context
           await onLoginSuccess(res.data || null);
         } catch (e) {
-          // ignore
         }
       }
     })();
@@ -50,7 +47,6 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        {/* Header */}
         <View style={styles.header}>
           <View style={styles.logoWrap}>
             <Text style={styles.logoText}>RPM</Text>
@@ -59,7 +55,6 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
           <Text style={styles.subtitle}>Sign in to continue</Text>
         </View>
 
-        {/* Form */}
         <View style={styles.form}>
           <View style={styles.field}>
             <Text style={styles.label}>Email</Text>
@@ -104,14 +99,12 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
             style={{ marginTop: 10 }}
           />
 
-          {/* Divider */}
           <View style={styles.dividerWrap}>
             <View style={styles.divider} />
             <Text style={styles.dividerText}>Or continue with</Text>
             <View style={styles.divider} />
           </View>
 
-          {/* Social buttons */}
           <View style={styles.socialRow}>
             <ButtonPrimary
               variant="outline"
@@ -145,7 +138,6 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
           </View>
         </View>
 
-        {/* Footer */}
         <View style={styles.footer}>
           <Text style={styles.footerText}>
             Don't have an account?{' '}

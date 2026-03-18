@@ -3,7 +3,6 @@ import { FaUserMd, FaUserNurse, FaExchangeAlt, FaSave } from "react-icons/fa";
 import api from "../services/api";
 import type { Patient, doctor, Nurse } from "../types";
 
-// Helper interfaces for selection
 interface SelectionOption {
     value: string;
     label: string;
@@ -29,36 +28,15 @@ const AssignmentManagement: React.FC = () => {
     const fetchData = async () => {
         try {
             setLoading(true);
-            // We need endpoints to get lists. The current backend provides:
-            // GET /users (requires admin) -> returns all users. We can filter by role client-side or assume query params.
-            // The implementation in backend finds all. Filter implementation in repo exists but not exposed in handler query params deeply.
-            // Actually UserHandler.GetUsers DOES use UserFilter which maps query params.
-            // So we can use: /users?role=user.patient, /users?role=user.doctor, etc.
-
             const [resPatients, resDoctors, resNurses] = await Promise.all([
                 api.get("/users?role=user.patient&limit=100"),
                 api.get("/users?role=user.doctor&limit=100"),
                 api.get("/users?role=user.nurse&limit=100")
             ]);
 
-            // Assuming response structure { data: { data: [...] } } or { data: [...] }
-            // The handler uses c.JSON(http.StatusOK, users) directly if I recall?
-            // Let's check UserHandler.GetUsers. It calls c.JSON(http.StatusOK, users). users is []domain.User.
-            // Wait, UserHandler.GetUsers usually wraps in "data". Let me check file... I can't check easily now without tool call.
-            // Assuming standard wrapping based on DepartmentHandler style: c.JSON(http.StatusOK, gin.H{"data": res})
-            // NOTE: Standard in this project seems to be { data: ... }
-
-            // Actually typically Go structs to JSON:
-            // The user handler wrapper: c.JSON(http.StatusOK, users) -> returns Raw array if not wrapped.
-            // Let's assume it returns array or wrapped. I'll code strictly for {data: ...} or raw array fallback.
-
-            // The backend returns: { "data": [...], "message": "..." }
-            // If the list is empty, "data" might be null or empty array depending on backend.
-            // If null, we default to [].
             const extract = (res: any) => {
                 const data = res.data?.data;
                 if (Array.isArray(data)) return data;
-                // fallback if backend returned just array or something else
                 if (Array.isArray(res.data)) return res.data;
                 return [];
             };
@@ -95,7 +73,6 @@ const AssignmentManagement: React.FC = () => {
                 nurseId: selectedNurse
             });
             setMessage({ type: 'success', text: "Phân công thành công!" });
-            // Reset selections
             setSelectedPatient("");
             setSelectedDoctor("");
             setSelectedNurse("");
@@ -122,7 +99,6 @@ const AssignmentManagement: React.FC = () => {
                 )}
 
                 <form onSubmit={handleAssign} className="space-y-8">
-                    {/* Patient Selection */}
                     <div>
                         <label className="block text-lg font-medium text-gray-700 dark:text-gray-300 mb-3">
                             1. Chọn Bệnh nhân
@@ -143,7 +119,6 @@ const AssignmentManagement: React.FC = () => {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        {/* Doctor Selection */}
                         <div className="bg-blue-50 dark:bg-blue-900/20 p-6 rounded-xl border border-blue-100 dark:border-blue-800">
                             <label className="block text-lg font-medium text-blue-800 dark:text-blue-300 mb-3 flex items-center">
                                 <FaUserMd className="mr-2" />
@@ -166,7 +141,6 @@ const AssignmentManagement: React.FC = () => {
                             </p>
                         </div>
 
-                        {/* Nurse Selection */}
                         <div className="bg-green-50 dark:bg-green-900/20 p-6 rounded-xl border border-green-100 dark:border-green-800">
                             <label className="block text-lg font-medium text-green-800 dark:text-green-300 mb-3 flex items-center">
                                 <FaUserNurse className="mr-2" />

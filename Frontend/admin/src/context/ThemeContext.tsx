@@ -13,7 +13,6 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
     const [theme, setThemeState] = useState<Theme>(() => {
-        // Get theme from localStorage or default to light
         const savedTheme = localStorage.getItem("admin-theme") as Theme;
         return savedTheme || "light";
     });
@@ -23,14 +22,12 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
     };
 
     useEffect(() => {
-        // Apply theme to document
         const root = document.documentElement;
         if (theme === "dark") {
             root.classList.add("dark");
         } else {
             root.classList.remove("dark");
         }
-        // Save to localStorage
         localStorage.setItem("admin-theme", theme);
     }, [theme]);
 

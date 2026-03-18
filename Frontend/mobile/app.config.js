@@ -1,9 +1,5 @@
 const { expo } = require('./app.json');
 
-// This file exposes runtime config to Expo via `expo.extra`.
-// Start Expo with dotenv so `process.env` is populated:
-// npx dotenv -e .env -- expo start
-
 module.exports = () => {
   return {
     expo: {

@@ -1,4 +1,3 @@
-// navigation/AppNavigator.js
 import React from "react";
 import {
     View,
@@ -13,7 +12,6 @@ import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 
 import { useAuth } from "../hooks/useAuth";
 
-// ==== IMPORT CÁC SCREEN ====
 // Auth
 import LoginScreen from "../screens/auth/LoginScreen";
 import RegisterScreen from "../screens/auth/RegisterScreen";
@@ -36,7 +34,7 @@ import PatientDetailScreen from "../screens/nurse/PatientDetailScreen";
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-// ================== BOTTOM TABS: PATIENT ==================
+// BOTTOM TABS: PATIENT
 function PatientTabNavigator() {
     return (
         <Tab.Navigator
@@ -139,7 +137,7 @@ function PatientTabNavigator() {
     );
 }
 
-// ================== BOTTOM TABS: NURSE ==================
+// BOTTOM TABS: NURSE
 function NurseTabNavigator() {
     return (
         <Tab.Navigator
@@ -200,11 +198,10 @@ function NurseTabNavigator() {
     );
 }
 
-// ================== ROOT STACK (DÙNG AuthContext HIỆN TẠI) ==================
+// ROOT STACK
 function RootNavigator() {
     const { user, initializing } = useAuth();
 
-    // Đợi /me lần đầu
     if (initializing) {
         return (
             <View style={styles.loadingContainer}>
@@ -214,7 +211,6 @@ function RootNavigator() {
         );
     }
 
-    // Chưa đăng nhập -> stack Auth
     if (!user) {
         return (
             <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -224,7 +220,6 @@ function RootNavigator() {
         );
     }
 
-    // Đã đăng nhập -> chọn bottom tab theo role
     const role = user?.role || "patient";
 
     return (
@@ -234,11 +229,10 @@ function RootNavigator() {
                 component={
                     role === "user.nurse" || role === "nurse"
                         ? NurseTabNavigator
-                        : PatientTabNavigator // default: patient
+                        : PatientTabNavigator
                 }
             />
 
-            {/* Các màn hình chi tiết nằm trên stack nhưng vẫn dùng chung bottom tab */}
             {/* <Stack.Screen
                 name="PatientDetail"
                 component={PatientDetailScreen}

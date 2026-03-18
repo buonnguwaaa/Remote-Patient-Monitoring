@@ -9,9 +9,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons, FontAwesome5, MaterialIcons } from "@expo/vector-icons";
 import { useState } from "react";
 
-// ===== MOCK USERS / MEASUREMENTS / MESSAGES =====
-
-// Bệnh nhân hiện tại (role="patient" trong Users)
 const currentPatient = {
   _id: "u_patient_1",
   role: "patient",
@@ -19,7 +16,6 @@ const currentPatient = {
   emailLower: "a@example.com",
 };
 
-// Bác sĩ trong cuộc hội thoại (role="doctor" trong Users)
 const doctorUser = {
   _id: "u_doctor_1",
   role: "doctor",
@@ -28,7 +24,6 @@ const doctorUser = {
   specialty: "Tim mạch",
 };
 
-// Mock measurements map theo _id trong Collection Measurements
 const measurementsById = {
   m_bp_1: {
     _id: "m_bp_1",
@@ -65,7 +60,6 @@ const measurementsById = {
   },
 };
 
-// Chat 1–1 giữa doctorId và patientId (Collection Chats)
 const chat = {
   _id: "chat_1",
   doctorId: doctorUser._id,
@@ -73,7 +67,6 @@ const chat = {
   updatedAt: "2025-11-24T09:20:00Z",
 };
 
-// Tin nhắn trong cuộc hội thoại (Collection Chat_Messages)
 const initialMessages = [
   {
     _id: "msg1",
@@ -112,7 +105,6 @@ const initialMessages = [
   },
 ];
 
-// Cụm tin nhắn nhanh cho bệnh nhân (quick replies)
 const QUICK_REPLIES = [
   "Đã xem",
   "Đã hiểu",
@@ -362,9 +354,7 @@ export default function DoctorChatScreen() {
           </View>
         </View>
 
-        {/* CHATTING AREA CARD */}
         <View style={styles.chatCard}>
-          {/* NGÀY / NHÃN */}
           <View style={styles.dayBadgeWrapper}>
             <View style={styles.dayBadge}>
               <Text style={styles.dayBadgeText}>
@@ -373,7 +363,6 @@ export default function DoctorChatScreen() {
             </View>
           </View>
 
-          {/* DANH SÁCH TIN NHẮN */}
           <ScrollView
             style={styles.chatContainer}
             showsVerticalScrollIndicator={false}
@@ -383,7 +372,6 @@ export default function DoctorChatScreen() {
           </ScrollView>
         </View>
 
-        {/* QUICK REPLIES BAR */}
         <View style={styles.quickBarWrapper}>
           <View style={styles.quickBarHeader}>
             <Ionicons

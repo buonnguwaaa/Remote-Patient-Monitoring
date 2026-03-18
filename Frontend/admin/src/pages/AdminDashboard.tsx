@@ -64,7 +64,6 @@ const AdminDashboard: React.FC = () => {
         ))}
       </div>
 
-      {/* Recent Activity Section */}
       <div className="mt-8 bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold text-gray-800 dark:text-white">

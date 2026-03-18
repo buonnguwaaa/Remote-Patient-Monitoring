@@ -11,15 +11,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons, FontAwesome5 } from "@expo/vector-icons";
 import { useState } from "react";
 
-// ===== MOCK DATA / CONSTANTS =====
-
-// Điều dưỡng đang đăng nhập
 const currentNurseUser = {
   _id: "u_nurse_1",
   name: "Điều dưỡng Trần Thị B",
 };
 
-// Giả lập kết quả quét QR -> lấy user + patient_info
 const mockedPatientFromQr = {
   user: {
     _id: "u_patient_1",
@@ -37,7 +33,6 @@ const mockedPatientFromQr = {
   },
 };
 
-// ===== TIỆN ÍCH =====
 function buildMeasurementPayload({
   patientUserId,
   type,
@@ -55,8 +50,8 @@ function buildMeasurementPayload({
   nurseUserId,
 }) {
   const base = {
-    patientId: patientUserId, // Ref users
-    type, // "bp" | "glucose" | "spo2" | "temp" | "heartRate" | "respiratoryRate"
+    patientId: patientUserId,
+    type,
     timing: timing || null,
     device: device || null,
     recordedBy: nurseUserId,
@@ -110,7 +105,6 @@ function buildMeasurementPayload({
   return base;
 }
 
-// ===== COMPONENT Ô CHỌN TYPE =====
 function TypeTile({ active, onPress, iconName, label, description }) {
   return (
     <TouchableOpacity
@@ -139,13 +133,11 @@ function TypeTile({ active, onPress, iconName, label, description }) {
   );
 }
 
-// ===== SCREEN =====
 export default function MeasurementInputScreen() {
-  const [selectedPatient, setSelectedPatient] = useState(null); // { user, patientInfo }
+  const [selectedPatient, setSelectedPatient] = useState(null);
 
-  // type: đo tách riêng từng loại, cả nhịp tim / nhịp thở là type riêng
-  const [type, setType] = useState("bp"); // "bp" | "glucose" | "spo2" | "temp" | "heartRate" | "respiratoryRate"
-  const [timing, setTiming] = useState("pre"); // dùng cho glucose
+  const [type, setType] = useState("bp");
+  const [timing, setTiming] = useState("pre");
   const [device, setDevice] = useState("");
   const [note, setNote] = useState("");
 
@@ -556,13 +548,10 @@ export default function MeasurementInputScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#F2F6FF" }}>
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        {/* HEADER */}
         <View style={styles.headerRow}>
           <Text style={styles.headerTitle}>Nhập bản đo sinh hiệu</Text>
           <View style={{ width: 40 }} />
         </View>
-
-        {/* THÔNG TIN ĐIỀU DƯỠNG */}
         <View style={styles.nurseBar}>
           <View style={styles.nurseLeft}>
             <View style={styles.nurseAvatar}>
@@ -579,7 +568,6 @@ export default function MeasurementInputScreen() {
           </View>
         </View>
 
-        {/* QUÉT QR BỆNH NHÂN */}
         <Text style={styles.sectionTitle}>Thông tin bệnh nhân</Text>
         <View style={styles.card}>
           <View style={styles.qrRow}>
@@ -605,7 +593,6 @@ export default function MeasurementInputScreen() {
           <View style={{ marginTop: 14 }}>{renderPatientCard()}</View>
         </View>
 
-        {/* CHỌN LOẠI CHỈ SỐ */}
         <Text style={styles.sectionTitle}>Loại chỉ số cần nhập</Text>
         <View style={styles.card}>
           <View style={styles.typeGridRow}>
@@ -657,12 +644,9 @@ export default function MeasurementInputScreen() {
           </View>
         </View>
 
-        {/* FORM NHẬP CHỈ SỐ */}
         <Text style={styles.sectionTitle}>Chi tiết bản đo</Text>
         <View style={styles.card}>
           {renderTypeFields()}
-
-          {/* THIẾT BỊ */}
           <Text style={[styles.fieldLabel, { marginTop: 16 }]}>Thiết bị đo</Text>
           <TextInput
             style={styles.input}
@@ -671,7 +655,6 @@ export default function MeasurementInputScreen() {
             placeholder="vd: BP_MONITOR_01, GLUCOSE_METER_02..."
           />
 
-          {/* GHI CHÚ */}
           <Text style={[styles.fieldLabel, { marginTop: 12 }]}>Ghi chú</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
@@ -682,7 +665,6 @@ export default function MeasurementInputScreen() {
           />
         </View>
 
-        {/* NÚT LƯU */}
         <TouchableOpacity style={styles.saveBtn} onPress={handleSubmit}>
           <Ionicons
             name="save-outline"
@@ -785,7 +767,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
   },
 
-  // QR
   qrRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -818,7 +799,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  // Patient card
   patientEmptyCard: {
     borderRadius: 14,
     borderWidth: 1,
@@ -887,7 +867,6 @@ const styles = StyleSheet.create({
     gap: 4,
   },
 
-  // Grid chọn loại chỉ số
   typeGridRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -935,7 +914,6 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
-  // Form fields
   fieldGroupTitle: {
     fontSize: 14,
     fontWeight: "700",
@@ -1002,7 +980,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  // Save button
+
   saveBtn: {
     backgroundColor: "#2563EB",
     paddingVertical: 12,

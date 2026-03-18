@@ -18,13 +18,10 @@ const DepartmentManagement: React.FC = () => {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [loading, setLoading] = useState(true);
 
-    // Detail View State
     const [viewingDept, setViewingDept] = useState<Department | null>(null);
     const [deptMembers, setDeptMembers] = useState<Member[]>([]);
     const [loadingMembers, setLoadingMembers] = useState(false);
     const [showAddMemberModal, setShowAddMemberModal] = useState(false);
-
-    // Candidates for adding
     const [candidates, setCandidates] = useState<(doctor | Nurse)[]>([]);
 
     useEffect(() => {
@@ -85,7 +82,6 @@ const DepartmentManagement: React.FC = () => {
 
     const openAddMemberModal = async () => {
         setShowAddMemberModal(true);
-        // Fetch candidates (doctors and nurses)
         try {
             const [resDoctors, resNurses] = await Promise.all([
                 api.get("/users?role=user.doctor&limit=100"),
@@ -93,7 +89,6 @@ const DepartmentManagement: React.FC = () => {
             ]);
             const extract = (res: any) => res.data?.data || [];
             const all = [...extract(resDoctors), ...extract(resNurses)];
-            // Filter out existing members
             const existingIds = new Set(deptMembers.map(m => m.id));
             setCandidates(all.filter((c: any) => !existingIds.has(c.id)));
         } catch (error) {
@@ -106,8 +101,8 @@ const DepartmentManagement: React.FC = () => {
         try {
             await api.post(`/departments/${viewingDept.id}/members`, { userId });
             setShowAddMemberModal(false);
-            fetchMembers(viewingDept.id); // Refresh list
-            fetchDepartments(); // Refresh member count in main list
+            fetchMembers(viewingDept.id);
+            fetchDepartments();
         } catch (error) {
             console.error("Failed to add member", error);
             alert("Lỗi khi thêm thành viên");
@@ -118,7 +113,6 @@ const DepartmentManagement: React.FC = () => {
         d.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    // Render Detail View
     if (viewingDept) {
         return (
             <div className="p-6">
@@ -180,7 +174,6 @@ const DepartmentManagement: React.FC = () => {
                     )}
                 </div>
 
-                {/* Add Member Modal */}
                 {showAddMemberModal && (
                     <div className="fixed inset-0 bg-black bg-opacity-30 backdrop-blur-sm flex items-center justify-center z-50">
                         <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-lg max-h-[80vh] overflow-y-auto">
@@ -216,7 +209,6 @@ const DepartmentManagement: React.FC = () => {
         );
     }
 
-    // Main List View
     return (
         <div className="p-6">
             <div className="flex justify-between items-center mb-6">

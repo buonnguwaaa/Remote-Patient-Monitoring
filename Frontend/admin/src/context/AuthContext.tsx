@@ -20,14 +20,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<{ username: string; role: UserRole } | null>(null);
 
-  // Helper to map backend role to frontend role
   const mapRole = (backendRole: string): UserRole => {
     if (backendRole === "admin") return "admin";
     if (backendRole === "user.doctor") return "doctor";
     return "patient";
   };
 
-  // Check if already logged in on mount
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -39,7 +37,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUser({ username: userData.name, role });
         }
       } catch (error) {
-        // Not authenticated
         setIsAuthenticated(false);
         setUser(null);
       } finally {
@@ -53,13 +50,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       await api.post("/auth/login", { email, password });
 
-      // After successful login (cookies set), fetch user info
       const response = await api.get("/auth/me");
       const userData = response.data.data;
 
       const role = mapRole(userData.role);
-
-      // Clean up old local storage if any, just in case
       localStorage.removeItem("accessToken");
       localStorage.removeItem("refreshToken");
       localStorage.removeItem("username");

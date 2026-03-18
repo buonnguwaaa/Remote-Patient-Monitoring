@@ -1,4 +1,3 @@
-// Badge.tsx - Component phụ trợ với React Icons
 import React from "react";
 import { FaCheck, FaTimes, FaExclamation, FaInfoCircle } from "react-icons/fa";
 

@@ -13,7 +13,6 @@ import { Ionicons, MaterialIcons, FontAwesome5 } from "@expo/vector-icons";
 import { useState } from "react";
 import { useAuth } from "../../hooks/useAuth";
 
-// Mock user + Nurse_Info theo schema
 const initialUser = {
   id: "u_nurse_1",
   name: "Điều dưỡng Trần Thị B",
@@ -27,7 +26,7 @@ const initialNurseInfo = {
   licenseNumber: "CHN-2025-00123",
   workplace: "Khoa Nội tổng hợp - Bệnh viện Đa khoa ABC",
   yearsOfExperience: 7,
-  status: "active", // "active" | "inactive"
+  status: "active",
   bio: "Chuyên chăm sóc bệnh nhân nội trú, theo dõi sinh hiệu và phối hợp chặt chẽ với bác sĩ trong quá trình điều trị.",
   profileImageUrl:
     "https://images.pexels.com/photos/3985161/pexels-photo-3985161.jpeg?auto=compress&cs=tinysrgb&w=600",
@@ -102,7 +101,6 @@ export default function NurseProfileScreen() {
   };
 
   const handleSave = () => {
-    // TODO: call API cập nhật hồ sơ điều dưỡng
     console.log("Save nurse profile", { user: userForm, nurse: nurseForm });
     Alert.alert("Đã lưu", "Thông tin điều dưỡng đã được cập nhật (mock).");
     setEditMode(false);

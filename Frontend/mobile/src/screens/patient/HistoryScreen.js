@@ -39,7 +39,6 @@ export default function HistoryScreen({ route }) {
   const [measurements, setMeasurements] = useState([]);
 
   const fetchMeasurements = async () => {
-    // Lấy tất cả loại đo cùng lúc
     const res = await getMeasurements(patientId);
     if (res.ok && res.body.data) {
       setMeasurements(res.body.data);
@@ -309,7 +308,6 @@ export default function HistoryScreen({ route }) {
           )}
         </View>
 
-        {/* HEADER BẢN GHI + NÚT XEM THÊM */}
         <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionTitle}>Bản ghi đo</Text>
           {activeMeasurements.length > 1 && !showMore && (
@@ -338,7 +336,6 @@ export default function HistoryScreen({ route }) {
 
           return (
             <View key={m.id} style={[styles.recordCard, accentStyle]}>
-              {/* Header: ngày/giờ + timing */}
               <View style={styles.recordHeader}>
                 <View style={styles.dateRow}>
                   <FontAwesome5 name="calendar-alt" size={14} color="#6B7280" />
@@ -353,7 +350,6 @@ export default function HistoryScreen({ route }) {
                 )}
               </View>
 
-              {/* Giá trị chính theo type */}
               <View style={styles.recordValuesRow}>
                 {m.type === "bp" && (
                   <>
@@ -416,7 +412,6 @@ export default function HistoryScreen({ route }) {
                 )}
               </View>
 
-              {/* Meta: thiết bị + recordedBy */}
               <View style={styles.recordMetaRow}>
                 <Text style={styles.recordMetaText}>
                   Thiết bị: {m.device || "Không rõ"}

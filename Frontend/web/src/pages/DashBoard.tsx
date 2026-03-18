@@ -12,7 +12,6 @@ import { FaExclamationTriangle, FaInfoCircle } from "react-icons/fa";
 import Chart from "../components/ui/Chart";
 import { mockAlerts } from "../data/mockData";
 
-// 1. Separate Data Configuration
 interface StatItem {
   id: number;
   title: string;
@@ -30,7 +29,7 @@ const statsData: StatItem[] = [
     title: "Tổng bệnh nhân",
     value: "1,200",
     icon: <FaUsers size={24} />,
-    color: "blue", // Helper for dynamic styling
+    color: "blue",
     isIncreased: true,
     changeValue: 5.4,
     description: "So với tháng trước",
@@ -51,22 +50,18 @@ const statsData: StatItem[] = [
     value: "300",
     icon: <FaUserInjured size={24} />,
     color: "amber",
-    isIncreased: false, // For this metric, a decrease might actually be "good", but visually we show the trend
+    isIncreased: false,
     changeValue: 1.2,
     description: "So với tháng trước",
   },
 ];
-
-// 2. Reusable Card Component
 const StatCard: React.FC<{ item: StatItem }> = ({ item }) => {
-  // Dynamic color classes based on the 'color' prop in data
   const colorMap = {
     blue: "bg-blue-100 text-blue-600",
     emerald: "bg-emerald-100 text-emerald-600",
     amber: "bg-amber-100 text-amber-600",
   };
 
-  // Determine trend color: Green if up, Red if down
   const trendColor = item.isIncreased ? "text-emerald-600" : "text-red-500";
   const TrendIcon: React.ComponentType<any> = item.isIncreased
     ? FaArrowTrendUp
@@ -97,17 +92,14 @@ const StatCard: React.FC<{ item: StatItem }> = ({ item }) => {
   );
 };
 
-// 3. Main Dashboard Layout
 const DashBoard = () => {
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
-      {/* Header Section */}
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-800">Tổng quan</h1>
         <p className="text-gray-500">Thống kê dữ liệu bệnh nhân hôm nay</p>
       </div>
 
-      {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {statsData.map((item) => (
           <StatCard key={item.id} item={item} />
@@ -122,11 +114,9 @@ const DashBoard = () => {
   );
 };
 
-// Recent Alerts Component
 const RecentAlerts: React.FC = () => {
   const navigate = useNavigate();
 
-  // Get only recent 5 alerts, sorted by date
   const recentAlerts = mockAlerts
     .sort(
       (a, b) =>
@@ -173,7 +163,6 @@ const RecentAlerts: React.FC = () => {
               className="flex items-start gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
               onClick={() => navigate("/threshold-alerts")}
             >
-              {/* Icon */}
               <div
                 className={`shrink-0 mt-1 ${alert.severity === "high" ? "text-red-500" : "text-yellow-500"
                   }`}
@@ -185,7 +174,6 @@ const RecentAlerts: React.FC = () => {
                 )}
               </div>
 
-              {/* Content */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2 mb-1">
                   <p className="font-medium text-gray-800 truncate">
@@ -213,7 +201,6 @@ const RecentAlerts: React.FC = () => {
                   ))}
                 </p>
 
-                {/* Status Badge */}
                 {alert.status === "ack" && (
                   <span className="inline-block mt-1 text-xs text-green-600 font-medium">
                     ✓ Đã xác nhận

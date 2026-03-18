@@ -3,12 +3,10 @@ import { lazy, Suspense } from "react";
 
 import "./styles/App.css";
 
-// Eager load only critical components
 import MainLayout from "./components/layout/MainLayout.tsx";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
 
-// Loading component
 const PageLoader = () => (
   <div className="flex h-screen w-full items-center justify-center">
     <div className="text-center">
@@ -18,7 +16,6 @@ const PageLoader = () => (
   </div>
 );
 
-// Lazy load all admin pages
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard.tsx"));
 const DoctorManagement = lazy(() => import("./pages/DoctorManagement.tsx"));
 const PatientManagementAdmin = lazy(() => import("./pages/PatientManagementAdmin.tsx"));
@@ -28,10 +25,8 @@ const ActivityHistory = lazy(() => import("./pages/ActivityHistory.tsx"));
 const DepartmentManagement = lazy(() => import("./pages/DepartmentManagement.tsx"));
 const AssignmentManagement = lazy(() => import("./pages/AssignmentManagement.tsx"));
 
-// Login page
 const LoginPage = lazy(() => import("./pages/LoginPage.tsx"));
 
-// Protected Route Component with admin role checking
 const ProtectedRoute = ({
   children,
 }: {
@@ -47,7 +42,6 @@ const ProtectedRoute = ({
     return <Navigate to="/login" replace />;
   }
 
-  // Only allow admin users
   if (user?.role !== "admin") {
     return <Navigate to="/login" replace />;
   }
@@ -62,10 +56,8 @@ function App() {
         <BrowserRouter>
           <Suspense fallback={<PageLoader />}>
             <Routes>
-              {/* Login Route */}
               <Route path="/login" element={<LoginPage />} />
 
-              {/* Admin Routes - Protected for Admin role only */}
               <Route
                 element={
                   <ProtectedRoute>
@@ -83,7 +75,6 @@ function App() {
                 <Route path="/assignments" element={<AssignmentManagement />} />
               </Route>
 
-              {/* Redirect all other routes to dashboard */}
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Suspense>

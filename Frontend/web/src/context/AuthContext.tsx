@@ -20,13 +20,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<{ username: string; role: UserRole } | null>(null);
 
-  // Helper to map backend role to frontend role - only doctor supported
   const mapRole = (backendRole: string): UserRole | null => {
     if (backendRole === "user.doctor") return "doctor";
-    return null; // Only doctors can access this app
+    return null;
   };
 
-  // Check if already logged in on mount
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -38,13 +36,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setIsAuthenticated(true);
             setUser({ username: userData.name, role });
           } else {
-            // Not a doctor, reject
             setIsAuthenticated(false);
             setUser(null);
           }
         }
       } catch (error) {
-        // Not authenticated
         setIsAuthenticated(false);
         setUser(null);
       } finally {
@@ -58,19 +54,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       await api.post("/auth/login", { email, password });
 
-      // After successful login (cookies set), fetch user info
       const response = await api.get("/auth/me");
       const userData = response.data.data;
 
       const role = mapRole(userData.role);
 
-      // Only allow doctors
       if (!role) {
-        await api.post("/auth/logout"); // Logout non-doctor users
+        await api.post("/auth/logout");
         return null;
       }
 
-      // Clean up old local storage if any, just in case
       localStorage.removeItem("accessToken");
       localStorage.removeItem("refreshToken");
       localStorage.removeItem("username");

@@ -6,6 +6,8 @@ import {
   TouchableOpacity,
   TextInput,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -13,7 +15,6 @@ import { useState } from "react";
 import { useAuth } from "../../hooks/useAuth";
 import { createMeasurement } from "../../api/measurementApi";
 
-// ===== TIỆN ÍCH =====
 function buildMeasurementPayload({
   patientUserId,
   type,
@@ -30,11 +31,11 @@ function buildMeasurementPayload({
   note,
 }) {
   const base = {
-    patientId: patientUserId, // Ref users
-    type, // "bp" | "glucose" | "spo2" | "temp" | "heartRate" | "respiratoryRate"
+    patientId: patientUserId,
+    type,
     timing: timing || null,
     device: device || null,
-    recordedBy: patientUserId, // bệnh nhân tự nhập
+    recordedBy: patientUserId,
     note: note || null,
   };
 
@@ -87,7 +88,6 @@ function buildMeasurementPayload({
   return base;
 }
 
-// ===== COMPONENT Ô CHỌN TYPE =====
 function TypeTile({ active, onPress, iconName, label, description }) {
   return (
     <TouchableOpacity
@@ -483,14 +483,24 @@ export default function InputMeasurementPatientScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#F2F6FF" }}>
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      <KeyboardAvoidingView
+        style={styles.screen}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
+      >
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+      >
         {/* HEADER */}
         <View style={styles.headerRow}>
           <Text style={styles.headerTitle}>Tự nhập chỉ số sức khỏe</Text>
           <View style={{ width: 40 }} />
         </View>
 
-        {/* THANH THÔNG TIN BỆNH NHÂN */}
         <View style={styles.patientBar}>
           <View style={styles.patientLeft}>
             <View style={styles.patientAvatarSmall}>
@@ -507,7 +517,6 @@ export default function InputMeasurementPatientScreen() {
           </View>
         </View>
 
-        {/* CHỌN LOẠI CHỈ SỐ */}
         <Text style={styles.sectionTitle}>Loại chỉ số cần nhập</Text>
         <View style={styles.card}>
           <View style={styles.typeGridRow}>
@@ -559,12 +568,9 @@ export default function InputMeasurementPatientScreen() {
           </View>
         </View>
 
-        {/* FORM NHẬP CHỈ SỐ */}
         <Text style={styles.sectionTitle}>Chi tiết bản đo</Text>
         <View style={styles.card}>
           {renderTypeFields()}
-
-          {/* THIẾT BỊ */}
           <Text style={[styles.fieldLabel, { marginTop: 16 }]}>Thiết bị đo</Text>
           <TextInput
             style={styles.input}
@@ -573,7 +579,6 @@ export default function InputMeasurementPatientScreen() {
             placeholder="vd: máy đo cá nhân, model..."
           />
 
-          {/* GHI CHÚ */}
           <Text style={[styles.fieldLabel, { marginTop: 12 }]}>Ghi chú</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
@@ -584,7 +589,6 @@ export default function InputMeasurementPatientScreen() {
           />
         </View>
 
-        {/* NÚT LƯU */}
         <TouchableOpacity style={styles.saveBtn} onPress={handleSubmit}>
           <Ionicons
             name="save-outline"
@@ -597,12 +601,19 @@ export default function InputMeasurementPatientScreen() {
 
         <View style={{ height: 16 }} />
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+  },
   container: { padding: 20 },
+  contentContainer: {
+    paddingBottom: 32,
+  },
 
   headerRow: {
     flexDirection: "row",
@@ -616,7 +627,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  // Thanh bệnh nhân
   patientBar: {
     backgroundColor: "#EEF2FF",
     borderRadius: 16,
@@ -688,7 +698,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
   },
 
-  // Grid chọn loại chỉ số
   typeGridRow: {
     flexDirection: "row",
     justifyContent: "space-between",

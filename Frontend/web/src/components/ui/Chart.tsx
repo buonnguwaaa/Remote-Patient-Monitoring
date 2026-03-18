@@ -10,9 +10,8 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-// --- Types ---
 interface ChartDataPoint {
-  period: string; // "Tháng 3", "Tuần 1", etc.
+  period: string;
   normalPatients: number;
   warningPatients: number;
 }
@@ -24,11 +23,6 @@ interface StatItem {
   type: "primary" | "warning" | "neutral";
 }
 
-// --- Components ---
-
-/**
- * 1. Stats Header Component
- */
 interface StatsHeaderProps {
   stats: StatItem[];
   activeTabId: string;
@@ -53,7 +47,6 @@ const StatsHeader: React.FC<StatsHeaderProps> = ({
             aria-selected={isActive}
             aria-controls={`tabpanel-${stat.id}`}
           >
-            {/* Label with active indicator */}
             <div className="relative pb-2">
               <span
                 className={`text-sm font-medium transition-colors ${
@@ -64,13 +57,10 @@ const StatsHeader: React.FC<StatsHeaderProps> = ({
               >
                 {stat.label}
               </span>
-              {/* Active Indicator */}
               {isActive && (
                 <div className="absolute -top-1 left-0 w-full h-1 bg-blue-500 rounded-full transition-all duration-300" />
               )}
             </div>
-
-            {/* Value */}
             <span
               className={`text-xl font-semibold transition-colors ${
                 isActive ? "text-gray-900" : "text-gray-600"
@@ -85,9 +75,6 @@ const StatsHeader: React.FC<StatsHeaderProps> = ({
   );
 };
 
-/**
- * Custom Tooltip Component for Recharts
- */
 const CustomTooltip: React.FC<any> = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
     return (
@@ -113,9 +100,6 @@ const CustomTooltip: React.FC<any> = ({ active, payload, label }) => {
   return null;
 };
 
-/**
- * Custom Legend Component
- */
 const renderLegend = (props: any) => {
   const { payload } = props;
   return (
@@ -133,19 +117,14 @@ const renderLegend = (props: any) => {
   );
 };
 
-// --- Main Widget Container ---
-
 export const Chart: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>("all");
-
-  // Mock stats data
   const stats: StatItem[] = [
     { id: "all", label: "Tất cả", value: 1240, type: "primary" },
     { id: "month", label: "Tháng", value: 320, type: "neutral" },
     { id: "week", label: "Tuần", value: 80, type: "warning" },
   ];
 
-  // Chart Data for last 4 months
   const monthlyChartData: ChartDataPoint[] = [
     { period: "T3", normalPatients: 220, warningPatients: 45 },
     { period: "T4", normalPatients: 180, warningPatients: 60 },
@@ -153,7 +132,6 @@ export const Chart: React.FC = () => {
     { period: "T6", normalPatients: 280, warningPatients: 40 },
   ];
 
-  // Chart Data for last 4 weeks
   const weeklyChartData: ChartDataPoint[] = [
     { period: "Tuần 1", normalPatients: 65, warningPatients: 15 },
     { period: "Tuần 2", normalPatients: 70, warningPatients: 10 },
@@ -161,16 +139,15 @@ export const Chart: React.FC = () => {
     { period: "Tuần 4", normalPatients: 60, warningPatients: 20 },
   ];
 
-  // Select data based on active tab
   const getChartData = () => {
     switch (activeTab) {
       case "month":
-        return weeklyChartData; // Show last 4 weeks
+        return weeklyChartData;
       case "week":
-        return weeklyChartData; // Show last 4 weeks (you can create daily data if needed)
+        return weeklyChartData;
       case "all":
       default:
-        return monthlyChartData; // Show last 4 months
+        return monthlyChartData;
     }
   };
 
@@ -178,14 +155,12 @@ export const Chart: React.FC = () => {
 
   return (
     <div className="p-6 bg-white rounded-xl shadow-sm md:w-4/10 font-sans">
-      {/* Top Section */}
       <StatsHeader
         stats={stats}
         activeTabId={activeTab}
         onTabChange={setActiveTab}
       />
 
-      {/* Chart Section */}
       <div className="mt-8 h-80">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
@@ -216,21 +191,20 @@ export const Chart: React.FC = () => {
             <Bar
               dataKey="normalPatients"
               name="Bệnh nhân bình thường"
-              fill="#10b981" // emerald-500
+              fill="#10b981"
               radius={[4, 4, 0, 0]}
               barSize={40}
             />
             <Bar
               dataKey="warningPatients"
               name="Bệnh nhân cảnh báo"
-              fill="#f59e0b" // amber-500
+              fill="#f59e0b"
               radius={[4, 4, 0, 0]}
               barSize={40}
             />
           </BarChart>
         </ResponsiveContainer>
 
-        {/* Summary Section */}
         <div className="mt-6 pt-4 border-t border-gray-100">
           <div className="flex justify-between items-center">
             <div className="text-sm text-gray-500">

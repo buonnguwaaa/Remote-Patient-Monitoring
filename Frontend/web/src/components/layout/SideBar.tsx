@@ -18,19 +18,15 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
-  // Use provided navigation items or default doctor navigation
   const itemsToDisplay = navigationItems || navData;
 
   const [isCollapsed, setIsCollapsed] = useState(false);
-
-  // Tự động đóng sidebar khi chuyển trang trên mobile (UX tốt hơn)
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth < 768) {
         setIsCollapsed(true);
       }
     };
-    // Initial check
     handleResize();
 
     window.addEventListener("resize", handleResize);
@@ -52,22 +48,14 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
         />
       )}
 
-      {/* LAYER 2: SIDEBAR */}
       <div
         className={`
           h-screen bg-white border-r border-gray-200 flex flex-col transition-all duration-300
-          
-          /* --- LOGIC QUAN TRỌNG Ở ĐÂY --- */
-          /* Mobile: Luôn Fixed đè lên content, Z-index cao hơn backdrop */
           fixed left-0 top-0 z-50 
-          
-          /* Desktop (md): Trở về Relative để đẩy content sang phải */
           md:relative md:z-auto
-
           ${isCollapsed ? "w-14" : "w-80"}
         `}
       >
-        {/* --- HEADER --- */}
         <div
           className={`flex items-center p-4 ${isCollapsed ? "justify-center" : "justify-between"
             }`}
@@ -87,7 +75,6 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
           </button>
         </div>
 
-        {/* --- NAVIGATION --- */}
         <nav className="flex-1 mt-4 px-2 overflow-y-auto">
           <ul className="space-y-2">
             {itemsToDisplay.map((item) => {
@@ -124,7 +111,6 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
           </ul>
         </nav>
 
-        {/* --- FOOTER --- */}
         <div className="px-2 py-4">
           <div
             className={`flex items-center ${isCollapsed ? "justify-center px-0" : "px-4 gap-3"

@@ -1,4 +1,3 @@
-// Matches backend usecase.AssignmentResponse
 export interface AssignmentResponse {
   id: string;
   patientId: string;
@@ -12,7 +11,6 @@ export interface AssignmentResponse {
   updatedAt: string;
 }
 
-// Matches backend domain.Alert
 export interface AlertResponse {
   id: string;
   patientId: string;
@@ -34,7 +32,6 @@ export interface ThresholdViolation {
   severity: "info" | "high";
 }
 
-// Type used for displaying in the patient table
 export interface PatientItem {
   id: string;
   name: string;

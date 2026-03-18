@@ -10,9 +10,8 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-// --- Types ---
 interface ChartDataPoint {
-  period: string; // "Tháng 3", "Tuần 1", etc.
+  period: string;
   normalPatients: number;
   warningPatients: number;
 }
@@ -24,11 +23,6 @@ interface StatItem {
   type: "primary" | "warning" | "neutral";
 }
 
-// --- Components ---
-
-/**
- * 1. Stats Header Component
- */
 interface StatsHeaderProps {
   stats: StatItem[];
   activeTabId: string;

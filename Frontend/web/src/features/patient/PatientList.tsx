@@ -9,27 +9,21 @@ import type { PatientItem } from "../../types/patient";
 const PatientList = () => {
   const navigate = useNavigate();
 
-  // Data states
   const [patients, setPatients] = useState<PatientItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // Filter states
   const [filterDate, setFilterDate] = useState<string>("");
   const [filterStatus, setFilterStatus] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState<string>("");
 
-  // Fetch patients on mount
   useEffect(() => {
     const fetchPatients = async () => {
       try {
         setLoading(true);
         setError(null);
 
-        // 1. Get assigned patients
         const assignments = await getMyPatients();
 
-        // 2. For each patient, check latest alert to determine status
         const patientItems: PatientItem[] = await Promise.all(
           assignments.map(async (assignment) => {
             let status: PatientItem["status"] = "Bình thường";
@@ -40,7 +34,7 @@ const PatientList = () => {
                 status = "Cảnh báo";
               }
             } catch {
-              // If alert fetch fails for a patient, default to "Bình thường"
+          
             }
 
             return {
@@ -65,14 +59,10 @@ const PatientList = () => {
     fetchPatients();
   }, []);
 
-  // Client-side filtering
   const filteredPatients = useMemo(() => {
     return patients.filter((p) => {
-      // Filter by date
       if (filterDate && p.updatedAt !== filterDate) return false;
-      // Filter by status
       if (filterStatus && p.status !== filterStatus) return false;
-      // Filter by search query (name)
       if (searchQuery && !p.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
       return true;
     });
@@ -162,10 +152,8 @@ const PatientList = () => {
     <div className="p-8 bg-gray-100 min-h-screen">
       <h1 className="text-3xl font-bold mb-4">Danh sách bệnh nhân</h1>
 
-      {/* Section Filter & Search */}
       <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-4">
         <div className="flex flex-col md:flex-row items-center gap-4">
-          {/* Theo ngày */}
           <div className=" w-39">
             <input
               type="date"
@@ -176,7 +164,6 @@ const PatientList = () => {
             />
           </div>
 
-          {/* Theo trạng thái */}
           <div className=" w-39">
             <select
               className="border-2 border-gray-400 rounded-md p-2 outline-none bg-white"
@@ -190,7 +177,6 @@ const PatientList = () => {
           </div>
         </div>
 
-        {/* Search */}
         <div>
           <input
             type="text"

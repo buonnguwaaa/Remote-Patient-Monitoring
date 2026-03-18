@@ -10,7 +10,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons, FontAwesome5, MaterialIcons } from "@expo/vector-icons";
 import { useState } from "react";
 
-// ===== MOCK DATA: DANH SÁCH BỆNH NHÂN ĐÃ CÓ BẢN ĐO =====
 const nurseUser = {
   _id: "u_nurse_1",
   name: "Điều dưỡng Trần Thị B",
@@ -137,7 +136,7 @@ function getInitials(name) {
 
 export default function NursePatientListScreen() {
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState("all"); // "all" | "alerts" | "stable"
+  const [filter, setFilter] = useState("all");
 
   const totalPatients = patients.length;
   const patientsWithAlerts = patients.filter(
@@ -159,13 +158,11 @@ export default function NursePatientListScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#F2F6FF" }}>
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        {/* HEADER */}
         <View style={styles.headerRow}>
           <Text style={styles.headerTitle}>Bệnh nhân được theo dõi</Text>
           <View style={{ width: 40 }} />
         </View>
 
-        {/* NURSE BAR */}
         <View style={styles.nurseBar}>
           <View style={styles.nurseLeft}>
             <View style={styles.nurseAvatar}>
@@ -182,7 +179,6 @@ export default function NursePatientListScreen() {
           </View>
         </View>
 
-        {/* SUMMARY CARDS */}
         <View style={styles.summaryRow}>
           <View style={styles.summaryCardPrimary}>
             <View style={styles.summaryTopRow}>
@@ -211,7 +207,6 @@ export default function NursePatientListScreen() {
           </View>
         </View>
 
-        {/* SEARCH + FILTER */}
         <View style={styles.searchRow}>
           <View style={styles.searchBox}>
             <Ionicons name="search-outline" size={18} color="#9CA3AF" />
@@ -279,7 +274,6 @@ export default function NursePatientListScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* LIST PATIENTS */}
         <View style={{ marginTop: 12 }}>
           {filteredPatients.map((p) => {
             const initials = getInitials(p.user.name);
@@ -299,7 +293,6 @@ export default function NursePatientListScreen() {
                 activeOpacity={0.85}
                 onPress={() => {}}
               >
-                {/* TOP ROW: INFO + BADGES */}
                 <View style={styles.patientItemTop}>
                   <View style={styles.patientLeft}>
                     <View className="avatar" style={styles.patientAvatarCircle}>
@@ -358,7 +351,6 @@ export default function NursePatientListScreen() {
                   </View>
                 </View>
 
-                {/* MID ROW: LAST MEASUREMENTS – 2 HÀNG, 3 CHỈ SỐ/HÀNG */}
                 <View style={styles.metricsRow}>
                   {/* BP */}
                   <View style={styles.metricBox}>

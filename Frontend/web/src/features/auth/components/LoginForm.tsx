@@ -21,7 +21,6 @@ const LoginForm: React.FC = () => {
     setIsLoading(false);
 
     if (role) {
-      // Only doctors can access this app
       navigate("/");
     } else {
       setError("Email hoặc mật khẩu không đúng.");
@@ -29,9 +28,7 @@ const LoginForm: React.FC = () => {
   };
 
   return (
-    // Sử dụng nền của trang (bg-gray-100) hoặc nền của card (bg-white/bg-gray-50)
     <div className="flex w-full max-w-md min-h-100 flex-col items-center bg-gray-50 p-8 rounded">
-      {/* Logo */}
       <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-lg bg-gray-900 text-2xl font-bold text-white">
         RPM
       </div>
@@ -39,21 +36,16 @@ const LoginForm: React.FC = () => {
         Xin chào bạn đến với hệ thống RPM
       </p>
 
-      {/* Tiêu đề */}
       <h2 className="mb-8 text-2xl font-semibold text-gray-800">
         Đăng nhập tài khoản
       </h2>
-
-      {/* Form đăng nhập */}
       <form className="w-full" onSubmit={handleSubmit}>
-        {/* Error message */}
         {error && (
           <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md text-sm">
             {error}
           </div>
         )}
 
-        {/* Trường Username */}
         <div className="mb-5">
           <label
             htmlFor="username"
@@ -77,7 +69,6 @@ const LoginForm: React.FC = () => {
           </div>
         </div>
 
-        {/* Trường Mật khẩu */}
         <div className="mb-5">
           <label
             htmlFor="password"
@@ -112,14 +103,12 @@ const LoginForm: React.FC = () => {
           </div>
         </div>
 
-        {/* Quên mật khẩu */}
         <div className="mb-6 text-right">
           <a href="#" className="text-sm text-gray-700 hover:underline">
             Quên mật khẩu ?
           </a>
         </div>
 
-        {/* Nút Đăng nhập */}
         <button
           type="submit"
           disabled={isLoading}

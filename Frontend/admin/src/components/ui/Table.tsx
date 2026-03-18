@@ -24,7 +24,6 @@ const Table = <T,>({
 }: TableProps<T>) => {
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Calculate pagination
   const totalPages = Math.ceil(data.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
@@ -52,7 +51,6 @@ const Table = <T,>({
             </tr>
           </thead>
 
-          {/* --- BODY --- */}
           <tbody>
             {currentData.length > 0 ? (
               currentData.map((item, rowIndex) => (
@@ -77,7 +75,6 @@ const Table = <T,>({
                 </tr>
               ))
             ) : (
-              // --- EMPTY STATE ---
               <tr>
                 <td
                   colSpan={columns.length}
@@ -91,7 +88,6 @@ const Table = <T,>({
         </table>
       </div>
 
-      {/* Pagination - Always at bottom right */}
       {totalPages > 1 && (
         <div className="flex justify-end">
           <Pagination

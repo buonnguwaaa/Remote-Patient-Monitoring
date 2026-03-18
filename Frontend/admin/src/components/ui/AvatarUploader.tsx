@@ -4,9 +4,7 @@ import { FaCamera } from "react-icons/fa";
 const DEFAULT_AVATAR = "/avartar.jpg";
 
 interface AvatarUploaderProps {
-    /** URL ảnh hiện tại của user (từ DB) */
     currentUrl?: string;
-    /** Callback khi user chọn file mới */
     onFileSelect: (file: File, previewUrl: string) => void;
 }
 
@@ -34,7 +32,6 @@ const AvatarUploader: React.FC<AvatarUploaderProps> = ({ currentUrl, onFileSelec
 
     return (
         <div className="flex items-center gap-5 pb-5 border-b border-gray-100">
-            {/* Avatar với overlay camera khi hover */}
             <div className="relative flex-shrink-0 group">
                 <img
                     src={displaySrc}
@@ -44,7 +41,6 @@ const AvatarUploader: React.FC<AvatarUploaderProps> = ({ currentUrl, onFileSelec
                     onClick={() => setLightboxOpen(true)}
                     title="Nhấn để xem ảnh"
                 />
-                {/* Overlay icon camera */}
                 <button
                     type="button"
                     onClick={() => inputRef.current?.click()}
@@ -55,11 +51,9 @@ const AvatarUploader: React.FC<AvatarUploaderProps> = ({ currentUrl, onFileSelec
                 </button>
             </div>
 
-            {/* Thông tin & nút chọn ảnh */}
             <div className="flex flex-col gap-2">
                 <p className="text-sm font-semibold text-gray-700">Ảnh đại diện</p>
 
-                {/* Nút custom thay cho input mặc định */}
                 <button
                     type="button"
                     onClick={() => inputRef.current?.click()}
@@ -69,7 +63,6 @@ const AvatarUploader: React.FC<AvatarUploaderProps> = ({ currentUrl, onFileSelec
                     Cập nhật ảnh đại diện
                 </button>
 
-                {/* Tên file / trạng thái */}
                 {selectedFileName ? (
                     <p className="text-xs text-green-600 flex items-center gap-1">
                         <span className="font-bold">✓</span>
@@ -83,7 +76,6 @@ const AvatarUploader: React.FC<AvatarUploaderProps> = ({ currentUrl, onFileSelec
                 )}
             </div>
 
-            {/* Input ẩn */}
             <input
                 ref={inputRef}
                 type="file"
@@ -92,7 +84,6 @@ const AvatarUploader: React.FC<AvatarUploaderProps> = ({ currentUrl, onFileSelec
                 onChange={handleFileChange}
             />
 
-            {/* Lightbox xem ảnh to */}
             {lightboxOpen && (
                 <div
                     className="fixed inset-0 z-50 flex items-center justify-center"
