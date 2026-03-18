@@ -3,11 +3,9 @@ import { lazy, Suspense } from "react";
 
 import "./styles/App.css";
 
-// Eager load only critical components
 import MainLayout from "./components/layout/MainLayout.tsx";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 
-// Loading component
 const PageLoader = () => (
   <div className="flex h-screen w-full items-center justify-center">
     <div className="text-center">
@@ -17,12 +15,9 @@ const PageLoader = () => (
   </div>
 );
 
-// Lazy load all pages for better performance
-// Login page - loaded immediately as it's the entry point
 const LoginPage = lazy(() => import("./pages/LoginPage.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 
-// Doctor pages - only loaded when doctor accesses them
 const DashBoard = lazy(() => import("./pages/DashBoard.tsx"));
 const PatientPage = lazy(() => import("./pages/PatientPage.tsx"));
 const ThresholdAlert = lazy(() => import("./pages/ThresholdAlert.tsx"));
@@ -32,7 +27,6 @@ const ChatPage = lazy(() => import("./pages/ChatPage.tsx"));
 const DocterProfile = lazy(() => import("./pages/DocterProfile.tsx"));
 
 
-// Protected Route Component - only for doctors
 const ProtectedRoute = ({
   children,
 }: {
@@ -56,12 +50,8 @@ function App() {
     <AuthProvider>
       <BrowserRouter>
         <Suspense fallback={<PageLoader />}>
-          {/* Routes chỉ được chứa Route con trực tiếp */}
           <Routes>
-            {/* --- NHÓM 1: Trang KHÔNG có Sidebar (Login) --- */}
             <Route path="/login" element={<LoginPage />} />
-
-            {/* --- NHÓM 2: Doctor Routes - Protected --- */}
             <Route
               element={
                 <ProtectedRoute>
@@ -81,7 +71,6 @@ function App() {
               />
             </Route>
 
-            {/* Route cho trang không tìm thấy */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>

@@ -176,6 +176,18 @@ export default StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  iosDatePickerWrap: {
+    width: '100%',
+    minHeight: 216,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  iosDatePicker: {
+    width: '100%',
+    height: 216,
+    color: '#030213',
+  },
   modalActions: {
     width: '100%',
     flexDirection: 'row',

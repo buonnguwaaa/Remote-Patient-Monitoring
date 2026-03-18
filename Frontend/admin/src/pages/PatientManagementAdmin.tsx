@@ -6,6 +6,7 @@ import { useToast } from "../hooks/useToast";
 import Toast from "../components/ui/Toast";
 import AvatarUploader from "../components/ui/AvatarUploader";
 import type { Patient } from "../types";
+import { mapGenderToDisplay, mapGenderToApi } from "../utils/genderConverter";
 
 const PatientManagementAdmin: React.FC = () => {
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -24,7 +25,7 @@ const PatientManagementAdmin: React.FC = () => {
           id: u.id,
           name: u.name,
           email: u.email,
-          gender: u.gender === "M" ? "Nam" : u.gender === "F" ? "Nữ" : u.gender,
+          gender: mapGenderToDisplay(u.gender),
           dateOfBirth: u.dob,
           phone: u.phone || "",
           address: "",
@@ -81,21 +82,17 @@ const PatientManagementAdmin: React.FC = () => {
     const phone = formData.get("phone") as string;
     const dateOfBirth = formData.get("dateOfBirth") as string;
 
-    let apiGender = "O";
-    if (gender === "Nam") apiGender = "M";
-    if (gender === "Nữ") apiGender = "F";
+    const apiGender = mapGenderToApi(gender);
 
     try {
       let savedUserId = editingPatient?.id;
 
       if (editingPatient?.id) {
-        // Update
         await api.put(`/users/${editingPatient.id}`, {
           name, email, gender: apiGender, phone,
           roles: ["user.patient"],
         });
       } else {
-        // Create
         const password = formData.get("password") as string;
         if (!password || password.length < 8) {
           showToast("Mật khẩu phải có ít nhất 8 ký tự!", "error");
@@ -113,7 +110,6 @@ const PatientManagementAdmin: React.FC = () => {
         }
       }
 
-      // Upload avatar nếu có
       if (avatarFile && savedUserId) {
         await uploadAvatar(savedUserId, avatarFile);
       }
@@ -145,7 +141,6 @@ const PatientManagementAdmin: React.FC = () => {
         </button>
       </div>
 
-      {/* Search Bar */}
       <div className="mb-6 bg-white dark:bg-gray-800 rounded-lg shadow-md p-4">
         <div className="relative">
           <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -159,7 +154,6 @@ const PatientManagementAdmin: React.FC = () => {
         </div>
       </div>
 
-      {/* Table */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
         <table className="w-full">
           <thead className="bg-gray-50 dark:bg-gray-700 border-b dark:border-gray-600">
@@ -210,7 +204,6 @@ const PatientManagementAdmin: React.FC = () => {
         </table>
       </div>
 
-      {/* Modal Add/Edit */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-30 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -260,7 +253,6 @@ const PatientManagementAdmin: React.FC = () => {
         </div>
       )}
 
-      {/* Lightbox */}
       {previewImage && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)" }} onClick={() => setPreviewImage(null)}>
           <div className="relative" onClick={(e) => e.stopPropagation()} style={{ animation: "scaleIn 0.2s ease" }}>

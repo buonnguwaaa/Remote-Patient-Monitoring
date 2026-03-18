@@ -21,21 +21,18 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
   const { user, logout, getUserRole } = useAuth();
   const { theme, toggleTheme } = useTheme();
 
-  // Determine which navigation items to display based on role
   const userRole = getUserRole();
   const defaultNavItems = userRole === "admin" ? adminNavData : navData;
   const itemsToDisplay = navigationItems || defaultNavItems;
 
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  // Tự động đóng sidebar khi chuyển trang trên mobile (UX tốt hơn)
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth < 768) {
         setIsCollapsed(true);
       }
     };
-    // Initial check
     handleResize();
 
     window.addEventListener("resize", handleResize);
@@ -57,7 +54,6 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
         />
       )}
 
-      {/* LAYER 2: SIDEBAR */}
       <div
         className={`
           h-screen bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col transition-all duration-300
@@ -72,7 +68,6 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
           ${isCollapsed ? "w-14" : "w-80"}
         `}
       >
-        {/* --- HEADER --- */}
         <div
           className={`flex items-center p-4 ${isCollapsed ? "justify-center" : "justify-between"
             }`}
@@ -123,7 +118,6 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
                         {item.label}
                       </span>
                     )}
-                    {/* Active indicator dot khi collapsed */}
                     {isCollapsed && isActive && (
                       <span className="absolute left-1 w-1 h-8 bg-btn-clicked rounded-r-full" />
                     )}
@@ -134,8 +128,6 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
           </ul>
         </nav>
 
-
-        {/* --- FOOTER --- */}
         <div className="px-2 py-4">
           <div
             className={`flex items-center ${isCollapsed ? "justify-center px-0" : "px-4 gap-3"

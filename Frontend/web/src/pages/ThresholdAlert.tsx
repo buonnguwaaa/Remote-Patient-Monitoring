@@ -11,14 +11,12 @@ const ThresholdAlert = () => {
   const [currentAlertId, setCurrentAlertId] = useState<string | null>(null);
   const [doctorNote, setDoctorNote] = useState("");
 
-  // Filter alerts
   const filteredAlerts = alerts.filter((alert) => {
     if (filterStatus !== "all" && alert.status !== filterStatus) return false;
     if (filterSeverity !== "all" && alert.severity !== filterSeverity) return false;
     return true;
   });
 
-  // Handle acknowledge
   const handleAcknowledge = (alertId: string) => {
     setCurrentAlertId(alertId);
     setDoctorNote("");
@@ -47,7 +45,6 @@ const ThresholdAlert = () => {
     setDoctorNote("");
   };
 
-  // Get violation type label
   const getViolationLabel = (type: string) => {
     const labels: Record<string, string> = {
       temperature: "Nhiệt độ",
@@ -61,7 +58,6 @@ const ThresholdAlert = () => {
     return labels[type] || type;
   };
 
-  // Format date
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleString("vi-VN", {
@@ -82,7 +78,6 @@ const ThresholdAlert = () => {
         </p>
       </div>
 
-      {/* Filters */}
       <div className="bg-white p-4 rounded-lg shadow-sm mb-6 flex gap-4 flex-wrap">
         <div className="flex items-center gap-2">
           <label className="text-sm font-medium text-gray-700">Trạng thái:</label>
@@ -115,7 +110,6 @@ const ThresholdAlert = () => {
         </div>
       </div>
 
-      {/* Alerts Table */}
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
@@ -151,7 +145,6 @@ const ThresholdAlert = () => {
               ) : (
                 filteredAlerts.map((alert) => (
                   <tr key={alert.id} className="hover:bg-gray-50 transition-colors">
-                    {/* Patient */}
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <img
@@ -168,7 +161,6 @@ const ThresholdAlert = () => {
                       </div>
                     </td>
 
-                    {/* Violations */}
                     <td className="px-6 py-4">
                       <div className="space-y-1">
                         {alert.violations.map((v, idx) => (
@@ -185,7 +177,6 @@ const ThresholdAlert = () => {
                       </div>
                     </td>
 
-                    {/* Severity */}
                     <td className="px-6 py-4 text-center">
                       {alert.severity === "high" ? (
                         <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
@@ -200,7 +191,6 @@ const ThresholdAlert = () => {
                       )}
                     </td>
 
-                    {/* Status */}
                     <td className="px-6 py-4 text-center">
                       {alert.status === "ack" ? (
                         <div>
@@ -224,12 +214,9 @@ const ThresholdAlert = () => {
                       )}
                     </td>
 
-                    {/* Time */}
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                       {formatDate(alert.createdAt)}
                     </td>
-
-                    {/* Actions */}
                     <td className="px-6 py-4 text-center">
                       {alert.status === "open" && (
                         <button
@@ -248,11 +235,9 @@ const ThresholdAlert = () => {
         </div>
       </div>
 
-      {/* Modal for Doctor Note */}
       {showModal && (
         <div className="fixed inset-0 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
-            {/* Header */}
             <div className="flex items-center justify-between p-4 border-b">
               <h3 className="text-lg font-semibold text-gray-800">Lời nhắc của bác sĩ</h3>
               <button
@@ -263,7 +248,6 @@ const ThresholdAlert = () => {
               </button>
             </div>
 
-            {/* Body */}
             <div className="p-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Nhập ghi chú/lời nhắc (tùy chọn)
@@ -277,7 +261,6 @@ const ThresholdAlert = () => {
               />
             </div>
 
-            {/* Footer */}
             <div className="flex gap-3 p-4 border-t bg-gray-50 rounded-b-lg">
               <button
                 onClick={() => setShowModal(false)}

@@ -6,6 +6,7 @@ import { useToast } from "../hooks/useToast";
 import Toast from "../components/ui/Toast";
 import AvatarUploader from "../components/ui/AvatarUploader";
 import type { doctor } from "../types";
+import { mapGenderToDisplay, mapGenderToApi } from "../utils/genderConverter";
 
 const DoctorManagement: React.FC = () => {
   const [doctors, setDoctors] = useState<doctor[]>([]);
@@ -24,7 +25,7 @@ const DoctorManagement: React.FC = () => {
           id: u.id,
           name: u.name,
           email: u.email,
-          gender: u.gender === "M" ? "Nam" : u.gender === "F" ? "Nữ" : u.gender,
+          gender: mapGenderToDisplay(u.gender),
           dateOfBirth: u.dob,
           phone: u.phone || "",
           specialization: u.doctorProfile?.specialization || "",
@@ -87,22 +88,17 @@ const DoctorManagement: React.FC = () => {
     const workplace = formData.get("workplace") as string;
     const yearsOfExperience = parseInt(formData.get("yearsOfExperience") as string) || 0;
 
-    // Convert UI gender to API enum
-    let apiGender = "O";
-    if (gender === "Nam") apiGender = "M";
-    if (gender === "Nữ") apiGender = "F";
+    const apiGender = mapGenderToApi(gender);
 
     try {
       let savedUserId = editingDoctor?.id;
 
       if (editingDoctor?.id) {
-        // Update
         await api.put(`/users/${editingDoctor.id}`, {
           name, email, gender: apiGender, phone, specialization,
           licenseNumber, workplace, yearsOfExperience, roles: ["user.doctor"],
         });
       } else {
-        // Create - dùng password admin nhập
         const password = formData.get("password") as string;
         if (!password || password.length < 8) {
           alert("Mật khẩu phải có ít nhất 8 ký tự!");
@@ -112,7 +108,6 @@ const DoctorManagement: React.FC = () => {
           name, email, password, confirmedPassword: password,
           role: "user.doctor", gender: apiGender, dob: "1980-01-01",
         });
-        // Lấy user mới nhất
         const resp = await api.get("/users?role=user.doctor&sortOrder=desc&limit=1");
         const newUser = resp.data?.data?.[0];
         savedUserId = newUser?.id;
@@ -123,7 +118,6 @@ const DoctorManagement: React.FC = () => {
         }
       }
 
-      // Upload avatar nếu chọn file
       if (avatarFile && savedUserId) {
         await uploadAvatar(savedUserId, avatarFile);
       }
@@ -160,7 +154,6 @@ const DoctorManagement: React.FC = () => {
         </button>
       </div>
 
-      {/* Search Bar */}
       <div className="mb-6 bg-white dark:bg-gray-800 rounded-lg shadow-md p-4">
         <div className="relative">
           <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -174,7 +167,6 @@ const DoctorManagement: React.FC = () => {
         </div>
       </div>
 
-      {/* Doctors Table - keeping as is, assuming it works */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
         <table className="w-full">
           <thead className="bg-gray-50 dark:bg-gray-700 border-b dark:border-gray-600">
@@ -260,7 +252,6 @@ const DoctorManagement: React.FC = () => {
         </table>
       </div>
 
-      {/* Modal for Add/Edit Doctor */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-20 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -268,7 +259,6 @@ const DoctorManagement: React.FC = () => {
               {editingDoctor ? "Chỉnh sửa bác sĩ" : "Thêm bác sĩ mới"}
             </h2>
             <form className="space-y-4" onSubmit={handleSubmit}>
-              {/* Upload ảnh — dùng AvatarUploader tái sử dụng */}
               <AvatarUploader
                 currentUrl={editingDoctor?.profileImageUrl}
                 onFileSelect={(file) => setAvatarFile(file)}
@@ -408,7 +398,6 @@ const DoctorManagement: React.FC = () => {
         </div >
       )}
 
-      {/* Lightbox xem ảnh to */}
       {previewImage && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center"

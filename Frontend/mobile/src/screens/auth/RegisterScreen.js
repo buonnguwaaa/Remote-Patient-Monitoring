@@ -149,9 +149,9 @@ export default function RegisterScreen({ navigation, onSwitchToLogin }) {
             <TouchableOpacity
               onPress={() => {
                 if (DateTimePicker) {
+                  setTempDate(dob ? new Date(dob) : new Date());
                   setShowDatePicker(true);
                 } else {
-                  // show an inline input so user can type YYYY-MM-DD
                   setShowDobInput(true);
                 }
               }}
@@ -200,16 +200,21 @@ export default function RegisterScreen({ navigation, onSwitchToLogin }) {
                 <View style={styles.modalContainer}>
                   <View style={styles.modalContent}>
                     <Text style={styles.modalTitle}>Select date</Text>
-                    <DateTimePicker
-                      value={tempDate}
-                      mode="date"
-                      display="spinner"
-                      maximumDate={new Date()}
-                      minimumDate={new Date('1900-01-01')}
-                      onChange={(event, selected) => {
-                        if (selected) setTempDate(selected);
-                      }}
-                    />
+                    <View style={styles.iosDatePickerWrap}>
+                      <DateTimePicker
+                        value={tempDate}
+                        mode="date"
+                        display="spinner"
+                        themeVariant="light"
+                        textColor="#030213"
+                        maximumDate={new Date()}
+                        minimumDate={new Date('1900-01-01')}
+                        style={styles.iosDatePicker}
+                        onChange={(event, selected) => {
+                          if (selected) setTempDate(selected);
+                        }}
+                      />
+                    </View>
 
                     <View style={styles.modalActions}>
                       <TouchableOpacity

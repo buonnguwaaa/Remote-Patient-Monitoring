@@ -3,7 +3,6 @@ import { IoEyeOutline } from "react-icons/io5";
 import { FaPenToSquare } from "react-icons/fa6";
 
 interface AcctionButtonProps {
-  // className, onClick, ...
   className?: string;
   onClick?: (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
   iconSize?: number;

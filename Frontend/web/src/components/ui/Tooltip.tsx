@@ -7,7 +7,6 @@ interface TooltipProps {
 
 const Tooltip = ({ text, children }: TooltipProps) => {
   return (
-    // Sử dụng inline-block để bao bọc vừa khít content, không làm vỡ layout cha
     <div className="relative inline-block group">
       {children}
 

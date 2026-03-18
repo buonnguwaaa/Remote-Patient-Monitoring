@@ -11,8 +11,6 @@ import {
   Clock,
 } from "lucide-react";
 
-// --- 1. INTERFACES (Giữ nguyên khung sườn bạn yêu cầu) ---
-
 export interface ChatMessage {
   id: string;
   senderId: string;
@@ -29,7 +27,6 @@ interface ChatPageProps {
   chatItems: ChatMessage[];
 }
 
-// Interface dữ liệu đo lường
 interface MeasurementData {
   id: string;
   type: "BP" | "GLUCOSE" | "SPO2";
@@ -40,11 +37,9 @@ interface MeasurementData {
   timestamp: string;
 }
 
-// --- 2. MOCK DATA (Điều chỉnh để phù hợp ngữ cảnh Bác sĩ) ---
-
 const mockChatInfo = {
-  doctorId: "doc_current_user", // ID của người đang dùng app (Bác sĩ)
-  patientId: "pat_nguyen_van_a", // ID người bên kia (Bệnh nhân)
+  doctorId: "doc_current_user",
+  patientId: "pat_nguyen_van_a",
 };
 
 const mockPatientInfo = {
@@ -83,7 +78,6 @@ const mockMeasurements: Record<string, MeasurementData> = {
 };
 
 const mockChatMessages: ChatMessage[] = [
-  // Msg 1: Bác sĩ (Tôi) gửi nhận xét về huyết áp
   {
     id: "msg_1",
     senderId: "doc_current_user",
@@ -91,14 +85,12 @@ const mockChatMessages: ChatMessage[] = [
     measurementId: "m_bp_1",
     timestamp: new Date("2025-12-11T15:40:00"),
   },
-  // Msg 2: Bệnh nhân trả lời
   {
     id: "msg_2",
     senderId: "pat_nguyen_van_a",
     message: "Dạ vâng, trưa nay tôi có lỡ ăn hơi mặn chút ạ.",
     timestamp: new Date("2025-12-11T15:42:00"),
   },
-  // Msg 3: Bác sĩ gửi nhận xét đường huyết
   {
     id: "msg_3",
     senderId: "doc_current_user",
@@ -107,7 +99,6 @@ const mockChatMessages: ChatMessage[] = [
     measurementId: "m_glu_1",
     timestamp: new Date("2025-12-11T15:55:00"),
   },
-  // Msg 4: Bác sĩ nhận xét SpO2
   {
     id: "msg_4",
     senderId: "doc_current_user",
@@ -116,7 +107,6 @@ const mockChatMessages: ChatMessage[] = [
     measurementId: "m_spo2_1",
     timestamp: new Date("2025-12-11T16:05:00"),
   },
-  // Msg 5: Bệnh nhân cảm ơn
   {
     id: "msg_5",
     senderId: "pat_nguyen_van_a",
@@ -124,8 +114,6 @@ const mockChatMessages: ChatMessage[] = [
     timestamp: new Date("2025-12-11T17:10:00"),
   },
 ];
-
-// --- 3. SUB-COMPONENTS ---
 
 const MeasurementCard = ({ measurementId }: { measurementId: string }) => {
   const data = mockMeasurements[measurementId];
@@ -155,7 +143,6 @@ const MeasurementCard = ({ measurementId }: { measurementId: string }) => {
       title = "Chỉ số";
   }
 
-  // Thẻ này luôn có nền trắng để dễ đọc thông tin y tế, bất kể nằm trong bubble màu gì
   return (
     <div className="mt-3 mb-1 p-3 bg-white rounded-xl w-full border border-gray-200 shadow-sm overflow-hidden">
       <div className="flex items-center justify-between mb-2">
@@ -189,8 +176,6 @@ const MeasurementCard = ({ measurementId }: { measurementId: string }) => {
   );
 };
 
-// --- 4. MAIN PAGE ---
-
 const ChatPage = () => {
   const chatProps: ChatPageProps = {
     chat: mockChatInfo,
@@ -208,7 +193,6 @@ const ChatPage = () => {
 
   return (
     <div className="flex flex-col h-screen bg-[#F0F2F5] font-sans">
-      {/* --- HEADER (Dành cho Bác sĩ) --- */}
       <header className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-20 shadow-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -247,7 +231,6 @@ const ChatPage = () => {
         </div>
       </header>
 
-      {/* --- CHAT AREA --- */}
       <main className="flex-1 overflow-y-auto p-4 space-y-6">
         <div className="text-center my-4">
           <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider bg-gray-200 px-2 py-1 rounded">
@@ -256,7 +239,6 @@ const ChatPage = () => {
         </div>
 
         {chatItems.map((msg) => {
-          // LOGIC QUAN TRỌNG: isMe là true nếu người gửi là Bác sĩ (chat.doctorId)
           const isMe = msg.senderId === chat.doctorId;
 
           return (
@@ -266,7 +248,6 @@ const ChatPage = () => {
                 isMe ? "justify-end" : "justify-start"
               }`}
             >
-              {/* Avatar Bệnh nhân (Chỉ hiện bên trái) */}
               {!isMe && (
                 <div className="mr-2 shrink-0 self-end mb-1">
                   <div className="w-8 h-8 rounded-full bg-gray-300 text-gray-600 flex items-center justify-center">
@@ -280,22 +261,19 @@ const ChatPage = () => {
                   isMe ? "items-end" : "items-start"
                 }`}
               >
-                {/* Bubble */}
                 <div
                   className={`relative px-4 py-3 shadow-sm text-sm ${
                     isMe
-                      ? "bg-blue-600 text-white rounded-2xl rounded-tr-sm" // Bác sĩ: Màu xanh
-                      : "bg-white text-gray-800 rounded-2xl rounded-tl-sm border border-gray-100" // Bệnh nhân: Màu trắng
+                      ? "bg-blue-600 text-white rounded-2xl rounded-tr-sm"
+                      : "bg-white text-gray-800 rounded-2xl rounded-tl-sm border border-gray-100"
                   }`}
                 >
-                  {/* Nội dung text */}
                   {msg.message && (
                     <p className="leading-relaxed whitespace-pre-wrap">
                       {msg.message}
                     </p>
                   )}
 
-                  {/* Thẻ Đo lường (Thường do Bác sĩ gửi kèm nhận xét) */}
                   {msg.measurementId && (
                     <div className="mt-1">
                       <MeasurementCard measurementId={msg.measurementId} />
@@ -303,7 +281,6 @@ const ChatPage = () => {
                   )}
                 </div>
 
-                {/* Status / Time */}
                 <div className="flex items-center gap-1 mt-1 mx-1">
                   <span className="text-[10px] text-gray-400">
                     {formatTime(msg.timestamp)}
@@ -320,9 +297,7 @@ const ChatPage = () => {
         })}
       </main>
 
-      {/* --- DOCTOR'S TOOLKIT FOOTER --- */}
       <footer className="bg-white border-t border-gray-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-        {/* Quick Actions cho Bác sĩ (Khác với bệnh nhân) */}
         <div className="px-4 py-2 flex gap-2 overflow-x-auto no-scrollbar bg-gray-50 border-b border-gray-100">
           <button className="flex items-center gap-1 shrink-0 px-3 py-1.5 bg-white border border-blue-200 text-blue-700 rounded-lg text-xs font-medium hover:bg-blue-50 transition">
             <Calendar size={14} /> Hẹn tái khám
@@ -338,7 +313,6 @@ const ChatPage = () => {
           </button>
         </div>
 
-        {/* Input Area */}
         <div className="p-3 flex items-end gap-2">
           <button className="p-2.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition mb-0.5">
             <MoreVertical size={20} />

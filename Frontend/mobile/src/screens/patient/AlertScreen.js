@@ -3,10 +3,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
 
-// Mock data theo schema Alerts mới
-// rule: String, observed: Number, thresholdAtTime: Number
-// severity: "info" | "high", status: "open" | "ack"
-
 const alerts = [
   {
     id: "a1",
@@ -85,7 +81,7 @@ function formatDateTime(iso) {
 }
 
 export default function AlertScreen() {
-  const [tab, setTab] = useState("all"); // "all" | "open" | "ack"
+  const [tab, setTab] = useState("all");
 
   const openCount = alerts.filter((a) => a.status === "open").length;
 
@@ -209,7 +205,6 @@ export default function AlertScreen() {
                   · Quy tắc: {alert.rule}
                 </Text>
 
-                {/* Meta thời gian */}
                 <View style={styles.alertMetaRow}>
                   <View style={styles.alertMetaLeft}>
                     <Ionicons

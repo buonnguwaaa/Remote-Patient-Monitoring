@@ -16,7 +16,6 @@ const ActivityHistory: React.FC = () => {
   );
   const [filterType, setFilterType] = useState<string>("all");
 
-  // Dữ liệu mẫu hoạt động
   const activities: Activity[] = [
     {
       id: "1",
@@ -100,14 +99,12 @@ const ActivityHistory: React.FC = () => {
     },
   ];
 
-  // Lọc hoạt động theo ngày và loại
   const filteredActivities = activities.filter((activity) => {
     const matchDate = activity.date === selectedDate;
     const matchType = filterType === "all" || activity.type === filterType;
     return matchDate && matchType;
   });
 
-  // Hàm lấy icon và màu theo loại hoạt động
   const getActivityStyle = (type: string) => {
     switch (type) {
       case "login":
@@ -154,7 +151,6 @@ const ActivityHistory: React.FC = () => {
         </p>
       </div>
 
-      {/* Filters */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -190,7 +186,6 @@ const ActivityHistory: React.FC = () => {
         </div>
       </div>
 
-      {/* Summary Stats */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4">
           <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">Tổng hoạt động</div>
@@ -224,7 +219,6 @@ const ActivityHistory: React.FC = () => {
         </div>
       </div>
 
-      {/* Activity List */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
         <div className="px-6 py-4 bg-gray-50 dark:bg-gray-700 border-b dark:border-gray-600">
           <h2 className="text-lg font-semibold text-gray-800 dark:text-white">

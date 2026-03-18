@@ -53,7 +53,6 @@ const ThresholdSettingsPage = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Simulate saving
     console.log("Saving threshold settings:", formData);
 
     setShowSuccess(true);
@@ -90,7 +89,6 @@ const ThresholdSettingsPage = () => {
         </p>
       </div>
 
-      {/* Success Message */}
       {showSuccess && (
         <div className="mb-6 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg flex items-center gap-2">
           <FaSave />
@@ -99,7 +97,6 @@ const ThresholdSettingsPage = () => {
       )}
 
       <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm p-6">
-        {/* Patient Selection */}
         <div className="mb-8">
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Chọn Bệnh Nhân <span className="text-red-500">*</span>
@@ -120,9 +117,7 @@ const ThresholdSettingsPage = () => {
           </select>
         </div>
 
-        {/* Threshold Fields */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          {/* Temperature */}
           <div className="col-span-2">
             <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">
               🌡️ Nhiệt độ (°C)
@@ -155,7 +150,6 @@ const ThresholdSettingsPage = () => {
             </div>
           </div>
 
-          {/* Blood Pressure - Systolic */}
           <div className="col-span-2">
             <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">
               💓 Huyết áp tâm thu (mmHg)
@@ -186,7 +180,6 @@ const ThresholdSettingsPage = () => {
             </div>
           </div>
 
-          {/* Blood Pressure - Diastolic */}
           <div className="col-span-2">
             <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">
               💗 Huyết áp tâm trương (mmHg)
@@ -217,7 +210,6 @@ const ThresholdSettingsPage = () => {
             </div>
           </div>
 
-          {/* Heart Rate */}
           <div className="col-span-2">
             <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">
               ❤️ Nhịp tim (bpm)
@@ -248,7 +240,6 @@ const ThresholdSettingsPage = () => {
             </div>
           </div>
 
-          {/* Blood Glucose */}
           <div className="col-span-2">
             <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">
               🩸 Đường huyết (mg/dL)
@@ -279,7 +270,6 @@ const ThresholdSettingsPage = () => {
             </div>
           </div>
 
-          {/* SpO2 */}
           <div className="col-span-2">
             <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">
               🫁 Nồng độ oxy máu SpO2 (%)
@@ -299,7 +289,6 @@ const ThresholdSettingsPage = () => {
             </div>
           </div>
 
-          {/* Respiratory Rate */}
           <div className="col-span-2">
             <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">
               🫁 Nhịp thở (lần/phút)
@@ -330,7 +319,6 @@ const ThresholdSettingsPage = () => {
             </div>
           </div>
 
-          {/* Effective Dates */}
           <div className="col-span-2">
             <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b pb-2">
               📅 Thời gian hiệu lực
@@ -363,7 +351,6 @@ const ThresholdSettingsPage = () => {
           </div>
         </div>
 
-        {/* Action Buttons */}
         <div className="flex gap-4 justify-end">
           <button
             type="button"

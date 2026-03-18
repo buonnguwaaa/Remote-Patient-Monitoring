@@ -48,7 +48,6 @@ const SystemSettings: React.FC = () => {
       </div>
 
       <form onSubmit={handleSaveSettings} className="space-y-6">
-        {/* System Status Section */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
           <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center">
             <FaPowerOff className="mr-2 text-orange-600" />
@@ -113,7 +112,6 @@ const SystemSettings: React.FC = () => {
           </div>
         </div>
 
-        {/* General Settings Section */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
           <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">
             Cài đặt chung
@@ -151,7 +149,6 @@ const SystemSettings: React.FC = () => {
           </div>
         </div>
 
-        {/* Appearance Settings */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
           <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">
             Cài đặt giao diện
@@ -207,7 +204,6 @@ const SystemSettings: React.FC = () => {
           </div>
         </div>
 
-        {/* Save Button */}
         <div className="flex justify-end">
           <button
             type="submit"

@@ -27,12 +27,8 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-// --- IMPORT TABLE COMPONENT ---
-// Giả sử file Table của bạn nằm ở components/Table.tsx
 import Table, { type Column } from "../components/ui/Table";
 
-// --- TYPE DEFINITION ---
-// Định nghĩa kiểu dữ liệu cho một bản ghi đo lường để dùng trong Table
 interface MeasurementData {
   systolic: number;
   diastolic: number;
@@ -155,13 +151,12 @@ const PatientDetailPage = () => {
   const [chartType, setChartType] = useState<"bp" | "glucose">("bp");
   const [timeRange, setTimeRange] = useState<"week" | "month">("week");
 
-  // --- CẤU HÌNH CỘT CHO TABLE ---
   const columns = useMemo<Column<MeasurementData>[]>(
     () => [
       {
         header: "Thời gian",
         accessor: "updateAt",
-        className: "font-medium text-gray-900", // Thêm style
+        className: "font-medium text-gray-900",
       },
       {
         header: "Huyết áp (mmHg)",
@@ -175,7 +170,6 @@ const PatientDetailPage = () => {
         header: "Nhịp tim (bpm)",
         render: (item) => (
           <span className="inline-flex items-center font-semibold text-gray-700">
-            {/* <GiHeartBeats className="mr-1 text-red-400" size={14} /> */}
             {item.pulse}
           </span>
         ),
@@ -189,7 +183,6 @@ const PatientDetailPage = () => {
     []
   );
 
-  // Tạo data cho bảng (đảo ngược để hiển thị mới nhất trước)
   const tableData = useMemo(
     () => [...p.measurement].reverse(),
     [p.measurement]
@@ -237,7 +230,6 @@ const PatientDetailPage = () => {
   return (
     <div className="min-h-screen bg-gray-100 py-6 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
-        {/* Nút Back */}
         <button
           onClick={() => navigate(-1)}
           className="group flex items-center mb-4 rounded hover:bg-gray-200 p-2 transition-all"
@@ -248,7 +240,6 @@ const PatientDetailPage = () => {
           </span>
         </button>
 
-        {/* --- Header Section --- */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-6 relative overflow-hidden">
           <div className="flex flex-col sm:flex-row items-center relative z-10">
             <img
@@ -278,10 +269,7 @@ const PatientDetailPage = () => {
                   <FaRegMessage className="text-2xl text-gray-600 " />
 
                   <span className="absolute -top-1 -right-1 flex h-5 w-5">
-                    {/* Ping Animation Layer */}
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-
-                    {/* Static Number Layer */}
                     <span className="relative inline-flex rounded-full h-5 w-5 bg-red-500 text-white text-[10px] font-bold items-center justify-center border-2 border-white">
                       1
                     </span>
@@ -292,9 +280,7 @@ const PatientDetailPage = () => {
           </div>
         </div>
 
-        {/* --- Main Grid Content --- */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-          {/* Cột 1: Thông tin cá nhân & Liên hệ */}
           <div className="lg:col-span-1 space-y-6">
             <section className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
               <h3 className="text-lg font-bold text-gray-800 mb-4 pb-2 border-b">
@@ -329,7 +315,6 @@ const PatientDetailPage = () => {
             </section>
           </div>
 
-          {/* Cột 2 & 3: Ngưỡng chỉ số an toàn */}
           <div className="lg:col-span-2">
             <section className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 h-full">
               <h3 className="text-lg font-bold text-gray-800 mb-6 pb-2 border-b flex items-center">
@@ -379,7 +364,6 @@ const PatientDetailPage = () => {
                   unit="%"
                   colorClass="border-blue-400 text-blue-500"
                 />
-                {/*Action: update  */}
 
                 <div className="col-span-1 sm:col-span-2 flex justify-center items-center">
                   <button
@@ -396,7 +380,6 @@ const PatientDetailPage = () => {
           </div>
         </div>
 
-        {/* --- SECTION BIỂU ĐỒ (LINE CHART) --- */}
         <section className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 mb-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-gray-200 pb-4 mb-4">
             <h3 className="text-lg font-bold text-gray-800 flex items-center mb-4 md:mb-0">
@@ -404,7 +387,6 @@ const PatientDetailPage = () => {
               Biểu đồ sức khỏe
             </h3>
 
-            {/* Controls Filter */}
             <div className="flex flex-wrap gap-2 md:gap-4">
               <div className="inline-flex bg-gray-100 rounded-lg p-1">
                 <button
@@ -522,7 +504,6 @@ const PatientDetailPage = () => {
           </p>
         </section>
 
-        {/* --- Section: Lịch sử đo gần đây (ĐÃ DÙNG TABLE COMPONENT) --- */}
         <section className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8">
           <div className="p-5 border-b border-gray-200">
             <h3 className="text-lg font-bold text-gray-800">
@@ -533,7 +514,7 @@ const PatientDetailPage = () => {
           <Table<MeasurementData>
             data={tableData}
             columns={columns}
-            className="rounded-none shadow-none" // Ghi đè style mặc định nếu cần
+            className="rounded-none shadow-none"
           />
         </section>
       </div>

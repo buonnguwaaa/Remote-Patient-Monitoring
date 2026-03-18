@@ -55,7 +55,6 @@ export const mockPatientList = [
   },
 ];
 
-// Mock Alerts Data
 import type { Alert } from "../types";
 
 export const mockAlerts: Alert[] = [

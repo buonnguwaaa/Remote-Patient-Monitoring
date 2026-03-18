@@ -1,19 +1,11 @@
 import api from "./api";
 import type { AssignmentResponse, AlertResponse } from "../types/patient";
 
-/**
- * Get the list of patients assigned to the currently logged-in doctor/nurse.
- * Backend: GET /assignments
- */
 export const getMyPatients = async (): Promise<AssignmentResponse[]> => {
   const response = await api.get<{ data: AssignmentResponse[] | null }>("/assignments");
   return response.data.data || [];
 };
 
-/**
- * Get the latest alert for a specific patient.
- * Backend: GET /alerts?patientId=X&isLatest=true
- */
 export const getLatestAlertForPatient = async (
   patientId: string
 ): Promise<AlertResponse | null> => {

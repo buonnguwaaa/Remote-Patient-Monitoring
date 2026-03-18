@@ -7,7 +7,6 @@ import { IoSettingsOutline } from "react-icons/io5";
 
 import React from "react";
 
-// Navigation for Doctor role
 export const navData: NavigationItem[] = [
   {
     label: "Bảng điều khiển",

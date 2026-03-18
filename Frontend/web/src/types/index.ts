@@ -39,7 +39,6 @@ export interface Patient {
   status: "active" | "inactive";
 }
 
-// Alert & Threshold types
 export interface ThresholdViolation {
   type: "temperature" | "systolic" | "diastolic" | "pulse" | "glucose" | "spo2" | "respiratoryRate";
   rule: string;
@@ -85,7 +84,7 @@ export interface ChatMessage {
   id: string;
   senderId: string;
   message: string;
-  measurementId?: string; // SPO2, Heart Rate, etc.
+  measurementId?: string;
   timestamp: Date;
 }
 
@@ -95,7 +94,7 @@ export interface doctor {
   specialization: string;
   licenseNumber: string;
   workplace: string;
-  department?: string; // Phòng ban
+  department?: string;
   yearsOfExperience: number;
   status?: string;
   profileImageUrl: string;

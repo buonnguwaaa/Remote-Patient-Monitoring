@@ -8,7 +8,6 @@ import { MdAdminPanelSettings } from "react-icons/md";
 
 import React from "react";
 
-// Navigation for Doctor role
 export const navData: NavigationItem[] = [
   {
     label: "Bảng điều khiển",
@@ -32,7 +31,6 @@ export const navData: NavigationItem[] = [
   },
 ];
 
-// Navigation for Admin role
 export const adminNavData: NavigationItem[] = [
   {
     label: "Bảng điều khiển",

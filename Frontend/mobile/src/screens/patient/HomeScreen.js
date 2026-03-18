@@ -2,8 +2,6 @@ import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from "react-nati
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 
-// Mock data bám theo ERD + thêm nhịp thở (respiratoryRate)
-
 const user = {
   id: "u1",
   name: "Nguyễn Văn A",
@@ -24,7 +22,7 @@ const measurements = [
     type: "bp",
     systolic: 120,
     diastolic: 80,
-    pulse: 72, // dùng làm heartRate
+    pulse: 72,
     timing: "morning",
     device: "BP_MONITOR_01",
     note: "Đo sau khi nghỉ 5 phút",
@@ -121,7 +119,6 @@ function formatRelativeTime(iso) {
   return `${diffHours} giờ trước`;
 }
 
-// Lấy measurement mới nhất theo type
 function getLatestMeasurement(type) {
   return measurements
     .filter((m) => m.type === type)
@@ -138,7 +135,6 @@ export default function HomeScreen() {
   const latestTemp = getLatestMeasurement("temp");
   const latestResp = getLatestMeasurement("respiratory_rate");
 
-  // heartRate: lấy trực tiếp từ pulse của bản đo huyết áp gần nhất
   const latestHeartRate = latestBp ? latestBp.pulse : null;
 
   return (
@@ -173,11 +169,9 @@ export default function HomeScreen() {
           </Text>
         </View>
 
-        {/* TỔNG QUAN SINH HIỆU: bổ sung heartRate + respiratoryRate */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Tổng quan sinh hiệu mới nhất</Text>
           <View style={styles.vitalGrid}>
-            {/* BP */}
             <View style={styles.vitalCard}>
               <View style={styles.vitalHeader}>
                 <Ionicons name="fitness" size={18} color="#316BFF" />
@@ -267,7 +261,6 @@ export default function HomeScreen() {
               )}
             </View>
 
-            {/* Nhịp tim (Heart rate) – lấy từ pulse của huyết áp */}
             <View style={styles.vitalCard}>
               <View style={styles.vitalHeader}>
                 <Ionicons name="heart-circle-outline" size={18} color="#EF4444" />
@@ -286,7 +279,6 @@ export default function HomeScreen() {
               )}
             </View>
 
-            {/* Nhịp thở (Respiratory rate) */}
             <View style={styles.vitalCard}>
               <View style={styles.vitalHeader}>
                 <MaterialIcons name="air" size={20} color="#10B981" />

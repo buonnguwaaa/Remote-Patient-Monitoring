@@ -14,7 +14,6 @@ import { Ionicons, MaterialIcons, FontAwesome5 } from "@expo/vector-icons";
 import { useState } from "react";
 import { useAuth } from "../../hooks/useAuth";
 
-// Mock user + Patient_Info theo schema
 const initialUser = {
   id: "u1",
   name: "Nguyễn Văn A",
@@ -66,7 +65,6 @@ export default function ProfileScreen() {
 
   const handleToggleEdit = () => {
     if (editMode) {
-      // đang edit -> bấm lần nữa = hủy, reset
       setUserForm(initialUser);
       setPatientForm(initialPatientInfo);
       setEditMode(false);
@@ -76,9 +74,6 @@ export default function ProfileScreen() {
   };
 
   const handleSave = () => {
-    // Chỗ này sau này thay bằng call API cập nhật
-    // Ví dụ: await api.updateProfile(userForm, patientForm)
-    // Tạm thời mock:
     console.log("Save profile payload:", {
       user: userForm,
       patientInfo: patientForm,
@@ -203,7 +198,6 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* BẢO HIỂM & ĐỊNH DANH (insuranceNumber, CCCD) */}
         <Text style={styles.sectionTitle}>Thông tin bảo hiểm & định danh</Text>
         <View style={styles.infoCard}>
           <View style={styles.infoRowIcon}>
@@ -256,7 +250,6 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* LIÊN HỆ KHẨN CẤP (emergencyContactName, emergencyContactPhone) */}
         <Text style={styles.sectionTitle}>Người liên hệ khẩn cấp</Text>
         <View style={styles.infoCard}>
           <View style={styles.emergencyHeader}>
@@ -325,7 +318,6 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* TIỀN SỬ BỆNH (medicalHistory) */}
         <Text style={styles.sectionTitle}>Tiền sử bệnh án</Text>
         <View style={styles.infoCard}>
           <View style={styles.medicalRowHeader}>
@@ -352,7 +344,6 @@ export default function ProfileScreen() {
           )}
         </View>
 
-        {/* QR CÁ NHÂN (qrImage) */}
         <Text style={styles.sectionTitle}>Mã QR hồ sơ</Text>
         <View style={styles.qrCard}>
           <View style={styles.qrHeaderRow}>
@@ -421,7 +412,6 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* CÀI ĐẶT THÔNG BÁO / BẢO MẬT */}
         <Text style={styles.sectionTitle}>Cài đặt ứng dụng</Text>
         <View style={styles.settingsCard}>
           <View style={styles.settingRow}>
@@ -443,7 +433,6 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* NÚT LƯU KHI ĐANG CHỈNH SỬA */}
         {editMode && (
           <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
             <Ionicons
