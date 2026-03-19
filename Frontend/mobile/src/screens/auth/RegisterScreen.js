@@ -61,7 +61,7 @@ export default function RegisterScreen({ navigation, onSwitchToLogin }) {
         confirmedPassword: confirmPassword,
         dob,
         gender: genderCode,
-        role: 'patient',
+        role: 'user.patient',
       });
       setLoading(false);
       if (ok) {
