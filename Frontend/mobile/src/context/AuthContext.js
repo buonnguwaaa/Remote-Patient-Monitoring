@@ -1,7 +1,20 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import * as authApi from '../api/authApi';
+import React, { createContext, useEffect, useState } from "react";
+import * as authApi from "../api/authApi";
 
 const AuthContext = createContext(null);
+
+function extractUserPayload(response) {
+  if (!response?.ok) {
+    return null;
+  }
+
+  const body = response.body;
+  if (!body) {
+    return null;
+  }
+
+  return body.data || body.user || body;
+}
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -10,15 +23,9 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     (async () => {
       try {
-        const res = await authApi.me();
-        if (res.ok && res.body && res.body.data) {
-          setUser(res.body.data);
-        } else if (res.ok && res.body) {
-          setUser(res.body.user || res.body);
-        } else {
-          setUser(null);
-        }
-      } catch (e) {
+        const response = await authApi.me();
+        setUser(extractUserPayload(response));
+      } catch (error) {
         setUser(null);
       } finally {
         setInitializing(false);
@@ -27,54 +34,84 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = async (email, password) => {
-    const res = await authApi.login({ email, password });
-    if (!res.ok) return { ok: false, error: res.error || res.body };
-
-    const meRes = await authApi.me();
-    if (meRes.ok && meRes.body && meRes.body.data) {
-      setUser(meRes.body.data);
-      return { ok: true, data: meRes.body.data };
+    const loginResponse = await authApi.login({ email, password });
+    if (!loginResponse.ok) {
+      return { ok: false, error: loginResponse.error || loginResponse.body };
     }
 
-    if (meRes.ok && meRes.body) {
-      setUser(meRes.body.user || meRes.body);
-      return { ok: true, data: meRes.body };
+    const meResponse = await authApi.me();
+    const meUser = extractUserPayload(meResponse);
+    if (meUser) {
+      setUser(meUser);
+      return { ok: true, data: meUser };
     }
 
-    return { ok: true, data: res.body };
+    return { ok: true, data: loginResponse.body };
   };
 
   const register = async (payload) => {
-    const res = await authApi.register(payload);
-    if (!res.ok) return { ok: false, error: res.error || res.body };
-    const meRes = await authApi.me();
-    if (meRes.ok && meRes.body && meRes.body.data) setUser(meRes.body.data);
-    return { ok: true, data: res.body };
+    const response = await authApi.register(payload);
+    if (!response.ok) {
+      return { ok: false, error: response.error || response.body };
+    }
+
+    const meResponse = await authApi.me();
+    const meUser = extractUserPayload(meResponse);
+    if (meUser) {
+      setUser(meUser);
+    }
+
+    return { ok: true, data: response.body };
   };
 
   const logout = async () => {
     try {
       await authApi.logout();
-    } catch (e) {
+    } catch (error) {
+      // noop
     }
+
     setUser(null);
   };
 
   const refreshSession = async () => {
-    const res = await authApi.refresh();
-    if (!res.ok) return false;
-    const meRes = await authApi.me();
-    if (meRes.ok && meRes.body && meRes.body.data) setUser(meRes.body.data);
-    return true;
+    const refreshResponse = await authApi.refresh();
+    if (!refreshResponse.ok) {
+      return false;
+    }
+
+    const meResponse = await authApi.me();
+    const meUser = extractUserPayload(meResponse);
+    setUser(meUser);
+
+    return Boolean(meUser);
+  };
+
+  const updateUser = (nextUser) => {
+    setUser((currentUser) => {
+      if (typeof nextUser === "function") {
+        return nextUser(currentUser);
+      }
+
+      return { ...(currentUser || {}), ...(nextUser || {}) };
+    });
   };
 
   return (
-    <AuthContext.Provider value={{ user, initializing, login, register, logout, refreshSession }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        initializing,
+        login,
+        register,
+        logout,
+        refreshSession,
+        updateUser,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
 }
-
-
 
 export default AuthContext;
