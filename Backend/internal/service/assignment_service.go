@@ -7,6 +7,7 @@ import (
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
 	userDomain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository"
 	userRepository "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecase"
@@ -15,8 +16,8 @@ import (
 )
 
 type AssignmentService interface {
-	AssignPatient(ctx context.Context, input *usecase.AssignPatientInput) (*usecase.AssignmentResponse, error)
-	GetAssignmentsByRole(ctx context.Context, input *usecase.GetAssignmentsByRoleInput) ([]*usecase.AssignmentResponse, error)
+	AssignPatient(ctx context.Context, input *usecase.AssignPatientInput) (*dto.AssignmentResponse, error)
+	GetAssignmentsByRole(ctx context.Context, input *usecase.GetAssignmentsByRoleInput) ([]*dto.AssignmentResponse, error)
 }
 
 type assignmentService struct {
@@ -31,7 +32,7 @@ func NewAssignmentService(assignmentRepo repository.AssignmentRepository, userRe
 	}
 }
 
-func (s *assignmentService) AssignPatient(ctx context.Context, input *usecase.AssignPatientInput) (*usecase.AssignmentResponse, error) {
+func (s *assignmentService) AssignPatient(ctx context.Context, input *usecase.AssignPatientInput) (*dto.AssignmentResponse, error) {
 	patientID, err := util.MustHexToObjectID(input.PatientID)
 	if err != nil {
 		return nil, err
@@ -90,7 +91,7 @@ func (s *assignmentService) AssignPatient(ctx context.Context, input *usecase.As
 	return s.mapToResponse(ctx, created), nil
 }
 
-func (s *assignmentService) GetAssignmentsByRole(ctx context.Context, input *usecase.GetAssignmentsByRoleInput) ([]*usecase.AssignmentResponse, error) {
+func (s *assignmentService) GetAssignmentsByRole(ctx context.Context, input *usecase.GetAssignmentsByRoleInput) ([]*dto.AssignmentResponse, error) {
 	userID, err := util.MustHexToObjectID(input.UserID)
 	if err != nil {
 		return nil, err
@@ -114,16 +115,16 @@ func (s *assignmentService) GetAssignmentsByRole(ctx context.Context, input *use
 	return s.mapListToResponse(ctx, assignments), nil
 }
 
-func (s *assignmentService) mapListToResponse(ctx context.Context, assignments []*domain.Assignment) []*usecase.AssignmentResponse {
-	var responses []*usecase.AssignmentResponse
+func (s *assignmentService) mapListToResponse(ctx context.Context, assignments []*domain.Assignment) []*dto.AssignmentResponse {
+	var responses []*dto.AssignmentResponse
 	for _, a := range assignments {
 		responses = append(responses, s.mapToResponse(ctx, a))
 	}
 	return responses
 }
 
-func (s *assignmentService) mapToResponse(ctx context.Context, a *domain.Assignment) *usecase.AssignmentResponse {
-	resp := &usecase.AssignmentResponse{
+func (s *assignmentService) mapToResponse(ctx context.Context, a *domain.Assignment) *dto.AssignmentResponse {
+	resp := &dto.AssignmentResponse{
 		ID:         a.ID,
 		PatientID:  a.PatientID,
 		DoctorID:   a.DoctorID,
