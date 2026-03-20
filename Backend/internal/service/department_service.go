@@ -54,7 +54,14 @@ func (s *departmentService) Create(ctx context.Context, input *usecase.CreateDep
 		return nil, err
 	}
 
-	return s.mapToResponse(ctx, created), nil
+	return &dto.DepartmentResponse{
+		ID:          created.ID,
+		Name:        created.Name,
+		Description: created.Description,
+		MemberCount: 0,
+		CreatedAt:   created.CreatedAt,
+		UpdatedAt:   created.UpdatedAt,
+	}, nil
 }
 
 func (s *departmentService) FindAll(ctx context.Context) ([]*dto.DepartmentResponse, error) {
@@ -63,9 +70,26 @@ func (s *departmentService) FindAll(ctx context.Context) ([]*dto.DepartmentRespo
 		return nil, err
 	}
 
+	deptIDs := make([]primitive.ObjectID, 0, len(depts))
+	for _, d := range depts {
+		deptIDs = append(deptIDs, d.ID)
+	}
+
+	memberCounts, err := s.deptRepo.CountMembersByDepartmentIDs(ctx, deptIDs)
+	if err != nil {
+		return nil, err
+	}
+
 	var responses []*dto.DepartmentResponse
 	for _, d := range depts {
-		responses = append(responses, s.mapToResponse(ctx, d))
+		responses = append(responses, &dto.DepartmentResponse{
+			ID:          d.ID,
+			Name:        d.Name,
+			Description: d.Description,
+			MemberCount: memberCounts[d.ID],
+			CreatedAt:   d.CreatedAt,
+			UpdatedAt:   d.UpdatedAt,
+		})
 	}
 	return responses, nil
 }
@@ -76,17 +100,13 @@ func (s *departmentService) GetMembers(ctx context.Context, input *usecase.GetDe
 		return nil, err
 	}
 
-	doctors, err := s.doctorRepo.FindByDepartmentID(ctx, oid)
-	if err != nil {
-		return nil, err
-	}
-	nurses, err := s.nurseRepo.FindByDepartmentID(ctx, oid)
+	users, err := s.deptRepo.FindMembersByDepartmentID(ctx, oid)
 	if err != nil {
 		return nil, err
 	}
 
 	var members []*dto.Member
-	for _, u := range doctors {
+	for _, u := range users {
 		members = append(members, &dto.Member{
 			ID:        u.ID.Hex(),
 			Name:      u.Name,
@@ -96,16 +116,7 @@ func (s *departmentService) GetMembers(ctx context.Context, input *usecase.GetDe
 			CreatedAt: u.CreatedAt.Format(time.RFC3339),
 		})
 	}
-	for _, u := range nurses {
-		members = append(members, &dto.Member{
-			ID:        u.ID.Hex(),
-			Name:      u.Name,
-			Email:     u.Email,
-			Role:      string(u.Role),
-			Avatar:    "", // Placeholder if avatar not available in user struct
-			CreatedAt: u.CreatedAt.Format(time.RFC3339),
-		})
-	}
+
 	return members, nil
 }
 
@@ -140,19 +151,4 @@ func (s *departmentService) AddMember(ctx context.Context, input *usecase.AddDep
 	}
 
 	return errors.New("only doctors and nurses can be assigned to departments")
-}
-
-func (s *departmentService) mapToResponse(ctx context.Context, d *domain.Department) *dto.DepartmentResponse {
-	// Count members
-	doctorCount, _ := s.doctorRepo.CountByDepartmentID(ctx, d.ID)
-	nurseCount, _ := s.nurseRepo.CountByDepartmentID(ctx, d.ID)
-
-	return &dto.DepartmentResponse{
-		ID:          d.ID,
-		Name:        d.Name,
-		Description: d.Description,
-		MemberCount: int(doctorCount + nurseCount),
-		CreatedAt:   d.CreatedAt,
-		UpdatedAt:   d.UpdatedAt,
-	}
 }
