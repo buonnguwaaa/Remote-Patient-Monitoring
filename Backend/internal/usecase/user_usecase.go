@@ -30,6 +30,23 @@ type UpdateUserInput struct {
 	YearsOfExperience int
 	// Nurse specific
 	Ward string
+	// Patient specific
+	InsuranceNumber       string
+	CCCD                  string
+	EmergencyContactName  string
+	EmergencyContactPhone string
+	MedicalHistory        string
+}
+
+type UpdatePatientProfileInput struct {
+	ID                    string
+	Name                  string
+	Phone                 string
+	InsuranceNumber       string
+	CCCD                  string
+	EmergencyContactName  string
+	EmergencyContactPhone string
+	MedicalHistory        string
 }
 
 type DeleteUserInput struct {

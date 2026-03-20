@@ -4,481 +4,836 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Switch,
   Image,
   TextInput,
   Alert,
+  ActivityIndicator,
+  RefreshControl,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons, MaterialIcons, FontAwesome5 } from "@expo/vector-icons";
-import { useState } from "react";
+import { useCallback, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
+
 import { useAuth } from "../../hooks/useAuth";
+import {
+  getMyPatientProfile,
+  updateMyPatientProfile,
+} from "../../api/profileApi";
+import {
+  getFirstValidationMessage,
+  validatePatientProfileForm,
+} from "../../utils/profileValidation";
 
-const initialUser = {
-  id: "u1",
-  name: "Nguyễn Văn A",
-  email: "nguyenvana@example.com",
-  phone: "+84 912 345 678",
+const EMPTY_USER_FORM = {
+  id: "",
+  name: "",
+  email: "",
+  phone: "",
+  avatarUrl: "",
 };
 
-const initialPatientInfo = {
-  id: "pi_1",
-  userId: "u1",
-  insuranceNumber: "BA123456789",
-  CCCD: "012345678901",
-  emergencyContactName: "Nguyễn Văn B",
-  emergencyContactPhone: "+84 987 654 321",
-  medicalHistory:
-    "Tăng huyết áp 5 năm, rối loạn mỡ máu. Đang dùng thuốc hạ áp hàng ngày. Không dị ứng thuốc đã biết.",
-  qrImage:
-    "https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=patient_u1",
-  createdAt: "2025-10-01T08:00:00Z",
-  updatedAt: "2025-11-20T09:30:00Z",
+const EMPTY_PATIENT_FORM = {
+  id: "",
+  patientCode: "",
+  insuranceNumber: "",
+  cccd: "",
+  emergencyContactName: "",
+  emergencyContactPhone: "",
+  medicalHistory: "",
+  gender: "",
+  dob: "",
+  createdAt: "",
+  updatedAt: "",
 };
 
-function formatDateTime(iso) {
-  const d = new Date(iso);
-  const dd = String(d.getDate()).padStart(2, "0");
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const yyyy = d.getFullYear();
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mi = String(d.getMinutes()).padStart(2, "0");
+function getAvatarInitial(name) {
+  if (!name || !name.trim()) {
+    return "BN";
+  }
+
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(-2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
+}
+
+function parseDateValue(value) {
+  if (!value) {
+    return null;
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split("-").map(Number);
+    return new Date(year, month - 1, day);
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return parsed;
+}
+
+function formatDateTime(value) {
+  const parsed = parseDateValue(value);
+  if (!parsed) {
+    return "Chưa cập nhật";
+  }
+
+  const dd = String(parsed.getDate()).padStart(2, "0");
+  const mm = String(parsed.getMonth() + 1).padStart(2, "0");
+  const yyyy = parsed.getFullYear();
+  const hh = String(parsed.getHours()).padStart(2, "0");
+  const mi = String(parsed.getMinutes()).padStart(2, "0");
+
   return `${dd}/${mm}/${yyyy} • ${hh}:${mi}`;
 }
 
+function formatDateOnly(value) {
+  const parsed = parseDateValue(value);
+  if (!parsed) {
+    return value || "Chưa cập nhật";
+  }
+
+  const dd = String(parsed.getDate()).padStart(2, "0");
+  const mm = String(parsed.getMonth() + 1).padStart(2, "0");
+  const yyyy = parsed.getFullYear();
+
+  return `${dd}/${mm}/${yyyy}`;
+}
+
+function formatGender(gender) {
+  switch (gender) {
+    case "M":
+      return "Nam";
+    case "F":
+      return "Nữ";
+    case "O":
+      return "Khác";
+    default:
+      return "Chưa cập nhật";
+  }
+}
+
+function getErrorMessage(response) {
+  if (!response) {
+    return "Không thể kết nối tới máy chủ.";
+  }
+
+  if (typeof response.error === "string" && response.error) {
+    return response.error;
+  }
+
+  if (typeof response.body === "string" && response.body) {
+    return response.body;
+  }
+
+  if (response.body?.error) {
+    return response.body.error;
+  }
+
+  return "Đã xảy ra lỗi không xác định.";
+}
+
+function normalizeProfile(profile = {}) {
+  const user = {
+    id: profile.id || "",
+    name: profile.name || "",
+    email: profile.email || "",
+    phone: profile.phone || "",
+    avatarUrl: profile.avatarUrl || "",
+  };
+
+  const patient = {
+    id: profile.id || "",
+    patientCode: profile.patientCode || "",
+    insuranceNumber: profile.insuranceNumber || "",
+    cccd: profile.cccd || "",
+    emergencyContactName: profile.emergencyContactName || "",
+    emergencyContactPhone: profile.emergencyContactPhone || "",
+    medicalHistory: profile.medicalHistory || "",
+    gender: profile.gender || "",
+    dob: profile.dob || "",
+    createdAt: profile.createdAt || "",
+    updatedAt: profile.updatedAt || "",
+  };
+
+  return { user, patient };
+}
+
+function ValidationMessage({ message }) {
+  if (!message) {
+    return null;
+  }
+
+  return <Text style={styles.validationText}>{message}</Text>;
+}
+
 export default function ProfileScreen() {
-  const { logout } = useAuth();
-  const [notify, setNotify] = useState(true);
+  const { logout, updateUser } = useAuth();
 
   const [editMode, setEditMode] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
 
-  const [userForm, setUserForm] = useState(initialUser);
-  const [patientForm, setPatientForm] = useState(initialPatientInfo);
+  const [userForm, setUserForm] = useState(EMPTY_USER_FORM);
+  const [patientForm, setPatientForm] = useState(EMPTY_PATIENT_FORM);
+  const [snapshot, setSnapshot] = useState({
+    user: EMPTY_USER_FORM,
+    patient: EMPTY_PATIENT_FORM,
+  });
+
+  const clearFieldError = useCallback((field) => {
+    setFieldErrors((prev) => {
+      if (!prev[field]) {
+        return prev;
+      }
+
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  }, []);
+
+  const applyProfile = useCallback((profile) => {
+    const normalized = normalizeProfile(profile);
+    setUserForm(normalized.user);
+    setPatientForm(normalized.patient);
+    setSnapshot(normalized);
+    setFieldErrors({});
+    setLoadError("");
+  }, []);
+
+  const loadProfile = useCallback(
+    async ({ showLoader = true, showRefresh = false } = {}) => {
+      if (showLoader) {
+        setLoading(true);
+      }
+      if (showRefresh) {
+        setRefreshing(true);
+      }
+
+      try {
+        const response = await getMyPatientProfile();
+        if (!response.ok) {
+          throw new Error(getErrorMessage(response));
+        }
+
+        applyProfile(response.body?.data || {});
+      } catch (error) {
+        setLoadError(error.message || "Không tải được hồ sơ bệnh nhân.");
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [applyProfile]
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      loadProfile();
+    }, [loadProfile])
+  );
 
   const handleChangeUser = (field, value) => {
+    clearFieldError(field);
     setUserForm((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleChangePatient = (field, value) => {
+    clearFieldError(field);
     setPatientForm((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleToggleEdit = () => {
+    if (saving) {
+      return;
+    }
+
     if (editMode) {
-      setUserForm(initialUser);
-      setPatientForm(initialPatientInfo);
+      setUserForm(snapshot.user);
+      setPatientForm(snapshot.patient);
+      setFieldErrors({});
       setEditMode(false);
-    } else {
-      setEditMode(true);
+      return;
+    }
+
+    setEditMode(true);
+  };
+
+  const handleSave = async () => {
+    const { payload, errors, isValid } = validatePatientProfileForm({
+      userForm,
+      patientForm,
+    });
+
+    if (!isValid) {
+      setFieldErrors(errors);
+      Alert.alert("Thông tin chưa hợp lệ", getFirstValidationMessage(errors));
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const response = await updateMyPatientProfile(payload);
+      if (!response.ok) {
+        const backendField = response.body?.field;
+        if (backendField) {
+          setFieldErrors((prev) => ({
+            ...prev,
+            [backendField]: getErrorMessage(response),
+          }));
+        }
+        throw new Error(getErrorMessage(response));
+      }
+
+      const updatedProfile = response.body?.data || {
+        ...payload,
+        id: patientForm.id,
+        patientCode: patientForm.patientCode,
+        createdAt: patientForm.createdAt,
+        updatedAt: new Date().toISOString(),
+        gender: patientForm.gender,
+        dob: patientForm.dob,
+        email: userForm.email,
+        avatarUrl: userForm.avatarUrl,
+      };
+
+      applyProfile(updatedProfile);
+      updateUser({
+        id: updatedProfile.id,
+        name: updatedProfile.name,
+        email: updatedProfile.email,
+        phone: updatedProfile.phone,
+        avatarUrl: updatedProfile.avatarUrl,
+        gender: updatedProfile.gender,
+        dob: updatedProfile.dob,
+      });
+
+      setEditMode(false);
+      Alert.alert("Đã lưu", "Thông tin hồ sơ đã được cập nhật.");
+    } catch (error) {
+      Alert.alert("Không thể lưu hồ sơ", error.message || "Vui lòng thử lại.");
+    } finally {
+      setSaving(false);
     }
   };
 
-  const handleSave = () => {
-    console.log("Save profile payload:", {
-      user: userForm,
-      patientInfo: patientForm,
-    });
-    Alert.alert("Đã lưu", "Thông tin hồ sơ đã được cập nhật.");
-    setEditMode(false);
-  };
+  const avatarInitial = getAvatarInitial(userForm.name);
+  const hasProfileData = Boolean(userForm.id || snapshot.user.id);
 
-  const avatarInitial =
-    userForm.name && userForm.name.trim().length > 0
-      ? userForm.name
-        .split(" ")
-        .filter((p) => p.length > 0)
-        .slice(-2)
-        .map((p) => p[0])
-        .join("")
-        .toUpperCase()
-      : "NA";
+  if (loading && !hasProfileData) {
+    return (
+      <SafeAreaView style={styles.stateContainer}>
+        <View style={styles.stateCard}>
+          <ActivityIndicator size="large" color="#2563EB" />
+          <Text style={styles.stateTitle}>Đang tải hồ sơ bệnh nhân</Text>
+          <Text style={styles.stateSubtitle}>
+            Hệ thống đang lấy thông tin mới nhất từ máy chủ.
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
-  return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#F2F6FF" }}>
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        {/* HEADER */}
-        <View style={styles.headerRow}>
-          <Text style={styles.headerTitle}>Hồ sơ bệnh nhân</Text>
-
-          <TouchableOpacity
-            style={[styles.editToggleBtn, editMode && styles.editToggleBtnActive]}
-            onPress={handleToggleEdit}
-          >
-            <Ionicons
-              name={editMode ? "close-outline" : "create-outline"}
-              size={16}
-              color={editMode ? "#B91C1C" : "#2563EB"}
-            />
-            <Text
-              style={[
-                styles.editToggleText,
-                editMode && styles.editToggleTextActive,
-              ]}
-            >
-              {editMode ? "Hủy" : "Chỉnh sửa"}
-            </Text>
+  if (!hasProfileData && loadError) {
+    return (
+      <SafeAreaView style={styles.stateContainer}>
+        <View style={styles.stateCard}>
+          <Ionicons name="cloud-offline-outline" size={34} color="#B91C1C" />
+          <Text style={styles.stateTitle}>Không tải được hồ sơ</Text>
+          <Text style={styles.stateSubtitle}>{loadError}</Text>
+          <TouchableOpacity style={styles.stateButton} onPress={() => loadProfile()}>
+            <Text style={styles.stateButtonText}>Thử lại</Text>
           </TouchableOpacity>
         </View>
+      </SafeAreaView>
+    );
+  }
 
-        {/* PROFILE SUMMARY (user + Patient_Info) */}
-        <View style={styles.profileCard}>
-          <View style={styles.profileTopRow}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{avatarInitial}</Text>
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        <ScrollView
+          style={styles.flex}
+          contentContainerStyle={styles.contentContainer}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => loadProfile({ showLoader: false, showRefresh: true })}
+            />
+          }
+        >
+          <View style={styles.headerRow}>
+            <Text style={styles.headerTitle}>Hồ sơ bệnh nhân</Text>
+
+            <TouchableOpacity
+              style={[
+                styles.editToggleBtn,
+                editMode && styles.editToggleBtnActive,
+                (loading || saving) && styles.actionDisabled,
+              ]}
+              onPress={handleToggleEdit}
+              disabled={loading || saving}
+            >
+              <Ionicons
+                name={editMode ? "close-outline" : "create-outline"}
+                size={16}
+                color={editMode ? "#B91C1C" : "#2563EB"}
+              />
+              <Text
+                style={[
+                  styles.editToggleText,
+                  editMode && styles.editToggleTextActive,
+                ]}
+              >
+                {editMode ? "Hủy" : "Chỉnh sửa"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {loadError ? (
+            <View style={styles.inlineErrorCard}>
+              <Ionicons name="warning-outline" size={18} color="#B91C1C" />
+              <Text style={styles.inlineErrorText}>{loadError}</Text>
+            </View>
+          ) : null}
+
+          <View style={styles.profileCard}>
+            <View style={styles.profileTopRow}>
+              <View style={styles.avatarColumn}>
+                <View style={styles.avatarWrapper}>
+                  {userForm.avatarUrl ? (
+                    <Image source={{ uri: userForm.avatarUrl }} style={styles.avatarImage} />
+                  ) : (
+                    <View style={styles.avatar}>
+                      <Text style={styles.avatarText}>{avatarInitial}</Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={styles.avatarHint}>
+                  
+                </Text>
+              </View>
+
+              <View style={styles.profileMainContent}>
+                {editMode ? (
+                  <>
+                    <Text style={styles.fieldLabel}>Họ tên</Text>
+                    <TextInput
+                      style={styles.inputPrimary}
+                      value={userForm.name}
+                      onChangeText={(value) => handleChangeUser("name", value)}
+                      placeholder="Nhập họ tên bệnh nhân"
+                      maxLength={120}
+                    />
+                    <ValidationMessage message={fieldErrors.name} />
+                  </>
+                ) : (
+                  <Text style={styles.profileName}>{userForm.name || "Chưa cập nhật"}</Text>
+                )}
+
+                <Text style={styles.profileSub}>
+                  Mã hồ sơ: {patientForm.patientCode || "Đang cấp mã"}
+                </Text>
+
+                <View style={styles.chipRow}>
+                  <View style={styles.chipPrimary}>
+                    <Ionicons name="person-circle-outline" size={14} color="#fff" />
+                    <Text style={styles.chipPrimaryText}>Bệnh nhân</Text>
+                  </View>
+                  <View style={styles.chipOutline}>
+                    <Ionicons name="shield-checkmark-outline" size={14} color="#2563EB" />
+                    <Text style={styles.chipOutlineText}>Theo dõi từ xa</Text>
+                  </View>
+                </View>
+              </View>
             </View>
 
-            <View style={{ flex: 1 }}>
-              {editMode ? (
-                <>
-                  <Text style={styles.fieldLabel}>Họ tên</Text>
-                  <TextInput
-                    style={styles.inputPrimary}
-                    value={userForm.name}
-                    onChangeText={(t) => handleChangeUser("name", t)}
-                    placeholder="Nhập họ tên bệnh nhân"
-                  />
-                </>
-              ) : (
-                <Text style={styles.profileName}>{userForm.name}</Text>
-              )}
-
-              <Text style={styles.profileSub}>Mã hồ sơ: {patientForm.id}</Text>
-              <View style={styles.chipRow}>
-                <View style={styles.chipPrimary}>
-                  <Ionicons
-                    name="person-circle-outline"
-                    size={14}
-                    color="#fff"
-                  />
-                  <Text style={styles.chipPrimaryText}>Bệnh nhân</Text>
+            <View style={styles.contactStack}>
+              <View style={styles.contactItem}>
+                <Ionicons name="mail-outline" size={16} color="#6B7280" />
+                <View style={styles.contactContent}>
+                  <Text style={styles.contactLabel}>Email đăng nhập</Text>
+                  <Text style={styles.contactValue}>{userForm.email || "Chưa cập nhật"}</Text>
+                  {editMode ? (
+                    <Text style={styles.contactHint}>
+                    </Text>
+                  ) : null}
                 </View>
-                <View style={styles.chipOutline}>
-                  <Ionicons
-                    name="shield-checkmark-outline"
-                    size={14}
-                    color="#2563EB"
-                  />
-                  <Text style={styles.chipOutlineText}>Theo dõi từ xa</Text>
+              </View>
+
+              <View style={styles.contactDivider} />
+
+              <View style={styles.contactItem}>
+                <Ionicons name="call-outline" size={16} color="#6B7280" />
+                <View style={styles.contactContent}>
+                  <Text style={styles.contactLabel}>Số điện thoại</Text>
+                  {editMode ? (
+                    <>
+                      <TextInput
+                        style={styles.inputInline}
+                        value={userForm.phone}
+                        onChangeText={(value) => handleChangeUser("phone", value)}
+                        placeholder="Nhập số điện thoại"
+                        keyboardType="phone-pad"
+                        autoCorrect={false}
+                        maxLength={18}
+                      />
+                      <ValidationMessage message={fieldErrors.phone} />
+                    </>
+                  ) : userForm.phone ? (
+                    <Text style={styles.contactValue}>{userForm.phone}</Text>
+                  ) : (
+                    <Text style={styles.infoHint}>Chưa cập nhật số điện thoại</Text>
+                  )}
                 </View>
               </View>
             </View>
           </View>
 
-          {/* Email + Phone */}
-          <View style={styles.profileBottomRow}>
-            <View style={styles.profileInfoItem}>
-              <Ionicons name="mail" size={16} color="#6B7280" />
-              {editMode ? (
-                <TextInput
-                  style={styles.inputInline}
-                  value={userForm.email}
-                  onChangeText={(t) => handleChangeUser("email", t)}
-                  placeholder="Nhập email"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
-              ) : (
-                <Text style={styles.profileInfoText}>{userForm.email}</Text>
-              )}
+          <Text style={styles.sectionTitle}>Thông tin cá nhân</Text>
+          <View style={styles.infoCard}>
+            <View style={styles.infoRowIcon}>
+              <View style={styles.infoIconWrapper}>
+                <Ionicons name="male-female-outline" size={20} color="#2563EB" />
+              </View>
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>Giới tính</Text>
+                <Text style={styles.infoValue}>{formatGender(patientForm.gender)}</Text>
+              </View>
             </View>
-            <View style={styles.profileInfoItem}>
-              <Ionicons name="call" size={16} color="#6B7280" />
-              {editMode ? (
-                <TextInput
-                  style={styles.inputInline}
-                  value={userForm.phone}
-                  onChangeText={(t) => handleChangeUser("phone", t)}
-                  placeholder="Nhập số điện thoại"
-                  keyboardType="phone-pad"
-                />
-              ) : (
-                <Text style={styles.profileInfoText}>{userForm.phone}</Text>
-              )}
+
+            <View style={styles.infoDivider} />
+
+            <View style={styles.infoRowIcon}>
+              <View style={styles.infoIconWrapper}>
+                <Ionicons name="calendar-outline" size={20} color="#2563EB" />
+              </View>
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>Ngày sinh</Text>
+                <Text style={styles.infoValue}>{formatDateOnly(patientForm.dob)}</Text>
+              </View>
             </View>
           </View>
-        </View>
 
-        <Text style={styles.sectionTitle}>Thông tin bảo hiểm & định danh</Text>
-        <View style={styles.infoCard}>
-          <View style={styles.infoRowIcon}>
-            <View style={styles.infoIconWrapper}>
-              <MaterialIcons
-                name="health-and-safety"
-                size={20}
-                color="#2563EB"
-              />
+          <Text style={styles.sectionTitle}>Thông tin bảo hiểm & định danh</Text>
+          <View style={styles.infoCard}>
+            <View style={styles.infoRowIcon}>
+              <View style={styles.infoIconWrapper}>
+                <MaterialIcons name="health-and-safety" size={20} color="#2563EB" />
+              </View>
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>Số BHYT</Text>
+                {editMode ? (
+                  <>
+                    <TextInput
+                      style={styles.inputPrimary}
+                      value={patientForm.insuranceNumber}
+                      onChangeText={(value) =>
+                        handleChangePatient("insuranceNumber", value.toUpperCase())
+                      }
+                      placeholder="Nhập số bảo hiểm y tế"
+                      autoCapitalize="characters"
+                      autoCorrect={false}
+                      maxLength={15}
+                    />
+                    <ValidationMessage message={fieldErrors.insuranceNumber} />
+                  </>
+                ) : patientForm.insuranceNumber ? (
+                  <Text style={styles.infoValue}>{patientForm.insuranceNumber}</Text>
+                ) : (
+                  <Text style={styles.infoHint}>Chưa cập nhật số BHYT</Text>
+                )}
+              </View>
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.infoLabel}>Số BHYT</Text>
-              {editMode ? (
-                <TextInput
-                  style={styles.inputPrimary}
-                  value={patientForm.insuranceNumber}
-                  onChangeText={(t) =>
-                    handleChangePatient("insuranceNumber", t)
-                  }
-                  placeholder="Nhập số bảo hiểm y tế"
-                />
-              ) : (
-                <Text style={styles.infoValue}>
-                  {patientForm.insuranceNumber}
+
+            <View style={styles.infoDivider} />
+
+            <View style={styles.infoRowIcon}>
+              <View style={styles.infoIconWrapper}>
+                <FontAwesome5 name="id-card" size={18} color="#2563EB" />
+              </View>
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>CCCD</Text>
+                {editMode ? (
+                  <>
+                    <TextInput
+                      style={styles.inputPrimary}
+                      value={patientForm.cccd}
+                      onChangeText={(value) => handleChangePatient("cccd", value)}
+                      placeholder="Nhập số CCCD"
+                      keyboardType="numeric"
+                      autoCorrect={false}
+                      maxLength={12}
+                    />
+                    <ValidationMessage message={fieldErrors.cccd} />
+                  </>
+                ) : patientForm.cccd ? (
+                  <Text style={styles.infoValue}>{patientForm.cccd}</Text>
+                ) : (
+                  <Text style={styles.infoHint}>Chưa cập nhật số CCCD</Text>
+                )}
+              </View>
+            </View>
+          </View>
+
+          <Text style={styles.sectionTitle}>Người liên hệ khẩn cấp</Text>
+          <View style={styles.infoCard}>
+            <View style={styles.emergencyHeader}>
+              <View style={styles.emergencyBadge}>
+                <Ionicons name="warning-outline" size={14} color="#B91C1C" />
+                <Text style={styles.emergencyBadgeText}>Sử dụng khi cấp cứu</Text>
+              </View>
+            </View>
+
+            <View style={styles.emergencyRow}>
+              <View style={styles.emergencyAvatar}>
+                <Text style={styles.emergencyAvatarText}>
+                  {patientForm.emergencyContactName
+                    ? patientForm.emergencyContactName.charAt(0).toUpperCase()
+                    : "?"}
                 </Text>
-              )}
+              </View>
+              <View style={styles.infoContent}>
+                <Text style={styles.infoLabel}>Họ tên</Text>
+                {editMode ? (
+                  <>
+                    <TextInput
+                      style={styles.inputPrimary}
+                      value={patientForm.emergencyContactName}
+                      onChangeText={(value) =>
+                        handleChangePatient("emergencyContactName", value)
+                      }
+                      placeholder="Nhập tên người liên hệ khẩn cấp"
+                      maxLength={120}
+                    />
+                    <ValidationMessage message={fieldErrors.emergencyContactName} />
+                  </>
+                ) : patientForm.emergencyContactName ? (
+                  <Text style={styles.infoValue}>{patientForm.emergencyContactName}</Text>
+                ) : (
+                  <Text style={styles.infoHint}>Chưa cập nhật người liên hệ khẩn cấp</Text>
+                )}
+
+                <Text style={[styles.infoLabel, styles.marginTopSmall]}>Số điện thoại</Text>
+                {editMode ? (
+                  <>
+                    <TextInput
+                      style={styles.inputPrimary}
+                      value={patientForm.emergencyContactPhone}
+                      onChangeText={(value) =>
+                        handleChangePatient("emergencyContactPhone", value)
+                      }
+                      placeholder="Nhập số điện thoại khẩn cấp"
+                      keyboardType="phone-pad"
+                      autoCorrect={false}
+                      maxLength={18}
+                    />
+                    <ValidationMessage message={fieldErrors.emergencyContactPhone} />
+                  </>
+                ) : patientForm.emergencyContactPhone ? (
+                  <View style={styles.phoneRow}>
+                    <Ionicons
+                      name="call"
+                      size={14}
+                      color="#16A34A"
+                      style={styles.phoneIcon}
+                    />
+                    <Text style={styles.phoneText}>{patientForm.emergencyContactPhone}</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.infoHint}>Chưa cập nhật số điện thoại khẩn cấp</Text>
+                )}
+              </View>
             </View>
           </View>
 
-          <View style={styles.infoDivider} />
-
-          <View style={styles.infoRowIcon}>
-            <View style={styles.infoIconWrapper}>
-              <FontAwesome5 name="id-card" size={18} color="#2563EB" />
+          <Text style={styles.sectionTitle}>Tiền sử bệnh án</Text>
+          <View style={styles.infoCard}>
+            <View style={styles.medicalRowHeader}>
+              <View style={styles.infoIconWrapper}>
+                <Ionicons name="document-text-outline" size={20} color="#2563EB" />
+              </View>
+              <Text style={styles.medicalTitle}>Tóm tắt</Text>
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.infoLabel}>CCCD</Text>
-              {editMode ? (
+
+            {editMode ? (
+              <>
                 <TextInput
-                  style={styles.inputPrimary}
-                  value={patientForm.CCCD}
-                  onChangeText={(t) => handleChangePatient("CCCD", t)}
-                  placeholder="Nhập số CCCD"
-                  keyboardType="numeric"
+                  style={styles.textArea}
+                  value={patientForm.medicalHistory}
+                  onChangeText={(value) => handleChangePatient("medicalHistory", value)}
+                  placeholder="Nhập tiền sử bệnh án..."
+                  multiline
+                  textAlignVertical="top"
+                  maxLength={2000}
                 />
-              ) : (
-                <Text style={styles.infoValue}>{patientForm.CCCD}</Text>
-              )}
-            </View>
-          </View>
-        </View>
-
-        <Text style={styles.sectionTitle}>Người liên hệ khẩn cấp</Text>
-        <View style={styles.infoCard}>
-          <View style={styles.emergencyHeader}>
-            <View style={styles.emergencyBadge}>
-              <Ionicons name="warning-outline" size={14} color="#B91C1C" />
-              <Text style={styles.emergencyBadgeText}>Sử dụng khi cấp cứu</Text>
-            </View>
-          </View>
-
-          <View style={styles.emergencyRow}>
-            <View style={styles.emergencyAvatar}>
-              <Text style={styles.emergencyAvatarText}>
-                {patientForm.emergencyContactName
-                  ? patientForm.emergencyContactName.charAt(0)
-                  : "?"}
+                <Text style={styles.textAreaCounter}>
+                  {patientForm.medicalHistory.length}/2000 ký tự
+                </Text>
+                <ValidationMessage message={fieldErrors.medicalHistory} />
+              </>
+            ) : patientForm.medicalHistory ? (
+              <Text style={styles.medicalText}>{patientForm.medicalHistory}</Text>
+            ) : (
+              <Text style={styles.infoHint}>
+                Chưa có thông tin tiền sử bệnh án. Vui lòng cập nhật cùng bác sĩ.
               </Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.infoLabel}>Họ tên</Text>
-              {editMode ? (
-                <TextInput
-                  style={styles.inputPrimary}
-                  value={patientForm.emergencyContactName}
-                  onChangeText={(t) =>
-                    handleChangePatient("emergencyContactName", t)
-                  }
-                  placeholder="Nhập tên người liên hệ khẩn cấp"
-                />
-              ) : (
-                <Text style={styles.infoValue}>
-                  {patientForm.emergencyContactName}
-                </Text>
-              )}
-
-              <Text style={[styles.infoLabel, { marginTop: 6 }]}>
-                Số điện thoại
-              </Text>
-              {editMode ? (
-                <TextInput
-                  style={styles.inputPrimary}
-                  value={patientForm.emergencyContactPhone}
-                  onChangeText={(t) =>
-                    handleChangePatient("emergencyContactPhone", t)
-                  }
-                  placeholder="Nhập số điện thoại khẩn cấp"
-                  keyboardType="phone-pad"
-                />
-              ) : patientForm.emergencyContactPhone ? (
-                <View style={styles.phoneRow}>
-                  <Ionicons
-                    name="call"
-                    size={14}
-                    color="#16A34A"
-                    style={{ marginRight: 4 }}
-                  />
-                  <Text style={styles.phoneText}>
-                    {patientForm.emergencyContactPhone}
-                  </Text>
-                </View>
-              ) : (
-                <Text style={styles.infoHint}>
-                  Chưa cập nhật số điện thoại khẩn cấp
-                </Text>
-              )}
-            </View>
+            )}
           </View>
-        </View>
 
-        <Text style={styles.sectionTitle}>Tiền sử bệnh án</Text>
-        <View style={styles.infoCard}>
-          <View style={styles.medicalRowHeader}>
-            <View style={styles.infoIconWrapper}>
-              <Ionicons name="document-text-outline" size={20} color="#2563EB" />
+        
+
+          <Text style={styles.sectionTitle}>Tài khoản & cài đặt</Text>
+          <View style={styles.settingsCard}>
+            <View style={styles.settingInfoRow}>
+              <Ionicons name="mail-unread-outline" size={18} color="#2563EB" />
+              <View style={styles.settingContent}>
+                <Text style={styles.settingLabel}>Email đăng nhập được bảo vệ</Text>
+                <Text style={styles.settingSub}>
+              
+                </Text>
+              </View>
             </View>
-            <Text style={styles.medicalTitle}>Tóm tắt</Text>
+
+            <View style={styles.infoDivider} />
+
+            <View style={styles.settingInfoRow}>
+              <Ionicons name="notifications-outline" size={18} color="#2563EB" />
+              <View style={styles.settingContent}>
+                <Text style={styles.settingLabel}>Thông báo đang dùng cấu hình mặc định</Text>
+                <Text style={styles.settingSub}>
+                  
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.infoDivider} />
+
+            <View style={styles.settingInfoRow}>
+              <Ionicons name="lock-closed-outline" size={18} color="#2563EB" />
+              <View style={styles.settingContent}>
+                <Text style={styles.settingLabel}>Bảo mật tài khoản</Text>
+                <Text style={styles.settingSub}>
+                  
+                </Text>
+              </View>
+            </View>
           </View>
 
           {editMode ? (
-            <TextInput
-              style={styles.textArea}
-              value={patientForm.medicalHistory}
-              onChangeText={(t) => handleChangePatient("medicalHistory", t)}
-              placeholder="Nhập tiền sử bệnh án..."
-              multiline
-            />
-          ) : patientForm.medicalHistory ? (
-            <Text style={styles.medicalText}>{patientForm.medicalHistory}</Text>
-          ) : (
-            <Text style={styles.infoHint}>
-              Chưa có thông tin tiền sử bệnh án. Vui lòng cập nhật cùng bác sĩ.
-            </Text>
-          )}
-        </View>
-
-        <Text style={styles.sectionTitle}>Mã QR hồ sơ</Text>
-        <View style={styles.qrCard}>
-          <View style={styles.qrHeaderRow}>
-            <View style={styles.qrTitleRow}>
-              <Ionicons
-                name="qr-code-outline"
-                size={18}
-                color="#111827"
-                style={{ marginRight: 6 }}
-              />
-              <Text style={styles.qrTitle}>QR cá nhân</Text>
-            </View>
-            <Text style={styles.qrSubtitle}>Quét để truy cập nhanh hồ sơ</Text>
-          </View>
-
-          <View style={styles.qrContentRow}>
-            <View style={styles.qrImageWrapper}>
-              {patientForm.qrImage ? (
-                <Image
-                  source={{ uri: patientForm.qrImage }}
-                  style={styles.qrImage}
-                />
+            <TouchableOpacity
+              style={[styles.saveBtn, saving && styles.actionDisabled]}
+              onPress={handleSave}
+              disabled={saving}
+            >
+              {saving ? (
+                <ActivityIndicator size="small" color="#FFFFFF" style={styles.saveSpinner} />
               ) : (
-                <View style={styles.qrPlaceholder}>
-                  <Ionicons name="qr-code-outline" size={40} color="#9CA3AF" />
-                  <Text style={styles.qrPlaceholderText}>Chưa có QR</Text>
-                </View>
+                <Ionicons
+                  name="save-outline"
+                  size={18}
+                  color="#FFFFFF"
+                  style={styles.saveIcon}
+                />
               )}
-            </View>
+              <Text style={styles.saveText}>{saving ? "Đang lưu..." : "Lưu thay đổi"}</Text>
+            </TouchableOpacity>
+          ) : null}
 
-            <View style={styles.qrDescription}>
-              <Text style={styles.qrDescText}>
-                Bác sĩ và điều dưỡng có thể quét mã này để truy cập vào thông
-                tin bệnh nhân.
-              </Text>
-              <TouchableOpacity style={styles.qrActionBtn}>
-                <Text style={styles.qrActionText}>Lưu mã QR về máy</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-
-        {/* META createdAt / updatedAt */}
-        <View style={styles.metaRow}>
-          <View style={styles.metaItem}>
-            <Ionicons
-              name="time-outline"
-              size={14}
-              color="#9CA3AF"
-              style={{ marginRight: 4 }}
-            />
-            <Text style={styles.metaText}>
-              Tạo hồ sơ: {formatDateTime(patientForm.createdAt)}
-            </Text>
-          </View>
-          <View style={styles.metaItem}>
-            <Ionicons
-              name="refresh-outline"
-              size={14}
-              color="#9CA3AF"
-              style={{ marginRight: 4 }}
-            />
-            <Text style={styles.metaText}>
-              Cập nhật gần nhất: {formatDateTime(patientForm.updatedAt)}
-            </Text>
-          </View>
-        </View>
-
-        <Text style={styles.sectionTitle}>Cài đặt ứng dụng</Text>
-        <View style={styles.settingsCard}>
-          <View style={styles.settingRow}>
-            <View>
-              <Text style={styles.settingLabel}>Thông báo</Text>
-              <Text style={styles.settingSub}>
-                Nhận cảnh báo sinh hiệu và nhắc nhở đo
-              </Text>
-            </View>
-            <Switch value={notify} onValueChange={setNotify} />
-          </View>
-
-          <TouchableOpacity style={styles.settingRow}>
-            <View>
-              <Text style={styles.settingLabel}>Bảo mật tài khoản</Text>
-              <Text style={styles.settingSub}>Đổi mật khẩu đăng nhập</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+          <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
+            <Text style={styles.logoutText}>Đăng xuất</Text>
           </TouchableOpacity>
-        </View>
 
-        {editMode && (
-          <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
-            <Ionicons
-              name="save-outline"
-              size={18}
-              color="#FFFFFF"
-              style={{ marginRight: 6 }}
-            />
-            <Text style={styles.saveText}>Lưu thay đổi</Text>
-          </TouchableOpacity>
-        )}
-
-        {/* LOGOUT */}
-        <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
-          <Text style={styles.logoutText}>Đăng xuất</Text>
-        </TouchableOpacity>
-
-        <Text style={styles.footerVersion}>Phiên bản 1.0.0</Text>
-        <Text style={styles.footerBrand}>© 2025 Remote Patient Monitoring</Text>
-      </ScrollView>
+          <Text style={styles.footerVersion}>Phiên bản 1.0.0</Text>
+          <Text style={styles.footerBrand}>© 2025 Remote Patient Monitoring</Text>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 20 },
-
+  flex: {
+    flex: 1,
+  },
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#F2F6FF",
+  },
+  contentContainer: {
+    padding: 20,
+    paddingBottom: 32,
+  },
+  stateContainer: {
+    flex: 1,
+    backgroundColor: "#F2F6FF",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  stateCard: {
+    width: "100%",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    padding: 24,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  stateTitle: {
+    marginTop: 14,
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#111827",
+  },
+  stateSubtitle: {
+    marginTop: 8,
+    textAlign: "center",
+    color: "#6B7280",
+    lineHeight: 20,
+  },
+  stateButton: {
+    marginTop: 16,
+    backgroundColor: "#2563EB",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  stateButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+  },
   headerRow: {
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 18,
   },
-  backBtn: {
-    width: 40,
-    height: 40,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 10,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 10,
-    shadowColor: "#000",
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
+  headerTitle: {
+    flex: 1,
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#111827",
   },
-  headerTitle: { fontSize: 18, fontWeight: "700", color: "#111827", flex: 1 },
   editToggleBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -502,7 +857,24 @@ const styles = StyleSheet.create({
   editToggleTextActive: {
     color: "#B91C1C",
   },
-
+  actionDisabled: {
+    opacity: 0.7,
+  },
+  inlineErrorCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FEF2F2",
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    gap: 8,
+  },
+  inlineErrorText: {
+    flex: 1,
+    color: "#B91C1C",
+    fontSize: 12,
+    lineHeight: 18,
+  },
   profileCard: {
     backgroundColor: "#FFFFFF",
     borderRadius: 20,
@@ -515,26 +887,62 @@ const styles = StyleSheet.create({
   },
   profileTopRow: {
     flexDirection: "row",
+    alignItems: "flex-start",
+    marginBottom: 16,
+  },
+  avatarColumn: {
+    width: 88,
+    marginRight: 12,
     alignItems: "center",
-    marginBottom: 12,
+  },
+  avatarWrapper: {
+    width: 72,
+    height: 72,
+    borderRadius: 24,
+    overflow: "hidden",
+    marginBottom: 8,
   },
   avatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 20,
+    width: "100%",
+    height: "100%",
+    borderRadius: 24,
     backgroundColor: "#2563EB",
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 12,
   },
-  avatarText: { color: "#FFFFFF", fontSize: 22, fontWeight: "700" },
-  profileName: { fontSize: 18, fontWeight: "700", color: "#111827" },
-  profileSub: { fontSize: 12, color: "#6B7280", marginTop: 2 },
-
+  avatarImage: {
+    width: "100%",
+    height: "100%",
+  },
+  avatarText: {
+    color: "#FFFFFF",
+    fontSize: 24,
+    fontWeight: "700",
+  },
+  avatarHint: {
+    fontSize: 11,
+    lineHeight: 16,
+    color: "#6B7280",
+    textAlign: "center",
+  },
+  profileMainContent: {
+    flex: 1,
+  },
+  profileName: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#111827",
+  },
+  profileSub: {
+    fontSize: 12,
+    color: "#6B7280",
+    marginTop: 4,
+  },
   chipRow: {
     flexDirection: "row",
     gap: 8,
-    marginTop: 8,
+    marginTop: 10,
+    flexWrap: "wrap",
   },
   chipPrimary: {
     flexDirection: "row",
@@ -564,24 +972,40 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginLeft: 4,
   },
-
-  profileBottomRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 8,
+  contactStack: {
+    borderTopWidth: 1,
+    borderTopColor: "#E5E7EB",
+    paddingTop: 12,
   },
-  profileInfoItem: {
+  contactItem: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
+    gap: 10,
+  },
+  contactContent: {
     flex: 1,
-    marginRight: 8,
-    gap: 6,
   },
-  profileInfoText: {
+  contactLabel: {
     fontSize: 12,
-    color: "#4B5563",
+    color: "#6B7280",
   },
-
+  contactValue: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#111827",
+    marginTop: 4,
+  },
+  contactHint: {
+    marginTop: 6,
+    fontSize: 12,
+    lineHeight: 18,
+    color: "#2563EB",
+  },
+  contactDivider: {
+    height: 1,
+    backgroundColor: "#E5E7EB",
+    marginVertical: 12,
+  },
   sectionTitle: {
     fontSize: 15,
     fontWeight: "700",
@@ -589,7 +1013,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     color: "#111827",
   },
-
   infoCard: {
     backgroundColor: "#FFFFFF",
     borderRadius: 16,
@@ -602,7 +1025,7 @@ const styles = StyleSheet.create({
   },
   infoRowIcon: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
   },
   infoIconWrapper: {
     width: 32,
@@ -612,6 +1035,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginRight: 10,
+  },
+  infoContent: {
+    flex: 1,
   },
   infoLabel: {
     fontSize: 12,
@@ -632,8 +1058,40 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#9CA3AF",
     marginTop: 4,
+    lineHeight: 18,
   },
-
+  fieldLabel: {
+    fontSize: 12,
+    color: "#6B7280",
+    marginBottom: 6,
+  },
+  inputPrimary: {
+    minHeight: 44,
+    borderWidth: 1,
+    borderColor: "#D1D5DB",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: "#FFFFFF",
+    color: "#111827",
+  },
+  inputInline: {
+    minHeight: 44,
+    borderWidth: 1,
+    borderColor: "#D1D5DB",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: "#FFFFFF",
+    color: "#111827",
+    marginTop: 6,
+  },
+  validationText: {
+    marginTop: 6,
+    fontSize: 12,
+    lineHeight: 18,
+    color: "#B91C1C",
+  },
   emergencyHeader: {
     marginBottom: 10,
   },
@@ -654,8 +1112,7 @@ const styles = StyleSheet.create({
   },
   emergencyRow: {
     flexDirection: "row",
-    marginTop: 4,
-    alignItems: "center",
+    alignItems: "flex-start",
   },
   emergencyAvatar: {
     width: 48,
@@ -671,17 +1128,22 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "700",
   },
+  marginTopSmall: {
+    marginTop: 8,
+  },
   phoneRow: {
     flexDirection: "row",
     alignItems: "center",
     marginTop: 2,
+  },
+  phoneIcon: {
+    marginRight: 4,
   },
   phoneText: {
     fontSize: 13,
     color: "#16A34A",
     fontWeight: "600",
   },
-
   medicalRowHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -691,124 +1153,123 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
     color: "#111827",
-    marginLeft: 6,
   },
   medicalText: {
     fontSize: 13,
-    color: "#4B5563",
-    lineHeight: 18,
-    marginTop: 4,
+    lineHeight: 22,
+    color: "#374151",
   },
-
-  qrCard: {
+  textArea: {
+    minHeight: 120,
+    borderWidth: 1,
+    borderColor: "#D1D5DB",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
     backgroundColor: "#FFFFFF",
-    borderRadius: 18,
+    color: "#111827",
+  },
+  textAreaCounter: {
+    marginTop: 8,
+    alignSelf: "flex-end",
+    fontSize: 11,
+    color: "#6B7280",
+  },
+  referenceCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
     padding: 16,
     marginBottom: 16,
     shadowColor: "#000",
-    shadowOpacity: 0.03,
+    shadowOpacity: 0.02,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
   },
-  qrHeaderRow: {
-    marginBottom: 8,
-  },
-  qrTitleRow: {
+  referenceHeader: {
     flexDirection: "row",
     alignItems: "center",
   },
-  qrTitle: {
+  referenceBadge: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: "#EFF6FF",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  referenceContent: {
+    flex: 1,
+  },
+  referenceTitle: {
     fontSize: 14,
     fontWeight: "700",
     color: "#111827",
   },
-  qrSubtitle: {
-    fontSize: 12,
-    color: "#6B7280",
-    marginTop: 2,
-  },
-  qrContentRow: {
-    flexDirection: "row",
-    marginTop: 10,
-  },
-  qrImageWrapper: {
-    width: 120,
-    height: 120,
-    borderRadius: 16,
-    backgroundColor: "#F3F4F6",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 14,
-    overflow: "hidden",
-  },
-  qrImage: {
-    width: "100%",
-    height: "100%",
-    resizeMode: "cover",
-  },
-  qrPlaceholder: {
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  qrPlaceholderText: {
-    marginTop: 6,
-    fontSize: 12,
-    color: "#9CA3AF",
-  },
-  qrDescription: {
-    flex: 1,
-    justifyContent: "space-between",
-  },
-  qrDescText: {
-    fontSize: 12,
-    color: "#4B5563",
-    lineHeight: 18,
-  },
-  qrActionBtn: {
-    alignSelf: "flex-start",
-    marginTop: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: "#2563EB",
-  },
-  qrActionText: {
-    fontSize: 12,
-    color: "#FFFFFF",
-    fontWeight: "600",
-  },
-
-  metaRow: {
+  referenceSubtitle: {
     marginTop: 4,
+    fontSize: 12,
+    lineHeight: 18,
+    color: "#6B7280",
+  },
+  referenceCodeBox: {
+    marginTop: 14,
+    paddingVertical: 16,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    backgroundColor: "#0F172A",
+  },
+  referenceCode: {
+    color: "#FFFFFF",
+    fontSize: 22,
+    fontWeight: "700",
+    letterSpacing: 1,
+    textAlign: "center",
+  },
+  referenceText: {
+    marginTop: 12,
+    fontSize: 12,
+    lineHeight: 20,
+    color: "#4B5563",
+  },
+  metaCard: {
+    backgroundColor: "#F8FAFC",
+    borderRadius: 14,
+    padding: 14,
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
   },
   metaItem: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 2,
+  },
+  metaIcon: {
+    marginRight: 4,
   },
   metaText: {
-    fontSize: 11,
-    color: "#9CA3AF",
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 18,
+    color: "#6B7280",
   },
-
   settingsCard: {
     backgroundColor: "#FFFFFF",
     borderRadius: 16,
     padding: 16,
-    marginBottom: 12,
+    marginBottom: 20,
     shadowColor: "#000",
     shadowOpacity: 0.02,
-    shadowRadius: 5,
+    shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
   },
-  settingRow: {
+  settingInfoRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    paddingVertical: 12,
-    alignItems: "center",
-    borderBottomWidth: 1,
-    borderColor: "#E5E7EB",
+    alignItems: "flex-start",
+  },
+  settingContent: {
+    flex: 1,
+    marginLeft: 10,
   },
   settingLabel: {
     fontSize: 14,
@@ -816,89 +1277,54 @@ const styles = StyleSheet.create({
     color: "#111827",
   },
   settingSub: {
+    marginTop: 4,
     fontSize: 12,
+    lineHeight: 18,
     color: "#6B7280",
-    marginTop: 2,
   },
-
   saveBtn: {
-    marginTop: 8,
-    backgroundColor: "#2563EB",
-    paddingVertical: 12,
-    borderRadius: 12,
-    alignItems: "center",
     flexDirection: "row",
+    alignItems: "center",
     justifyContent: "center",
+    backgroundColor: "#2563EB",
+    paddingVertical: 14,
+    borderRadius: 14,
     marginBottom: 12,
+  },
+  saveIcon: {
+    marginRight: 6,
+  },
+  saveSpinner: {
+    marginRight: 8,
   },
   saveText: {
     color: "#FFFFFF",
     fontWeight: "700",
-    fontSize: 14,
+    fontSize: 15,
   },
-
   logoutBtn: {
-    backgroundColor: "#FEF2F2",
-    padding: 14,
-    borderRadius: 12,
     alignItems: "center",
-    marginBottom: 12,
+    justifyContent: "center",
+    paddingVertical: 14,
+    borderRadius: 14,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#FECACA",
   },
   logoutText: {
     color: "#B91C1C",
     fontWeight: "700",
-    fontSize: 14,
   },
-
   footerVersion: {
     textAlign: "center",
-    color: "#9CA3AF",
+    marginTop: 18,
     fontSize: 11,
-    marginBottom: 2,
+    color: "#9CA3AF",
   },
   footerBrand: {
     textAlign: "center",
-    color: "#9CA3AF",
+    marginTop: 4,
     fontSize: 11,
-    marginBottom: 16,
-  },
-
-  // Inputs
-  inputPrimary: {
-    marginTop: 4,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    fontSize: 13,
-    color: "#111827",
-    backgroundColor: "#F9FAFB",
-  },
-  inputInline: {
-    flex: 1,
-    borderBottomWidth: 1,
-    borderColor: "#E5E7EB",
-    paddingVertical: 2,
-    fontSize: 12,
-    color: "#111827",
-  },
-  fieldLabel: {
-    fontSize: 12,
-    color: "#6B7280",
-    marginBottom: 2,
-  },
-  textArea: {
-    marginTop: 4,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    minHeight: 80,
-    textAlignVertical: "top",
-    fontSize: 13,
-    color: "#111827",
-    backgroundColor: "#F9FAFB",
+    color: "#9CA3AF",
   },
 });

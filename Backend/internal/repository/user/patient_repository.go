@@ -76,7 +76,7 @@ func (r *patientRepository) FindPatients(ctx context.Context, f UserFilter) ([]d
 
 func (r *patientRepository) FindPatientByEmail(ctx context.Context, email string) (*domain.Patient, error) {
 	var u domain.Patient
-	err := r.col.FindOne(ctx, bson.M{"email": email}).Decode(&u)
+	err := r.col.FindOne(ctx, bson.M{"email": email, "role": domain.RolePatient}).Decode(&u)
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +85,7 @@ func (r *patientRepository) FindPatientByEmail(ctx context.Context, email string
 
 func (r *patientRepository) FindPatientByID(ctx context.Context, id primitive.ObjectID) (*domain.Patient, error) {
 	var u domain.Patient
-	err := r.col.FindOne(ctx, bson.M{"_id": id}).Decode(&u)
+	err := r.col.FindOne(ctx, bson.M{"_id": id, "role": domain.RolePatient}).Decode(&u)
 	if err != nil {
 		return nil, err
 	}

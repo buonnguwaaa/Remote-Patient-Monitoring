@@ -20,6 +20,12 @@ type BaseUserInfoResponse struct {
 
 type PatientInfoResponse struct {
 	BaseUserInfoResponse
+	PatientCode           string `json:"patientCode,omitempty"`
+	InsuranceNumber       string `json:"insuranceNumber,omitempty"`
+	CCCD                  string `json:"cccd,omitempty"`
+	EmergencyContactName  string `json:"emergencyContactName,omitempty"`
+	EmergencyContactPhone string `json:"emergencyContactPhone,omitempty"`
+	MedicalHistory        string `json:"medicalHistory,omitempty"`
 }
 
 type StaffInfoResponse struct {
@@ -49,6 +55,28 @@ type UpdateBaseUserRequest struct {
 
 type UpdatePatientRequest struct {
 	UpdateBaseUserRequest
+	InsuranceNumber       string `json:"insuranceNumber"`
+	CCCD                  string `json:"cccd"`
+	EmergencyContactName  string `json:"emergencyContactName"`
+	EmergencyContactPhone string `json:"emergencyContactPhone"`
+	MedicalHistory        string `json:"medicalHistory"`
+}
+
+type UpdateMyPatientProfileRequest struct {
+	Name                  string `json:"name" binding:"required"`
+	Phone                 string `json:"phone"`
+	InsuranceNumber       string `json:"insuranceNumber"`
+	CCCD                  string `json:"cccd"`
+	EmergencyContactName  string `json:"emergencyContactName"`
+	EmergencyContactPhone string `json:"emergencyContactPhone"`
+	MedicalHistory        string `json:"medicalHistory"`
+}
+
+// UpdateMyPatientProfileRawRequest keeps backward-compatible detection for sensitive fields
+// that are not allowed to be updated from the generic profile screen.
+type UpdateMyPatientProfileRawRequest struct {
+	UpdateMyPatientProfileRequest
+	Email *string `json:"email,omitempty"`
 }
 
 type UpdateMedicalStaffRequest struct {

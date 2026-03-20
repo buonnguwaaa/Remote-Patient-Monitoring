@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net/http"
 	"strconv"
@@ -181,8 +182,21 @@ func (h *UserHandler) DeleteBaseUserByID(c *gin.Context) {
 // @Failure 500 {object} map[string]string "Internal server error"
 // @Router /users/{id}/avatar [post]
 func (h *UserHandler) UploadAvatar(c *gin.Context) {
-	userID := c.Param("id")
+	h.uploadAvatarForUser(c, c.Param("id"))
+}
 
+// UploadMyPatientAvatar handles avatar upload for the authenticated patient.
+func (h *UserHandler) UploadMyPatientAvatar(c *gin.Context) {
+	userID, exists := c.Get("userId")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	h.uploadAvatarForUser(c, userID.(string))
+}
+
+func (h *UserHandler) uploadAvatarForUser(c *gin.Context, userID string) {
 	fileHeader, err := c.FormFile("file")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Vui lòng chọn file ảnh: " + err.Error()})
@@ -191,7 +205,7 @@ func (h *UserHandler) UploadAvatar(c *gin.Context) {
 
 	if fileHeader.Header.Get("Content-Type") != "" {
 		contentType := fileHeader.Header.Get("Content-Type")
-		if len(contentType) < 5 || contentType[:6] != "image/" {
+		if len(contentType) < 6 || contentType[:6] != "image/" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Only image files are allowed"})
 			return
 		}
@@ -218,10 +232,7 @@ func (h *UserHandler) UploadAvatar(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.UpdateBaseUser(ctx, &usecase.UpdateUserInput{
-		ID:        userID,
-		AvatarUrl: avatarUrl,
-	}); err != nil {
+	if err := h.service.UpdateBaseUser(ctx, &usecase.UpdateUserInput{ID: userID, AvatarUrl: avatarUrl}); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save avatar: " + err.Error()})
 		return
 	}
@@ -241,10 +252,107 @@ func (h *UserHandler) UploadAvatar(c *gin.Context) {
 		}
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"avatarUrl": avatarUrl,
-		"message":   "Avatar uploaded successfully",
+	c.JSON(http.StatusOK, gin.H{"avatarUrl": avatarUrl, "message": "Avatar uploaded successfully"})
+}
+
+// GetMyPatientProfile retrieves the authenticated patient's profile
+// @Summary Get my patient profile
+// @Description Retrieve the full profile of the authenticated patient
+// @Tags patients
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]interface{} "Patient profile retrieved successfully"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 404 {object} map[string]string "Patient not found"
+// @Router /users/patients/me [get]
+func (h *UserHandler) GetMyPatientProfile(c *gin.Context) {
+	userID, exists := c.Get("userId")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	patient, err := h.service.GetPatientByID(ctx, &usecase.GetUserByIDInput{ID: userID.(string)})
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": patient, "message": "Patient profile retrieved successfully"})
+}
+
+// UpdateMyPatientProfile updates the authenticated patient's profile
+// @Summary Update my patient profile
+// @Description Update editable profile information for the authenticated patient
+// @Tags patients
+// @Accept json
+// @Produce json
+// @Param input body dto.UpdateMyPatientProfileRequest true "Patient profile update data"
+// @Success 200 {object} map[string]interface{} "Patient profile updated successfully"
+// @Failure 400 {object} map[string]string "Invalid request data"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /users/patients/me [patch]
+func (h *UserHandler) UpdateMyPatientProfile(c *gin.Context) {
+	userID, exists := c.Get("userId")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	var req dto.UpdateMyPatientProfileRawRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if req.Email != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"field": "email",
+			"error": "Email không được cập nhật trực tiếp ở màn hồ sơ. Vui lòng dùng luồng xác minh email riêng.",
+		})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	err := h.service.UpdatePatientProfile(ctx, &usecase.UpdatePatientProfileInput{
+		ID:                    userID.(string),
+		Name:                  req.Name,
+		Phone:                 req.Phone,
+		InsuranceNumber:       req.InsuranceNumber,
+		CCCD:                  req.CCCD,
+		EmergencyContactName:  req.EmergencyContactName,
+		EmergencyContactPhone: req.EmergencyContactPhone,
+		MedicalHistory:        req.MedicalHistory,
 	})
+	if err != nil {
+		var validationErr *service.ValidationError
+		var conflictErr *service.ConflictError
+		switch {
+		case errors.As(err, &validationErr):
+			c.JSON(http.StatusBadRequest, gin.H{"field": validationErr.Field, "error": validationErr.Message})
+			return
+		case errors.As(err, &conflictErr):
+			c.JSON(http.StatusConflict, gin.H{"field": conflictErr.Field, "error": conflictErr.Message})
+			return
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+	}
+
+	patient, err := h.service.GetPatientByID(ctx, &usecase.GetUserByIDInput{ID: userID.(string)})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": patient, "message": "Patient profile updated successfully"})
 }
 
 // GetPatients retrieves a list of patients
@@ -346,11 +454,16 @@ func (h *UserHandler) UpdatePatientByID(c *gin.Context) {
 	defer cancel()
 
 	input := &usecase.UpdateUserInput{
-		ID:     id,
-		Name:   req.Name,
-		Email:  req.Email,
-		Gender: req.Gender,
-		Phone:  req.Phone,
+		ID:                    id,
+		Name:                  req.Name,
+		Email:                 req.Email,
+		Gender:                req.Gender,
+		Phone:                 req.Phone,
+		InsuranceNumber:       req.InsuranceNumber,
+		CCCD:                  req.CCCD,
+		EmergencyContactName:  req.EmergencyContactName,
+		EmergencyContactPhone: req.EmergencyContactPhone,
+		MedicalHistory:        req.MedicalHistory,
 	}
 
 	if err := h.service.UpdatePatient(ctx, input); err != nil {

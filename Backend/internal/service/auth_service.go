@@ -410,6 +410,21 @@ func (s *authService) issueTokens(ctx context.Context, u *domain.BaseUser) (*dto
 }
 
 func mapBaseUserToResponse(u *domain.BaseUser) *dto.BaseUserInfoResponse {
+	dob := ""
+	if !u.Dob.IsZero() {
+		dob = u.Dob.Format("2006-01-02")
+	}
+
+	createdAt := ""
+	if !u.CreatedAt.IsZero() {
+		createdAt = u.CreatedAt.Format(time.RFC3339)
+	}
+
+	updatedAt := ""
+	if !u.UpdatedAt.IsZero() {
+		updatedAt = u.UpdatedAt.Format(time.RFC3339)
+	}
+
 	return &dto.BaseUserInfoResponse{
 		ID:        u.ID.Hex(),
 		Name:      u.Name,
@@ -417,9 +432,11 @@ func mapBaseUserToResponse(u *domain.BaseUser) *dto.BaseUserInfoResponse {
 		Provider:  u.Provider,
 		Role:      u.Role,
 		Gender:    u.Gender,
-		Dob:       u.Dob.Format("2006-01-02"),
-		CreatedAt: u.CreatedAt.Format(time.RFC3339),
-		UpdatedAt: u.UpdatedAt.Format(time.RFC3339),
+		Dob:       dob,
+		Phone:     u.Phone,
+		AvatarUrl: u.AvatarUrl,
+		CreatedAt: createdAt,
+		UpdatedAt: updatedAt,
 	}
 }
 
