@@ -114,6 +114,14 @@ func (s *departmentService) AddMember(ctx context.Context, input *usecase.AddDep
 	if err != nil {
 		return err
 	}
+
+	if _, err := s.deptRepo.FindByID(ctx, deptOID); err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return errors.New("department not found")
+		}
+		return err
+	}
+
 	userOID, err := primitive.ObjectIDFromHex(input.UserID)
 	if err != nil {
 		return err
