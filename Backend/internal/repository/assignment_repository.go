@@ -12,6 +12,7 @@ import (
 
 type AssignmentRepository interface {
 	Create(ctx context.Context, assignment *domain.Assignment) (*domain.Assignment, error)
+	FindAll(ctx context.Context) ([]*domain.Assignment, error)
 	FindByPatientID(ctx context.Context, patientID primitive.ObjectID) (*domain.Assignment, error)
 	FindByDoctorID(ctx context.Context, doctorID primitive.ObjectID) ([]*domain.Assignment, error)
 	FindByNurseID(ctx context.Context, nurseID primitive.ObjectID) ([]*domain.Assignment, error)
@@ -47,6 +48,20 @@ func (r *assignmentRepository) FindByPatientID(ctx context.Context, patientID pr
 		return nil, err
 	}
 	return &assignment, nil
+}
+
+func (r *assignmentRepository) FindAll(ctx context.Context) ([]*domain.Assignment, error) {
+	cursor, err := r.collection.Find(ctx, bson.M{}, options.Find().SetSort(bson.D{{Key: "updatedAt", Value: -1}}))
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var assignments []*domain.Assignment
+	if err := cursor.All(ctx, &assignments); err != nil {
+		return nil, err
+	}
+	return assignments, nil
 }
 
 func (r *assignmentRepository) FindByDoctorID(ctx context.Context, doctorID primitive.ObjectID) ([]*domain.Assignment, error) {
@@ -85,7 +100,6 @@ func (r *assignmentRepository) DeleteByPatientID(ctx context.Context, patientID 
 }
 
 func (r *assignmentRepository) EnsureIndexes(ctx context.Context) error {
-	// Index on patientId unique? Maybe. For now index on doctor, nurse, patient
 	_, err := r.collection.Indexes().CreateMany(ctx, []mongo.IndexModel{
 		{Keys: bson.D{{Key: "patientId", Value: 1}}, Options: options.Index().SetUnique(true)},
 		{Keys: bson.D{{Key: "doctorId", Value: 1}}},

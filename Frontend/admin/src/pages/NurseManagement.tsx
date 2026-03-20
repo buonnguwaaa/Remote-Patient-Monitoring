@@ -86,18 +86,21 @@ const NurseManagement: React.FC = () => {
     const licenseNumber = formData.get("licenseNumber") as string;
     const department = formData.get("department") as string;
     const yearsOfExperience = parseInt(formData.get("yearsOfExperience") as string) || 0;
+    const status = formData.get("status") as "active" | "inactive";
 
     const apiGender = mapGenderToApi(gender);
+    const isActive = status !== "inactive";
 
     try {
       let savedUserId = editingNurse?.id;
 
       if (editingNurse?.id) {
-        await api.put(`/users/${editingNurse.id}`, {
+        await api.patch(`/users/${editingNurse.id}`, {
           name, email, gender: apiGender, phone,
           nurseLicenseNumber: licenseNumber,
           department,
           nurseYearsOfExperience: yearsOfExperience,
+          isActive,
           roles: ["user.nurse"],
         });
       } else {
@@ -114,11 +117,12 @@ const NurseManagement: React.FC = () => {
         const newUser = resp.data?.data?.[0];
         savedUserId = newUser?.id;
         if (savedUserId) {
-          await api.put(`/users/${savedUserId}`, {
+          await api.patch(`/users/${savedUserId}`, {
             phone,
             nurseLicenseNumber: licenseNumber,
             department,
             nurseYearsOfExperience: yearsOfExperience,
+            isActive,
           });
         }
       }
@@ -175,6 +179,7 @@ const NurseManagement: React.FC = () => {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Khoa</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Số giấy phép</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Kinh nghiệm</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Trạng thái</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Liên hệ</th>
               <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Hành động</th>
             </tr>
@@ -200,6 +205,11 @@ const NurseManagement: React.FC = () => {
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{nurse.department}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{nurse.licenseNumber}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{nurse.yearsOfExperience} năm</td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${nurse.status === "active" ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"}`}>
+                    {nurse.status === "active" ? "Hoạt động" : "Không hoạt động"}
+                  </span>
+                </td>
                 <td className="px-6 py-4 text-sm text-gray-900">
                   <div>{nurse.email}</div>
                   <div className="text-gray-500 dark:text-gray-400">{nurse.phone}</div>
@@ -253,6 +263,13 @@ const NurseManagement: React.FC = () => {
                   <select name="gender" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" defaultValue={editingNurse?.gender}>
                     <option value="Nam">Nam</option>
                     <option value="Nữ">Nữ</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Trạng thái</label>
+                  <select name="status" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" defaultValue={editingNurse?.status || "active"}>
+                    <option value="active">Hoạt động</option>
+                    <option value="inactive">Không hoạt động</option>
                   </select>
                 </div>
                 {!editingNurse && (

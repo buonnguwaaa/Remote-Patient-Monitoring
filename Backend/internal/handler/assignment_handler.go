@@ -22,13 +22,6 @@ func NewAssignmentHandler(service service.AssignmentService) *AssignmentHandler 
 	}
 }
 
-// @Summary Assign patient to doctor/nurse
-// @Tags assignments
-// @Accept json
-// @Produce json
-// @Param body body dto.AssignPatientRequest true "Assignment info"
-// @Success 201 {object} map[string]interface{}
-// @Router /assignments/assign [post]
 func (h *AssignmentHandler) AssignPatient(c *gin.Context) {
 	var req dto.AssignPatientRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -61,11 +54,6 @@ func (h *AssignmentHandler) AssignPatient(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"data": res})
 }
 
-// @Summary Get assignments for the current doctor/nurse
-// @Tags assignments
-// @Produce json
-// @Success 200 {object} map[string]interface{}
-// @Router /assignments [get]
 func (h *AssignmentHandler) GetMyAssignments(c *gin.Context) {
 	userID, exists := c.Get("userId")
 	role, existsRole := c.Get("role")
@@ -80,7 +68,6 @@ func (h *AssignmentHandler) GetMyAssignments(c *gin.Context) {
 
 	roleVal := role.(domain.Role)
 
-	// Only doctor or nurse can see their assignments
 	if roleVal != domain.RoleDoctor && roleVal != domain.RoleNurse {
 		c.JSON(http.StatusForbidden, gin.H{"error": "only doctor or nurse can see assigned patients"})
 		return
@@ -97,4 +84,35 @@ func (h *AssignmentHandler) GetMyAssignments(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"data": res})
+}
+
+func (h *AssignmentHandler) GetAllAssignments(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	res, err := h.service.GetAllAssignments(ctx)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": res})
+}
+
+func (h *AssignmentHandler) DeleteAssignment(c *gin.Context) {
+	patientID := c.Param("patientId")
+	if patientID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing patient id"})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	if err := h.service.DeleteAssignmentByPatientID(ctx, &usecase.DeleteAssignmentInput{PatientID: patientID}); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Assignment deleted successfully"})
 }

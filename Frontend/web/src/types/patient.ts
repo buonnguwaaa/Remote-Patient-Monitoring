@@ -2,6 +2,7 @@ export interface AssignmentResponse {
   id: string;
   patientId: string;
   patientName?: string;
+  patientCode?: string;
   doctorId?: string;
   doctorName?: string;
   nurseId?: string;
@@ -35,6 +36,7 @@ export interface ThresholdViolation {
 export interface PatientItem {
   id: string;
   name: string;
+  patientCode?: string;
   updatedAt?: string;
   status: "Bình thường" | "Cảnh báo";
 }

@@ -96,7 +96,7 @@ export interface doctor {
   workplace: string;
   department?: string;
   yearsOfExperience: number;
-  status?: string;
+  status?: "active" | "inactive";
   profileImageUrl: string;
   gender: string;
   dateOfBirth: string;
@@ -152,6 +152,7 @@ export interface Assignment {
   id: string;
   patientId: string;
   patientName?: string;
+  patientCode?: string;
   doctorId?: string;
   doctorName?: string;
   nurseId?: string;

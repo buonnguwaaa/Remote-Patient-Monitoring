@@ -4,6 +4,7 @@ type GetUsersInput struct {
 	Name      string
 	Email     string
 	Gender    string
+	Role      string
 	Page      int
 	Limit     int
 	Offset    int
@@ -21,6 +22,7 @@ type UpdateUserInput struct {
 	Gender    string
 	Phone     string
 	AvatarUrl string
+	IsActive  *bool
 	// Shared staff fields
 	DepartmentID  string
 	LicenseNumber string

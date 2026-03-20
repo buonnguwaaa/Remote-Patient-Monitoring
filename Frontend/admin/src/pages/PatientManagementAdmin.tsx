@@ -81,15 +81,18 @@ const PatientManagementAdmin: React.FC = () => {
     const gender = formData.get("gender") as "Nam" | "Nữ";
     const phone = formData.get("phone") as string;
     const dateOfBirth = formData.get("dateOfBirth") as string;
+    const status = formData.get("status") as "active" | "inactive";
 
     const apiGender = mapGenderToApi(gender);
+    const isActive = status !== "inactive";
 
     try {
       let savedUserId = editingPatient?.id;
 
       if (editingPatient?.id) {
-        await api.put(`/users/${editingPatient.id}`, {
+        await api.patch(`/users/${editingPatient.id}`, {
           name, email, gender: apiGender, phone,
+          isActive,
           roles: ["user.patient"],
         });
       } else {
@@ -106,7 +109,7 @@ const PatientManagementAdmin: React.FC = () => {
         const resp = await api.get("/users?role=user.patient&sortOrder=desc&limit=1");
         savedUserId = resp.data?.data?.[0]?.id;
         if (savedUserId) {
-          await api.put(`/users/${savedUserId}`, { phone });
+          await api.patch(`/users/${savedUserId}`, { phone, isActive });
         }
       }
 
@@ -236,6 +239,13 @@ const PatientManagementAdmin: React.FC = () => {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Ngày sinh</label>
                   <input name="dateOfBirth" type="date" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" defaultValue={editingPatient?.dateOfBirth} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Trạng thái</label>
+                  <select name="status" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" defaultValue={editingPatient?.status || "active"}>
+                    <option value="active">Hoạt động</option>
+                    <option value="inactive">Không hoạt động</option>
+                  </select>
                 </div>
                 {!editingPatient && (
                   <div>

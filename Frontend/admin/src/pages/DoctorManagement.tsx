@@ -32,7 +32,7 @@ const DoctorManagement: React.FC = () => {
           licenseNumber: u.doctorProfile?.licenseNumber || "",
           workplace: u.doctorProfile?.workplace || "",
           yearsOfExperience: u.doctorProfile?.yearsOfExperience || 0,
-          status: "active",
+          status: u.isActive ? "active" : "inactive",
           profileImageUrl: u.avatarUrl || "/default-avatar.svg",
         }));
         setDoctors(apiDoctors);
@@ -87,16 +87,18 @@ const DoctorManagement: React.FC = () => {
     const licenseNumber = formData.get("licenseNumber") as string;
     const workplace = formData.get("workplace") as string;
     const yearsOfExperience = parseInt(formData.get("yearsOfExperience") as string) || 0;
+    const status = formData.get("status") as "active" | "inactive";
 
     const apiGender = mapGenderToApi(gender);
+    const isActive = status !== "inactive";
 
     try {
       let savedUserId = editingDoctor?.id;
 
       if (editingDoctor?.id) {
-        await api.put(`/users/${editingDoctor.id}`, {
+        await api.patch(`/users/${editingDoctor.id}`, {
           name, email, gender: apiGender, phone, specialization,
-          licenseNumber, workplace, yearsOfExperience, roles: ["user.doctor"],
+          licenseNumber, workplace, yearsOfExperience, isActive, roles: ["user.doctor"],
         });
       } else {
         const password = formData.get("password") as string;
@@ -112,8 +114,8 @@ const DoctorManagement: React.FC = () => {
         const newUser = resp.data?.data?.[0];
         savedUserId = newUser?.id;
         if (savedUserId) {
-          await api.put(`/users/${savedUserId}`, {
-            phone, specialization, licenseNumber, workplace, yearsOfExperience,
+          await api.patch(`/users/${savedUserId}`, {
+            phone, specialization, licenseNumber, workplace, yearsOfExperience, isActive,
           });
         }
       }
@@ -187,6 +189,9 @@ const DoctorManagement: React.FC = () => {
                 Kinh nghiệm
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                Trạng thái
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Liên hệ
               </th>
               <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -227,6 +232,11 @@ const DoctorManagement: React.FC = () => {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                   {doctor.yearsOfExperience} năm
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${doctor.status === "active" ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"}`}>
+                    {doctor.status === "active" ? "Hoạt động" : "Không hoạt động"}
+                  </span>
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
                   <div>{doctor.email}</div>
@@ -360,6 +370,19 @@ const DoctorManagement: React.FC = () => {
                   >
                     <option value="Nam">Nam</option>
                     <option value="Nữ">Nữ</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Tráº¡ng thÃ¡i
+                  </label>
+                  <select
+                    name="status"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    defaultValue={editingDoctor?.status || "active"}
+                  >
+                    <option value="active">Hoạt động</option>
+                    <option value="inactive">Không hoạt động</option>
                   </select>
                 </div>
                 {!editingDoctor && (
