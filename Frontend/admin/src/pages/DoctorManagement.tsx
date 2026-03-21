@@ -15,7 +15,7 @@ const DoctorManagement: React.FC = () => {
   const [editingDoctor, setEditingDoctor] = useState<doctor | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
-  const { toast, showToast } = useToast();
+  const { toast, showToast, hideToast } = useToast();
 
   const fetchDoctors = async () => {
     try {
@@ -136,7 +136,7 @@ const DoctorManagement: React.FC = () => {
 
   return (
     <div className="p-6">
-      <Toast toast={toast} />
+      <Toast toast={toast} onClose={hideToast} />
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-800 dark:text-white flex items-center">
@@ -263,7 +263,7 @@ const DoctorManagement: React.FC = () => {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-20 backdrop-blur-sm flex items-center justify-center z-50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <h2 className="text-2xl font-bold mb-4 dark:text-white">
               {editingDoctor ? "Chỉnh sửa bác sĩ" : "Thêm bác sĩ mới"}

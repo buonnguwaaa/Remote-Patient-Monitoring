@@ -37,6 +37,10 @@ func (h *ThresholdHandler) CreateThreshold(c *gin.Context) {
 		return
 	}
 
+	if userID, exists := c.Get("userId"); exists {
+		req.DoctorID = userID.(string)
+	}
+
 	input := &usecase.CreateThresholdInput{
 		PatientID:          req.PatientID,
 		DoctorID:           req.DoctorID,
@@ -79,9 +83,16 @@ func (h *ThresholdHandler) CreateThreshold(c *gin.Context) {
 // @Failure 500 {object} map[string]string "Internal server error"
 // @Router /thresholds [get]
 func (h *ThresholdHandler) GetThresholds(c *gin.Context) {
+	doctorID := c.Query("doctorId")
+	if doctorID == "" {
+		if currentUserID, exists := c.Get("userId"); exists {
+			doctorID = currentUserID.(string)
+		}
+	}
+
 	input := &usecase.GetThresholdsInput{
 		PatientID: c.Query("patientId"),
-		DoctorID:  c.Query("doctorId"),
+		DoctorID:  doctorID,
 		IsLatest:  c.Query("latest") == "true",
 	}
 

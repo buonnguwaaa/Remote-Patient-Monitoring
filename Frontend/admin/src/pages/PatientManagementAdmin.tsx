@@ -15,7 +15,7 @@ const PatientManagementAdmin: React.FC = () => {
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
-  const { toast, showToast } = useToast();
+  const { toast, showToast, hideToast } = useToast();
 
   const fetchPatients = async () => {
     try {
@@ -129,7 +129,7 @@ const PatientManagementAdmin: React.FC = () => {
 
   return (
     <div className="p-6">
-      <Toast toast={toast} />
+      <Toast toast={toast} onClose={hideToast} />
 
       <div className="flex justify-between items-center mb-6">
         <div>
@@ -208,7 +208,7 @@ const PatientManagementAdmin: React.FC = () => {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-30 backdrop-blur-sm flex items-center justify-center z-50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <h2 className="text-2xl font-bold mb-4 dark:text-white">{editingPatient ? "Chỉnh sửa bệnh nhân" : "Thêm bệnh nhân mới"}</h2>
             <form className="space-y-4" onSubmit={handleSubmit}>

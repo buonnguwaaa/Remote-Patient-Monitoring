@@ -15,11 +15,14 @@ export interface AssignmentResponse {
 export interface AlertResponse {
   id: string;
   patientId: string;
+  patientName?: string;
+  patientAvatarUrl?: string;
   measurementId: string;
   violations: ThresholdViolation[];
   status: "open" | "ack";
   severity: "info" | "high";
   acknowledgedBy?: string;
+  acknowledgedByName?: string;
   acknowledgedAt?: string;
   createdAt: string;
   updatedAt: string;
@@ -38,5 +41,5 @@ export interface PatientItem {
   name: string;
   patientCode?: string;
   updatedAt?: string;
-  status: "Bình thường" | "Cảnh báo";
+  status: "Binh thuong" | "Canh bao";
 }

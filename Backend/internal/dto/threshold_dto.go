@@ -4,7 +4,7 @@ import "time"
 
 type CreateThresholdRequest struct {
 	PatientID          string     `json:"patientId" binding:"required"`
-	DoctorID           string     `json:"doctorId" binding:"required"`
+	DoctorID           string     `json:"doctorId,omitempty"`
 	TemperatureMin     float64    `json:"temperatureMin,omitempty"`
 	TemperatureMax     float64    `json:"temperatureMax,omitempty"`
 	HeartRateMin       float64    `json:"heartRateMin,omitempty"`

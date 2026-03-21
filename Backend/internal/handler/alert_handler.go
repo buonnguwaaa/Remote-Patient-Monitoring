@@ -2,9 +2,11 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"time"
 
+	userDomain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/service"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecase"
 	"github.com/gin-gonic/gin"
@@ -34,8 +36,18 @@ func NewAlertHandler(alertService service.AlertService) *AlertHandler {
 // @Failure 500 {object} map[string]string "Internal server error"
 // @Router /alerts [get]
 func (h *AlertHandler) GetAlerts(c *gin.Context) {
+	doctorID := ""
+	if roleValue, exists := c.Get("role"); exists {
+		if role, ok := roleValue.(userDomain.Role); ok && role == userDomain.RoleDoctor {
+			if userID, userExists := c.Get("userId"); userExists {
+				doctorID, _ = userID.(string)
+			}
+		}
+	}
+
 	input := &usecase.GetAlertsInput{
 		PatientID: c.Query("patientId"),
+		DoctorID:  doctorID,
 		Status:    c.Query("status"),
 		Severity:  c.Query("severity"),
 		IsLatest:  c.Query("isLatest") == "true",
@@ -81,6 +93,10 @@ func (h *AlertHandler) UpdateAlertAcknowledgementByID(c *gin.Context) {
 
 	updatedAlert, err := h.alertService.UpdateAlertAcknowledgementByID(c.Request.Context(), input)
 	if err != nil {
+		if errors.Is(err, service.ErrAlertNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "alert not found"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

@@ -5,6 +5,7 @@ import api from "../services/api";
 export type UserRole = "doctor";
 
 type AuthUser = {
+  id: string;
   username: string;
   role: UserRole;
   avatarUrl?: string;
@@ -40,7 +41,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           const role = mapRole(userData.role);
           if (role) {
             setIsAuthenticated(true);
-            setUser({ username: userData.name, role, avatarUrl: userData.avatarUrl });
+            setUser({ id: userData.id, username: userData.name, role, avatarUrl: userData.avatarUrl });
           } else {
             setIsAuthenticated(false);
             setUser(null);
@@ -75,7 +76,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       localStorage.removeItem("username");
 
       setIsAuthenticated(true);
-      setUser({ username: userData.name, role, avatarUrl: userData.avatarUrl });
+      setUser({ id: userData.id, username: userData.name, role, avatarUrl: userData.avatarUrl });
       return role;
     } catch (error) {
       console.error("Login error:", error);

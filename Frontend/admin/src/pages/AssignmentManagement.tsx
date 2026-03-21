@@ -287,7 +287,7 @@ const AssignmentManagement: React.FC = () => {
               className={`flex transform items-center rounded-lg px-8 py-3 text-lg font-bold text-white shadow-lg transition-all duration-200 hover:scale-105 ${
                 loading
                   ? "cursor-not-allowed bg-gray-400"
-                  : "bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                  : "bg-purple-600 hover:bg-purple-700"
               }`}
             >
               {loading ? (

@@ -13,5 +13,6 @@ func RegisterAlertRoutes(r *gin.Engine, c *container.MainServerContainer) {
 	{
 		alertGroup.GET("", c.AlertHandler.GetAlerts)
 		alertGroup.PATCH("/:id", middleware.RequireRoles(domain.RoleDoctor), c.AlertHandler.UpdateAlertAcknowledgementByID)
+		alertGroup.PATCH("/:id/acknowledge", middleware.RequireRoles(domain.RoleDoctor), c.AlertHandler.UpdateAlertAcknowledgementByID)
 	}
 }
