@@ -83,7 +83,6 @@ func (r *thresholdRepository) Create(ctx context.Context, t *domain.Threshold) (
 
 func (r *thresholdRepository) FindWithFilter(ctx context.Context, filter ThresholdFilter) ([]domain.Threshold, error) {
 	query := bson.M{}
-	now := time.Now().UTC()
 
 	if filter.PatientID != "" {
 		pid, err := primitive.ObjectIDFromHex(filter.PatientID)
@@ -101,13 +100,6 @@ func (r *thresholdRepository) FindWithFilter(ctx context.Context, filter Thresho
 
 	// --- CASE: GET LATEST RECORD ONLY ---
 	if filter.IsLatest {
-		query["effectiveFrom"] = bson.M{"$lte": now}
-		query["$or"] = []bson.M{
-			{"effectiveTo": bson.M{"$exists": false}},
-			{"effectiveTo": nil},
-			{"effectiveTo": bson.M{"$gt": now}},
-		}
-
 		opts := options.FindOne().
 			SetSort(bson.D{{Key: "effectiveFrom", Value: -1}})
 

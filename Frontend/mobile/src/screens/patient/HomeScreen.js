@@ -1,204 +1,146 @@
-import React, { useCallback, useMemo, useState } from "react";
-import {
-  ActivityIndicator,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 
-import { useAuth } from "../../hooks/useAuth";
-import { getMeasurements } from "../../api/measurementApi";
-import { getMyPatientProfile } from "../../api/profileApi";
+const user = {
+  id: "u1",
+  name: "Nguyễn Văn A",
+};
 
-function extractData(response) {
-  if (!response?.ok) return null;
-  return response.body?.data || response.body || null;
-}
+const patientInfo = {
+  id: "p1",
+  userId: "u1",
+  insuranceNumber: "BA12345678",
+  emergencyContactName: "Nguyễn Văn B",
+  emergencyContactPhone: "0123 456 789",
+};
 
-function extractList(response) {
-  const data = extractData(response);
-  return Array.isArray(data) ? data : [];
-}
-
-function formatRelativeTime(iso) {
-  if (!iso) return "Chưa có thời gian";
-
-  const now = Date.now();
-  const target = new Date(iso).getTime();
-  const diffMinutes = Math.max(1, Math.round((now - target) / (1000 * 60)));
-
-  if (diffMinutes < 60) return `${diffMinutes} phút trước`;
-
-  const diffHours = Math.round(diffMinutes / 60);
-  if (diffHours < 24) return `${diffHours} giờ trước`;
-
-  const diffDays = Math.round(diffHours / 24);
-  return `${diffDays} ngày trước`;
-}
-
-function formatTodayLabel() {
-  return new Date().toLocaleDateString("vi-VN", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-}
-
-function formatTimingLabel(timing) {
-  if (!timing) return "Chưa ghi chú";
-  if (timing === "pre") return "Trước ăn";
-  if (timing === "post") return "Sau ăn";
-  return timing;
-}
-
-function getLatestMeasurement(measurements, predicate) {
-  return measurements
-    .filter(predicate)
-    .sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    )[0] || null;
-}
-
-const alertPreviewItems = [
+const measurements = [
   {
-    id: "preview-high",
-    typeLabel: "Đường huyết",
-    observed: "145 mg/dL",
-    severityText: "Cao",
-    statusText: "Mới",
-    rule: "Glucose > 130 mg/dL",
-    createdAt: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
-    iconName: "water",
-    isHigh: true,
+    id: "m1",
+    patientId: "p1",
+    type: "bp",
+    systolic: 120,
+    diastolic: 80,
+    pulse: 72,
+    timing: "morning",
+    device: "BP_MONITOR_01",
+    note: "Đo sau khi nghỉ 5 phút",
+    recordedBy: "u1",
+    createdAt: "2025-12-12T08:30:00Z",
+    updatedAt: "2025-12-12T08:31:00Z",
   },
   {
-    id: "preview-normal",
-    typeLabel: "Huyết áp",
-    observed: "120/80 mmHg",
-    severityText: "Bình thường",
-    statusText: "Đã xử lý",
-    rule: "BP tâm thu > 150",
-    createdAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
-    iconName: "fitness",
-    isHigh: false,
+    id: "m2",
+    patientId: "p1",
+    type: "glucose",
+    glucose: 95,
+    timing: "fasting",
+    device: "GLUCOSE_METER_01",
+    note: "Đo lúc đói",
+    recordedBy: "u1",
+    createdAt: "2025-12-12T07:00:00Z",
+    updatedAt: "2025-12-12T07:01:00Z",
+  },
+  {
+    id: "m3",
+    patientId: "p1",
+    type: "spo2",
+    spo2: 98,
+    timing: "rest",
+    device: "SPO2_01",
+    note: "",
+    recordedBy: "u1",
+    createdAt: "2025-12-12T09:10:00Z",
+    updatedAt: "2025-12-12T09:11:00Z",
+  },
+  {
+    id: "m4",
+    patientId: "p1",
+    type: "temp",
+    temperature: 36.7,
+    timing: "evening",
+    device: "THERMO_01",
+    note: "",
+    recordedBy: "u1",
+    createdAt: "2025-12-12T18:00:00Z",
+    updatedAt: "2025-12-12T18:01:00Z",
+  },
+  {
+    id: "m5",
+    patientId: "p1",
+    type: "respiratory_rate",
+    respiratoryRate: 18,
+    timing: "rest",
+    device: "RESP_MONITOR_01",
+    note: "Thở đều, lúc nghỉ",
+    recordedBy: "u1",
+    createdAt: "2025-12-12T08:45:00Z",
+    updatedAt: "2025-12-12T08:46:00Z",
   },
 ];
 
+const alerts = [
+  {
+    id: "a1",
+    patientId: "p1",
+    doctorId: "d1",
+    measurementId: "m1",
+    type: "bp",
+    rule: "BP > 150",
+    observed: "120/80",
+    severity: "normal",
+    status: "resolved",
+    createdAt: "2025-11-24T09:00:00Z",
+  },
+  {
+    id: "a2",
+    patientId: "p1",
+    doctorId: "d1",
+    measurementId: "m2",
+    type: "glucose",
+    rule: "GLUCOSE > 130",
+    observed: "145",
+    severity: "high",
+    status: "new",
+    createdAt: "2025-11-24T03:00:00Z",
+  },
+];
+
+function formatRelativeTime(iso) {
+  const now = new Date();
+  const t = new Date(iso);
+  const diffMinutes = Math.max(
+    1,
+    Math.round((now.getTime() - t.getTime()) / (1000 * 60))
+  );
+  if (diffMinutes < 60) return `${diffMinutes} phút trước`;
+  const diffHours = Math.round(diffMinutes / 60);
+  return `${diffHours} giờ trước`;
+}
+
+function getLatestMeasurement(type) {
+  return measurements
+    .filter((m) => m.type === type)
+    .reduce((latest, m) => {
+      if (!latest) return m;
+      return new Date(m.createdAt) > new Date(latest.createdAt) ? m : latest;
+    }, null);
+}
+
 export default function HomeScreen() {
-  const { user } = useAuth() || {};
+  const latestBp = getLatestMeasurement("bp");
+  const latestGlucose = getLatestMeasurement("glucose");
+  const latestSpo2 = getLatestMeasurement("spo2");
+  const latestTemp = getLatestMeasurement("temp");
+  const latestResp = getLatestMeasurement("respiratory_rate");
 
-  const [profile, setProfile] = useState(null);
-  const [measurements, setMeasurements] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState("");
-
-  const loadHomeData = useCallback(async (isRefresh = false) => {
-    try {
-      setError("");
-      if (isRefresh) {
-        setRefreshing(true);
-      } else {
-        setLoading(true);
-      }
-
-      const profileResponse = await getMyPatientProfile();
-      const profileData = extractData(profileResponse);
-
-      if (!profileResponse?.ok || !profileData) {
-        throw new Error("Không thể tải hồ sơ bệnh nhân.");
-      }
-
-      setProfile(profileData);
-
-      const patientId = profileData.id || user?._id || user?.id;
-      if (!patientId) {
-        setMeasurements([]);
-        return;
-      }
-
-      const measurementResponse = await getMeasurements(patientId);
-      if (!measurementResponse?.ok) {
-        throw new Error("Không thể tải dữ liệu đo gần đây.");
-      }
-
-      setMeasurements(extractList(measurementResponse));
-    } catch (fetchError) {
-      setError(fetchError?.message || "Không thể tải dữ liệu trang chủ.");
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [user?._id, user?.id]);
-
-  useFocusEffect(
-    useCallback(() => {
-      void loadHomeData();
-    }, [loadHomeData])
-  );
-
-  const latestBp = useMemo(
-    () =>
-      getLatestMeasurement(
-        measurements,
-        (m) =>
-          Number(m?.bloodPressure?.systolic) > 0 ||
-          Number(m?.bloodPressure?.diastolic) > 0
-      ),
-    [measurements]
-  );
-
-  const latestGlucose = useMemo(
-    () => getLatestMeasurement(measurements, (m) => Number(m?.glucose) > 0),
-    [measurements]
-  );
-
-  const latestSpo2 = useMemo(
-    () => getLatestMeasurement(measurements, (m) => Number(m?.spo2) > 0),
-    [measurements]
-  );
-
-  const latestTemp = useMemo(
-    () => getLatestMeasurement(measurements, (m) => Number(m?.temperature) > 0),
-    [measurements]
-  );
-
-  const latestHeartRate = useMemo(
-    () => getLatestMeasurement(measurements, (m) => Number(m?.heartRate) > 0),
-    [measurements]
-  );
-
-  const latestResp = useMemo(
-    () =>
-      getLatestMeasurement(measurements, (m) => Number(m?.respiratoryRate) > 0),
-    [measurements]
-  );
-
-  const displayName = profile?.name || user?.name || user?.username || "Bệnh nhân";
-  const insuranceNumber = profile?.insuranceNumber || "Chưa cập nhật";
-  const emergencyName = profile?.emergencyContactName || "Chưa cập nhật";
-  const emergencyPhone = profile?.emergencyContactPhone || "Chưa cập nhật";
+  const latestHeartRate = latestBp ? latestBp.pulse : null;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#F2F4FF" }}>
-      <ScrollView
-        style={styles.container}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => loadHomeData(true)}
-            tintColor="#316BFF"
-          />
-        }
-      >
+      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+        {/* HEADER */}
         <View style={styles.headerCard}>
           <View style={styles.headerTopRow}>
             <View style={styles.headerIcon}>
@@ -206,237 +148,259 @@ export default function HomeScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.headerTitle}>Trang chủ bệnh nhân</Text>
-              <Text style={styles.headerSub}>Mã BHYT: {insuranceNumber}</Text>
+              <Text style={styles.headerSub}>
+                Mã BHYT: {patientInfo.insuranceNumber}
+              </Text>
             </View>
           </View>
           <View style={styles.headerBottomRow}>
             <Text style={styles.chipPrimary}>Theo dõi từ xa</Text>
-            <Text style={styles.chipLight}>Đồng bộ dữ liệu thật</Text>
+            <Text style={styles.chipLight}>An toàn · Real-time</Text>
           </View>
         </View>
 
+        {/* GREETING */}
         <View style={styles.greetingBox}>
-          <Text style={styles.greeting}>Xin chào, {displayName}</Text>
-          <Text style={styles.date}>{formatTodayLabel()}</Text>
+          <Text style={styles.greeting}>Xin chào, {user.name}</Text>
+          <Text style={styles.date}>Thứ Hai, 24 tháng 11, 2025</Text>
           <Text style={styles.subInfo}>
-            Người liên hệ khẩn cấp: {emergencyName} · {emergencyPhone}
+            Người liên hệ khẩn cấp: {patientInfo.emergencyContactName} ·{" "}
+            {patientInfo.emergencyContactPhone}
           </Text>
         </View>
 
-        {loading ? (
-          <View style={styles.loadingCard}>
-            <ActivityIndicator size="large" color="#316BFF" />
-            <Text style={styles.loadingText}>Đang tải dữ liệu sức khỏe...</Text>
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Tổng quan sinh hiệu mới nhất</Text>
+          <View style={styles.vitalGrid}>
+            <View style={styles.vitalCard}>
+              <View style={styles.vitalHeader}>
+                <Ionicons name="fitness" size={18} color="#316BFF" />
+                <Text style={styles.vitalTitle}>Huyết áp</Text>
+              </View>
+              {latestBp ? (
+                <>
+                  <Text style={styles.vitalMainValue}>
+                    {latestBp.systolic}/{latestBp.diastolic}
+                  </Text>
+                  <Text style={styles.vitalUnit}>
+                    mmHg · {latestBp.pulse} bpm
+                  </Text>
+                  <Text style={styles.vitalMeta}>
+                    {latestBp.timing} · {formatRelativeTime(latestBp.createdAt)}
+                  </Text>
+                </>
+              ) : (
+                <Text style={styles.vitalEmpty}>Chưa có dữ liệu</Text>
+              )}
+            </View>
+
+            {/* Đường huyết */}
+            <View style={styles.vitalCard}>
+              <View style={styles.vitalHeader}>
+                <Ionicons name="water" size={18} color="#2C9F5A" />
+                <Text style={styles.vitalTitle}>Đường huyết</Text>
+              </View>
+              {latestGlucose ? (
+                <>
+                  <Text style={styles.vitalMainValue}>
+                    {latestGlucose.glucose}
+                  </Text>
+                  <Text style={styles.vitalUnit}>
+                    mg/dL · {latestGlucose.timing}
+                  </Text>
+                  <Text style={styles.vitalMeta}>
+                    {formatRelativeTime(latestGlucose.createdAt)}
+                  </Text>
+                </>
+              ) : (
+                <Text style={styles.vitalEmpty}>Chưa có dữ liệu</Text>
+              )}
+            </View>
+
+            {/* SpO2 */}
+            <View style={styles.vitalCard}>
+              <View style={styles.vitalHeader}>
+                <Ionicons name="pulse" size={18} color="#EA4C89" />
+                <Text style={styles.vitalTitle}>SpO₂</Text>
+              </View>
+              {latestSpo2 ? (
+                <>
+                  <Text style={styles.vitalMainValue}>
+                    {latestSpo2.spo2}%
+                  </Text>
+                  <Text style={styles.vitalUnit}>{latestSpo2.timing}</Text>
+                  <Text style={styles.vitalMeta}>
+                    {formatRelativeTime(latestSpo2.createdAt)}
+                  </Text>
+                </>
+              ) : (
+                <Text style={styles.vitalEmpty}>Chưa có dữ liệu</Text>
+              )}
+            </View>
+
+            {/* Nhiệt độ */}
+            <View style={styles.vitalCard}>
+              <View style={styles.vitalHeader}>
+                <Ionicons name="thermometer" size={18} color="#FF9933" />
+                <Text style={styles.vitalTitle}>Nhiệt độ</Text>
+              </View>
+              {latestTemp ? (
+                <>
+                  <Text style={styles.vitalMainValue}>
+                    {latestTemp.temperature}
+                  </Text>
+                  <Text style={styles.vitalUnit}>
+                    °C · {latestTemp.timing}
+                  </Text>
+                  <Text style={styles.vitalMeta}>
+                    {formatRelativeTime(latestTemp.createdAt)}
+                  </Text>
+                </>
+              ) : (
+                <Text style={styles.vitalEmpty}>Chưa có dữ liệu</Text>
+              )}
+            </View>
+
+            <View style={styles.vitalCard}>
+              <View style={styles.vitalHeader}>
+                <Ionicons name="heart-circle-outline" size={18} color="#EF4444" />
+                <Text style={styles.vitalTitle}>Nhịp tim</Text>
+              </View>
+              {latestHeartRate != null ? (
+                <>
+                  <Text style={styles.vitalMainValue}>{latestHeartRate}</Text>
+                  <Text style={styles.vitalUnit}>bpm</Text>
+                  <Text style={styles.vitalMeta}>
+                    {formatRelativeTime(latestBp.createdAt)}
+                  </Text>
+                </>
+              ) : (
+                <Text style={styles.vitalEmpty}>Chưa có dữ liệu</Text>
+              )}
+            </View>
+
+            <View style={styles.vitalCard}>
+              <View style={styles.vitalHeader}>
+                <MaterialIcons name="air" size={20} color="#10B981" />
+                <Text style={styles.vitalTitle}>Nhịp thở</Text>
+              </View>
+              {latestResp ? (
+                <>
+                  <Text style={styles.vitalMainValue}>
+                    {latestResp.respiratoryRate}
+                  </Text>
+                  <Text style={styles.vitalUnit}>lần/phút</Text>
+                  <Text style={styles.vitalMeta}>
+                    {formatRelativeTime(latestResp.createdAt)}
+                  </Text>
+                </>
+              ) : (
+                <Text style={styles.vitalEmpty}>Chưa có dữ liệu</Text>
+              )}
+            </View>
           </View>
-        ) : (
-          <>
-            {error ? (
-              <View style={styles.errorCard}>
-                <Text style={styles.errorTitle}>Không thể tải trang chủ</Text>
-                <Text style={styles.errorText}>{error}</Text>
-                <TouchableOpacity
-                  style={styles.retryButton}
-                  onPress={() => loadHomeData()}
-                >
-                  <Text style={styles.retryButtonText}>Thử lại</Text>
-                </TouchableOpacity>
-              </View>
-            ) : null}
+        </View>
 
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>Tổng quan sinh hiệu mới nhất</Text>
-              <View style={styles.vitalGrid}>
-                <View style={styles.vitalCard}>
-                  <View style={styles.vitalHeader}>
-                    <Ionicons name="fitness" size={18} color="#316BFF" />
-                    <Text style={styles.vitalTitle}>Huyết áp</Text>
-                  </View>
-                  {latestBp ? (
-                    <>
-                      <Text style={styles.vitalMainValue}>
-                        {latestBp.bloodPressure?.systolic || 0}/
-                        {latestBp.bloodPressure?.diastolic || 0}
-                      </Text>
-                      <Text style={styles.vitalUnit}>
-                        mmHg · {latestBp.heartRate || 0} bpm
-                      </Text>
-                      <Text style={styles.vitalMeta}>
-                        {formatTimingLabel(latestBp.timing)} ·{" "}
-                        {formatRelativeTime(latestBp.createdAt)}
-                      </Text>
-                    </>
-                  ) : (
-                    <Text style={styles.vitalEmpty}>Chưa có dữ liệu</Text>
-                  )}
+        {/* RECENT ALERTS */}
+        <Text style={styles.sectionTitle}>Cảnh báo gần đây</Text>
+
+        {alerts.map((alert) => {
+          const isHigh = alert.severity === "high";
+
+          const typeLabel =
+            alert.type === "bp"
+              ? "Huyết áp"
+              : alert.type === "glucose"
+              ? "Đường huyết"
+              : "Sinh hiệu";
+
+          const severityText =
+            alert.severity === "normal"
+              ? "Bình thường"
+              : alert.severity === "high"
+              ? "Cao"
+              : alert.severity;
+
+          const statusText =
+            alert.status === "new"
+              ? "Mới"
+              : alert.status === "resolved"
+              ? "Đã xử lý"
+              : alert.status;
+
+          return (
+            <View
+              key={alert.id}
+              style={[
+                styles.warningItem,
+                isHigh && styles.warningItemHigh,
+              ]}
+            >
+              <View style={styles.alertHeaderRow}>
+                <View style={styles.alertTitleWrapper}>
+                  <Ionicons
+                    name={
+                      alert.type === "glucose"
+                        ? "water"
+                        : alert.type === "bp"
+                        ? "fitness"
+                        : "pulse"
+                    }
+                    size={18}
+                    color={isHigh ? "#D63031" : "#1A8F4A"}
+                  />
+                  <Text style={styles.warnLabel}>
+                    {typeLabel} · {alert.observed}
+                  </Text>
                 </View>
 
-                <View style={styles.vitalCard}>
-                  <View style={styles.vitalHeader}>
-                    <Ionicons name="water" size={18} color="#2C9F5A" />
-                    <Text style={styles.vitalTitle}>Đường huyết</Text>
-                  </View>
-                  {latestGlucose ? (
-                    <>
-                      <Text style={styles.vitalMainValue}>{latestGlucose.glucose}</Text>
-                      <Text style={styles.vitalUnit}>
-                        mg/dL · {formatTimingLabel(latestGlucose.timing)}
-                      </Text>
-                      <Text style={styles.vitalMeta}>
-                        {formatRelativeTime(latestGlucose.createdAt)}
-                      </Text>
-                    </>
-                  ) : (
-                    <Text style={styles.vitalEmpty}>Chưa có dữ liệu</Text>
-                  )}
-                </View>
-
-                <View style={styles.vitalCard}>
-                  <View style={styles.vitalHeader}>
-                    <Ionicons name="pulse" size={18} color="#EA4C89" />
-                    <Text style={styles.vitalTitle}>SpO₂</Text>
-                  </View>
-                  {latestSpo2 ? (
-                    <>
-                      <Text style={styles.vitalMainValue}>{latestSpo2.spo2}%</Text>
-                      <Text style={styles.vitalUnit}>Độ bão hòa oxy</Text>
-                      <Text style={styles.vitalMeta}>
-                        {formatRelativeTime(latestSpo2.createdAt)}
-                      </Text>
-                    </>
-                  ) : (
-                    <Text style={styles.vitalEmpty}>Chưa có dữ liệu</Text>
-                  )}
-                </View>
-
-                <View style={styles.vitalCard}>
-                  <View style={styles.vitalHeader}>
-                    <Ionicons name="thermometer" size={18} color="#FF9933" />
-                    <Text style={styles.vitalTitle}>Nhiệt độ</Text>
-                  </View>
-                  {latestTemp ? (
-                    <>
-                      <Text style={styles.vitalMainValue}>{latestTemp.temperature}</Text>
-                      <Text style={styles.vitalUnit}>°C</Text>
-                      <Text style={styles.vitalMeta}>
-                        {formatRelativeTime(latestTemp.createdAt)}
-                      </Text>
-                    </>
-                  ) : (
-                    <Text style={styles.vitalEmpty}>Chưa có dữ liệu</Text>
-                  )}
-                </View>
-
-                <View style={styles.vitalCard}>
-                  <View style={styles.vitalHeader}>
-                    <Ionicons
-                      name="heart-circle-outline"
-                      size={18}
-                      color="#EF4444"
-                    />
-                    <Text style={styles.vitalTitle}>Nhịp tim</Text>
-                  </View>
-                  {latestHeartRate ? (
-                    <>
-                      <Text style={styles.vitalMainValue}>{latestHeartRate.heartRate}</Text>
-                      <Text style={styles.vitalUnit}>bpm</Text>
-                      <Text style={styles.vitalMeta}>
-                        {formatRelativeTime(latestHeartRate.createdAt)}
-                      </Text>
-                    </>
-                  ) : (
-                    <Text style={styles.vitalEmpty}>Chưa có dữ liệu</Text>
-                  )}
-                </View>
-
-                <View style={styles.vitalCard}>
-                  <View style={styles.vitalHeader}>
-                    <MaterialIcons name="air" size={20} color="#10B981" />
-                    <Text style={styles.vitalTitle}>Nhịp thở</Text>
-                  </View>
-                  {latestResp ? (
-                    <>
-                      <Text style={styles.vitalMainValue}>
-                        {latestResp.respiratoryRate}
-                      </Text>
-                      <Text style={styles.vitalUnit}>lần/phút</Text>
-                      <Text style={styles.vitalMeta}>
-                        {formatRelativeTime(latestResp.createdAt)}
-                      </Text>
-                    </>
-                  ) : (
-                    <Text style={styles.vitalEmpty}>Chưa có dữ liệu</Text>
-                  )}
-                </View>
-              </View>
-            </View>
-
-            <View style={styles.alertSectionCard}>
-              <Text style={styles.sectionTitle}>Cảnh báo gần đây</Text>
-
-              {alertPreviewItems.map((alert) => (
                 <View
-                  key={alert.id}
-                  style={[
-                    styles.warningItem,
-                    alert.isHigh && styles.warningItemHigh,
-                  ]}
+                  style={
+                    isHigh
+                      ? styles.alertStatusPillHigh
+                      : styles.alertStatusPillNormal
+                  }
                 >
-                  <View style={styles.alertHeaderRow}>
-                    <View style={styles.alertTitleWrapper}>
-                      <Ionicons
-                        name={alert.iconName}
-                        size={18}
-                        color={alert.isHigh ? "#D63031" : "#1A8F4A"}
-                      />
-                      <Text style={styles.warnLabel}>
-                        {alert.typeLabel} · {alert.observed}
-                      </Text>
-                    </View>
-
-                    <View
-                      style={
-                        alert.isHigh
-                          ? styles.alertStatusPillHigh
-                          : styles.alertStatusPillNormal
-                      }
-                    >
-                      <Text
-                        style={
-                          alert.isHigh
-                            ? styles.alertStatusTextHigh
-                            : styles.alertStatusTextNormal
-                        }
-                      >
-                        {alert.severityText}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.alertRuleRow}>
-                    <Text style={styles.alertRuleText}>Quy tắc: {alert.rule}</Text>
-                    <Text style={styles.alertRuleText}>{alert.statusText}</Text>
-                  </View>
-
-                  <View style={styles.alertTimeRow}>
-                    <Ionicons name="time-outline" size={14} color="#9CA3AF" />
-                    <Text style={styles.alertTimeText}>
-                      {formatRelativeTime(alert.createdAt)}
-                    </Text>
-                  </View>
+                  <Text
+                    style={
+                      isHigh
+                        ? styles.alertStatusTextHigh
+                        : styles.alertStatusTextNormal
+                    }
+                  >
+                    {severityText}
+                  </Text>
                 </View>
-              ))}
+              </View>
+
+              <View style={styles.alertRuleRow}>
+                <Text style={styles.alertRuleText}>
+                  Quy tắc: {alert.rule}
+                </Text>
+                <Text style={styles.alertRuleText}>{statusText}</Text>
+              </View>
+
+              <View style={styles.alertTimeRow}>
+                <Ionicons
+                  name="time-outline"
+                  size={14}
+                  color="#9CA3AF"
+                />
+                <Text style={styles.alertTimeText}>
+                  {formatRelativeTime(alert.createdAt)}
+                </Text>
+              </View>
             </View>
-          </>
-        )}
+          );
+        })}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 20,
-  },
+  container: { padding: 20, },
+
   headerCard: {
     backgroundColor: "#FFFFFF",
     padding: 18,
@@ -462,16 +426,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  headerTitle: {
-    fontWeight: "700",
-    fontSize: 18,
-    color: "#121826",
-  },
-  headerSub: {
-    marginTop: 4,
-    color: "#7A8194",
-    fontSize: 12,
-  },
+  headerTitle: { fontWeight: "700", fontSize: 18, color: "#121826" },
+  headerSub: { marginTop: 4, color: "#7A8194", fontSize: 12 },
+
   headerBottomRow: {
     flexDirection: "row",
     gap: 8,
@@ -494,24 +451,12 @@ const styles = StyleSheet.create({
     fontSize: 11,
     overflow: "hidden",
   },
-  greetingBox: {
-    marginBottom: 20,
-  },
-  greeting: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#121826",
-  },
-  date: {
-    color: "#7A8194",
-    marginTop: 4,
-    fontSize: 13,
-  },
-  subInfo: {
-    color: "#4C5A7D",
-    marginTop: 6,
-    fontSize: 12,
-  },
+
+  greetingBox: { marginBottom: 20 },
+  greeting: { fontSize: 18, fontWeight: "600", color: "#121826" },
+  date: { color: "#7A8194", marginTop: 4, fontSize: 13 },
+  subInfo: { color: "#4C5A7D", marginTop: 6, fontSize: 12 },
+
   card: {
     backgroundColor: "#FFFFFF",
     padding: 18,
@@ -523,12 +468,14 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 3 },
   },
+
   cardTitle: {
     fontSize: 16,
     fontWeight: "700",
     marginBottom: 15,
     color: "#1A2740",
   },
+
   vitalGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -573,65 +520,60 @@ const styles = StyleSheet.create({
     color: "#9CA3AF",
     marginTop: 8,
   },
-  loadingCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 18,
-    paddingVertical: 36,
-    alignItems: "center",
+
+  row: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+
+  historyBtn: {
+    backgroundColor: "#F3F7FF",
+    padding: 12,
+    borderRadius: 12,
+    width: "48%",
+    flexDirection: "row",
     justifyContent: "center",
-    gap: 10,
+    gap: 6,
+    alignItems: "center",
   },
-  loadingText: {
-    color: "#6B7280",
-    fontSize: 13,
-  },
-  errorCard: {
-    backgroundColor: "#FFF5F5",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: "#FECACA",
-  },
-  errorTitle: {
-    color: "#B91C1C",
-    fontSize: 15,
-    fontWeight: "700",
-  },
-  errorText: {
-    color: "#7F1D1D",
-    marginTop: 6,
-    fontSize: 13,
-  },
-  retryButton: {
-    marginTop: 12,
-    alignSelf: "flex-start",
-    backgroundColor: "#EF4444",
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 10,
-  },
-  retryButtonText: {
-    color: "#FFFFFF",
+
+  historyText: {
+    textAlign: "center",
+    color: "#376AED",
     fontWeight: "600",
-    fontSize: 12,
+    fontSize: 13,
   },
+
+  alertBtn: {
+    backgroundColor: "#FFF0F0",
+    padding: 12,
+    borderRadius: 12,
+    width: "48%",
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 6,
+    alignItems: "center",
+  },
+
+  alertText: {
+    textAlign: "center",
+    color: "#D63031",
+    fontWeight: "600",
+    fontSize: 13,
+  },
+
   sectionTitle: {
     fontWeight: "700",
     fontSize: 16,
+    marginVertical: 20,
     color: "#1A2740",
   },
-  alertSectionCard: {
-    backgroundColor: "#FFFFFF",
-    padding: 18,
-    borderRadius: 18,
-    marginBottom: 20,
-  },
+
   warningItem: {
     backgroundColor: "#FFFFFF",
     padding: 14,
     borderRadius: 14,
-    marginTop: 12,
+    marginBottom: 12,
     shadowColor: "#000",
     shadowOpacity: 0.02,
     shadowRadius: 6,
@@ -643,6 +585,7 @@ const styles = StyleSheet.create({
     borderColor: "#FCA5A5",
     backgroundColor: "#FFF5F5",
   },
+
   alertHeaderRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -661,6 +604,7 @@ const styles = StyleSheet.create({
     color: "#111827",
     flexShrink: 1,
   },
+
   alertStatusPillNormal: {
     backgroundColor: "#E4FFE9",
     paddingHorizontal: 10,
@@ -683,6 +627,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     fontSize: 11,
   },
+
   alertRuleRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -693,6 +638,7 @@ const styles = StyleSheet.create({
     color: "#6B7280",
     flexShrink: 1,
   },
+
   alertTimeRow: {
     flexDirection: "row",
     alignItems: "center",
