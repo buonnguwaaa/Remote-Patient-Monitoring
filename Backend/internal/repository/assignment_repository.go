@@ -16,7 +16,7 @@ type AssignmentRepository interface {
 	FindByPatientID(ctx context.Context, patientID primitive.ObjectID) (*domain.Assignment, error)
 	FindByDoctorID(ctx context.Context, doctorID primitive.ObjectID) ([]*domain.Assignment, error)
 	FindByNurseID(ctx context.Context, nurseID primitive.ObjectID) ([]*domain.Assignment, error)
-	DeleteByPatientID(ctx context.Context, patientID primitive.ObjectID) error
+	DeleteByID(ctx context.Context, assignmentID primitive.ObjectID) error
 }
 
 type assignmentRepository struct {
@@ -94,8 +94,8 @@ func (r *assignmentRepository) FindByNurseID(ctx context.Context, nurseID primit
 	return assignments, nil
 }
 
-func (r *assignmentRepository) DeleteByPatientID(ctx context.Context, patientID primitive.ObjectID) error {
-	_, err := r.collection.DeleteOne(ctx, bson.M{"patientId": patientID})
+func (r *assignmentRepository) DeleteByID(ctx context.Context, assignmentID primitive.ObjectID) error {
+	_, err := r.collection.DeleteOne(ctx, bson.M{"_id": assignmentID})
 	return err
 }
 

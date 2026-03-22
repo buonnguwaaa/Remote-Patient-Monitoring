@@ -54,7 +54,6 @@ func (s *userService) GetBaseUsers(ctx context.Context, input *usecase.GetUsersI
 		Name:      input.Name,
 		Email:     input.Email,
 		Gender:    input.Gender,
-		Role:      input.Role,
 		Limit:     input.Limit,
 		Offset:    input.Offset,
 		SortOrder: input.SortOrder,

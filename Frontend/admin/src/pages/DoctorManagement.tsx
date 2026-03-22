@@ -19,7 +19,7 @@ const DoctorManagement: React.FC = () => {
 
   const fetchDoctors = async () => {
     try {
-      const response = await api.get("/users?role=user.doctor");
+      const response = await api.get("/users/doctors");
       if (response.data && response.data.data) {
         const apiDoctors = response.data.data.map((u: any) => ({
           id: u.id,
@@ -28,10 +28,10 @@ const DoctorManagement: React.FC = () => {
           gender: mapGenderToDisplay(u.gender),
           dateOfBirth: u.dob,
           phone: u.phone || "",
-          specialization: u.doctorProfile?.specialization || "",
-          licenseNumber: u.doctorProfile?.licenseNumber || "",
-          workplace: u.doctorProfile?.workplace || "",
-          yearsOfExperience: u.doctorProfile?.yearsOfExperience || 0,
+          specialization: u.specialization || "",
+          licenseNumber: u.licenseNumber || "",
+          workplace: u.workplace || "",
+          yearsOfExperience: u.yearsOfExperience || 0,
           status: u.isActive ? "active" : "inactive",
           profileImageUrl: u.avatarUrl || "/default-avatar.svg",
         }));
@@ -110,7 +110,7 @@ const DoctorManagement: React.FC = () => {
           name, email, password, confirmedPassword: password,
           role: "user.doctor", gender: apiGender, dob: "1980-01-01",
         });
-        const resp = await api.get("/users?role=user.doctor&sortOrder=desc&limit=1");
+        const resp = await api.get("/users/doctors?sortOrder=desc&limit=1");
         const newUser = resp.data?.data?.[0];
         savedUserId = newUser?.id;
         if (savedUserId) {

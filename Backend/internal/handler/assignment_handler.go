@@ -22,6 +22,17 @@ func NewAssignmentHandler(service service.AssignmentService) *AssignmentHandler 
 	}
 }
 
+// AssignPatient assigns a patient to a doctor or nurse.
+// @Summary Assign patient to doctor/nurse
+// @Description Create or update an assignment between a patient and medical staff
+// @Tags assignments
+// @Accept json
+// @Produce json
+// @Param body body dto.AssignPatientRequest true "Assignment info"
+// @Success 201 {object} map[string]interface{} "Assignment created successfully"
+// @Failure 400 {object} map[string]string "Bad request"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Router /assignments/assign [post]
 func (h *AssignmentHandler) AssignPatient(c *gin.Context) {
 	var req dto.AssignPatientRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -100,16 +111,16 @@ func (h *AssignmentHandler) GetAllAssignments(c *gin.Context) {
 }
 
 func (h *AssignmentHandler) DeleteAssignment(c *gin.Context) {
-	patientID := c.Param("patientId")
-	if patientID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "missing patient id"})
+	assignmentID := c.Param("id")
+	if assignmentID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing assignment id"})
 		return
 	}
 
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
-	if err := h.service.DeleteAssignmentByPatientID(ctx, &usecase.DeleteAssignmentInput{PatientID: patientID}); err != nil {
+	if err := h.service.DeleteAssignmentByID(ctx, &usecase.DeleteAssignmentInput{AssignmentID: assignmentID}); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

@@ -60,7 +60,6 @@ func (h *UserHandler) GetBaseUsers(c *gin.Context) {
 		Name:      c.Query("name"),
 		Email:     c.Query("email"),
 		Gender:    c.Query("gender"),
-		Role:      c.Query("role"),
 		Page:      page,
 		Limit:     limit,
 		Offset:    offset,

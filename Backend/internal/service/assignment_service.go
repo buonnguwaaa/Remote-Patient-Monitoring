@@ -18,7 +18,7 @@ type AssignmentService interface {
 	AssignPatient(ctx context.Context, input *usecase.AssignPatientInput) (*usecase.AssignmentResponse, error)
 	GetAllAssignments(ctx context.Context) ([]*usecase.AssignmentResponse, error)
 	GetAssignmentsByRole(ctx context.Context, input *usecase.GetAssignmentsByRoleInput) ([]*usecase.AssignmentResponse, error)
-	DeleteAssignmentByPatientID(ctx context.Context, input *usecase.DeleteAssignmentInput) error
+	DeleteAssignmentByID(ctx context.Context, input *usecase.DeleteAssignmentInput) error
 }
 
 type assignmentService struct {
@@ -125,13 +125,13 @@ func (s *assignmentService) GetAllAssignments(ctx context.Context) ([]*usecase.A
 	return s.mapListToResponse(ctx, assignments), nil
 }
 
-func (s *assignmentService) DeleteAssignmentByPatientID(ctx context.Context, input *usecase.DeleteAssignmentInput) error {
-	patientID, err := util.MustHexToObjectID(input.PatientID)
+func (s *assignmentService) DeleteAssignmentByID(ctx context.Context, input *usecase.DeleteAssignmentInput) error {
+	assignmentID, err := util.MustHexToObjectID(input.AssignmentID)
 	if err != nil {
 		return err
 	}
 
-	return s.assignmentRepo.DeleteByPatientID(ctx, patientID)
+	return s.assignmentRepo.DeleteByID(ctx, assignmentID)
 }
 
 func (s *assignmentService) mapListToResponse(ctx context.Context, assignments []*domain.Assignment) []*usecase.AssignmentResponse {

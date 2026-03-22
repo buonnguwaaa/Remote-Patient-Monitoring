@@ -77,7 +77,7 @@ func (h *AlertHandler) GetAlerts(c *gin.Context) {
 // @Failure 401 {object} map[string]string "Unauthorized"
 // @Failure 404 {object} map[string]string "Alert not found"
 // @Failure 500 {object} map[string]string "Internal server error"
-// @Router /alerts/{id}/acknowledge [patch]
+// @Router /alerts/{id} [patch]
 func (h *AlertHandler) UpdateAlertAcknowledgementByID(c *gin.Context) {
 	doctorId, exists := c.Get("userId")
 	if !exists {

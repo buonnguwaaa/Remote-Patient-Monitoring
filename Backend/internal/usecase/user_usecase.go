@@ -4,7 +4,6 @@ type GetUsersInput struct {
 	Name      string
 	Email     string
 	Gender    string
-	Role      string
 	Page      int
 	Limit     int
 	Offset    int

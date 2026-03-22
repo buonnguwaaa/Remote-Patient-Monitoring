@@ -35,10 +35,10 @@ const AssignmentManagement: React.FC = () => {
     try {
       setLoading(true);
       const [resPatients, resDoctors, resNurses, resAssignments] = await Promise.all([
-        api.get("/users?role=user.patient&limit=100"),
-        api.get("/users?role=user.doctor&limit=100"),
-        api.get("/users?role=user.nurse&limit=100"),
-        api.get("/assignments/admin"),
+        api.get("/users/patients?limit=100"),
+        api.get("/users/doctors?limit=100"),
+        api.get("/users/nurses?limit=100"),
+        api.get("/assignments"),
       ]);
 
       setPatients(extractList(resPatients));
@@ -56,7 +56,7 @@ const AssignmentManagement: React.FC = () => {
   const refreshAssignments = async () => {
     try {
       setLoadingAssignments(true);
-      const response = await api.get("/assignments/admin");
+      const response = await api.get("/assignments");
       setAssignments(extractList(response));
     } catch (error) {
       console.error("Error refreshing assignments", error);
@@ -147,7 +147,7 @@ const AssignmentManagement: React.FC = () => {
 
     try {
       setLoadingAssignments(true);
-      await api.delete(`/assignments/${assignment.patientId}`);
+      await api.delete(`/assignments/${assignment.id}`);
       if (editingAssignmentId === assignment.id) {
         resetForm();
       }

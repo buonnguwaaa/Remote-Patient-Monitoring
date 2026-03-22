@@ -19,7 +19,7 @@ const NurseManagement: React.FC = () => {
 
   const fetchNurses = async () => {
     try {
-      const response = await api.get("/users?role=user.nurse");
+      const response = await api.get("/users/nurses");
       if (response.data?.data) {
         const apiNurses = response.data.data.map((u: any) => ({
           id: u.id,
@@ -28,9 +28,9 @@ const NurseManagement: React.FC = () => {
           gender: mapGenderToDisplay(u.gender),
           dateOfBirth: u.dob,
           phone: u.phone || "",
-          licenseNumber: u.nurseProfile?.licenseNumber || "",
-          department: u.nurseProfile?.department || "",
-          yearsOfExperience: u.nurseProfile?.yearsOfExperience || 0,
+          licenseNumber: u.licenseNumber || "",
+          department: u.workplace || u.ward || u.departmentId || "",
+          yearsOfExperience: 0,
           status: u.isActive ? "active" : "inactive",
           profileImageUrl: u.avatarUrl || "/avartar.jpg",
         }));
@@ -113,7 +113,7 @@ const NurseManagement: React.FC = () => {
           name, email, password, confirmedPassword: password,
           role: "user.nurse", gender: apiGender, dob: "1990-01-01",
         });
-        const resp = await api.get("/users?role=user.nurse&sortOrder=desc&limit=1");
+        const resp = await api.get("/users/nurses?sortOrder=desc&limit=1");
         const newUser = resp.data?.data?.[0];
         savedUserId = newUser?.id;
         if (savedUserId) {

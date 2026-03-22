@@ -19,7 +19,7 @@ const PatientManagementAdmin: React.FC = () => {
 
   const fetchPatients = async () => {
     try {
-      const response = await api.get("/users?role=user.patient");
+      const response = await api.get("/users/patients");
       if (response.data?.data) {
         const apiPatients = response.data.data.map((u: any) => ({
           id: u.id,
@@ -106,7 +106,7 @@ const PatientManagementAdmin: React.FC = () => {
           role: "user.patient", gender: apiGender,
           dob: dateOfBirth || "1990-01-01",
         });
-        const resp = await api.get("/users?role=user.patient&sortOrder=desc&limit=1");
+        const resp = await api.get("/users/patients?sortOrder=desc&limit=1");
         savedUserId = resp.data?.data?.[0]?.id;
         if (savedUserId) {
           await api.patch(`/users/${savedUserId}`, { phone, isActive });

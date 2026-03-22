@@ -20,7 +20,7 @@ type GetAssignmentsByRoleInput struct {
 }
 
 type DeleteAssignmentInput struct {
-	PatientID string
+	AssignmentID string
 }
 
 type AssignmentResponse struct {

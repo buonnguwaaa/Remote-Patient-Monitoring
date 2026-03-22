@@ -2,7 +2,7 @@ import api from "./api";
 import type { AssignmentResponse, AlertResponse } from "../types/patient";
 
 export const getMyPatients = async (): Promise<AssignmentResponse[]> => {
-  const response = await api.get<{ data: AssignmentResponse[] | null }>("/assignments");
+  const response = await api.get<{ data: AssignmentResponse[] | null }>("/assignments/me");
   return response.data.data || [];
 };
 
@@ -35,6 +35,6 @@ export const getAlerts = async (params?: {
 };
 
 export const acknowledgeAlert = async (alertId: string): Promise<AlertResponse> => {
-  const response = await api.patch<{ data: AlertResponse }>(`/alerts/${alertId}/acknowledge`);
+  const response = await api.patch<{ data: AlertResponse }>(`/alerts/${alertId}`);
   return response.data.data;
 };
