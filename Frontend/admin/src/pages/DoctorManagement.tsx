@@ -15,11 +15,11 @@ const DoctorManagement: React.FC = () => {
   const [editingDoctor, setEditingDoctor] = useState<doctor | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
-  const { toast, showToast, hideToast } = useToast();
+  const { toast, showToast } = useToast();
 
   const fetchDoctors = async () => {
     try {
-      const response = await api.get("/users/doctors");
+      const response = await api.get("/users?role=user.doctor");
       if (response.data && response.data.data) {
         const apiDoctors = response.data.data.map((u: any) => ({
           id: u.id,
@@ -28,11 +28,11 @@ const DoctorManagement: React.FC = () => {
           gender: mapGenderToDisplay(u.gender),
           dateOfBirth: u.dob,
           phone: u.phone || "",
-          specialization: u.specialization || "",
-          licenseNumber: u.licenseNumber || "",
-          workplace: u.workplace || "",
-          yearsOfExperience: u.yearsOfExperience || 0,
-          status: u.isActive ? "active" : "inactive",
+          specialization: u.doctorProfile?.specialization || "",
+          licenseNumber: u.doctorProfile?.licenseNumber || "",
+          workplace: u.doctorProfile?.workplace || "",
+          yearsOfExperience: u.doctorProfile?.yearsOfExperience || 0,
+          status: "active",
           profileImageUrl: u.avatarUrl || "/default-avatar.svg",
         }));
         setDoctors(apiDoctors);
@@ -87,18 +87,16 @@ const DoctorManagement: React.FC = () => {
     const licenseNumber = formData.get("licenseNumber") as string;
     const workplace = formData.get("workplace") as string;
     const yearsOfExperience = parseInt(formData.get("yearsOfExperience") as string) || 0;
-    const status = formData.get("status") as "active" | "inactive";
 
     const apiGender = mapGenderToApi(gender);
-    const isActive = status !== "inactive";
 
     try {
       let savedUserId = editingDoctor?.id;
 
       if (editingDoctor?.id) {
-        await api.patch(`/users/${editingDoctor.id}`, {
+        await api.put(`/users/${editingDoctor.id}`, {
           name, email, gender: apiGender, phone, specialization,
-          licenseNumber, workplace, yearsOfExperience, isActive, roles: ["user.doctor"],
+          licenseNumber, workplace, yearsOfExperience, roles: ["user.doctor"],
         });
       } else {
         const password = formData.get("password") as string;
@@ -110,12 +108,12 @@ const DoctorManagement: React.FC = () => {
           name, email, password, confirmedPassword: password,
           role: "user.doctor", gender: apiGender, dob: "1980-01-01",
         });
-        const resp = await api.get("/users/doctors?sortOrder=desc&limit=1");
+        const resp = await api.get("/users?role=user.doctor&sortOrder=desc&limit=1");
         const newUser = resp.data?.data?.[0];
         savedUserId = newUser?.id;
         if (savedUserId) {
-          await api.patch(`/users/${savedUserId}`, {
-            phone, specialization, licenseNumber, workplace, yearsOfExperience, isActive,
+          await api.put(`/users/${savedUserId}`, {
+            phone, specialization, licenseNumber, workplace, yearsOfExperience,
           });
         }
       }
@@ -136,7 +134,7 @@ const DoctorManagement: React.FC = () => {
 
   return (
     <div className="p-6">
-      <Toast toast={toast} onClose={hideToast} />
+      <Toast toast={toast} />
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold text-gray-800 dark:text-white flex items-center">
@@ -189,9 +187,6 @@ const DoctorManagement: React.FC = () => {
                 Kinh nghiệm
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Trạng thái
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Liên hệ
               </th>
               <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -233,11 +228,6 @@ const DoctorManagement: React.FC = () => {
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                   {doctor.yearsOfExperience} năm
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${doctor.status === "active" ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"}`}>
-                    {doctor.status === "active" ? "Hoạt động" : "Không hoạt động"}
-                  </span>
-                </td>
                 <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
                   <div>{doctor.email}</div>
                   <div className="text-gray-500 dark:text-gray-400">{doctor.phone}</div>
@@ -263,7 +253,7 @@ const DoctorManagement: React.FC = () => {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 bg-black bg-opacity-20 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <h2 className="text-2xl font-bold mb-4 dark:text-white">
               {editingDoctor ? "Chỉnh sửa bác sĩ" : "Thêm bác sĩ mới"}
@@ -370,19 +360,6 @@ const DoctorManagement: React.FC = () => {
                   >
                     <option value="Nam">Nam</option>
                     <option value="Nữ">Nữ</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Tráº¡ng thÃ¡i
-                  </label>
-                  <select
-                    name="status"
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    defaultValue={editingDoctor?.status || "active"}
-                  >
-                    <option value="active">Hoạt động</option>
-                    <option value="inactive">Không hoạt động</option>
                   </select>
                 </div>
                 {!editingDoctor && (

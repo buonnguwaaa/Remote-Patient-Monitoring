@@ -33,7 +33,7 @@ function buildMeasurementPayload({
   const base = {
     patientId: patientUserId,
     type,
-    timing: type === "glucose" ? (timing || null) : null,
+    timing: timing || null,
     device: device || null,
     recordedBy: patientUserId,
     note: note || null,
@@ -255,10 +255,9 @@ export default function InputMeasurementPatientScreen() {
 
   const handleSubmit = async () => {
     if (!validateForm()) return;
-    const resolvedPatientId = currentPatientUser.id || currentPatientUser._id;
 
     const payload = buildMeasurementPayload({
-      patientUserId: resolvedPatientId,
+      patientUserId: currentPatientUser.id || currentPatientUser._id || "p1",
       type,
       systolic,
       diastolic,

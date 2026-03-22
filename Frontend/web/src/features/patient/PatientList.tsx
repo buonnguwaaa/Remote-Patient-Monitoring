@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useMemo } from "react";
 
 import Table, { type Column } from "../../components/ui/Table";
-import { getLatestAlertForPatient, getMyPatients } from "../../services/patientService";
-import type { PatientItem } from "../../types/patient";
 import { Chat, Edit } from "./ActionButton";
+import { getMyPatients, getLatestAlertForPatient } from "../../services/patientService";
+import type { PatientItem } from "../../types/patient";
 
 const PatientList = () => {
   const navigate = useNavigate();
@@ -34,13 +34,12 @@ const PatientList = () => {
                 status = "Cảnh báo";
               }
             } catch {
-              // Keep the default status when alert lookup fails.
+          
             }
 
             return {
               id: assignment.patientId,
               name: assignment.patientName || "Không rõ tên",
-              patientCode: assignment.patientCode || "Chưa có mã",
               updatedAt: assignment.updatedAt
                 ? new Date(assignment.updatedAt).toISOString().split("T")[0]
                 : undefined,
@@ -61,20 +60,10 @@ const PatientList = () => {
   }, []);
 
   const filteredPatients = useMemo(() => {
-    const normalizedQuery = searchQuery.trim().toLowerCase();
-
-    return patients.filter((patient) => {
-      if (filterDate && patient.updatedAt !== filterDate) return false;
-      if (filterStatus && patient.status !== filterStatus) return false;
-
-      if (
-        normalizedQuery &&
-        !patient.name.toLowerCase().includes(normalizedQuery) &&
-        !patient.patientCode?.toLowerCase().includes(normalizedQuery)
-      ) {
-        return false;
-      }
-
+    return patients.filter((p) => {
+      if (filterDate && p.updatedAt !== filterDate) return false;
+      if (filterStatus && p.status !== filterStatus) return false;
+      if (searchQuery && !p.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
       return true;
     });
   }, [patients, filterDate, filterStatus, searchQuery]);
@@ -82,16 +71,15 @@ const PatientList = () => {
   const columns: Column<PatientItem>[] = [
     {
       header: "STT",
-      render: (patient) => <span className="font-bold">{filteredPatients.indexOf(patient) + 1}</span>,
+      render: (user) => (
+        <span className="font-bold">
+          {filteredPatients.indexOf(user) + 1}
+        </span>
+      ),
       className: "w-10",
     },
-       {
-      header: "Mã hồ sơ",
-      accessor: "patientCode",
-      className: "font-medium text-gray-700",
-    },
     {
-      header: "Họ và tên",
+      header: "Họ và Tên",
       accessor: "name",
       className: "font-medium text-gray-900",
     },
@@ -101,32 +89,33 @@ const PatientList = () => {
     },
     {
       header: "Tình trạng",
-      render: (patient) => (
+      render: (user) => (
         <div
-          className={`w-fit rounded-full px-2 py-1 text-xs font-semibold ${
-            patient.status === "Bình thường" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-          }`}
+          className={`px-2 py-1 rounded-full w-fit text-xs font-semibold ${user.status === "Bình thường"
+            ? "bg-green-100 text-green-800"
+            : "bg-red-100 text-red-800"
+            }`}
         >
-          <span>{patient.status}</span>
+          <span>{user.status}</span>
         </div>
       ),
     },
     {
       header: "Hành động",
-      render: (patient) => (
+      render: (user) => (
         <div className="flex gap-3">
           <Chat
-            className="cursor-pointer rounded-md p-1 hover:bg-gray-200"
+            className=" cursor-pointer p-1 hover:bg-gray-200 rounded-md"
             iconSize={22}
-            onClick={(event) => {
-              event.stopPropagation();
-              navigate(`/patient/chat/${patient.id}`);
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/patient/chat/${user.id}`);
             }}
           />
           <Edit
-            className="cursor-pointer rounded-md p-1 hover:bg-gray-200"
+            className=" cursor-pointer p-1 hover:bg-gray-200 rounded-md"
             iconSize={20}
-            onClick={() => console.log("Edit clicked for", patient.name)}
+            onClick={() => console.log("Edit clicked for", user.name)}
           />
         </div>
       ),
@@ -139,7 +128,7 @@ const PatientList = () => {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-100 p-8">
+      <div className="p-8 bg-gray-100 min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-500 border-r-transparent" />
           <p className="mt-2 text-sm text-gray-600">Đang tải danh sách bệnh nhân...</p>
@@ -150,8 +139,8 @@ const PatientList = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-100 p-8">
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">
+      <div className="p-8 bg-gray-100 min-h-screen">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
           <p className="font-semibold">Lỗi</p>
           <p>{error}</p>
         </div>
@@ -160,26 +149,26 @@ const PatientList = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
-      <h1 className="mb-4 text-3xl font-bold">Danh sách bệnh nhân</h1>
+    <div className="p-8 bg-gray-100 min-h-screen">
+      <h1 className="text-3xl font-bold mb-4">Danh sách bệnh nhân</h1>
 
-      <div className="mb-4 flex flex-col items-center justify-between gap-4 md:flex-row">
-        <div className="flex flex-col items-center gap-4 md:flex-row">
-          <div className="w-39">
+      <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-4">
+        <div className="flex flex-col md:flex-row items-center gap-4">
+          <div className=" w-39">
             <input
               type="date"
               placeholder="Chọn ngày cập nhật"
-              className="w-full rounded-lg border-2 border-gray-400 bg-white p-2.5 text-gray-700 outline-none transition-colors hover:border-red-500 focus:border-blue-500"
+              className="w-full border-2 border-gray-400 rounded-lg p-2.5 outline-none bg-white text-gray-700 hover:border-red-500 focus:border-blue-500 transition-colors"
               value={filterDate}
-              onChange={(event) => setFilterDate(event.target.value)}
+              onChange={(e) => setFilterDate(e.target.value)}
             />
           </div>
 
-          <div className="w-39">
+          <div className=" w-39">
             <select
-              className="rounded-md border-2 border-gray-400 bg-white p-2 outline-none"
+              className="border-2 border-gray-400 rounded-md p-2 outline-none bg-white"
               value={filterStatus}
-              onChange={(event) => setFilterStatus(event.target.value)}
+              onChange={(e) => setFilterStatus(e.target.value)}
             >
               <option value="">Tất cả trạng thái</option>
               <option value="Bình thường">Bình thường</option>
@@ -192,9 +181,9 @@ const PatientList = () => {
           <input
             type="text"
             placeholder="Tìm kiếm bệnh nhân..."
-            className="rounded-md border-2 border-gray-400 p-2 outline-none"
+            className="border-2 border-gray-400 rounded-md p-2 outline-none"
             value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
       </div>

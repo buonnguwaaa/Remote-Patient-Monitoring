@@ -1,141 +1,66 @@
-import { useEffect, useMemo, useState } from "react";
-import {
-  FaCheckCircle,
-  FaExclamationTriangle,
-  FaInfoCircle,
-  FaRegClock,
-  FaSyncAlt,
-  FaTimes,
-} from "react-icons/fa";
-
-import Toast from "../components/ui/Toast";
-import { useToast } from "../hooks/useToast";
-import { acknowledgeAlert, getAlerts, getMyPatients } from "../services/patientService";
-import type { AlertResponse, AssignmentResponse } from "../types/patient";
-
-type FilterStatus = "all" | "open" | "ack";
-type FilterSeverity = "all" | "high" | "info";
+import { useState } from "react";
+import { mockAlerts } from "../data/mockData";
+import type { Alert } from "../types";
+import { FaCheckCircle, FaExclamationTriangle, FaInfoCircle, FaTimes } from "react-icons/fa";
 
 const ThresholdAlert = () => {
-  const [alerts, setAlerts] = useState<AlertResponse[]>([]);
-  const [myPatients, setMyPatients] = useState<AssignmentResponse[]>([]);
-  const [filterStatus, setFilterStatus] = useState<FilterStatus>("all");
-  const [filterSeverity, setFilterSeverity] = useState<FilterSeverity>("all");
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const [alerts, setAlerts] = useState<Alert[]>(mockAlerts);
+  const [filterStatus, setFilterStatus] = useState<"all" | "open" | "ack">("all");
+  const [filterSeverity, setFilterSeverity] = useState<"all" | "high" | "info">("all");
   const [showModal, setShowModal] = useState(false);
-  const [currentAlert, setCurrentAlert] = useState<AlertResponse | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
-  const { toast, showToast, hideToast } = useToast();
+  const [currentAlertId, setCurrentAlertId] = useState<string | null>(null);
+  const [doctorNote, setDoctorNote] = useState("");
 
-  const patientIds = useMemo(() => myPatients.map((item) => item.patientId), [myPatients]);
+  const filteredAlerts = alerts.filter((alert) => {
+    if (filterStatus !== "all" && alert.status !== filterStatus) return false;
+    if (filterSeverity !== "all" && alert.severity !== filterSeverity) return false;
+    return true;
+  });
 
-  const filteredAlerts = useMemo(() => {
-    return alerts.filter((alert) => {
-      if (filterStatus !== "all" && alert.status !== filterStatus) return false;
-      if (filterSeverity !== "all" && alert.severity !== filterSeverity) return false;
-      return true;
-    });
-  }, [alerts, filterSeverity, filterStatus]);
-
-  const stats = useMemo(() => {
-    return {
-      total: alerts.length,
-      open: alerts.filter((item) => item.status === "open").length,
-      ack: alerts.filter((item) => item.status === "ack").length,
-      high: alerts.filter((item) => item.severity === "high").length,
-    };
-  }, [alerts]);
-
-  const loadAlerts = async (showErrorToast = false) => {
-    try {
-      setRefreshing(true);
-      const [patientAssignments, alertList] = await Promise.all([getMyPatients(), getAlerts()]);
-
-      const assignmentMap = new Map<string, AssignmentResponse>();
-      patientAssignments.forEach((item) => {
-        assignmentMap.set(item.patientId, item);
-      });
-
-      const scopedAlerts = alertList.map((item) => {
-        const assignment = assignmentMap.get(item.patientId);
-        return {
-          ...item,
-          patientName: item.patientName || assignment?.patientName || item.patientId,
-        };
-      });
-
-      setMyPatients(patientAssignments);
-      setAlerts(scopedAlerts);
-      setLastUpdated(new Date().toISOString());
-    } catch (error) {
-      console.error("Failed to load alerts", error);
-      if (showErrorToast) {
-        showToast("Không thể tải dữ liệu cảnh báo thực tế.", "error", {
-          title: "Tải dữ liệu thất bại",
-        });
-      }
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
-
-  useEffect(() => {
-    void loadAlerts(true);
-  }, []);
-
-  const handleAcknowledge = (alert: AlertResponse) => {
-    setCurrentAlert(alert);
+  const handleAcknowledge = (alertId: string) => {
+    setCurrentAlertId(alertId);
+    setDoctorNote("");
     setShowModal(true);
   };
 
-  const handleConfirmAcknowledge = async () => {
-    if (!currentAlert) return;
+  const handleConfirmAcknowledge = () => {
+    if (!currentAlertId) return;
 
-    try {
-      const updated = await acknowledgeAlert(currentAlert.id);
-      setAlerts((prev) =>
-        prev.map((item) =>
-          item.id === updated.id
-            ? {
-                ...item,
-                ...updated,
-                patientName: updated.patientName || item.patientName,
-                patientAvatarUrl: updated.patientAvatarUrl || item.patientAvatarUrl,
-              }
-            : item
-        )
-      );
-      setLastUpdated(new Date().toISOString());
-      showToast("Đã xác nhận cảnh báo thành công.", "success", {
-        title: "Xử lý thành công",
-      });
-      setShowModal(false);
-      setCurrentAlert(null);
-    } catch (error: any) {
-      console.error("Failed to acknowledge alert", error);
-      showToast(error?.response?.data?.error || "Không thể xác nhận cảnh báo này.", "error", {
-        title: "Xử lý thất bại",
-      });
-    }
+    setAlerts((prev) =>
+      prev.map((alert) =>
+        alert.id === currentAlertId
+          ? {
+            ...alert,
+            status: "ack" as const,
+            acknowledgedBy: "Dr. Current",
+            acknowledgedAt: new Date().toISOString(),
+            doctorNote: doctorNote.trim() || undefined,
+          }
+          : alert
+      )
+    );
+
+    setShowModal(false);
+    setCurrentAlertId(null);
+    setDoctorNote("");
   };
 
   const getViolationLabel = (type: string) => {
     const labels: Record<string, string> = {
       temperature: "Nhiệt độ",
-      heart_rate: "Nhịp tim",
-      respiratory_rate: "Nhịp thở",
-      spo2: "SpO2",
-      blood_pressure_systolic: "Huyết áp tâm thu",
-      blood_pressure_diastolic: "Huyết áp tâm trương",
+      systolic: "Huyết áp tâm thu",
+      diastolic: "Huyết áp tâm trương",
+      pulse: "Nhịp tim",
       glucose: "Đường huyết",
+      spo2: "SpO2",
+      respiratoryRate: "Nhịp thở",
     };
     return labels[type] || type;
   };
 
-  const formatDate = (value: string) => {
-    return new Date(value).toLocaleString("vi-VN", {
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleString("vi-VN", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -144,305 +69,216 @@ const ThresholdAlert = () => {
     });
   };
 
-  const renderStatusBadge = (alert: AlertResponse) => {
-    if (alert.status === "ack") {
-      return (
-        <div>
-          <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-800">
-            <FaCheckCircle />
-            Đã xác nhận
-          </span>
-          <div className="mt-1 text-xs text-gray-500">
-            {alert.acknowledgedByName || alert.acknowledgedBy || "Đã xử lý"}
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-800">
-        <FaRegClock />
-        Chờ xử lý
-      </span>
-    );
-  };
-
   return (
-    <>
-      <div className="p-6">
-        <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-800">Quản Lý Cảnh Báo</h1>
-            <p className="mt-2 max-w-3xl text-gray-600">
-              Theo dõi alert thật được sinh ra từ measurement vượt ngưỡng, lọc theo mức độ, và
-              acknowledge ngay trên màn hình này.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => void loadAlerts(true)}
-            disabled={refreshing}
-            className="inline-flex items-center rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <FaSyncAlt className={`mr-2 ${refreshing ? "animate-spin" : ""}`} />
-            Làm mới dữ liệu
-          </button>
-        </div>
-
-        <div className="mb-6 grid gap-4 md:grid-cols-4">
-          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="text-sm text-slate-500">Tổng cảnh báo</div>
-            <div className="mt-2 text-3xl font-bold text-slate-900">{stats.total}</div>
-            <div className="mt-4 text-xs text-slate-500">
-              {lastUpdated ? `Cập nhật lúc ${formatDate(lastUpdated)}` : "Chưa đồng bộ"}
-            </div>
-          </div>
-          <div className="rounded-3xl border border-red-100 bg-gradient-to-br from-red-50 to-white p-5 shadow-sm">
-            <div className="text-sm text-red-600">Mức cao</div>
-            <div className="mt-2 text-3xl font-bold text-red-700">{stats.high}</div>
-            <div className="mt-4 text-xs text-red-500">Cần ưu tiên xử lý sớm</div>
-          </div>
-          <div className="rounded-3xl border border-amber-100 bg-gradient-to-br from-amber-50 to-white p-5 shadow-sm">
-            <div className="text-sm text-amber-700">Chờ xử lý</div>
-            <div className="mt-2 text-3xl font-bold text-amber-800">{stats.open}</div>
-            <div className="mt-4 text-xs text-amber-600">Chưa được acknowledge</div>
-          </div>
-          <div className="rounded-3xl border border-green-100 bg-gradient-to-br from-green-50 to-white p-5 shadow-sm">
-            <div className="text-sm text-green-700">Đã xác nhận</div>
-            <div className="mt-2 text-3xl font-bold text-green-800">{stats.ack}</div>
-            <div className="mt-4 text-xs text-green-600">Đã có người xử lý</div>
-          </div>
-        </div>
-
-        <div className="mb-6 flex flex-wrap gap-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-700">Trạng thái:</label>
-            <select
-              value={filterStatus}
-              onChange={(event) => setFilterStatus(event.target.value as FilterStatus)}
-              className="rounded-xl border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="all">Tất cả</option>
-              <option value="open">Chưa xử lý</option>
-              <option value="ack">Đã xác nhận</option>
-            </select>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-700">Mức độ:</label>
-            <select
-              value={filterSeverity}
-              onChange={(event) => setFilterSeverity(event.target.value as FilterSeverity)}
-              className="rounded-xl border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="all">Tất cả</option>
-              <option value="high">Nghiêm trọng</option>
-              <option value="info">Thông tin</option>
-            </select>
-          </div>
-
-          <div className="ml-auto flex items-center text-sm text-gray-500">
-            Bệnh nhân quản lý: <span className="ml-1 font-semibold text-gray-800">{patientIds.length}</span>
-          </div>
-        </div>
-
-        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                    Bệnh nhân
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                    Vi phạm
-                  </th>
-                  <th className="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
-                    Mức độ
-                  </th>
-                  <th className="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
-                    Trạng thái
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                    Thời gian
-                  </th>
-                  <th className="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
-                    Hành động
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 bg-white">
-                {loading ? (
-                  <tr>
-                    <td colSpan={6} className="px-6 py-10 text-center text-gray-500">
-                      Đang tải cảnh báo thật từ hệ thống...
-                    </td>
-                  </tr>
-                ) : filteredAlerts.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="px-6 py-10 text-center text-gray-500">
-                      Không có cảnh báo nào trong scope hiện tại.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredAlerts.map((alert) => (
-                    <tr key={alert.id} className="transition-colors hover:bg-slate-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="mr-3 flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-blue-100 text-sm font-semibold text-blue-700">
-                            {alert.patientAvatarUrl ? (
-                              <img
-                                src={alert.patientAvatarUrl}
-                                alt={alert.patientName || alert.patientId}
-                                className="h-full w-full object-cover"
-                              />
-                            ) : (
-                              (alert.patientName || "P").slice(0, 1).toUpperCase()
-                            )}
-                          </div>
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">
-                              {alert.patientName || alert.patientId}
-                            </div>
-                            <div className="text-xs text-gray-500">ID: {alert.patientId}</div>
-                          </div>
-                        </div>
-                      </td>
-
-                      <td className="px-6 py-4">
-                        <div className="space-y-1.5">
-                          {alert.violations.map((violation, index) => (
-                            <div key={`${alert.id}-${index}`} className="text-sm">
-                              <span className="font-medium text-gray-700">
-                                {getViolationLabel(violation.type)}:
-                              </span>{" "}
-                              <span className="font-semibold text-red-600">{violation.observed}</span>
-                              <span className="ml-1 text-xs text-gray-500">
-                                (Ngưỡng: {violation.threshold})
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </td>
-
-                      <td className="px-6 py-4 text-center">
-                        {alert.severity === "high" ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-800">
-                            <FaExclamationTriangle />
-                            Nghiêm trọng
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800">
-                            <FaInfoCircle />
-                            Thông tin
-                          </span>
-                        )}
-                      </td>
-
-                      <td className="px-6 py-4 text-center">{renderStatusBadge(alert)}</td>
-
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        <div>{formatDate(alert.createdAt)}</div>
-                        {alert.acknowledgedAt && (
-                          <div className="mt-1 text-xs text-green-600">
-                            Đã xác nhận lúc: {formatDate(alert.acknowledgedAt)}
-                          </div>
-                        )}
-                      </td>
-
-                      <td className="px-6 py-4 text-center">
-                        {alert.status === "open" ? (
-                          <button
-                            type="button"
-                            onClick={() => handleAcknowledge(alert)}
-                            className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
-                          >
-                            Xác nhận
-                          </button>
-                        ) : (
-                          <span className="text-xs text-gray-400">Đã xử lý</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {showModal && currentAlert && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
-            <div className="w-full max-w-md rounded-3xl bg-white shadow-xl">
-              <div className="flex items-center justify-between border-b p-5">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-800">Xác nhận cảnh báo</h3>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Bạn sắp đánh dấu cảnh báo của {currentAlert.patientName || currentAlert.patientId} là
-                    đã xử lý.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowModal(false);
-                    setCurrentAlert(null);
-                  }}
-                  className="text-gray-400 transition-colors hover:text-gray-600"
-                >
-                  <FaTimes size={18} />
-                </button>
-              </div>
-
-              <div className="p-5">
-                <div className="rounded-2xl bg-slate-50 p-4">
-                  <div className="text-sm font-medium text-gray-700">Vi phạm hiện tại</div>
-                  <div className="mt-3 space-y-2">
-                    {currentAlert.violations.map((violation, index) => (
-                      <div key={`${currentAlert.id}-modal-${index}`} className="text-sm text-gray-600">
-                        {getViolationLabel(violation.type)}:{" "}
-                        <span className="font-semibold text-red-600">{violation.observed}</span>
-                        <span className="ml-1 text-xs text-gray-500">
-                          (Ngưỡng: {violation.threshold})
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <p className="mt-4 text-sm text-gray-500">
-                  Backend hiện tại mới support acknowledge. Nếu cần ghi chú xử lý của bác sĩ, mình sẽ
-                  bổ sung field note riêng ở backend sau.
-                </p>
-              </div>
-
-              <div className="flex gap-3 rounded-b-3xl border-t bg-slate-50 p-4">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowModal(false);
-                    setCurrentAlert(null);
-                  }}
-                  className="flex-1 rounded-xl bg-gray-200 px-4 py-2 font-medium text-gray-700 transition-colors hover:bg-gray-300"
-                >
-                  Hủy
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void handleConfirmAcknowledge()}
-                  className="flex-1 rounded-xl bg-blue-600 px-4 py-2 font-medium text-white transition-colors hover:bg-blue-700"
-                >
-                  Xác nhận
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+    <div className="p-6">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-gray-800">Quản Lý Cảnh Báo</h1>
+        <p className="text-gray-600 mt-2">
+          Danh sách các cảnh báo về ngưỡng chỉ số sức khỏe
+        </p>
       </div>
 
-      <Toast toast={toast} onClose={hideToast} />
-    </>
+      <div className="bg-white p-4 rounded-lg shadow-sm mb-6 flex gap-4 flex-wrap">
+        <div className="flex items-center gap-2">
+          <label className="text-sm font-medium text-gray-700">Trạng thái:</label>
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value as any)}
+            className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="all">Tất cả</option>
+            <option value="open">Chưa xử lý</option>
+            <option value="ack">Đã xác nhận</option>
+          </select>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <label className="text-sm font-medium text-gray-700">Mức độ:</label>
+          <select
+            value={filterSeverity}
+            onChange={(e) => setFilterSeverity(e.target.value as any)}
+            className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="all">Tất cả</option>
+            <option value="high">Nghiêm trọng</option>
+            <option value="info">Thông tin</option>
+          </select>
+        </div>
+
+        <div className="ml-auto text-sm text-gray-600 flex items-center">
+          Tổng: <span className="font-bold ml-1">{filteredAlerts.length}</span> <span className="ml-1">cảnh báo</span>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Bệnh nhân
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Vi phạm
+                </th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Mức độ
+                </th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Trạng thái
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Thời gian
+                </th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Hành động
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredAlerts.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                    Không có cảnh báo nào
+                  </td>
+                </tr>
+              ) : (
+                filteredAlerts.map((alert) => (
+                  <tr key={alert.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <img
+                          src={alert.patientAvatar}
+                          alt={alert.patientName}
+                          className="w-10 h-10 rounded-full mr-3"
+                        />
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {alert.patientName}
+                          </div>
+                          <div className="text-xs text-gray-500">ID: {alert.patientId}</div>
+                        </div>
+                      </div>
+                    </td>
+
+                    <td className="px-6 py-4">
+                      <div className="space-y-1">
+                        {alert.violations.map((v, idx) => (
+                          <div key={idx} className="text-sm">
+                            <span className="font-medium text-gray-700">
+                              {getViolationLabel(v.type)}:
+                            </span>{" "}
+                            <span className="text-red-600 font-semibold">{v.observed}</span>
+                            <span className="text-gray-500 text-xs ml-1">
+                              (Ngưỡng: {v.threshold})
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </td>
+
+                    <td className="px-6 py-4 text-center">
+                      {alert.severity === "high" ? (
+                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                          <FaExclamationTriangle />
+                          Nghiêm trọng
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                          <FaInfoCircle />
+                          Thông tin
+                        </span>
+                      )}
+                    </td>
+
+                    <td className="px-6 py-4 text-center">
+                      {alert.status === "ack" ? (
+                        <div>
+                          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            <FaCheckCircle />
+                            Đã xác nhận
+                          </span>
+                          <div className="text-xs text-gray-500 mt-1">
+                            {alert.acknowledgedBy}
+                          </div>
+                          {(alert as any).doctorNote && (
+                            <div className="text-xs text-blue-600 mt-1 italic">
+                              💬 {(alert as any).doctorNote}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                          Chờ xử lý
+                        </span>
+                      )}
+                    </td>
+
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                      {formatDate(alert.createdAt)}
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      {alert.status === "open" && (
+                        <button
+                          onClick={() => handleAcknowledge(alert.id)}
+                          className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                        >
+                          Xác nhận
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {showModal && (
+        <div className="fixed inset-0 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h3 className="text-lg font-semibold text-gray-800">Lời nhắc của bác sĩ</h3>
+              <button
+                onClick={() => setShowModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <FaTimes size={20} />
+              </button>
+            </div>
+
+            <div className="p-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Nhập ghi chú/lời nhắc (tùy chọn)
+              </label>
+              <textarea
+                value={doctorNote}
+                onChange={(e) => setDoctorNote(e.target.value)}
+                placeholder="Ví dụ: Theo dõi thêm 2 ngày, tư vấn điều chỉnh thuốc..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                rows={4}
+              />
+            </div>
+
+            <div className="flex gap-3 p-4 border-t bg-gray-50 rounded-b-lg">
+              <button
+                onClick={() => setShowModal(false)}
+                className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 font-medium rounded-lg hover:bg-gray-300 transition-colors"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleConfirmAcknowledge}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Xác nhận
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 

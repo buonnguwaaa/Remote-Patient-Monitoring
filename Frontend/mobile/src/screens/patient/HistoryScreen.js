@@ -5,7 +5,6 @@ import { useAuth } from "../../hooks/useAuth";
 import { getMeasurements } from "../../api/measurementApi";
 import { useFocusEffect } from "@react-navigation/native";
 import React, { useCallback, useState } from "react";
-import { LineChart } from "react-native-chart-kit";
 
 const screenWidth = Dimensions.get("window").width - 40;
 

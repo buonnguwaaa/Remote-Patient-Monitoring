@@ -15,11 +15,11 @@ const PatientManagementAdmin: React.FC = () => {
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
-  const { toast, showToast, hideToast } = useToast();
+  const { toast, showToast } = useToast();
 
   const fetchPatients = async () => {
     try {
-      const response = await api.get("/users/patients");
+      const response = await api.get("/users?role=user.patient");
       if (response.data?.data) {
         const apiPatients = response.data.data.map((u: any) => ({
           id: u.id,
@@ -81,18 +81,15 @@ const PatientManagementAdmin: React.FC = () => {
     const gender = formData.get("gender") as "Nam" | "Nữ";
     const phone = formData.get("phone") as string;
     const dateOfBirth = formData.get("dateOfBirth") as string;
-    const status = formData.get("status") as "active" | "inactive";
 
     const apiGender = mapGenderToApi(gender);
-    const isActive = status !== "inactive";
 
     try {
       let savedUserId = editingPatient?.id;
 
       if (editingPatient?.id) {
-        await api.patch(`/users/${editingPatient.id}`, {
+        await api.put(`/users/${editingPatient.id}`, {
           name, email, gender: apiGender, phone,
-          isActive,
           roles: ["user.patient"],
         });
       } else {
@@ -106,10 +103,10 @@ const PatientManagementAdmin: React.FC = () => {
           role: "user.patient", gender: apiGender,
           dob: dateOfBirth || "1990-01-01",
         });
-        const resp = await api.get("/users/patients?sortOrder=desc&limit=1");
+        const resp = await api.get("/users?role=user.patient&sortOrder=desc&limit=1");
         savedUserId = resp.data?.data?.[0]?.id;
         if (savedUserId) {
-          await api.patch(`/users/${savedUserId}`, { phone, isActive });
+          await api.put(`/users/${savedUserId}`, { phone });
         }
       }
 
@@ -129,7 +126,7 @@ const PatientManagementAdmin: React.FC = () => {
 
   return (
     <div className="p-6">
-      <Toast toast={toast} onClose={hideToast} />
+      <Toast toast={toast} />
 
       <div className="flex justify-between items-center mb-6">
         <div>
@@ -208,7 +205,7 @@ const PatientManagementAdmin: React.FC = () => {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 bg-black bg-opacity-30 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <h2 className="text-2xl font-bold mb-4 dark:text-white">{editingPatient ? "Chỉnh sửa bệnh nhân" : "Thêm bệnh nhân mới"}</h2>
             <form className="space-y-4" onSubmit={handleSubmit}>
@@ -239,13 +236,6 @@ const PatientManagementAdmin: React.FC = () => {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Ngày sinh</label>
                   <input name="dateOfBirth" type="date" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" defaultValue={editingPatient?.dateOfBirth} />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Trạng thái</label>
-                  <select name="status" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" defaultValue={editingPatient?.status || "active"}>
-                    <option value="active">Hoạt động</option>
-                    <option value="inactive">Không hoạt động</option>
-                  </select>
                 </div>
                 {!editingPatient && (
                   <div>
