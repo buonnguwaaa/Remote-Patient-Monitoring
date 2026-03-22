@@ -122,11 +122,12 @@ func (h *UserHandler) UpdateBaseUserByID(c *gin.Context) {
 	}
 
 	input := &usecase.UpdateUserInput{
-		ID:     id,
-		Name:   req.Name,
-		Email:  req.Email,
-		Gender: req.Gender,
-		Phone:  req.Phone,
+		ID:       id,
+		Name:     req.Name,
+		Email:    req.Email,
+		Gender:   req.Gender,
+		Phone:    req.Phone,
+		IsActive: req.IsActive,
 	}
 
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
@@ -459,6 +460,7 @@ func (h *UserHandler) UpdatePatientByID(c *gin.Context) {
 		Email:                 req.Email,
 		Gender:                req.Gender,
 		Phone:                 req.Phone,
+		IsActive:              req.IsActive,
 		InsuranceNumber:       req.InsuranceNumber,
 		CCCD:                  req.CCCD,
 		EmergencyContactName:  req.EmergencyContactName,
@@ -578,6 +580,7 @@ func (h *UserHandler) UpdateDoctorByID(c *gin.Context) {
 		Email:             req.Email,
 		Gender:            req.Gender,
 		Phone:             req.Phone,
+		IsActive:          req.IsActive,
 		DepartmentID:      req.DepartmentID,
 		LicenseNumber:     req.LicenseNumber,
 		Workplace:         req.Workplace,
@@ -698,6 +701,7 @@ func (h *UserHandler) UpdateNurseByID(c *gin.Context) {
 		Email:         req.Email,
 		Gender:        req.Gender,
 		Phone:         req.Phone,
+		IsActive:      req.IsActive,
 		DepartmentID:  req.DepartmentID,
 		LicenseNumber: req.LicenseNumber,
 		Workplace:     req.Workplace,

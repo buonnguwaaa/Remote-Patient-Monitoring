@@ -84,8 +84,8 @@ const DepartmentManagement: React.FC = () => {
         setShowAddMemberModal(true);
         try {
             const [resDoctors, resNurses] = await Promise.all([
-                api.get("/users?role=user.doctor&limit=100"),
-                api.get("/users?role=user.nurse&limit=100")
+                api.get("/users/doctors?limit=100"),
+                api.get("/users/nurses?limit=100")
             ]);
             const extract = (res: any) => res.data?.data || [];
             const all = [...extract(resDoctors), ...extract(resNurses)];

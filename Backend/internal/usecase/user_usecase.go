@@ -21,6 +21,7 @@ type UpdateUserInput struct {
 	Gender    string
 	Phone     string
 	AvatarUrl string
+	IsActive  *bool
 	// Shared staff fields
 	DepartmentID  string
 	LicenseNumber string

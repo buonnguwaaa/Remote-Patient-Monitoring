@@ -313,6 +313,9 @@ func buildBaseUpdateData(input *usecase.UpdateUserInput) map[string]interface{} 
 	if value := strings.TrimSpace(input.Phone); value != "" {
 		updateData["phone"] = value
 	}
+	if input.IsActive != nil {
+		updateData["isActive"] = *input.IsActive
+	}
 	if value := strings.TrimSpace(input.AvatarUrl); value != "" {
 		updateData["avatarUrl"] = value
 	}
@@ -396,6 +399,7 @@ func mapBaseUser(user domain.BaseUser) dto.BaseUserInfoResponse {
 		Dob:       formatDate(user.Dob),
 		Phone:     user.Phone,
 		AvatarUrl: user.AvatarUrl,
+		IsActive:  user.IsActive,
 		CreatedAt: formatDateTime(user.CreatedAt),
 		UpdatedAt: formatDateTime(user.UpdatedAt),
 	}
