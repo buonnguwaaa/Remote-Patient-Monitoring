@@ -97,13 +97,16 @@ func (s *assignmentService) GetAssignmentsByRole(ctx context.Context, input *use
 		return nil, err
 	}
 
-	var assignments []*domain.Assignment
+	var (
+		assignments []*domain.Assignment
+		nameMap     map[primitive.ObjectID]string
+	)
 
 	switch input.Role {
 	case userDomain.RoleDoctor:
-		assignments, err = s.assignmentRepo.FindByDoctorID(ctx, userID)
+		assignments, nameMap, err = s.assignmentRepo.FindByDoctorIDWithNames(ctx, userID)
 	case userDomain.RoleNurse:
-		assignments, err = s.assignmentRepo.FindByNurseID(ctx, userID)
+		assignments, nameMap, err = s.assignmentRepo.FindByNurseIDWithNames(ctx, userID)
 	default:
 		return nil, errors.New("invalid role for getting assignments")
 	}
@@ -112,15 +115,30 @@ func (s *assignmentService) GetAssignmentsByRole(ctx context.Context, input *use
 		return nil, err
 	}
 
-	return s.mapListToResponse(ctx, assignments), nil
+	return s.mapListToResponse(assignments, nameMap), nil
 }
 
-func (s *assignmentService) mapListToResponse(ctx context.Context, assignments []*domain.Assignment) []*dto.AssignmentResponse {
+func (s *assignmentService) mapListToResponse(assignments []*domain.Assignment, nameMap map[primitive.ObjectID]string) []*dto.AssignmentResponse {
 	var responses []*dto.AssignmentResponse
 	for _, a := range assignments {
-		responses = append(responses, s.mapToResponse(ctx, a))
+		responses = append(responses, s.mapToResponseWithNames(a, nameMap))
 	}
 	return responses
+}
+
+func (s *assignmentService) mapToResponseWithNames(a *domain.Assignment, nameMap map[primitive.ObjectID]string) *dto.AssignmentResponse {
+	return &dto.AssignmentResponse{
+		ID:          a.ID,
+		PatientID:   a.PatientID,
+		PatientName: nameMap[a.PatientID],
+		DoctorID:    a.DoctorID,
+		DoctorName:  nameMap[a.DoctorID],
+		NurseID:     a.NurseID,
+		NurseName:   nameMap[a.NurseID],
+		AssignedBy:  a.AssignedBy,
+		CreatedAt:   a.CreatedAt,
+		UpdatedAt:   a.UpdatedAt,
+	}
 }
 
 func (s *assignmentService) mapToResponse(ctx context.Context, a *domain.Assignment) *dto.AssignmentResponse {

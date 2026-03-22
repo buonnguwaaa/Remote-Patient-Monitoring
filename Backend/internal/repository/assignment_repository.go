@@ -13,8 +13,8 @@ import (
 type AssignmentRepository interface {
 	Create(ctx context.Context, assignment *domain.Assignment) (*domain.Assignment, error)
 	FindByPatientID(ctx context.Context, patientID primitive.ObjectID) (*domain.Assignment, error)
-	FindByDoctorID(ctx context.Context, doctorID primitive.ObjectID) ([]*domain.Assignment, error)
-	FindByNurseID(ctx context.Context, nurseID primitive.ObjectID) ([]*domain.Assignment, error)
+	FindByDoctorIDWithNames(ctx context.Context, doctorID primitive.ObjectID) ([]*domain.Assignment, map[primitive.ObjectID]string, error)
+	FindByNurseIDWithNames(ctx context.Context, nurseID primitive.ObjectID) ([]*domain.Assignment, map[primitive.ObjectID]string, error)
 	DeleteByPatientID(ctx context.Context, patientID primitive.ObjectID) error
 }
 
@@ -49,34 +49,73 @@ func (r *assignmentRepository) FindByPatientID(ctx context.Context, patientID pr
 	return &assignment, nil
 }
 
-func (r *assignmentRepository) FindByDoctorID(ctx context.Context, doctorID primitive.ObjectID) ([]*domain.Assignment, error) {
-	filter := bson.M{"doctorId": doctorID}
-	cursor, err := r.collection.Find(ctx, filter)
-	if err != nil {
-		return nil, err
-	}
-	defer cursor.Close(ctx)
-
-	var assignments []*domain.Assignment
-	if err := cursor.All(ctx, &assignments); err != nil {
-		return nil, err
-	}
-	return assignments, nil
+func (r *assignmentRepository) FindByDoctorIDWithNames(ctx context.Context, doctorID primitive.ObjectID) ([]*domain.Assignment, map[primitive.ObjectID]string, error) {
+	return r.findByAssigneeWithNames(ctx, "doctorId", doctorID)
 }
 
-func (r *assignmentRepository) FindByNurseID(ctx context.Context, nurseID primitive.ObjectID) ([]*domain.Assignment, error) {
-	filter := bson.M{"nurseId": nurseID}
-	cursor, err := r.collection.Find(ctx, filter)
+func (r *assignmentRepository) FindByNurseIDWithNames(ctx context.Context, nurseID primitive.ObjectID) ([]*domain.Assignment, map[primitive.ObjectID]string, error) {
+	return r.findByAssigneeWithNames(ctx, "nurseId", nurseID)
+}
+
+func (r *assignmentRepository) findByAssigneeWithNames(ctx context.Context, matchField string, assigneeID primitive.ObjectID) ([]*domain.Assignment, map[primitive.ObjectID]string, error) {
+	pipeline := mongo.Pipeline{
+		{{Key: "$match", Value: bson.M{matchField: assigneeID}}},
+		{{Key: "$facet", Value: bson.M{
+			"assignments": bson.A{
+				bson.M{"$project": bson.M{
+					"_id":        1,
+					"patientId":  1,
+					"doctorId":   1,
+					"nurseId":    1,
+					"assignedBy": 1,
+					"createdAt":  1,
+					"updatedAt":  1,
+				}},
+			},
+			"names": bson.A{
+				bson.M{"$project": bson.M{"ids": bson.A{"$patientId", "$doctorId", "$nurseId", "$assignedBy"}}},
+				bson.M{"$unwind": "$ids"},
+				bson.M{"$match": bson.M{"ids": bson.M{"$ne": primitive.NilObjectID}}},
+				bson.M{"$group": bson.M{"_id": "$ids"}},
+				bson.M{"$lookup": bson.M{
+					"from":         "users",
+					"localField":   "_id",
+					"foreignField": "_id",
+					"as":           "user",
+				}},
+				bson.M{"$unwind": bson.M{"path": "$user", "preserveNullAndEmptyArrays": false}},
+				bson.M{"$project": bson.M{"_id": 1, "name": "$user.name"}},
+			},
+		}}},
+	}
+
+	cursor, err := r.collection.Aggregate(ctx, pipeline)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer cursor.Close(ctx)
 
-	var assignments []*domain.Assignment
-	if err := cursor.All(ctx, &assignments); err != nil {
-		return nil, err
+	var facetResults []struct {
+		Assignments []*domain.Assignment `bson:"assignments"`
+		Names       []struct {
+			ID   primitive.ObjectID `bson:"_id"`
+			Name string             `bson:"name"`
+		} `bson:"names"`
 	}
-	return assignments, nil
+	if err := cursor.All(ctx, &facetResults); err != nil {
+		return nil, nil, err
+	}
+
+	if len(facetResults) == 0 {
+		return []*domain.Assignment{}, map[primitive.ObjectID]string{}, nil
+	}
+
+	nameMap := make(map[primitive.ObjectID]string)
+	for _, u := range facetResults[0].Names {
+		nameMap[u.ID] = u.Name
+	}
+
+	return facetResults[0].Assignments, nameMap, nil
 }
 
 func (r *assignmentRepository) DeleteByPatientID(ctx context.Context, patientID primitive.ObjectID) error {

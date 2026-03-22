@@ -15,6 +15,6 @@ func RegisterAssignmentRoutes(r *gin.Engine, c *container.MainServerContainer) {
 		assignGroup.POST("/assign", middleware.RequireRoles(domain.RoleAdmin), c.AssignmentHandler.AssignPatient)
 
 		// Doctor/Nurse sees their assigned patients (RESTful: GET /assignments with auth context)
-		assignGroup.GET("", middleware.RequireRoles(domain.RoleDoctor, domain.RoleNurse), c.AssignmentHandler.GetMyAssignments)
+		assignGroup.GET("/me", middleware.RequireRoles(domain.RoleDoctor, domain.RoleNurse), c.AssignmentHandler.GetMyAssignments)
 	}
 }
