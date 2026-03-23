@@ -15,6 +15,8 @@ interface SideBarProps {
   navigationItems?: NavigationItem[];
 }
 
+const DEFAULT_AVATAR = "/avartar.jpg";
+
 const SideBar = ({ navigationItems }: SideBarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -137,15 +139,19 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
           >
             <div className="h-12 w-12 rounded-full shrink-0">
               <img
-                src="https://avatar.iran.liara.run/public"
-                alt="User Avatar"
+                src={DEFAULT_AVATAR}
+                alt="Admin avatar"
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = DEFAULT_AVATAR;
+                }}
                 className="w-full h-full rounded-full object-cover"
               />
             </div>
             {!isCollapsed && (
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-xl text-primary-text dark:text-white truncate">
-                  {user?.username || "Doctor Name"}
+                  {user?.username || "Admin"}
                 </p>
               </div>
             )}

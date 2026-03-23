@@ -2,6 +2,7 @@ package usecase
 
 type GetAlertsInput struct {
 	PatientID string
+	DoctorID  string
 	Status    string
 	Severity  string
 	IsLatest  bool

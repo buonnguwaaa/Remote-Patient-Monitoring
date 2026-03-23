@@ -9,8 +9,8 @@ import (
 
 type AssignPatientInput struct {
 	PatientID  string `json:"patientId" binding:"required"`
-	DoctorID   string `json:"doctorId"` // Can be empty if only assigning nurse
-	NurseID    string `json:"nurseId"`  // Can be empty if only assigning doctor
+	DoctorID   string `json:"doctorId"` 
+	NurseID    string `json:"nurseId"`  
 	AssignedBy string
 }
 
@@ -19,10 +19,15 @@ type GetAssignmentsByRoleInput struct {
 	Role   userDomain.Role
 }
 
+type DeleteAssignmentInput struct {
+	AssignmentID string
+}
+
 type AssignmentResponse struct {
 	ID          primitive.ObjectID `json:"id"`
 	PatientID   primitive.ObjectID `json:"patientId"`
 	PatientName string             `json:"patientName,omitempty"`
+	PatientCode string             `json:"patientCode,omitempty"`
 	DoctorID    primitive.ObjectID `json:"doctorId,omitempty"`
 	DoctorName  string             `json:"doctorName,omitempty"`
 	NurseID     primitive.ObjectID `json:"nurseId,omitempty"`

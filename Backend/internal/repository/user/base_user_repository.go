@@ -42,6 +42,7 @@ type UserFilter struct {
 	Name      string
 	Email     string
 	Gender    string
+	Role      string
 	Page      int
 	Limit     int
 	Offset    int
@@ -164,6 +165,9 @@ func buildFilterAndOptions(f UserFilter) (bson.M, *options.FindOptions) {
 	}
 	if f.Gender != "" {
 		bsonFilter["gender"] = f.Gender
+	}
+	if f.Role != "" {
+		bsonFilter["role"] = f.Role
 	}
 	if f.Limit > 0 {
 		opts.SetLimit(int64(f.Limit))
