@@ -6,6 +6,15 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+type Member struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	Email     string `json:"email"`
+	Role      string `json:"role"`
+	Avatar    string `json:"avatar"`
+	CreatedAt string `json:"createdAt"`
+}
+
 type CreateDepartmentInput struct {
 	Name        string `json:"name" binding:"required"`
 	Description string `json:"description"`

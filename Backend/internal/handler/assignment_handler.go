@@ -65,6 +65,14 @@ func (h *AssignmentHandler) AssignPatient(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"data": res})
 }
 
+// @Summary Get assignments for the current doctor/nurse
+// @Tags assignments
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]string "Bad request"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 403 {object} map[string]string "Forbidden"
+// @Router /assignments/me [get]
 func (h *AssignmentHandler) GetMyAssignments(c *gin.Context) {
 	userID, exists := c.Get("userId")
 	role, existsRole := c.Get("role")
@@ -97,6 +105,13 @@ func (h *AssignmentHandler) GetMyAssignments(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": res})
 }
 
+// @Summary Get all assignments (admin only)
+// @Tags assignments
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 403 {object} map[string]string "Forbidden"
+// @Router /assignments [get]
 func (h *AssignmentHandler) GetAllAssignments(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
@@ -110,6 +125,14 @@ func (h *AssignmentHandler) GetAllAssignments(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": res})
 }
 
+// @Summary Delete an assignment by ID
+// @Tags assignments
+// @Param id path string true "Assignment ID"
+// @Success 200 {object} map[string]interface{} "Assignment deleted successfully"
+// @Failure 400 {object} map[string]string "Bad request"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 403 {object} map[string]string "Forbidden"
+// @Router /assignments/{id} [delete]
 func (h *AssignmentHandler) DeleteAssignment(c *gin.Context) {
 	assignmentID := c.Param("id")
 	if assignmentID == "" {

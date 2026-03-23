@@ -52,7 +52,6 @@ type UpdateBaseUserRequest struct {
 	Email    string `json:"email"`
 	Gender   string `json:"gender"`
 	Phone    string `json:"phone"`
-	IsActive *bool  `json:"isActive,omitempty"`
 }
 
 type UpdatePatientRequest struct {
