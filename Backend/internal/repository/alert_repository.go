@@ -67,7 +67,6 @@ func (r *alertRepository) Create(ctx context.Context, a *domain.Alert) (*domain.
 	return a, nil
 }
 
-
 func (r *alertRepository) FindWithFilter(ctx context.Context, filter AlertFilter) ([]*domain.Alert, map[primitive.ObjectID]*AlertUserData, error) {
 	bsonFilter, queryOpts, err := buildAlertBsonFilterAndOptions(filter)
 	if err != nil {

@@ -48,10 +48,10 @@ type NurseInfoResponse struct {
 }
 
 type UpdateBaseUserRequest struct {
-	Name     string `json:"name"`
-	Email    string `json:"email"`
-	Gender   string `json:"gender"`
-	Phone    string `json:"phone"`
+	Name   string `json:"name"`
+	Email  string `json:"email"`
+	Gender string `json:"gender"`
+	Phone  string `json:"phone"`
 }
 
 type UpdatePatientRequest struct {

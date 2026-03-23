@@ -173,7 +173,6 @@ definitions:
       temperatureMin:
         type: number
     required:
-    - doctorId
     - effectiveFrom
     - patientId
     type: object
@@ -294,6 +293,25 @@ definitions:
         - bp
         - glucose
     type: object
+  dto.UpdateMyPatientProfileRequest:
+    properties:
+      cccd:
+        type: string
+      emergencyContactName:
+        type: string
+      emergencyContactPhone:
+        type: string
+      insuranceNumber:
+        type: string
+      medicalHistory:
+        type: string
+      name:
+        type: string
+      phone:
+        type: string
+    required:
+    - name
+    type: object
   dto.UpdateNurseRequest:
     properties:
       departmentId:
@@ -315,9 +333,19 @@ definitions:
     type: object
   dto.UpdatePatientRequest:
     properties:
+      cccd:
+        type: string
       email:
         type: string
+      emergencyContactName:
+        type: string
+      emergencyContactPhone:
+        type: string
       gender:
+        type: string
+      insuranceNumber:
+        type: string
+      medicalHistory:
         type: string
       name:
         type: string
@@ -419,35 +447,42 @@ info:
   title: Remote Patient Monitoring API
   version: "1.0"
 paths:
-  /alerts:
+  /alerts/{id}:
     get:
       consumes:
       - application/json
-      description: Retrieve alerts based on query parameters
+      description: Retrieve an alert by its ID
       parameters:
-      - description: Patient ID
-        in: query
-        name: patientId
+      - description: Alert ID
+        in: path
+        name: id
+        required: true
         type: string
-      - description: Alert status
-        in: query
-        name: status
-        type: string
-      - description: Alert severity
-        in: query
-        name: severity
-        type: string
-      - description: Is latest alert
-        in: query
-        name: isLatest
-        type: boolean
       produces:
       - application/json
       responses:
         "200":
-          description: Alerts retrieved successfully
+          description: Alert retrieved successfully
           schema:
             additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Alert not found
+          schema:
+            additionalProperties:
+              type: string
             type: object
         "500":
           description: Internal server error
@@ -455,10 +490,10 @@ paths:
             additionalProperties:
               type: string
             type: object
-      summary: Get alerts
+      summary: Get an alert by ID
       tags:
       - alerts
-  /alerts/{id}/acknowledge:
+  /alerts/ack/{id}:
     patch:
       consumes:
       - application/json
@@ -504,6 +539,63 @@ paths:
       summary: Acknowledge an alert
       tags:
       - alerts
+  /alerts/doctors/me:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all alerts for patients assigned to the authenticated
+        doctor
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Alerts retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get doctor patient alerts
+      tags:
+      - alerts
+  /alerts/patients/me:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all alerts for the authenticated patient
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Alerts retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get patient alerts
+      tags:
+      - alerts
   /assignments:
     get:
       produces:
@@ -514,13 +606,61 @@ paths:
           schema:
             additionalProperties: true
             type: object
-      summary: Get assignments for the current doctor/nurse
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get all assignments (admin only)
+      tags:
+      - assignments
+  /assignments/{id}:
+    delete:
+      parameters:
+      - description: Assignment ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: Assignment deleted successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete an assignment by ID
       tags:
       - assignments
   /assignments/assign:
     post:
       consumes:
       - application/json
+      description: Create or update an assignment between a patient and medical staff
       parameters:
       - description: Assignment info
         in: body
@@ -532,11 +672,54 @@ paths:
       - application/json
       responses:
         "201":
-          description: Created
+          description: Assignment created successfully
           schema:
             additionalProperties: true
             type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
       summary: Assign patient to doctor/nurse
+      tags:
+      - assignments
+  /assignments/me:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get assignments for the current doctor/nurse
       tags:
       - assignments
   /auth/activate:
@@ -1664,7 +1847,7 @@ paths:
       summary: Get nurse by ID
       tags:
       - nurses
-    put:
+    patch:
       consumes:
       - application/json
       description: Update a nurse's information
@@ -1828,6 +2011,74 @@ paths:
               type: string
             type: object
       summary: Update patient
+      tags:
+      - patients
+  /users/patients/me:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve the full profile of the authenticated patient
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Patient profile retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Patient not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get my patient profile
+      tags:
+      - patients
+    patch:
+      consumes:
+      - application/json
+      description: Update editable profile information for the authenticated patient
+      parameters:
+      - description: Patient profile update data
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateMyPatientProfileRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Patient profile updated successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request data
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update my patient profile
       tags:
       - patients
 schemes:

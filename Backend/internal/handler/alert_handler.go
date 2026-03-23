@@ -48,12 +48,12 @@ func (h *AlertHandler) GetDoctorAlerts(c *gin.Context) {
 	sortOrder := c.DefaultQuery("sortOrder", "desc")
 
 	input := &usecase.GetAlertsInput{
-		DoctorID: doctorID.(string),
-		Status:  c.Query("status"),
-		Severity: c.Query("severity"),
-		IsLatest: c.Query("isLatest") == "true",
-		Page:     page,
-		Limit:    limit,
+		DoctorID:  doctorID.(string),
+		Status:    c.Query("status"),
+		Severity:  c.Query("severity"),
+		IsLatest:  c.Query("isLatest") == "true",
+		Page:      page,
+		Limit:     limit,
 		Offset:    offset,
 		SortOrder: sortOrder,
 	}
@@ -96,9 +96,9 @@ func (h *AlertHandler) GetPatientAlerts(c *gin.Context) {
 
 	input := &usecase.GetAlertsInput{
 		PatientID: patientID.(string),
-		Status:  c.Query("status"),
-		Severity: c.Query("severity"),
-		IsLatest: c.Query("isLatest") == "true",
+		Status:    c.Query("status"),
+		Severity:  c.Query("severity"),
+		IsLatest:  c.Query("isLatest") == "true",
 		Page:      page,
 		Limit:     limit,
 		Offset:    offset,

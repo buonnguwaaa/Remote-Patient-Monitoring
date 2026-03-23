@@ -32,7 +32,7 @@ func NewAlertService(
 	alertRepo repository.AlertRepository,
 ) AlertService {
 	return &alertService{
-		alertRepo:      alertRepo,
+		alertRepo: alertRepo,
 	}
 }
 

@@ -122,11 +122,11 @@ func (h *UserHandler) UpdateBaseUserByID(c *gin.Context) {
 	}
 
 	input := &usecase.UpdateUserInput{
-		ID:       id,
-		Name:     req.Name,
-		Email:    req.Email,
-		Gender:   req.Gender,
-		Phone:    req.Phone,
+		ID:     id,
+		Name:   req.Name,
+		Email:  req.Email,
+		Gender: req.Gender,
+		Phone:  req.Phone,
 	}
 
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
