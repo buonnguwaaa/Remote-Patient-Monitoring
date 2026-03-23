@@ -110,11 +110,31 @@ func (r *staffRepository[T]) Delete(ctx context.Context, id primitive.ObjectID) 
 }
 
 func (r *staffRepository[T]) CountByDepartmentID(ctx context.Context, deptID primitive.ObjectID) (int64, error) {
-	return r.col.CountDocuments(ctx, bson.M{"departmentId": deptID})
+	filter := bson.M{"departmentId": deptID}
+	switch any(*new(T)).(type) {
+	case domain.Doctor:
+		filter["role"] = domain.RoleDoctor
+	case domain.Nurse:
+		filter["role"] = domain.RoleNurse
+	default:
+		return 0, fmt.Errorf("unsupported staff type")
+	}
+
+	return r.col.CountDocuments(ctx, filter)
 }
 
 func (r *staffRepository[T]) FindByDepartmentID(ctx context.Context, deptID primitive.ObjectID) ([]T, error) {
-	cursor, err := r.col.Find(ctx, bson.M{"departmentId": deptID})
+	filter := bson.M{"departmentId": deptID}
+	switch any(*new(T)).(type) {
+	case domain.Doctor:
+		filter["role"] = domain.RoleDoctor
+	case domain.Nurse:
+		filter["role"] = domain.RoleNurse
+	default:
+		return nil, fmt.Errorf("unsupported staff type")
+	}
+
+	cursor, err := r.col.Find(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
@@ -139,7 +159,6 @@ func (r *staffRepository[T]) UpdateDepartmentID(ctx context.Context, userID prim
 
 // Type switches vẫn cần vì Go chưa hỗ trợ field access trực tiếp trên type parameter
 // Nhưng giờ chỉ cần 2 case thay vì 3 như trước
-
 func setStaffTimestamps[T StaffEntity](u *T, createdAt, updatedAt time.Time) {
 	switch v := any(u).(type) {
 	case *domain.Doctor:
