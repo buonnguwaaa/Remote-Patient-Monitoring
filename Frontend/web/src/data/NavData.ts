@@ -3,7 +3,7 @@ import { type NavigationItem } from "./../types/index.ts";
 import { LuLayoutDashboard } from "react-icons/lu";
 import { FaRegUser } from "react-icons/fa";
 import { RiErrorWarningLine } from "react-icons/ri";
-import { IoSettingsOutline } from "react-icons/io5";
+import { MdOutlineDataThresholding } from "react-icons/md";
 
 import React from "react";
 
@@ -26,7 +26,7 @@ export const navData: NavigationItem[] = [
   {
     label: "Cấu hình ngưỡng",
     path: "/threshold-settings",
-    icon: React.createElement(IoSettingsOutline),
+    icon: React.createElement(MdOutlineDataThresholding),
   },
 ];
 

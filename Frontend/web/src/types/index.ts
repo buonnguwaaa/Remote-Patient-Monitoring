@@ -88,20 +88,23 @@ export interface ChatMessage {
   timestamp: Date;
 }
 
-export interface doctor {
+export interface Doctor {
   id: string;
   name: string;
-  specialization: string;
-  licenseNumber: string;
-  workplace: string;
-  department?: string;
-  yearsOfExperience: number;
-  status?: string;
-  profileImageUrl: string;
+  email: string;
+  provider: string;
+  role: string;
   gender: string;
-  dateOfBirth: string;
-  email?: string;
+  dob: string;
   phone?: string;
+  avatarUrl?: string;
+  createdAt: string;
+  updatedAt: string;
+  departmentId?: string;
+  workplace?: string;
+  licenseNumber?: string;
+  specialization?: string;
+  yearsOfExperience?: number;
 }
 
 export interface Nurse {
