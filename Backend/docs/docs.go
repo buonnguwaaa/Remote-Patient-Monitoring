@@ -2476,6 +2476,66 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/users/{id}/status": {
+            "patch": {
+                "description": "Update only a user's status by their ID (admin only)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Update user status by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "User status update payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateUserStatusRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User status updated successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -2789,7 +2849,56 @@ const docTemplate = `{
             }
         },
         "dto.RegisterRequest": {
-            "type": "object"
+            "type": "object",
+            "required": [
+                "confirmedPassword",
+                "dob",
+                "email",
+                "gender",
+                "name",
+                "password",
+                "role"
+            ],
+            "properties": {
+                "confirmedPassword": {
+                    "type": "string",
+                    "minLength": 8,
+                    "example": "SecurePass123!"
+                },
+                "dob": {
+                    "type": "string",
+                    "example": "1990-05-15"
+                },
+                "email": {
+                    "type": "string",
+                    "example": "john.doe@example.com"
+                },
+                "gender": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/user.Gender"
+                        }
+                    ],
+                    "example": "M"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "John Doe"
+                },
+                "password": {
+                    "type": "string",
+                    "minLength": 6,
+                    "example": "SecurePass123!"
+                },
+                "role": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/user.Role"
+                        }
+                    ],
+                    "example": "patient"
+                }
+            }
         },
         "dto.ResendActivationEmailRequest": {
             "type": "object",
@@ -2830,7 +2939,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "gender": {
-                    "type": "string"
+                    "$ref": "#/definitions/user.Gender"
                 },
                 "name": {
                     "type": "string"
@@ -2850,7 +2959,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "gender": {
-                    "type": "string"
+                    "$ref": "#/definitions/user.Gender"
                 },
                 "licenseNumber": {
                     "type": "string"
@@ -2954,7 +3063,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "gender": {
-                    "type": "string"
+                    "$ref": "#/definitions/user.Gender"
                 },
                 "licenseNumber": {
                     "type": "string"
@@ -2989,7 +3098,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "gender": {
-                    "type": "string"
+                    "$ref": "#/definitions/user.Gender"
                 },
                 "insuranceNumber": {
                     "type": "string"
@@ -3110,6 +3219,17 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.UpdateUserStatusRequest": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "status": {
+                    "$ref": "#/definitions/user.Status"
+                }
+            }
+        },
         "usecase.CreateDepartmentInput": {
             "type": "object",
             "required": [
@@ -3123,6 +3243,45 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        },
+        "user.Gender": {
+            "type": "string",
+            "enum": [
+                "M",
+                "F",
+                "O"
+            ],
+            "x-enum-varnames": [
+                "GenderMale",
+                "GenderFemale",
+                "GenderOther"
+            ]
+        },
+        "user.Role": {
+            "type": "string",
+            "enum": [
+                "user.patient",
+                "user.doctor",
+                "user.nurse",
+                "admin"
+            ],
+            "x-enum-varnames": [
+                "RolePatient",
+                "RoleDoctor",
+                "RoleNurse",
+                "RoleAdmin"
+            ]
+        },
+        "user.Status": {
+            "type": "string",
+            "enum": [
+                "active",
+                "inactive"
+            ],
+            "x-enum-varnames": [
+                "StatusActive",
+                "StatusInactive"
+            ]
         }
     }
 }`

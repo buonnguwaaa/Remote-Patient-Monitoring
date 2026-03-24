@@ -211,6 +211,40 @@ definitions:
     - refreshToken
     type: object
   dto.RegisterRequest:
+    properties:
+      confirmedPassword:
+        example: SecurePass123!
+        minLength: 8
+        type: string
+      dob:
+        example: "1990-05-15"
+        type: string
+      email:
+        example: john.doe@example.com
+        type: string
+      gender:
+        allOf:
+        - $ref: '#/definitions/user.Gender'
+        example: M
+      name:
+        example: John Doe
+        type: string
+      password:
+        example: SecurePass123!
+        minLength: 6
+        type: string
+      role:
+        allOf:
+        - $ref: '#/definitions/user.Role'
+        example: patient
+    required:
+    - confirmedPassword
+    - dob
+    - email
+    - gender
+    - name
+    - password
+    - role
     type: object
   dto.ResendActivationEmailRequest:
     properties:
@@ -239,7 +273,7 @@ definitions:
       email:
         type: string
       gender:
-        type: string
+        $ref: '#/definitions/user.Gender'
       name:
         type: string
       phone:
@@ -252,7 +286,7 @@ definitions:
       email:
         type: string
       gender:
-        type: string
+        $ref: '#/definitions/user.Gender'
       licenseNumber:
         type: string
       name:
@@ -319,7 +353,7 @@ definitions:
       email:
         type: string
       gender:
-        type: string
+        $ref: '#/definitions/user.Gender'
       licenseNumber:
         type: string
       name:
@@ -342,7 +376,7 @@ definitions:
       emergencyContactPhone:
         type: string
       gender:
-        type: string
+        $ref: '#/definitions/user.Gender'
       insuranceNumber:
         type: string
       medicalHistory:
@@ -424,6 +458,13 @@ definitions:
       temperatureMin:
         type: number
     type: object
+  dto.UpdateUserStatusRequest:
+    properties:
+      status:
+        $ref: '#/definitions/user.Status'
+    required:
+    - status
+    type: object
   usecase.CreateDepartmentInput:
     properties:
       description:
@@ -433,6 +474,36 @@ definitions:
     required:
     - name
     type: object
+  user.Gender:
+    enum:
+    - M
+    - F
+    - O
+    type: string
+    x-enum-varnames:
+    - GenderMale
+    - GenderFemale
+    - GenderOther
+  user.Role:
+    enum:
+    - user.patient
+    - user.doctor
+    - user.nurse
+    - admin
+    type: string
+    x-enum-varnames:
+    - RolePatient
+    - RoleDoctor
+    - RoleNurse
+    - RoleAdmin
+  user.Status:
+    enum:
+    - active
+    - inactive
+    type: string
+    x-enum-varnames:
+    - StatusActive
+    - StatusInactive
 host: localhost:8080
 info:
   contact:
@@ -1644,6 +1715,46 @@ paths:
               type: string
             type: object
       summary: Upload avatar for a user
+      tags:
+      - users
+  /users/{id}/status:
+    patch:
+      consumes:
+      - application/json
+      description: Update only a user's status by their ID (admin only)
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: User status update payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateUserStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User status updated successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update user status by ID
       tags:
       - users
   /users/doctors:

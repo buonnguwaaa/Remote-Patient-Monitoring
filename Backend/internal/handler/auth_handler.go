@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	domain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/service"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecase"
@@ -50,8 +51,8 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		Email:             req.Email,
 		Password:          req.Password,
 		ConfirmedPassword: req.ConfirmedPassword,
-		Role:              req.Role,
-		Gender:            req.Gender,
+		Role:              domain.Role(req.Role),
+		Gender:            domain.Gender(req.Gender),
 		Dob:               dob,
 	}
 

@@ -1,9 +1,13 @@
 package usecase
 
+import (
+	domain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
+)
+
 type GetUsersInput struct {
 	Name      string
 	Email     string
-	Gender    string
+	Gender    domain.Gender
 	Page      int
 	Limit     int
 	Offset    int
@@ -14,14 +18,13 @@ type GetUserByIDInput struct {
 	ID string
 }
 
-type UpdateUserInput struct {
+type UpdateUserInfoInput struct {
 	ID        string
 	Name      string
 	Email     string
-	Gender    string
+	Gender    domain.Gender
 	Phone     string
 	AvatarUrl string
-	IsActive  *bool
 	// Shared staff fields
 	DepartmentID  string
 	LicenseNumber string
@@ -37,6 +40,11 @@ type UpdateUserInput struct {
 	EmergencyContactName  string
 	EmergencyContactPhone string
 	MedicalHistory        string
+}
+
+type UpdateUserStatusInput struct {
+	ID     string
+	Status domain.Status
 }
 
 type UpdatePatientProfileInput struct {

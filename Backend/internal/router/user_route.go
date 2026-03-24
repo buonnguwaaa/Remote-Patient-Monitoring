@@ -25,6 +25,11 @@ func RegisterUserRoutes(r *gin.Engine, c *container.MainServerContainer) {
 			middleware.RequireRoles(domain.RoleAdmin),
 			c.UserHandler.UpdateBaseUserByID,
 		)
+		userGroup.PATCH("/:id/status",
+			middleware.JWTAuthMiddleware(c.JWTManager),
+			middleware.RequireRoles(domain.RoleAdmin),
+			c.UserHandler.UpdateBaseUserStatusByID,
+		)
 		userGroup.DELETE("/:id",
 			middleware.JWTAuthMiddleware(c.JWTManager),
 			middleware.RequireRoles(domain.RoleAdmin),

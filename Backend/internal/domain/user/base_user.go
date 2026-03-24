@@ -23,6 +23,13 @@ const (
 	GenderOther  Gender = "O"
 )
 
+type Status string
+
+const (
+	StatusActive   Status = "active"
+	StatusInactive Status = "inactive"
+)
+
 type BaseUser struct {
 	ID                    primitive.ObjectID `json:"id" bson:"_id,omitempty"`
 	Role                  Role               `json:"role" bson:"role"`
@@ -34,7 +41,7 @@ type BaseUser struct {
 	Dob                   time.Time          `json:"dob,omitempty" bson:"dob,omitempty"`
 	Phone                 string             `json:"phone,omitempty" bson:"phone,omitempty"`
 	AvatarUrl             string             `json:"avatarUrl,omitempty" bson:"avatarUrl,omitempty"`
-	IsActive              bool               `json:"isActive" bson:"isActive"`
+	Status                Status             `json:"status" bson:"status"`
 	ResetToken            string             `json:"resetToken,omitempty" bson:"resetToken,omitempty"`
 	ResetTokenExpiry      time.Time          `json:"resetTokenExpiry,omitempty" bson:"resetTokenExpiry,omitempty"`
 	ActivationTokenHash   string             `json:"activationTokenHash,omitempty" bson:"activationTokenHash,omitempty"`
