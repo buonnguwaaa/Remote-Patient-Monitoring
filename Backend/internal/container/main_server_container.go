@@ -81,7 +81,7 @@ func NewMainServerContainer() *MainServerContainer {
 	c.UserService = service.NewUserService(c.BaseUserRepo, c.PatientRepo, c.NurseRepo, c.DoctorRepo)
 	c.MeasurementService = service.NewMeasurementService(c.PatientRepo, c.MeasurementRepo)
 	c.ThresholdService = service.NewThresholdService(c.PatientRepo, c.DoctorRepo, c.ThresholdRepo)
-	c.AlertService = service.NewAlertService(c.AlertRepo, c.AssignmentRepo, c.BaseUserRepo)
+	c.AlertService = service.NewAlertService(c.AlertRepo)
 	c.DepartmentService = service.NewDepartmentService(c.DepartmentRepo, c.DoctorRepo, c.NurseRepo)
 	c.AssignmentService = service.NewAssignmentService(c.AssignmentRepo, c.BaseUserRepo)
 	c.ReminderService = service.NewReminderService(c.PatientRepo, c.ReminderRepo)

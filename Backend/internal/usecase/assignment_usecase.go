@@ -9,8 +9,8 @@ import (
 
 type AssignPatientInput struct {
 	PatientID  string `json:"patientId" binding:"required"`
-	DoctorID   string `json:"doctorId"` 
-	NurseID    string `json:"nurseId"`  
+	DoctorID   string `json:"doctorId"`
+	NurseID    string `json:"nurseId"`
 	AssignedBy string
 }
 

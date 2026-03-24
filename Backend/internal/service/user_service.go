@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"time"
 
@@ -20,24 +21,27 @@ type userService struct {
 	doctorRepo   repository.StaffRepository[domain.Doctor]
 }
 
+var ErrInvalidUserStatus = errors.New("invalid status")
+
 type UserService interface {
 	GetBaseUsers(context.Context, *usecase.GetUsersInput) ([]dto.BaseUserInfoResponse, error)
 	GetBaseUserByID(context.Context, *usecase.GetUserByIDInput) (*dto.BaseUserInfoResponse, error)
-	UpdateBaseUser(context.Context, *usecase.UpdateUserInput) error
+	UpdateBaseUser(context.Context, *usecase.UpdateUserInfoInput) error
+	UpdateBaseUserStatus(context.Context, *usecase.UpdateUserStatusInput) error
 	DeleteBaseUser(context.Context, *usecase.DeleteUserInput) error
 
 	GetPatients(context.Context, *usecase.GetUsersInput) ([]dto.PatientInfoResponse, error)
 	GetPatientByID(context.Context, *usecase.GetUserByIDInput) (*dto.PatientInfoResponse, error)
-	UpdatePatient(context.Context, *usecase.UpdateUserInput) error
+	UpdatePatient(context.Context, *usecase.UpdateUserInfoInput) error
 	UpdatePatientProfile(context.Context, *usecase.UpdatePatientProfileInput) error
 
 	GetDoctors(context.Context, *usecase.GetUsersInput) ([]dto.DoctorInfoResponse, error)
 	GetDoctorByID(context.Context, *usecase.GetUserByIDInput) (*dto.DoctorInfoResponse, error)
-	UpdateDoctor(context.Context, *usecase.UpdateUserInput) error
+	UpdateDoctor(context.Context, *usecase.UpdateUserInfoInput) error
 
 	GetNurses(context.Context, *usecase.GetUsersInput) ([]dto.NurseInfoResponse, error)
 	GetNurseByID(context.Context, *usecase.GetUserByIDInput) (*dto.NurseInfoResponse, error)
-	UpdateNurse(context.Context, *usecase.UpdateUserInput) error
+	UpdateNurse(context.Context, *usecase.UpdateUserInfoInput) error
 }
 
 func NewUserService(baseUserRepo repository.BaseUserRepository, patientRepo repository.PatientRepository, nurseRepo repository.StaffRepository[domain.Nurse], doctorRepo repository.StaffRepository[domain.Doctor]) UserService {
@@ -53,7 +57,7 @@ func (s *userService) GetBaseUsers(ctx context.Context, input *usecase.GetUsersI
 	repoFilter := repository.UserFilter{
 		Name:      input.Name,
 		Email:     input.Email,
-		Gender:    input.Gender,
+		Gender:    string(input.Gender),
 		Limit:     input.Limit,
 		Offset:    input.Offset,
 		SortOrder: input.SortOrder,
@@ -87,7 +91,7 @@ func (s *userService) GetBaseUserByID(ctx context.Context, input *usecase.GetUse
 	return &resp, nil
 }
 
-func (s *userService) UpdateBaseUser(ctx context.Context, input *usecase.UpdateUserInput) error {
+func (s *userService) UpdateBaseUser(ctx context.Context, input *usecase.UpdateUserInfoInput) error {
 	objID, err := primitive.ObjectIDFromHex(input.ID)
 	if err != nil {
 		return err
@@ -97,20 +101,37 @@ func (s *userService) UpdateBaseUser(ctx context.Context, input *usecase.UpdateU
 	return s.patientRepo.Update(ctx, objID, updateData)
 }
 
+func (s *userService) UpdateBaseUserStatus(ctx context.Context, input *usecase.UpdateUserStatusInput) error {
+	objID, err := primitive.ObjectIDFromHex(input.ID)
+	if err != nil {
+		return err
+	}
+
+	if input.Status != domain.StatusActive && input.Status != domain.StatusInactive {
+		return ErrInvalidUserStatus
+	}
+
+	updateData := map[string]interface{}{
+		"status": input.Status,
+	}
+
+	return s.baseUserRepo.Update(ctx, objID, updateData)
+}
+
 func (s *userService) DeleteBaseUser(ctx context.Context, input *usecase.DeleteUserInput) error {
 	objID, err := primitive.ObjectIDFromHex(input.ID)
 	if err != nil {
 		return err
 	}
 
-	return s.patientRepo.Delete(ctx, objID)
+	return s.baseUserRepo.Delete(ctx, objID)
 }
 
 func (s *userService) GetPatients(ctx context.Context, input *usecase.GetUsersInput) ([]dto.PatientInfoResponse, error) {
 	repoFilter := repository.UserFilter{
 		Name:      input.Name,
 		Email:     input.Email,
-		Gender:    input.Gender,
+		Gender:    string(input.Gender),
 		Page:      input.Page,
 		Limit:     input.Limit,
 		Offset:    input.Offset,
@@ -144,7 +165,7 @@ func (s *userService) GetPatientByID(ctx context.Context, input *usecase.GetUser
 	return mapPatient(user), nil
 }
 
-func (s *userService) UpdatePatient(ctx context.Context, input *usecase.UpdateUserInput) error {
+func (s *userService) UpdatePatient(ctx context.Context, input *usecase.UpdateUserInfoInput) error {
 	objID, err := primitive.ObjectIDFromHex(input.ID)
 	if err != nil {
 		return err
@@ -183,7 +204,7 @@ func (s *userService) GetDoctors(ctx context.Context, input *usecase.GetUsersInp
 	repoFilter := repository.UserFilter{
 		Name:      input.Name,
 		Email:     input.Email,
-		Gender:    input.Gender,
+		Gender:    string(input.Gender),
 		Page:      input.Page,
 		Limit:     input.Limit,
 		Offset:    input.Offset,
@@ -217,7 +238,7 @@ func (s *userService) GetDoctorByID(ctx context.Context, input *usecase.GetUserB
 	return mapDoctor(user), nil
 }
 
-func (s *userService) UpdateDoctor(ctx context.Context, input *usecase.UpdateUserInput) error {
+func (s *userService) UpdateDoctor(ctx context.Context, input *usecase.UpdateUserInfoInput) error {
 	objID, err := primitive.ObjectIDFromHex(input.ID)
 	if err != nil {
 		return err
@@ -244,7 +265,7 @@ func (s *userService) GetNurses(ctx context.Context, input *usecase.GetUsersInpu
 	repoFilter := repository.UserFilter{
 		Name:      input.Name,
 		Email:     input.Email,
-		Gender:    input.Gender,
+		Gender:    string(input.Gender),
 		Page:      input.Page,
 		Limit:     input.Limit,
 		Offset:    input.Offset,
@@ -278,7 +299,7 @@ func (s *userService) GetNurseByID(ctx context.Context, input *usecase.GetUserBy
 	return mapNurse(user), nil
 }
 
-func (s *userService) UpdateNurse(ctx context.Context, input *usecase.UpdateUserInput) error {
+func (s *userService) UpdateNurse(ctx context.Context, input *usecase.UpdateUserInfoInput) error {
 	objID, err := primitive.ObjectIDFromHex(input.ID)
 	if err != nil {
 		return err
@@ -298,7 +319,7 @@ func (s *userService) UpdateNurse(ctx context.Context, input *usecase.UpdateUser
 	return s.nurseRepo.Update(ctx, objID, updateData)
 }
 
-func buildBaseUpdateData(input *usecase.UpdateUserInput) map[string]interface{} {
+func buildBaseUpdateData(input *usecase.UpdateUserInfoInput) map[string]interface{} {
 	updateData := make(map[string]interface{})
 
 	if value := strings.TrimSpace(input.Name); value != "" {
@@ -307,14 +328,11 @@ func buildBaseUpdateData(input *usecase.UpdateUserInput) map[string]interface{} 
 	if value := strings.ToLower(strings.TrimSpace(input.Email)); value != "" {
 		updateData["email"] = value
 	}
-	if value := strings.TrimSpace(input.Gender); value != "" {
-		updateData["gender"] = domain.Gender(value)
+	if input.Gender != "" {
+		updateData["gender"] = input.Gender
 	}
 	if value := strings.TrimSpace(input.Phone); value != "" {
 		updateData["phone"] = value
-	}
-	if input.IsActive != nil {
-		updateData["isActive"] = *input.IsActive
 	}
 	if value := strings.TrimSpace(input.AvatarUrl); value != "" {
 		updateData["avatarUrl"] = value
@@ -323,7 +341,7 @@ func buildBaseUpdateData(input *usecase.UpdateUserInput) map[string]interface{} 
 	return updateData
 }
 
-func buildPatientUpdateData(input *usecase.UpdateUserInput) map[string]interface{} {
+func buildPatientUpdateData(input *usecase.UpdateUserInfoInput) map[string]interface{} {
 	updateData := make(map[string]interface{})
 
 	if value := strings.TrimSpace(input.InsuranceNumber); value != "" {
@@ -399,7 +417,7 @@ func mapBaseUser(user domain.BaseUser) dto.BaseUserInfoResponse {
 		Dob:       formatDate(user.Dob),
 		Phone:     user.Phone,
 		AvatarUrl: user.AvatarUrl,
-		IsActive:  user.IsActive,
+		Status:    user.Status,
 		CreatedAt: formatDateTime(user.CreatedAt),
 		UpdatedAt: formatDateTime(user.UpdatedAt),
 	}

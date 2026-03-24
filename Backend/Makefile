@@ -7,7 +7,7 @@ ifndef SWAG
 	@echo "Installing swag cli package..."
 	@go install github.com/swaggo/swag/cmd/swag@latest
 endif
-	@$(GOBIN)/swag init -g cmd/server/main.go -d . -o docs
+	@$(GOBIN)/swag init -g main.go -d cmd/server,internal/handler,internal/dto,internal/usecase,internal/domain,config --parseInternal -o docs
 	@echo "Swagger docs generated successfully!"
 
 

@@ -8,7 +8,9 @@ import (
 	"strconv"
 	"time"
 
+	domain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
+
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/service"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecase"
 	"github.com/gin-gonic/gin"
@@ -59,7 +61,7 @@ func (h *UserHandler) GetBaseUsers(c *gin.Context) {
 	input := &usecase.GetUsersInput{
 		Name:      c.Query("name"),
 		Email:     c.Query("email"),
-		Gender:    c.Query("gender"),
+		Gender:    domain.Gender(c.Query("gender")),
 		Page:      page,
 		Limit:     limit,
 		Offset:    offset,
@@ -121,13 +123,12 @@ func (h *UserHandler) UpdateBaseUserByID(c *gin.Context) {
 		return
 	}
 
-	input := &usecase.UpdateUserInput{
-		ID:       id,
-		Name:     req.Name,
-		Email:    req.Email,
-		Gender:   req.Gender,
-		Phone:    req.Phone,
-		IsActive: req.IsActive,
+	input := &usecase.UpdateUserInfoInput{
+		ID:     id,
+		Name:   req.Name,
+		Email:  req.Email,
+		Gender: domain.Gender(req.Gender),
+		Phone:  req.Phone,
 	}
 
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
@@ -139,6 +140,42 @@ func (h *UserHandler) UpdateBaseUserByID(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "User updated successfully"})
+}
+
+// UpdateBaseUserStatusByID updates only a user's status by ID
+// @Summary Update user status by ID
+// @Description Update only a user's status by their ID (admin only)
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param id path string true "User ID"
+// @Param body body dto.UpdateUserStatusRequest true "User status update payload"
+// @Success 200 {object} map[string]interface{} "User status updated successfully"
+// @Failure 400 {object} map[string]string "Bad request"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /users/{id}/status [patch]
+func (h *UserHandler) UpdateBaseUserStatusByID(c *gin.Context) {
+	id := c.Param("id")
+
+	var req dto.UpdateUserStatusRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	if err := h.service.UpdateBaseUserStatus(ctx, &usecase.UpdateUserStatusInput{ID: id, Status: domain.Status(req.Status)}); err != nil {
+		if errors.Is(err, service.ErrInvalidUserStatus) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "User status updated successfully"})
 }
 
 // DeleteBaseUserByID deletes a base user by ID
@@ -233,7 +270,7 @@ func (h *UserHandler) uploadAvatarForUser(c *gin.Context, userID string) {
 		return
 	}
 
-	if err := h.service.UpdateBaseUser(ctx, &usecase.UpdateUserInput{ID: userID, AvatarUrl: avatarUrl}); err != nil {
+	if err := h.service.UpdateBaseUser(ctx, &usecase.UpdateUserInfoInput{ID: userID, AvatarUrl: avatarUrl}); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save avatar: " + err.Error()})
 		return
 	}
@@ -388,7 +425,7 @@ func (h *UserHandler) GetPatients(c *gin.Context) {
 	input := &usecase.GetUsersInput{
 		Name:      c.Query("name"),
 		Email:     c.Query("email"),
-		Gender:    c.Query("gender"),
+		Gender:    domain.Gender(c.Query("gender")),
 		Page:      page,
 		Limit:     limit,
 		Offset:    offset,
@@ -454,13 +491,12 @@ func (h *UserHandler) UpdatePatientByID(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
-	input := &usecase.UpdateUserInput{
+	input := &usecase.UpdateUserInfoInput{
 		ID:                    id,
 		Name:                  req.Name,
 		Email:                 req.Email,
-		Gender:                req.Gender,
+		Gender:                domain.Gender(req.Gender),
 		Phone:                 req.Phone,
-		IsActive:              req.IsActive,
 		InsuranceNumber:       req.InsuranceNumber,
 		CCCD:                  req.CCCD,
 		EmergencyContactName:  req.EmergencyContactName,
@@ -508,7 +544,7 @@ func (h *UserHandler) GetDoctors(c *gin.Context) {
 	input := &usecase.GetUsersInput{
 		Name:      c.Query("name"),
 		Email:     c.Query("email"),
-		Gender:    c.Query("gender"),
+		Gender:    domain.Gender(c.Query("gender")),
 		Page:      page,
 		Limit:     limit,
 		Offset:    offset,
@@ -574,13 +610,12 @@ func (h *UserHandler) UpdateDoctorByID(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
-	input := &usecase.UpdateUserInput{
+	input := &usecase.UpdateUserInfoInput{
 		ID:                id,
 		Name:              req.Name,
 		Email:             req.Email,
-		Gender:            req.Gender,
+		Gender:            domain.Gender(req.Gender),
 		Phone:             req.Phone,
-		IsActive:          req.IsActive,
 		DepartmentID:      req.DepartmentID,
 		LicenseNumber:     req.LicenseNumber,
 		Workplace:         req.Workplace,
@@ -628,7 +663,7 @@ func (h *UserHandler) GetNurses(c *gin.Context) {
 	input := &usecase.GetUsersInput{
 		Name:      c.Query("name"),
 		Email:     c.Query("email"),
-		Gender:    c.Query("gender"),
+		Gender:    domain.Gender(c.Query("gender")),
 		Page:      page,
 		Limit:     limit,
 		Offset:    offset,
@@ -695,13 +730,12 @@ func (h *UserHandler) UpdateNurseByID(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
-	input := &usecase.UpdateUserInput{
+	input := &usecase.UpdateUserInfoInput{
 		ID:            id,
 		Name:          req.Name,
 		Email:         req.Email,
-		Gender:        req.Gender,
+		Gender:        domain.Gender(req.Gender),
 		Phone:         req.Phone,
-		IsActive:      req.IsActive,
 		DepartmentID:  req.DepartmentID,
 		LicenseNumber: req.LicenseNumber,
 		Workplace:     req.Workplace,

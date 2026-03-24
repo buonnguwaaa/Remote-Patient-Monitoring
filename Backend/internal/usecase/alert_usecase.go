@@ -6,6 +6,14 @@ type GetAlertsInput struct {
 	Status    string
 	Severity  string
 	IsLatest  bool
+	Page      int
+	Limit     int
+	Offset    int
+	SortOrder string
+}
+
+type GetAlertByIDInput struct {
+	ID string
 }
 
 type UpdateAlertAcknowledgementByIDInput struct {

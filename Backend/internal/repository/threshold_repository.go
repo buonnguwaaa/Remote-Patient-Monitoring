@@ -42,7 +42,7 @@ func (r *thresholdRepository) Create(ctx context.Context, t *domain.Threshold) (
 		"patientId": t.PatientID,
 	}
 
-	opts := options.FindOne().SetSort(bson.D{{"effectiveFrom", -1}})
+	opts := options.FindOne().SetSort(bson.D{{Key: "effectiveFrom", Value: -1}})
 
 	var last domain.Threshold
 	err := r.col.FindOne(ctx, filter, opts).Decode(&last)

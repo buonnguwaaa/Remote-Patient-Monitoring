@@ -78,7 +78,7 @@ func (s *authService) Login(ctx context.Context, input *usecase.LoginInput) (*dt
 	if err != nil {
 		return nil, errors.New("invalid credentials")
 	}
-	if !u.IsActive {
+	if u.Status != domain.StatusActive {
 		return nil, errors.New("account not activated")
 	}
 	if !util.ComparePassword(u.Password, input.Password) {
@@ -113,8 +113,8 @@ func (s *authService) Register(ctx context.Context, input *usecase.RegisterInput
 		Role:     input.Role,
 		Gender:   input.Gender,
 		Dob:      input.Dob,
-		// IsActive: input.Role != domain.RolePatient,
-		IsActive: true, // Temporarily auto-activate all accounts for testing; change to above line in production
+		// Status: domain.StatusInactive, // Change to this in production
+		Status: domain.StatusActive, // Temporarily auto-activate all accounts for testing; change to above line in production
 	}
 
 	insertedBase, err := s.createUserByRole(ctx, base)
@@ -234,7 +234,7 @@ func (s *authService) HandleGoogleOAuth2Callback(ctx context.Context, input *use
 				Provider: GoogleProvider,
 				Gender:   gender,
 				Dob:      dob,
-				IsActive: true,
+				Status:   domain.StatusActive,
 			},
 		}
 		inserted, err := s.patientRepo.Create(ctx, patient)
@@ -309,7 +309,7 @@ func (s *authService) ActivateAccount(ctx context.Context, input *usecase.Activa
 	if err != nil {
 		return errors.New("invalid or expired token")
 	}
-	if u.IsActive {
+	if u.Status == domain.StatusActive {
 		return nil
 	}
 
@@ -323,7 +323,7 @@ func (s *authService) ResendActivationEmail(ctx context.Context, input *usecase.
 	if err != nil {
 		return errors.New("user not found")
 	}
-	if u.IsActive {
+	if u.Status == domain.StatusActive {
 		return errors.New("account already activated")
 	}
 
@@ -435,7 +435,7 @@ func mapBaseUserToResponse(u *domain.BaseUser) *dto.BaseUserInfoResponse {
 		Dob:       dob,
 		Phone:     u.Phone,
 		AvatarUrl: u.AvatarUrl,
-		IsActive:  u.IsActive,
+		Status:    u.Status,
 		CreatedAt: createdAt,
 		UpdatedAt: updatedAt,
 	}

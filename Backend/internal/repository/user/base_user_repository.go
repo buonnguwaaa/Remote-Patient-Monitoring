@@ -18,6 +18,8 @@ type BaseUserRepository interface {
 	FindByEmail(ctx context.Context, email string) (*domain.BaseUser, error)
 	FindWithFilter(ctx context.Context, f UserFilter) ([]domain.BaseUser, error)
 	ExistsByIDAndRole(ctx context.Context, id primitive.ObjectID, role domain.Role) (bool, error)
+	Update(ctx context.Context, id primitive.ObjectID, updateData map[string]interface{}) error
+	Delete(ctx context.Context, id primitive.ObjectID) error
 
 	SetResetToken(ctx context.Context, email, token string, expires time.Time) error
 	FindByResetToken(ctx context.Context, tokenHash string) (*domain.BaseUser, error)
@@ -91,6 +93,17 @@ func (r *baseUserRepository) ExistsByIDAndRole(ctx context.Context, id primitive
 	return count > 0, nil
 }
 
+func (r *baseUserRepository) Update(ctx context.Context, id primitive.ObjectID, updateData map[string]interface{}) error {
+	updateData["updatedAt"] = time.Now().UTC()
+	_, err := r.col.UpdateOne(ctx, bson.M{"_id": id}, bson.M{"$set": updateData})
+	return err
+}
+
+func (r *baseUserRepository) Delete(ctx context.Context, id primitive.ObjectID) error {
+	_, err := r.col.DeleteOne(ctx, bson.M{"_id": id})
+	return err
+}
+
 func (r *baseUserRepository) SetResetToken(ctx context.Context, email, token string, expires time.Time) error {
 	_, err := r.col.UpdateOne(ctx, bson.M{"email": email}, bson.M{
 		"$set": bson.M{
@@ -147,7 +160,7 @@ func (r *baseUserRepository) FindByActivationHash(ctx context.Context, hash stri
 
 func (r *baseUserRepository) ActivateUserByEmail(ctx context.Context, email string) error {
 	_, err := r.col.UpdateOne(ctx, bson.M{"email": email}, bson.M{
-		"$set":   bson.M{"isActive": true, "updatedAt": time.Now().UTC()},
+		"$set":   bson.M{"status": "active", "updatedAt": time.Now().UTC()},
 		"$unset": bson.M{"activationTokenHash": "", "activationTokenExpiry": ""},
 	})
 	return err

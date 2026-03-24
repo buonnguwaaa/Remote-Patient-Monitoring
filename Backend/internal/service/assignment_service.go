@@ -7,6 +7,7 @@ import (
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
 	userDomain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository"
 	userRepository "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecase"
@@ -15,9 +16,9 @@ import (
 )
 
 type AssignmentService interface {
-	AssignPatient(ctx context.Context, input *usecase.AssignPatientInput) (*usecase.AssignmentResponse, error)
-	GetAllAssignments(ctx context.Context) ([]*usecase.AssignmentResponse, error)
-	GetAssignmentsByRole(ctx context.Context, input *usecase.GetAssignmentsByRoleInput) ([]*usecase.AssignmentResponse, error)
+	AssignPatient(ctx context.Context, input *usecase.AssignPatientInput) (*dto.AssignmentResponse, error)
+	GetAllAssignments(ctx context.Context) ([]*dto.AssignmentResponse, error)
+	GetAssignmentsByRole(ctx context.Context, input *usecase.GetAssignmentsByRoleInput) ([]*dto.AssignmentResponse, error)
 	DeleteAssignmentByID(ctx context.Context, input *usecase.DeleteAssignmentInput) error
 }
 
@@ -33,7 +34,7 @@ func NewAssignmentService(assignmentRepo repository.AssignmentRepository, userRe
 	}
 }
 
-func (s *assignmentService) AssignPatient(ctx context.Context, input *usecase.AssignPatientInput) (*usecase.AssignmentResponse, error) {
+func (s *assignmentService) AssignPatient(ctx context.Context, input *usecase.AssignPatientInput) (*dto.AssignmentResponse, error) {
 	patientID, err := util.MustHexToObjectID(input.PatientID)
 	if err != nil {
 		return nil, err
@@ -92,19 +93,22 @@ func (s *assignmentService) AssignPatient(ctx context.Context, input *usecase.As
 	return s.mapToResponse(ctx, created), nil
 }
 
-func (s *assignmentService) GetAssignmentsByRole(ctx context.Context, input *usecase.GetAssignmentsByRoleInput) ([]*usecase.AssignmentResponse, error) {
+func (s *assignmentService) GetAssignmentsByRole(ctx context.Context, input *usecase.GetAssignmentsByRoleInput) ([]*dto.AssignmentResponse, error) {
 	userID, err := util.MustHexToObjectID(input.UserID)
 	if err != nil {
 		return nil, err
 	}
 
-	var assignments []*domain.Assignment
+	var (
+		assignments []*domain.Assignment
+		nameMap     map[primitive.ObjectID]string
+	)
 
 	switch input.Role {
 	case userDomain.RoleDoctor:
-		assignments, err = s.assignmentRepo.FindByDoctorID(ctx, userID)
+		assignments, nameMap, err = s.assignmentRepo.FindByDoctorIDWithNames(ctx, userID)
 	case userDomain.RoleNurse:
-		assignments, err = s.assignmentRepo.FindByNurseID(ctx, userID)
+		assignments, nameMap, err = s.assignmentRepo.FindByNurseIDWithNames(ctx, userID)
 	default:
 		return nil, errors.New("invalid role for getting assignments")
 	}
@@ -113,16 +117,16 @@ func (s *assignmentService) GetAssignmentsByRole(ctx context.Context, input *use
 		return nil, err
 	}
 
-	return s.mapListToResponse(ctx, assignments), nil
+	return s.mapListToResponse(assignments, nameMap), nil
 }
 
-func (s *assignmentService) GetAllAssignments(ctx context.Context) ([]*usecase.AssignmentResponse, error) {
-	assignments, err := s.assignmentRepo.FindAll(ctx)
+func (s *assignmentService) GetAllAssignments(ctx context.Context) ([]*dto.AssignmentResponse, error) {
+	assignments, nameMap, err := s.assignmentRepo.FindAll(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	return s.mapListToResponse(ctx, assignments), nil
+	return s.mapListToResponse(assignments, nameMap), nil
 }
 
 func (s *assignmentService) DeleteAssignmentByID(ctx context.Context, input *usecase.DeleteAssignmentInput) error {
@@ -134,16 +138,31 @@ func (s *assignmentService) DeleteAssignmentByID(ctx context.Context, input *use
 	return s.assignmentRepo.DeleteByID(ctx, assignmentID)
 }
 
-func (s *assignmentService) mapListToResponse(ctx context.Context, assignments []*domain.Assignment) []*usecase.AssignmentResponse {
-	var responses []*usecase.AssignmentResponse
+func (s *assignmentService) mapListToResponse(assignments []*domain.Assignment, nameMap map[primitive.ObjectID]string) []*dto.AssignmentResponse {
+	var responses []*dto.AssignmentResponse
 	for _, a := range assignments {
-		responses = append(responses, s.mapToResponse(ctx, a))
+		responses = append(responses, s.mapToResponseWithNames(a, nameMap))
 	}
 	return responses
 }
 
-func (s *assignmentService) mapToResponse(ctx context.Context, a *domain.Assignment) *usecase.AssignmentResponse {
-	resp := &usecase.AssignmentResponse{
+func (s *assignmentService) mapToResponseWithNames(a *domain.Assignment, nameMap map[primitive.ObjectID]string) *dto.AssignmentResponse {
+	return &dto.AssignmentResponse{
+		ID:          a.ID,
+		PatientID:   a.PatientID,
+		PatientName: nameMap[a.PatientID],
+		DoctorID:    a.DoctorID,
+		DoctorName:  nameMap[a.DoctorID],
+		NurseID:     a.NurseID,
+		NurseName:   nameMap[a.NurseID],
+		AssignedBy:  a.AssignedBy,
+		CreatedAt:   a.CreatedAt,
+		UpdatedAt:   a.UpdatedAt,
+	}
+}
+
+func (s *assignmentService) mapToResponse(ctx context.Context, a *domain.Assignment) *dto.AssignmentResponse {
+	resp := &dto.AssignmentResponse{
 		ID:         a.ID,
 		PatientID:  a.PatientID,
 		DoctorID:   a.DoctorID,
@@ -153,10 +172,8 @@ func (s *assignmentService) mapToResponse(ctx context.Context, a *domain.Assignm
 		UpdatedAt:  a.UpdatedAt,
 	}
 
-	
 	if u, err := s.userRepo.FindByID(ctx, a.PatientID); err == nil {
 		resp.PatientName = u.Name
-		resp.PatientCode = util.GeneratePatientCode(u.ID)
 	}
 	if !a.DoctorID.IsZero() {
 		if u, err := s.userRepo.FindByID(ctx, a.DoctorID); err == nil {
