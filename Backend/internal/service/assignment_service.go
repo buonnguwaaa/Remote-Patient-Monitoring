@@ -16,7 +16,9 @@ import (
 
 type AssignmentService interface {
 	AssignPatient(ctx context.Context, input *usecase.AssignPatientInput) (*usecase.AssignmentResponse, error)
+	GetAllAssignments(ctx context.Context) ([]*usecase.AssignmentResponse, error)
 	GetAssignmentsByRole(ctx context.Context, input *usecase.GetAssignmentsByRoleInput) ([]*usecase.AssignmentResponse, error)
+	DeleteAssignmentByID(ctx context.Context, input *usecase.DeleteAssignmentInput) error
 }
 
 type assignmentService struct {
@@ -114,6 +116,24 @@ func (s *assignmentService) GetAssignmentsByRole(ctx context.Context, input *use
 	return s.mapListToResponse(ctx, assignments), nil
 }
 
+func (s *assignmentService) GetAllAssignments(ctx context.Context) ([]*usecase.AssignmentResponse, error) {
+	assignments, err := s.assignmentRepo.FindAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.mapListToResponse(ctx, assignments), nil
+}
+
+func (s *assignmentService) DeleteAssignmentByID(ctx context.Context, input *usecase.DeleteAssignmentInput) error {
+	assignmentID, err := util.MustHexToObjectID(input.AssignmentID)
+	if err != nil {
+		return err
+	}
+
+	return s.assignmentRepo.DeleteByID(ctx, assignmentID)
+}
+
 func (s *assignmentService) mapListToResponse(ctx context.Context, assignments []*domain.Assignment) []*usecase.AssignmentResponse {
 	var responses []*usecase.AssignmentResponse
 	for _, a := range assignments {
@@ -133,9 +153,10 @@ func (s *assignmentService) mapToResponse(ctx context.Context, a *domain.Assignm
 		UpdatedAt:  a.UpdatedAt,
 	}
 
-	// Ideally we could batch fetch names, but for simplicity we fetch individual
+	
 	if u, err := s.userRepo.FindByID(ctx, a.PatientID); err == nil {
 		resp.PatientName = u.Name
+		resp.PatientCode = util.GeneratePatientCode(u.ID)
 	}
 	if !a.DoctorID.IsZero() {
 		if u, err := s.userRepo.FindByID(ctx, a.DoctorID); err == nil {

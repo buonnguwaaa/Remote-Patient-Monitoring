@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { FaCheckCircle, FaExclamationCircle, FaInfoCircle, FaTimes } from "react-icons/fa";
 
 import type { ToastState } from "../../hooks/useToast";
@@ -10,29 +10,26 @@ interface ToastProps {
 
 const toastStyles = {
   success: {
-    wrapper:
-      "border-emerald-200 bg-white/95 text-slate-900 shadow-emerald-100 dark:border-emerald-500/20 dark:bg-slate-900/95 dark:text-slate-100",
-    icon: "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300",
+    wrapper: "border-emerald-200 bg-white/95 text-slate-900 shadow-emerald-100",
+    icon: "bg-emerald-100 text-emerald-600",
     progress: "bg-emerald-500",
     Icon: FaCheckCircle,
   },
   error: {
-    wrapper:
-      "border-rose-200 bg-white/95 text-slate-900 shadow-rose-100 dark:border-rose-500/20 dark:bg-slate-900/95 dark:text-slate-100",
-    icon: "bg-rose-100 text-rose-600 dark:bg-rose-500/10 dark:text-rose-300",
+    wrapper: "border-rose-200 bg-white/95 text-slate-900 shadow-rose-100",
+    icon: "bg-rose-100 text-rose-600",
     progress: "bg-rose-500",
     Icon: FaExclamationCircle,
   },
   info: {
-    wrapper:
-      "border-sky-200 bg-white/95 text-slate-900 shadow-sky-100 dark:border-sky-500/20 dark:bg-slate-900/95 dark:text-slate-100",
-    icon: "bg-sky-100 text-sky-600 dark:bg-sky-500/10 dark:text-sky-300",
+    wrapper: "border-sky-200 bg-white/95 text-slate-900 shadow-sky-100",
+    icon: "bg-sky-100 text-sky-600",
     progress: "bg-sky-500",
     Icon: FaInfoCircle,
   },
 } as const;
 
-const Toast: React.FC<ToastProps> = ({ toast, onClose }) => {
+const Toast = ({ toast, onClose }: ToastProps) => {
   const [remainingTime, setRemainingTime] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
 
@@ -88,20 +85,20 @@ const Toast: React.FC<ToastProps> = ({ toast, onClose }) => {
 
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold">{toast.title}</p>
-            <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">{toast.message}</p>
+            <p className="mt-1 text-sm leading-6 text-slate-600">{toast.message}</p>
           </div>
 
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+            className="rounded-full p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
             aria-label="Đóng thông báo"
           >
             <FaTimes className="text-xs" />
           </button>
         </div>
 
-        <div className="h-1 w-full bg-slate-200/80 dark:bg-slate-700/80">
+        <div className="h-1 w-full bg-slate-200/80">
           <div
             className={`h-full transition-[width] duration-75 ease-linear ${variant.progress}`}
             style={{ width: progressWidth }}

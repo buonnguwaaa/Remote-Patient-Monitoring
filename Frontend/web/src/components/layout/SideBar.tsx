@@ -10,6 +10,8 @@ interface SideBarProps {
   navigationItems?: NavigationItem[];
 }
 
+const DEFAULT_AVATAR = "/default-avatar.svg";
+
 const SideBar = ({ navigationItems }: SideBarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -117,8 +119,12 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
           >
             <div className="h-12 w-12 rounded-full shrink-0">
               <img
-                src="https://avatar.iran.liara.run/public"
-                alt="User Avatar"
+                src={user?.avatarUrl || DEFAULT_AVATAR}
+                alt={user?.username || "Doctor avatar"}
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = DEFAULT_AVATAR;
+                }}
                 className="w-full h-full rounded-full object-cover"
               />
             </div>

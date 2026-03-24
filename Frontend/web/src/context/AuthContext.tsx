@@ -4,6 +4,13 @@ import api from "../services/api";
 
 export type UserRole = "doctor";
 
+type AuthUser = {
+  id: string;
+  username: string;
+  role: UserRole;
+  avatarUrl?: string;
+};
+
 interface AuthContextType {
   isAuthenticated: boolean;
   user: { id: string; username: string; role: UserRole } | null;

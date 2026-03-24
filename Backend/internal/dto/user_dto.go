@@ -14,6 +14,7 @@ type BaseUserInfoResponse struct {
 	Dob       string        `json:"dob"`
 	Phone     string        `json:"phone,omitempty"`
 	AvatarUrl string        `json:"avatarUrl,omitempty"`
+	IsActive  bool          `json:"isActive"`
 	CreatedAt string        `json:"createdAt"`
 	UpdatedAt string        `json:"updatedAt"`
 }
@@ -47,10 +48,11 @@ type NurseInfoResponse struct {
 }
 
 type UpdateBaseUserRequest struct {
-	Name   string `json:"name"`
-	Email  string `json:"email"`
-	Gender string `json:"gender"`
-	Phone  string `json:"phone"`
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Gender   string `json:"gender"`
+	Phone    string `json:"phone"`
+	IsActive *bool  `json:"isActive,omitempty"`
 }
 
 type UpdatePatientRequest struct {

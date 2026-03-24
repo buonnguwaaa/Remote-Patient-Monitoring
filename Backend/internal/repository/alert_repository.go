@@ -23,10 +23,11 @@ type AlertRepository interface {
 }
 
 type AlertFilter struct {
-	PatientID string
-	Status    domain.Status
-	Severity  domain.Severity
-	IsLatest  bool
+	PatientID  string
+	PatientIDs []string
+	Status     domain.Status
+	Severity   domain.Severity
+	IsLatest   bool
 	// Page      int
 	// Limit     int
 	// Offset    int
@@ -60,6 +61,16 @@ func (r *alertRepository) FindWithFilter(ctx context.Context, filter AlertFilter
 			return nil, err
 		}
 		bsonFilter["patientId"] = patientID
+	} else if len(filter.PatientIDs) > 0 {
+		patientIDs := make([]primitive.ObjectID, 0, len(filter.PatientIDs))
+		for _, patientIDHex := range filter.PatientIDs {
+			patientID, err := primitive.ObjectIDFromHex(patientIDHex)
+			if err != nil {
+				return nil, err
+			}
+			patientIDs = append(patientIDs, patientID)
+		}
+		bsonFilter["patientId"] = bson.M{"$in": patientIDs}
 	}
 
 	if filter.Status != "" {
@@ -74,6 +85,8 @@ func (r *alertRepository) FindWithFilter(ctx context.Context, filter AlertFilter
 	if filter.IsLatest {
 		opts.SetSort(bson.M{"createdAt": -1})
 		opts.SetLimit(1)
+	} else {
+		opts.SetSort(bson.M{"createdAt": -1})
 	}
 
 	cursor, err := r.col.Find(ctx, bsonFilter, opts)
@@ -108,15 +121,14 @@ func (r *alertRepository) UpdateAcknowledgementByID(
 	acknowledgedBy primitive.ObjectID,
 ) (*domain.Alert, error) {
 
-	now := time.Now()
-	acknowledgedByStr := acknowledgedBy.Hex()
+	now := time.Now().UTC()
 
 	filter := bson.M{"_id": id}
 
 	update := bson.M{
 		"$set": bson.M{
 			"status":         domain.StatusAck,
-			"acknowledgedBy": acknowledgedByStr,
+			"acknowledgedBy": acknowledgedBy,
 			"acknowledgedAt": now,
 			"updatedAt":      now,
 		},

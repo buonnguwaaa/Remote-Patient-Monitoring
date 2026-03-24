@@ -435,6 +435,7 @@ func mapBaseUserToResponse(u *domain.BaseUser) *dto.BaseUserInfoResponse {
 		Dob:       dob,
 		Phone:     u.Phone,
 		AvatarUrl: u.AvatarUrl,
+		IsActive:  u.IsActive,
 		CreatedAt: createdAt,
 		UpdatedAt: updatedAt,
 	}
