@@ -1,8 +1,5 @@
 import { useState, useEffect } from "react";
-import {
-  TbLayoutSidebarLeftCollapseFilled,
-  TbLayoutSidebarRightCollapseFilled,
-} from "react-icons/tb";
+import { CiCircleChevLeft, CiCircleChevRight } from "react-icons/ci";
 import { FiLogOut } from "react-icons/fi";
 import { type NavigationItem } from "../../types/index.ts";
 import { navData } from "../../data/NavData.ts";
@@ -53,8 +50,8 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
       <div
         className={`
           h-screen bg-white border-r border-gray-200 flex flex-col transition-all duration-300
-          fixed left-0 top-0 z-50 
-          md:relative md:z-auto
+          fixed left-0 top-0 z-50 rounded-r-2xl border-r-2
+          md:relative md:z-auto 
           ${isCollapsed ? "w-14" : "w-80"}
         `}
       >
@@ -70,9 +67,9 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
             className="text-primary-text"
           >
             {isCollapsed ? (
-              <TbLayoutSidebarRightCollapseFilled size={32} />
+              <CiCircleChevRight size={32} />
             ) : (
-              <TbLayoutSidebarLeftCollapseFilled size={32} />
+              <CiCircleChevLeft size={32} />
             )}
           </button>
         </div>

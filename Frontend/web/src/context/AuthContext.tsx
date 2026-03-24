@@ -13,7 +13,7 @@ type AuthUser = {
 
 interface AuthContextType {
   isAuthenticated: boolean;
-  user: AuthUser | null;
+  user: { id: string; username: string; role: UserRole } | null;
   login: (username: string, password: string) => Promise<UserRole | null>;
   isLoading: boolean;
   logout: () => void;
@@ -25,7 +25,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const [user, setUser] = useState<{ id: string; username: string; role: UserRole } | null>(null);
 
   const mapRole = (backendRole: string): UserRole | null => {
     if (backendRole === "user.doctor") return "doctor";
@@ -41,7 +41,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           const role = mapRole(userData.role);
           if (role) {
             setIsAuthenticated(true);
-            setUser({ id: userData.id, username: userData.name, role, avatarUrl: userData.avatarUrl });
+            setUser({ id: userData.id, username: userData.name, role });
           } else {
             setIsAuthenticated(false);
             setUser(null);
@@ -76,7 +76,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       localStorage.removeItem("username");
 
       setIsAuthenticated(true);
-      setUser({ id: userData.id, username: userData.name, role, avatarUrl: userData.avatarUrl });
+      setUser({ id: userData.id, username: userData.name, role });
       return role;
     } catch (error) {
       console.error("Login error:", error);
