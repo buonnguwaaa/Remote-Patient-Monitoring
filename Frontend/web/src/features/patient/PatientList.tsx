@@ -85,15 +85,15 @@ const PatientList = () => {
       render: (patient) => <span className="font-bold">{filteredPatients.indexOf(patient) + 1}</span>,
       className: "w-10",
     },
-       {
+    {
       header: "Mã hồ sơ",
       accessor: "patientCode",
-      className: "font-medium text-gray-700",
+      className: "font-medium text-gray-700 dark:text-slate-300",
     },
     {
       header: "Họ và tên",
       accessor: "name",
-      className: "font-medium text-gray-900",
+      className: "font-medium text-gray-900 dark:text-slate-100",
     },
     {
       header: "Ngày cập nhật",
@@ -104,7 +104,9 @@ const PatientList = () => {
       render: (patient) => (
         <div
           className={`w-fit rounded-full px-2 py-1 text-xs font-semibold ${
-            patient.status === "Bình thường" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+            patient.status === "Bình thường"
+              ? "bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-400"
+              : "bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-400"
           }`}
         >
           <span>{patient.status}</span>
@@ -116,7 +118,7 @@ const PatientList = () => {
       render: (patient) => (
         <div className="flex gap-3">
           <Chat
-            className="cursor-pointer rounded-md p-1 hover:bg-gray-200"
+            className="cursor-pointer rounded-md p-1 hover:bg-gray-200 dark:hover:bg-slate-700"
             iconSize={22}
             onClick={(event) => {
               event.stopPropagation();
@@ -124,7 +126,7 @@ const PatientList = () => {
             }}
           />
           <Edit
-            className="cursor-pointer rounded-md p-1 hover:bg-gray-200"
+            className="cursor-pointer rounded-md p-1 hover:bg-gray-200 dark:hover:bg-slate-700"
             iconSize={20}
             onClick={() => console.log("Edit clicked for", patient.name)}
           />
@@ -139,10 +141,10 @@ const PatientList = () => {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-100 p-8">
+      <div className="flex min-h-screen items-center justify-center bg-gray-100 dark:bg-slate-900 p-8">
         <div className="text-center">
           <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-500 border-r-transparent" />
-          <p className="mt-2 text-sm text-gray-600">Đang tải danh sách bệnh nhân...</p>
+          <p className="mt-2 text-sm text-gray-600 dark:text-slate-400">Đang tải danh sách bệnh nhân...</p>
         </div>
       </div>
     );
@@ -150,8 +152,8 @@ const PatientList = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-100 p-8">
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">
+      <div className="min-h-screen bg-gray-100 dark:bg-slate-900 p-8">
+        <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 p-4 text-red-700 dark:text-red-400">
           <p className="font-semibold">Lỗi</p>
           <p>{error}</p>
         </div>
@@ -160,8 +162,8 @@ const PatientList = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
-      <h1 className="mb-4 text-3xl font-bold">Danh sách bệnh nhân</h1>
+    <div className="min-h-screen bg-gray-100 dark:bg-slate-900 p-8">
+      <h1 className="mb-4 text-3xl font-bold text-gray-800 dark:text-slate-100">Danh sách bệnh nhân</h1>
 
       <div className="mb-4 flex flex-col items-center justify-between gap-4 md:flex-row">
         <div className="flex flex-col items-center gap-4 md:flex-row">
@@ -169,7 +171,7 @@ const PatientList = () => {
             <input
               type="date"
               placeholder="Chọn ngày cập nhật"
-              className="w-full rounded-lg border-2 border-gray-400 bg-white p-2.5 text-gray-700 outline-none transition-colors hover:border-red-500 focus:border-blue-500"
+              className="w-full rounded-lg border-2 border-gray-400 dark:border-slate-600 bg-white dark:bg-slate-800 p-2.5 text-gray-700 dark:text-slate-200 outline-none transition-colors hover:border-red-500 focus:border-blue-500"
               value={filterDate}
               onChange={(event) => setFilterDate(event.target.value)}
             />
@@ -177,7 +179,7 @@ const PatientList = () => {
 
           <div className="w-39">
             <select
-              className="rounded-md border-2 border-gray-400 bg-white p-2 outline-none"
+              className="rounded-md border-2 border-gray-400 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-200 p-2 outline-none"
               value={filterStatus}
               onChange={(event) => setFilterStatus(event.target.value)}
             >
@@ -192,7 +194,7 @@ const PatientList = () => {
           <input
             type="text"
             placeholder="Tìm kiếm bệnh nhân..."
-            className="rounded-md border-2 border-gray-400 p-2 outline-none"
+            className="rounded-md border-2 border-gray-400 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-200 p-2 outline-none"
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
           />

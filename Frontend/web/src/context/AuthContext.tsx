@@ -13,7 +13,7 @@ type AuthUser = {
 
 interface AuthContextType {
   isAuthenticated: boolean;
-  user: { id: string; username: string; role: UserRole } | null;
+  user: { id: string; username: string; role: UserRole; avatarUrl?: string } | null;
   login: (username: string, password: string) => Promise<UserRole | null>;
   isLoading: boolean;
   logout: () => void;
@@ -25,7 +25,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [user, setUser] = useState<{ id: string; username: string; role: UserRole } | null>(null);
+  const [user, setUser] = useState<{ id: string; username: string; role: UserRole; avatarUrl?: string } | null>(null);
 
   const mapRole = (backendRole: string): UserRole | null => {
     if (backendRole === "user.doctor") return "doctor";

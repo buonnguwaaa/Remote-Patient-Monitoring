@@ -41,5 +41,5 @@ export interface PatientItem {
   name: string;
   patientCode?: string;
   updatedAt?: string;
-  status: "Binh thuong" | "Canh bao";
+  status: "Bình thường" | "Cảnh báo";
 }

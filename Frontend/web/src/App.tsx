@@ -5,6 +5,8 @@ import "./styles/App.css";
 
 import MainLayout from "./components/layout/MainLayout.tsx";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { ThemeProvider } from "./context/ThemeContext";
+
 
 const PageLoader = () => (
   <div className="flex h-screen w-full items-center justify-center">
@@ -47,37 +49,40 @@ const ProtectedRoute = ({
 
 function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <Suspense fallback={<PageLoader />}>
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
-            <Route
-              element={
-                <ProtectedRoute>
-                  <MainLayout />
-                </ProtectedRoute>
-              }
-            >
-              <Route path="/" element={<DashBoard />} />
-              <Route path="/patient" element={<PatientPage />} />
-              <Route path="/patient/:id" element={<PatientDetailPage />} />
-              <Route path="/patient/chat/:id" element={<ChatPage />} />
-              <Route path="/threshold-alerts" element={<ThresholdAlert />} />
-              <Route path="/doctor-profile" element={<DocterProfile />} />
+    <ThemeProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
               <Route
-                path="/threshold-settings"
-                element={<ThresholdSettingsPage />}
-              />
-            </Route>
+                element={
+                  <ProtectedRoute>
+                    <MainLayout />
+                  </ProtectedRoute>
+                }
+              >
+                <Route path="/" element={<DashBoard />} />
+                <Route path="/patient" element={<PatientPage />} />
+                <Route path="/patient/:id" element={<PatientDetailPage />} />
+                <Route path="/patient/chat/:id" element={<ChatPage />} />
+                <Route path="/threshold-alerts" element={<ThresholdAlert />} />
+                <Route path="/doctor-profile" element={<DocterProfile />} />
+                <Route
+                  path="/threshold-settings"
+                  element={<ThresholdSettingsPage />}
+                />
+              </Route>
 
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </Suspense>
-      </BrowserRouter>
-    </AuthProvider>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
+        </BrowserRouter>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 
 export default App;
+
 

@@ -10,6 +10,8 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
+import { useTheme } from "../../context/ThemeContext";
+
 interface ChartDataPoint {
   period: string;
   normalPatients: number;
@@ -27,12 +29,14 @@ interface StatsHeaderProps {
   stats: StatItem[];
   activeTabId: string;
   onTabChange: (id: string) => void;
+  isDark: boolean;
 }
 
 const StatsHeader: React.FC<StatsHeaderProps> = ({
   stats,
   activeTabId,
   onTabChange,
+  isDark,
 }) => {
   return (
     <div className="flex space-x-8 mb-8 overflow-x-auto pb-2" role="tablist">
@@ -49,11 +53,8 @@ const StatsHeader: React.FC<StatsHeaderProps> = ({
           >
             <div className="relative pb-2">
               <span
-                className={`text-sm font-medium transition-colors ${
-                  isActive
-                    ? "text-gray-900"
-                    : "text-gray-500 group-hover:text-gray-700"
-                }`}
+                style={{ color: isActive ? (isDark ? "#f1f5f9" : "#111827") : (isDark ? "#94a3b8" : "#6b7280") }}
+                className="text-sm font-medium transition-colors"
               >
                 {stat.label}
               </span>
@@ -62,9 +63,8 @@ const StatsHeader: React.FC<StatsHeaderProps> = ({
               )}
             </div>
             <span
-              className={`text-xl font-semibold transition-colors ${
-                isActive ? "text-gray-900" : "text-gray-600"
-              }`}
+              style={{ color: isActive ? (isDark ? "#f1f5f9" : "#111827") : (isDark ? "#94a3b8" : "#4b5563") }}
+              className="text-xl font-semibold transition-colors"
             >
               {stat.value.toLocaleString()}
             </span>
@@ -75,50 +75,72 @@ const StatsHeader: React.FC<StatsHeaderProps> = ({
   );
 };
 
-const CustomTooltip: React.FC<any> = ({ active, payload, label }) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-sm">
-        <p className="font-semibold text-gray-800 mb-1">{label}</p>
-        <div className="space-y-1">
-          <p className="text-sm text-emerald-600">
-            <span className="font-medium">Bệnh nhân bình thường:</span>{" "}
-            {payload[0].value.toLocaleString()}
+// CustomTooltip receives isDark via a closure — we create it inside the Chart component
+const makeCustomTooltip = (isDark: boolean) => {
+  const CustomTooltip: React.FC<any> = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div
+          className={`p-3 rounded-lg shadow-lg border text-sm ${
+            isDark
+              ? "bg-slate-800 border-slate-600 text-slate-100"
+              : "bg-white border-gray-200 text-gray-800"
+          }`}
+        >
+          <p className={`font-semibold mb-1 ${isDark ? "text-slate-100" : "text-gray-800"}`}>
+            {label}
           </p>
-          <p className="text-sm text-amber-600">
-            <span className="font-medium">Bệnh nhân cảnh báo:</span>{" "}
-            {payload[1].value.toLocaleString()}
-          </p>
-          <p className="text-sm text-gray-600 mt-1 pt-1 border-t border-gray-100">
-            <span className="font-medium">Tổng:</span>{" "}
-            {(payload[0].value + payload[1].value).toLocaleString()}
-          </p>
+          <div className="space-y-1">
+            <p className="text-emerald-500">
+              <span className="font-medium">Bệnh nhân bình thường:</span>{" "}
+              {payload[0]?.value?.toLocaleString()}
+            </p>
+            <p className="text-amber-500">
+              <span className="font-medium">Bệnh nhân cảnh báo:</span>{" "}
+              {payload[1]?.value?.toLocaleString()}
+            </p>
+            <p
+              className={`mt-1 pt-1 border-t ${
+                isDark ? "border-slate-600 text-slate-300" : "border-gray-100 text-gray-600"
+              }`}
+            >
+              <span className="font-medium">Tổng:</span>{" "}
+              {((payload[0]?.value ?? 0) + (payload[1]?.value ?? 0)).toLocaleString()}
+            </p>
+          </div>
         </div>
-      </div>
-    );
-  }
-  return null;
+      );
+    }
+    return null;
+  };
+  return CustomTooltip;
 };
 
-const renderLegend = (props: any) => {
-  const { payload } = props;
-  return (
-    <div className="flex justify-center space-x-6 mt-4">
-      {payload.map((entry: any, index: number) => (
-        <div key={`item-${index}`} className="flex items-center">
-          <div
-            className="w-3 h-3 rounded-full mr-2"
-            style={{ backgroundColor: entry.color }}
-          />
-          <span className="text-sm text-gray-600">{entry.value}</span>
-        </div>
-      ))}
-    </div>
-  );
+const makeRenderLegend = (isDark: boolean) => {
+  return (props: any) => {
+    const { payload } = props;
+    return (
+      <div className="flex justify-center space-x-6 mt-4">
+        {payload.map((entry: any, index: number) => (
+          <div key={`item-${index}`} className="flex items-center">
+            <div
+              className="w-3 h-3 rounded-full mr-2"
+              style={{ backgroundColor: entry.color }}
+            />
+            <span className={`text-sm ${isDark ? "text-slate-300" : "text-gray-600"}`}>
+              {entry.value}
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  };
 };
 
 export const Chart: React.FC = () => {
+  const { isDark } = useTheme();
   const [activeTab, setActiveTab] = useState<string>("all");
+
   const stats: StatItem[] = [
     { id: "all", label: "Tất cả", value: 1240, type: "primary" },
     { id: "month", label: "Tháng", value: 320, type: "neutral" },
@@ -153,12 +175,22 @@ export const Chart: React.FC = () => {
 
   const chartData = getChartData();
 
+  // Color tokens
+  const footerBorder = isDark ? "#334155" : "#e5e7eb";
+  const footerText   = isDark ? "#94a3b8" : "#6b7280";
+  const summaryText  = isDark ? "#cbd5e1" : "#4b5563";
+  const gridColor    = isDark ? "#334155" : "#f3f4f6";
+  const tickColor    = isDark ? "#94a3b8" : "#6b7280";
+  const CustomTooltip = makeCustomTooltip(isDark);
+  const renderLegend  = makeRenderLegend(isDark);
+
   return (
-    <div className="p-6 bg-white rounded-xl shadow-sm md:w-4/10 font-sans">
+    <div className="font-sans transition-colors w-full">
       <StatsHeader
         stats={stats}
         activeTabId={activeTab}
         onTabChange={setActiveTab}
+        isDark={isDark}
       />
 
       <div className="mt-8 h-80">
@@ -170,69 +202,62 @@ export const Chart: React.FC = () => {
             <CartesianGrid
               strokeDasharray="3 3"
               vertical={false}
-              stroke="#f3f4f6"
+              stroke={gridColor}
             />
             <XAxis
               dataKey="period"
               axisLine={false}
               tickLine={false}
-              tick={{ fill: "#6b7280", fontSize: 12 }}
+              tick={{ fill: tickColor, fontSize: 12 }}
               tickMargin={10}
             />
             <YAxis
               axisLine={false}
               tickLine={false}
-              tick={{ fill: "#6b7280", fontSize: 12 }}
+              tick={{ fill: tickColor, fontSize: 12 }}
               tickMargin={10}
               tickFormatter={(value) => value.toLocaleString()}
             />
-            <Tooltip content={<CustomTooltip />} />
+            <Tooltip content={<CustomTooltip />} cursor={{ fill: isDark ? "rgba(148,163,184,0.08)" : "rgba(0,0,0,0.04)" }} />
             <Legend content={renderLegend} />
             <Bar
               dataKey="normalPatients"
               name="Bệnh nhân bình thường"
-              fill="#10b981"
+              fill="#6366f1"
               radius={[4, 4, 0, 0]}
-              barSize={40}
+              barSize={36}
             />
             <Bar
               dataKey="warningPatients"
               name="Bệnh nhân cảnh báo"
-              fill="#f59e0b"
+              fill="#14b8a6"
               radius={[4, 4, 0, 0]}
-              barSize={40}
+              barSize={36}
             />
           </BarChart>
         </ResponsiveContainer>
 
-        <div className="mt-6 pt-4 border-t border-gray-100">
-          <div className="flex justify-between items-center">
-            <div className="text-sm text-gray-500">
-              Hiển thị{" "}
-              {activeTab === "all" ? "4 tháng gần đây" : "4 tuần gần đây"}
+        <div style={{ borderTopColor: footerBorder, borderTopWidth: 1, borderTopStyle: "solid" }} className="mt-4 pt-3 flex justify-between items-center gap-4">
+            <div style={{ color: footerText }} className="text-xs">
+              Hiển thị {activeTab === "all" ? "4 tháng gần đây" : "4 tuần gần đây"}
             </div>
-            <div className="flex space-x-4">
-              <div className="flex items-center">
-                <div className="w-3 h-3 rounded-full bg-emerald-500 mr-2"></div>
-                <span className="text-sm text-gray-600">
-                  Tổng bình thường:{" "}
-                  {chartData
-                    .reduce((sum, item) => sum + item.normalPatients, 0)
-                    .toLocaleString()}
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#6366f1" }} />
+                <span style={{ color: summaryText }} className="text-xs">
+                  Bình thường:{" "}
+                  {chartData.reduce((s, d) => s + d.normalPatients, 0).toLocaleString()}
                 </span>
               </div>
-              <div className="flex items-center">
-                <div className="w-3 h-3 rounded-full bg-amber-500 mr-2"></div>
-                <span className="text-sm text-gray-600">
-                  Tổng cảnh báo:{" "}
-                  {chartData
-                    .reduce((sum, item) => sum + item.warningPatients, 0)
-                    .toLocaleString()}
+              <div className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#14b8a6" }} />
+                <span style={{ color: summaryText }} className="text-xs">
+                  Cảnh báo:{" "}
+                  {chartData.reduce((s, d) => s + d.warningPatients, 0).toLocaleString()}
                 </span>
               </div>
             </div>
           </div>
-        </div>
       </div>
     </div>
   );

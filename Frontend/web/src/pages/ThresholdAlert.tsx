@@ -169,11 +169,11 @@ const ThresholdAlert = () => {
 
   return (
     <>
-      <div className="p-6">
+      <div className="p-6 bg-gray-50 dark:bg-slate-900 min-h-screen">
         <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-800">Quản Lý Cảnh Báo</h1>
-            <p className="mt-2 max-w-3xl text-gray-600">
+            <h1 className="text-3xl font-bold text-gray-800 dark:text-slate-100">Quản Lý Cảnh Báo</h1>
+            <p className="mt-2 max-w-3xl text-gray-600 dark:text-slate-400">
               Theo dõi alert thật được sinh ra từ measurement vượt ngưỡng, lọc theo mức độ, và
               acknowledge ngay trên màn hình này.
             </p>
@@ -183,7 +183,7 @@ const ThresholdAlert = () => {
             type="button"
             onClick={() => void loadAlerts(true)}
             disabled={refreshing}
-            className="inline-flex items-center rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex items-center rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-slate-200 transition hover:bg-gray-50 dark:hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <FaSyncAlt className={`mr-2 ${refreshing ? "animate-spin" : ""}`} />
             Làm mới dữ liệu
@@ -191,37 +191,37 @@ const ThresholdAlert = () => {
         </div>
 
         <div className="mb-6 grid gap-4 md:grid-cols-4">
-          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="text-sm text-slate-500">Tổng cảnh báo</div>
-            <div className="mt-2 text-3xl font-bold text-slate-900">{stats.total}</div>
-            <div className="mt-4 text-xs text-slate-500">
+          <div className="rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-sm">
+            <div className="text-sm text-slate-500 dark:text-slate-400">Tổng cảnh báo</div>
+            <div className="mt-2 text-3xl font-bold text-slate-900 dark:text-slate-100">{stats.total}</div>
+            <div className="mt-4 text-xs text-slate-500 dark:text-slate-400">
               {lastUpdated ? `Cập nhật lúc ${formatDate(lastUpdated)}` : "Chưa đồng bộ"}
             </div>
           </div>
-          <div className="rounded-3xl border border-red-100 bg-gradient-to-br from-red-50 to-white p-5 shadow-sm">
-            <div className="text-sm text-red-600">Mức cao</div>
-            <div className="mt-2 text-3xl font-bold text-red-700">{stats.high}</div>
-            <div className="mt-4 text-xs text-red-500">Cần ưu tiên xử lý sớm</div>
+          <div className="rounded-3xl border border-red-100 dark:border-red-800 bg-gradient-to-br from-red-50 dark:from-red-900/30 to-white dark:to-slate-800 p-5 shadow-sm">
+            <div className="text-sm text-red-600 dark:text-red-400">Mức cao</div>
+            <div className="mt-2 text-3xl font-bold text-red-700 dark:text-red-300">{stats.high}</div>
+            <div className="mt-4 text-xs text-red-500 dark:text-red-400">Cần ưu tiên xử lý sớm</div>
           </div>
-          <div className="rounded-3xl border border-amber-100 bg-gradient-to-br from-amber-50 to-white p-5 shadow-sm">
-            <div className="text-sm text-amber-700">Chờ xử lý</div>
-            <div className="mt-2 text-3xl font-bold text-amber-800">{stats.open}</div>
-            <div className="mt-4 text-xs text-amber-600">Chưa được acknowledge</div>
+          <div className="rounded-3xl border border-amber-100 dark:border-amber-800 bg-gradient-to-br from-amber-50 dark:from-amber-900/30 to-white dark:to-slate-800 p-5 shadow-sm">
+            <div className="text-sm text-amber-700 dark:text-amber-300">Chờ xử lý</div>
+            <div className="mt-2 text-3xl font-bold text-amber-800 dark:text-amber-200">{stats.open}</div>
+            <div className="mt-4 text-xs text-amber-600 dark:text-amber-400">Chưa được acknowledge</div>
           </div>
-          <div className="rounded-3xl border border-green-100 bg-gradient-to-br from-green-50 to-white p-5 shadow-sm">
-            <div className="text-sm text-green-700">Đã xác nhận</div>
-            <div className="mt-2 text-3xl font-bold text-green-800">{stats.ack}</div>
-            <div className="mt-4 text-xs text-green-600">Đã có người xử lý</div>
+          <div className="rounded-3xl border border-green-100 dark:border-green-800 bg-gradient-to-br from-green-50 dark:from-green-900/30 to-white dark:to-slate-800 p-5 shadow-sm">
+            <div className="text-sm text-green-700 dark:text-green-300">Đã xác nhận</div>
+            <div className="mt-2 text-3xl font-bold text-green-800 dark:text-green-200">{stats.ack}</div>
+            <div className="mt-4 text-xs text-green-600 dark:text-green-400">Đã có người xử lý</div>
           </div>
         </div>
 
-        <div className="mb-6 flex flex-wrap gap-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="mb-6 flex flex-wrap gap-4 rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">
           <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-700">Trạng thái:</label>
+            <label className="text-sm font-medium text-gray-700 dark:text-slate-300">Trạng thái:</label>
             <select
               value={filterStatus}
               onChange={(event) => setFilterStatus(event.target.value as FilterStatus)}
-              className="rounded-xl border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="all">Tất cả</option>
               <option value="open">Chưa xử lý</option>
@@ -230,11 +230,11 @@ const ThresholdAlert = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-700">Mức độ:</label>
+            <label className="text-sm font-medium text-gray-700 dark:text-slate-300">Mức độ:</label>
             <select
               value={filterSeverity}
               onChange={(event) => setFilterSeverity(event.target.value as FilterSeverity)}
-              className="rounded-xl border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-800 dark:text-slate-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="all">Tất cả</option>
               <option value="high">Nghiêm trọng</option>
@@ -242,55 +242,55 @@ const ThresholdAlert = () => {
             </select>
           </div>
 
-          <div className="ml-auto flex items-center text-sm text-gray-500">
-            Bệnh nhân quản lý: <span className="ml-1 font-semibold text-gray-800">{patientIds.length}</span>
+          <div className="ml-auto flex items-center text-sm text-gray-500 dark:text-slate-400">
+            Bệnh nhân quản lý: <span className="ml-1 font-semibold text-gray-800 dark:text-slate-200">{patientIds.length}</span>
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+        <div className="overflow-hidden rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
+              <thead className="bg-gray-50 dark:bg-slate-700">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-300">
                     Bệnh nhân
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-300">
                     Vi phạm
                   </th>
-                  <th className="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
+                  <th className="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-300">
                     Mức độ
                   </th>
-                  <th className="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
+                  <th className="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-300">
                     Trạng thái
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-300">
                     Thời gian
                   </th>
-                  <th className="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
+                  <th className="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-300">
                     Hành động
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200 bg-white">
+              <tbody className="divide-y divide-gray-200 dark:divide-slate-700 bg-white dark:bg-slate-800">
                 {loading ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-10 text-center text-gray-500">
+                    <td colSpan={6} className="px-6 py-10 text-center text-gray-500 dark:text-slate-400">
                       Đang tải cảnh báo thật từ hệ thống...
                     </td>
                   </tr>
                 ) : filteredAlerts.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-10 text-center text-gray-500">
+                    <td colSpan={6} className="px-6 py-10 text-center text-gray-500 dark:text-slate-400">
                       Không có cảnh báo nào trong scope hiện tại.
                     </td>
                   </tr>
                 ) : (
                   filteredAlerts.map((alert) => (
-                    <tr key={alert.id} className="transition-colors hover:bg-slate-50">
+                    <tr key={alert.id} className="transition-colors hover:bg-slate-50 dark:hover:bg-slate-700">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
-                          <div className="mr-3 flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-blue-100 text-sm font-semibold text-blue-700">
+                          <div className="mr-3 flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-blue-100 dark:bg-blue-900/40 text-sm font-semibold text-blue-700 dark:text-blue-300">
                             {alert.patientAvatarUrl ? (
                               <img
                                 src={alert.patientAvatarUrl}
@@ -302,10 +302,10 @@ const ThresholdAlert = () => {
                             )}
                           </div>
                           <div>
-                            <div className="text-sm font-medium text-gray-900">
+                            <div className="text-sm font-medium text-gray-900 dark:text-slate-100">
                               {alert.patientName || alert.patientId}
                             </div>
-                            <div className="text-xs text-gray-500">ID: {alert.patientId}</div>
+                            <div className="text-xs text-gray-500 dark:text-slate-400">ID: {alert.patientId}</div>
                           </div>
                         </div>
                       </td>
@@ -314,11 +314,11 @@ const ThresholdAlert = () => {
                         <div className="space-y-1.5">
                           {alert.violations.map((violation, index) => (
                             <div key={`${alert.id}-${index}`} className="text-sm">
-                              <span className="font-medium text-gray-700">
+                              <span className="font-medium text-gray-700 dark:text-slate-300">
                                 {getViolationLabel(violation.type)}:
                               </span>{" "}
-                              <span className="font-semibold text-red-600">{violation.observed}</span>
-                              <span className="ml-1 text-xs text-gray-500">
+                              <span className="font-semibold text-red-600 dark:text-red-400">{violation.observed}</span>
+                              <span className="ml-1 text-xs text-gray-500 dark:text-slate-400">
                                 (Ngưỡng: {violation.threshold})
                               </span>
                             </div>
@@ -342,10 +342,10 @@ const ThresholdAlert = () => {
 
                       <td className="px-6 py-4 text-center">{renderStatusBadge(alert)}</td>
 
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-slate-300">
                         <div>{formatDate(alert.createdAt)}</div>
                         {alert.acknowledgedAt && (
-                          <div className="mt-1 text-xs text-green-600">
+                          <div className="mt-1 text-xs text-green-600 dark:text-green-400">
                             Đã xác nhận lúc: {formatDate(alert.acknowledgedAt)}
                           </div>
                         )}
@@ -361,7 +361,7 @@ const ThresholdAlert = () => {
                             Xác nhận
                           </button>
                         ) : (
-                          <span className="text-xs text-gray-400">Đã xử lý</span>
+                          <span className="text-xs text-gray-400 dark:text-slate-500">Đã xử lý</span>
                         )}
                       </td>
                     </tr>
@@ -373,12 +373,12 @@ const ThresholdAlert = () => {
         </div>
 
         {showModal && currentAlert && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
-            <div className="w-full max-w-md rounded-3xl bg-white shadow-xl">
-              <div className="flex items-center justify-between border-b p-5">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+            <div className="w-full max-w-md rounded-3xl bg-white dark:bg-slate-800 shadow-xl">
+              <div className="flex items-center justify-between border-b dark:border-slate-700 p-5">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-800">Xác nhận cảnh báo</h3>
-                  <p className="mt-1 text-sm text-gray-500">
+                  <h3 className="text-lg font-semibold text-gray-800 dark:text-slate-100">Xác nhận cảnh báo</h3>
+                  <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
                     Bạn sắp đánh dấu cảnh báo của {currentAlert.patientName || currentAlert.patientId} là
                     đã xử lý.
                   </p>
@@ -389,21 +389,21 @@ const ThresholdAlert = () => {
                     setShowModal(false);
                     setCurrentAlert(null);
                   }}
-                  className="text-gray-400 transition-colors hover:text-gray-600"
+                  className="text-gray-400 dark:text-slate-500 transition-colors hover:text-gray-600 dark:hover:text-slate-200"
                 >
                   <FaTimes size={18} />
                 </button>
               </div>
 
               <div className="p-5">
-                <div className="rounded-2xl bg-slate-50 p-4">
-                  <div className="text-sm font-medium text-gray-700">Vi phạm hiện tại</div>
+                <div className="rounded-2xl bg-slate-50 dark:bg-slate-700 p-4">
+                  <div className="text-sm font-medium text-gray-700 dark:text-slate-200">Vi phạm hiện tại</div>
                   <div className="mt-3 space-y-2">
                     {currentAlert.violations.map((violation, index) => (
-                      <div key={`${currentAlert.id}-modal-${index}`} className="text-sm text-gray-600">
+                      <div key={`${currentAlert.id}-modal-${index}`} className="text-sm text-gray-600 dark:text-slate-300">
                         {getViolationLabel(violation.type)}:{" "}
-                        <span className="font-semibold text-red-600">{violation.observed}</span>
-                        <span className="ml-1 text-xs text-gray-500">
+                        <span className="font-semibold text-red-600 dark:text-red-400">{violation.observed}</span>
+                        <span className="ml-1 text-xs text-gray-500 dark:text-slate-400">
                           (Ngưỡng: {violation.threshold})
                         </span>
                       </div>
@@ -411,20 +411,20 @@ const ThresholdAlert = () => {
                   </div>
                 </div>
 
-                <p className="mt-4 text-sm text-gray-500">
+                <p className="mt-4 text-sm text-gray-500 dark:text-slate-400">
                   Backend hiện tại mới support acknowledge. Nếu cần ghi chú xử lý của bác sĩ, mình sẽ
                   bổ sung field note riêng ở backend sau.
                 </p>
               </div>
 
-              <div className="flex gap-3 rounded-b-3xl border-t bg-slate-50 p-4">
+              <div className="flex gap-3 rounded-b-3xl border-t dark:border-slate-700 bg-slate-50 dark:bg-slate-700/60 p-4">
                 <button
                   type="button"
                   onClick={() => {
                     setShowModal(false);
                     setCurrentAlert(null);
                   }}
-                  className="flex-1 rounded-xl bg-gray-200 px-4 py-2 font-medium text-gray-700 transition-colors hover:bg-gray-300"
+                  className="flex-1 rounded-xl bg-gray-200 dark:bg-slate-600 px-4 py-2 font-medium text-gray-700 dark:text-slate-200 transition-colors hover:bg-gray-300 dark:hover:bg-slate-500"
                 >
                   Hủy
                 </button>

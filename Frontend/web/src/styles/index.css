@@ -1,21 +1,54 @@
 @import "tailwindcss";
 
+/* ============================================================
+   THEME TOKENS — Light Mode (default)
+   ============================================================ */
 @theme {
-  --color-primary: #0d6efd; 
-  --color-primary-dark: #0a58ca; 
-  --color-secondary: #20c997; 
-  --color-normal: #16a34a; 
-  --color-warning: #f59e0b; 
-  --color-error: #dc2626; 
+  /* Brand */
+  --color-primary: #0d6efd;
+  --color-primary-dark: #0a58ca;
+  --color-secondary: #20c997;
 
-  --color-bg: #f8fafc; 
-  --color-text: #1e293b; 
-  --color-text-muted: #64748b; 
+  /* Semantic status */
+  --color-normal: #16a34a;
+  --color-warning: #f59e0b;
+  --color-error: #dc2626;
 
+  /* Layout backgrounds */
+  --color-bg: #f8fafc;
+  --color-surface: #ffffff;
+
+  /* Text */
+  --color-text: #1e293b;
+  --color-text-muted: #64748b;
+
+  /* Buttons */
   --color-btn-bg: #0d6efd;
-  --color-btn-text: #ffffff; 
-  --color-hover: #f9f8f6; 
-  --color-btn-clicked: #0a58ca; 
+  --color-btn-text: #ffffff;
+  --color-btn-clicked: #0a58ca;
+  --color-hover: #f9f8f6;
 
-  --color-border: #e2e8f0; 
+  /* Borders */
+  --color-border: #e2e8f0;
+}
+
+/* ============================================================
+   DARK MODE — override tokens when `<html class="dark">` is set
+   ============================================================ */
+@variant dark (&:where(.dark, .dark *));
+
+.dark {
+  --color-bg: #0f172a;          /* slate-900  — page background     */
+  --color-surface: #1e293b;     /* slate-800  — card / panel bg     */
+  --color-text: #f1f5f9;        /* slate-100  — primary text        */
+  --color-text-muted: #94a3b8;  /* slate-400  — muted / secondary   */
+  --color-border: #334155;      /* slate-700  — borders             */
+  --color-hover: #334155;       /* hover surface                    */
+
+  /* Keep brand colours; slightly lifted for dark backgrounds */
+  --color-primary: #3b82f6;     /* blue-500   */
+  --color-primary-dark: #2563eb;/* blue-600   */
+  --color-btn-clicked: #2563eb;
+
+  color-scheme: dark;
 }
