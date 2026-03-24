@@ -29,7 +29,7 @@ const PatientManagementAdmin: React.FC = () => {
           dateOfBirth: u.dob,
           phone: u.phone || "",
           address: "",
-          status: u.isActive ? "active" : "inactive",
+          status: u.status === "inactive" ? "inactive" : "active",
           profileImageUrl: u.avatarUrl || "/avartar.jpg",
         }));
         setPatients(apiPatients);
@@ -84,17 +84,15 @@ const PatientManagementAdmin: React.FC = () => {
     const status = formData.get("status") as "active" | "inactive";
 
     const apiGender = mapGenderToApi(gender);
-    const isActive = status !== "inactive";
-
     try {
       let savedUserId = editingPatient?.id;
 
       if (editingPatient?.id) {
         await api.patch(`/users/${editingPatient.id}`, {
           name, email, gender: apiGender, phone,
-          isActive,
           roles: ["user.patient"],
         });
+        await api.patch(`/users/${editingPatient.id}/status`, { status });
       } else {
         const password = formData.get("password") as string;
         if (!password || password.length < 8) {
@@ -109,7 +107,8 @@ const PatientManagementAdmin: React.FC = () => {
         const resp = await api.get("/users/patients?sortOrder=desc&limit=1");
         savedUserId = resp.data?.data?.[0]?.id;
         if (savedUserId) {
-          await api.patch(`/users/${savedUserId}`, { phone, isActive });
+          await api.patch(`/users/${savedUserId}`, { phone });
+          await api.patch(`/users/${savedUserId}/status`, { status });
         }
       }
 
