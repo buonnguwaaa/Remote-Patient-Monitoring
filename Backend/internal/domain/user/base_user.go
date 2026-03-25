@@ -32,6 +32,7 @@ const (
 
 type BaseUser struct {
 	ID                    primitive.ObjectID `json:"id" bson:"_id,omitempty"`
+	UserPublicID          string             `json:"userPublicId" bson:"userPublicId"`
 	Role                  Role               `json:"role" bson:"role"`
 	Name                  string             `json:"name" bson:"name"`
 	Email                 string             `json:"email" bson:"email"`

@@ -426,18 +426,19 @@ func mapBaseUserToResponse(u *domain.BaseUser) *dto.BaseUserInfoResponse {
 	}
 
 	return &dto.BaseUserInfoResponse{
-		ID:        u.ID.Hex(),
-		Name:      u.Name,
-		Email:     u.Email,
-		Provider:  u.Provider,
-		Role:      u.Role,
-		Gender:    u.Gender,
-		Dob:       dob,
-		Phone:     u.Phone,
-		AvatarUrl: u.AvatarUrl,
-		Status:    u.Status,
-		CreatedAt: createdAt,
-		UpdatedAt: updatedAt,
+		ID:           u.ID.Hex(),
+		UserPublicID: u.UserPublicID,
+		Name:         u.Name,
+		Email:        u.Email,
+		Provider:     u.Provider,
+		Role:         u.Role,
+		Gender:       u.Gender,
+		Dob:          dob,
+		Phone:        u.Phone,
+		AvatarUrl:    u.AvatarUrl,
+		Status:       u.Status,
+		CreatedAt:    createdAt,
+		UpdatedAt:    updatedAt,
 	}
 }
 

@@ -7,7 +7,9 @@ import (
 	"encoding/hex"
 	"errors"
 	"log"
+	"strings"
 
+	domain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -45,4 +47,31 @@ func GenerateRandomToken(n int) (string, error) {
 		return "", err
 	}
 	return base64.RawURLEncoding.EncodeToString(b), nil
+}
+
+func GenerateUserPublicID(id primitive.ObjectID, role domain.Role) string {
+	if id.IsZero() {
+		return ""
+	}
+
+	sum := sha256.Sum256([]byte("user:" + id.Hex()))
+	code := strings.ToUpper(hex.EncodeToString(sum[:])[:10])
+
+	prefix := getRolePrefix(role)
+	return prefix + "-" + code
+}
+
+func getRolePrefix(role domain.Role) string {
+	switch role {
+	case domain.RolePatient:
+		return "PAT"
+	case domain.RoleDoctor:
+		return "DOC"
+	case domain.RoleNurse:
+		return "NUR"
+	case domain.RoleAdmin:
+		return "ADM"
+	default:
+		return "USR"
+	}
 }
