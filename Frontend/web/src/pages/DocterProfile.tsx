@@ -25,14 +25,14 @@ const InfoItem = ({
   value: string;
 }) => (
   <div className="flex items-center gap-3 py-3">
-    <div className="p-2 rounded-lg bg-gray-100 text-gray-500">
+    <div className="p-2 rounded-lg bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-300">
       <Icon size={18} />
     </div>
     <div className="flex-1 min-w-0">
-      <p className="text-xs text-gray-400 uppercase tracking-wider mb-0.5">
+      <p className="text-xs text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-0.5">
         {label}
       </p>
-      <p className="text-sm font-medium text-gray-800 truncate">
+      <p className="text-sm font-medium text-gray-800 dark:text-slate-100 truncate">
         {value || "Chưa cập nhật"}
       </p>
     </div>
@@ -63,16 +63,16 @@ const DoctorProfile = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="animate-spin text-gray-400" size={32} />
+      <div className="flex items-center justify-center min-h-[60vh] bg-gray-50 dark:bg-slate-900">
+        <Loader2 className="animate-spin text-gray-400 dark:text-slate-500" size={32} />
       </div>
     );
   }
 
   if (error || !doctor) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <p className="text-gray-500">{error || "Không tìm thấy thông tin"}</p>
+      <div className="flex items-center justify-center min-h-[60vh] bg-gray-50 dark:bg-slate-900">
+        <p className="text-gray-500 dark:text-slate-400">{error || "Không tìm thấy thông tin"}</p>
       </div>
     );
   }
@@ -89,12 +89,12 @@ const DoctorProfile = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className=" mx-auto">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 p-6">
+      <div className="mx-auto">
         {/* Header */}
-        <div className="bg-white rounded-2xl  border border-gray-200 p-8 mb-6">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 p-8 mb-6">
           <div className="flex items-center gap-6">
-            <div className="w-20 h-20 rounded-full overflow-hidden bg-gray-100 border-2 border-gray-200 flex-shrink-0">
+            <div className="w-20 h-20 rounded-full overflow-hidden bg-gray-100 dark:bg-slate-700 border-2 border-gray-200 dark:border-slate-600 flex-shrink-0">
               {doctor.avatarUrl ? (
                 <img
                   src={doctor.avatarUrl}
@@ -102,23 +102,23 @@ const DoctorProfile = () => {
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-gray-400">
+                <div className="w-full h-full flex items-center justify-center text-gray-400 dark:text-slate-500">
                   <User size={32} />
                 </div>
               )}
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">
                 {doctor.name}
               </h1>
               {doctor.specialization && (
-                <p className="text-sm text-gray-500 mt-1 flex items-center gap-1.5">
+                <p className="text-sm text-gray-500 dark:text-slate-400 mt-1 flex items-center gap-1.5">
                   <Stethoscope size={14} />
                   {doctor.specialization}
                 </p>
               )}
               {doctor.workplace && (
-                <p className="text-sm text-gray-400 mt-0.5 flex items-center gap-1.5">
+                <p className="text-sm text-gray-400 dark:text-slate-500 mt-0.5 flex items-center gap-1.5">
                   <MapPin size={14} />
                   {doctor.workplace}
                 </p>
@@ -130,69 +130,33 @@ const DoctorProfile = () => {
         {/* Info Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Personal Info */}
-          <div className="bg-white rounded-2xl  border border-gray-200 p-6">
-            <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 p-6">
+            <h2 className="text-sm font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-4">
               Thông tin cá nhân
             </h2>
-            <div className="divide-y divide-gray-100">
-              <InfoItem
-                icon={User}
-                label="Giới tính"
-                value={formatGender(doctor.gender)}
-              />
-              <InfoItem
-                icon={Calendar}
-                label="Ngày sinh"
-                value={formatDate(doctor.dob)}
-              />
-              <InfoItem
-                icon={Mail}
-                label="Email"
-                value={doctor.email}
-              />
-              <InfoItem
-                icon={Phone}
-                label="Số điện thoại"
-                value={doctor.phone || ""}
-              />
+            <div className="divide-y divide-gray-100 dark:divide-slate-700">
+              <InfoItem icon={User} label="Giới tính" value={formatGender(doctor.gender)} />
+              <InfoItem icon={Calendar} label="Ngày sinh" value={formatDate(doctor.dob)} />
+              <InfoItem icon={Mail} label="Email" value={doctor.email} />
+              <InfoItem icon={Phone} label="Số điện thoại" value={doctor.phone || ""} />
             </div>
           </div>
 
           {/* Work Info */}
-          <div className="bg-white rounded-2xl  border border-gray-200 p-6">
-            <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 p-6">
+            <h2 className="text-sm font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-4">
               Thông tin công việc
             </h2>
-            <div className="divide-y divide-gray-100">
-              <InfoItem
-                icon={Stethoscope}
-                label="Chuyên khoa"
-                value={doctor.specialization || ""}
-              />
-              <InfoItem
-                icon={MapPin}
-                label="Nơi làm việc"
-                value={doctor.workplace || ""}
-              />
-              <InfoItem
-                icon={FileBadge}
-                label="Số giấy phép"
-                value={doctor.licenseNumber || ""}
-              />
+            <div className="divide-y divide-gray-100 dark:divide-slate-700">
+              <InfoItem icon={Stethoscope} label="Chuyên khoa" value={doctor.specialization || ""} />
+              <InfoItem icon={MapPin} label="Nơi làm việc" value={doctor.workplace || ""} />
+              <InfoItem icon={FileBadge} label="Số giấy phép" value={doctor.licenseNumber || ""} />
               <InfoItem
                 icon={Award}
                 label="Kinh nghiệm"
-                value={
-                  doctor.yearsOfExperience
-                    ? `${doctor.yearsOfExperience} năm`
-                    : ""
-                }
+                value={doctor.yearsOfExperience ? `${doctor.yearsOfExperience} năm` : ""}
               />
-              <InfoItem
-                icon={Briefcase}
-                label="Vai trò"
-                value="Bác sĩ"
-              />
+              <InfoItem icon={Briefcase} label="Vai trò" value="Bác sĩ" />
             </div>
           </div>
         </div>

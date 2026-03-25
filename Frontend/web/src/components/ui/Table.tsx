@@ -37,8 +37,8 @@ const Table = <T,>({
   return (
     <>
       <div className={`overflow-x-auto sm:rounded-lg min-h-[450px] ${className}`}>
-        <table className="w-full text-sm text-left text-gray-500">
-          <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+        <table className="w-full text-sm text-left text-gray-500 dark:text-slate-400">
+          <thead className="text-xs text-gray-700 dark:text-slate-300 uppercase bg-gray-50 dark:bg-slate-800">
             <tr>
               {columns.map((col, index) => (
                 <th
@@ -58,7 +58,7 @@ const Table = <T,>({
                 <tr
                   key={rowIndex}
                   onClick={() => onRowClick && onRowClick(item)}
-                  className={`bg-white border-t border-black/10 hover:bg-gray-50 transition-colors ${onRowClick ? "cursor-pointer" : ""
+                  className={`bg-white dark:bg-slate-900 border-t border-black/10 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors ${onRowClick ? "cursor-pointer" : ""
                     }`}
                 >
                   {columns.map((col, colIndex) => (
@@ -79,7 +79,7 @@ const Table = <T,>({
               <tr>
                 <td
                   colSpan={columns.length}
-                  className="px-6 py-8 text-center text-gray-400"
+                  className="px-6 py-8 text-center text-gray-400 dark:text-slate-500"
                 >
                   Không có dữ liệu hiển thị.
                 </td>

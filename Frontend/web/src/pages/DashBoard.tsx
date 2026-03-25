@@ -1,215 +1,247 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  FaUsers,
-  FaUserInjured,
-  FaUserShield,
   FaArrowTrendUp,
   FaArrowTrendDown,
 } from "react-icons/fa6";
-import { FaExclamationTriangle, FaInfoCircle } from "react-icons/fa";
-
+import {
+  FaExclamationTriangle,
+  FaInfoCircle,
+  FaEye,
+  FaHeartbeat,
+  FaUserFriends,
+  FaFilter,
+  FaDownload,
+} from "react-icons/fa";
+import { BsCalendar3 } from "react-icons/bs";
 import Chart from "../components/ui/Chart";
 import { mockAlerts } from "../data/mockData";
 
-interface StatItem {
-  id: number;
-  title: string;
+// ─── Types ────────────────────────────────────────────────────────────────────
+interface KpiDef {
+  label: string;
   value: string;
-  icon: React.ReactNode;
-  color: "blue" | "emerald" | "amber";
-  isIncreased: boolean;
-  changeValue: number;
-  description?: string;
+  change: number;
+  up: boolean;
+  Icon: React.ElementType;
 }
 
-const statsData: StatItem[] = [
-  {
-    id: 1,
-    title: "Tổng bệnh nhân",
-    value: "1,200",
-    icon: <FaUsers size={24} />,
-    color: "blue",
-    isIncreased: true,
-    changeValue: 5.4,
-    description: "So với tháng trước",
-  },
-  {
-    id: 2,
-    title: "Bệnh nhân bình thường",
-    value: "850",
-    icon: <FaUserShield size={24} />,
-    color: "emerald",
-    isIncreased: true,
-    changeValue: 2.1,
-    description: "So với tháng trước",
-  },
-  {
-    id: 3,
-    title: "Bệnh nhân cảnh báo",
-    value: "300",
-    icon: <FaUserInjured size={24} />,
-    color: "amber",
-    isIncreased: false,
-    changeValue: 1.2,
-    description: "So với tháng trước",
-  },
+// ─── Data ─────────────────────────────────────────────────────────────────────
+const kpis: KpiDef[] = [
+  { label: "Tổng bệnh nhân", value: "1,200", change: 15.8, up: true,  Icon: FaUserFriends },
+  { label: "Đang ổn định",   value: "850",   change: 34.0, up: true,  Icon: FaHeartbeat },
+  { label: "Cần chú ý",      value: "300",   change: 24.2, up: false, Icon: FaEye },
 ];
-const StatCard: React.FC<{ item: StatItem }> = ({ item }) => {
-  const colorMap = {
-    blue: "bg-blue-100 text-blue-600",
-    emerald: "bg-emerald-100 text-emerald-600",
-    amber: "bg-amber-100 text-amber-600",
-  };
 
-  const trendColor = item.isIncreased ? "text-emerald-600" : "text-red-500";
-  const TrendIcon: React.ComponentType<any> = item.isIncreased
-    ? FaArrowTrendUp
-    : FaArrowTrendDown;
-
-  return (
-    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-300">
-      <div className="flex justify-between items-start">
-        <div>
-          <p className="text-sm font-medium text-gray-500 mb-1">{item.title}</p>
-          <h3 className="text-3xl font-bold text-gray-800">{item.value}</h3>
-        </div>
-        <div
-          className={`p-3 rounded-lg ${colorMap[item.color] || "bg-gray-100"}`}
-        >
-          {item.icon}
-        </div>
-      </div>
-
-      <div className="flex items-center mt-4">
-        <span className={`flex items-center text-sm font-medium ${trendColor}`}>
-          <TrendIcon className="mr-1" />
-          {item.changeValue}%
-        </span>
-        <span className="text-sm text-gray-400 ml-2">{item.description}</span>
-      </div>
-    </div>
-  );
+const violationLabel: Record<string, string> = {
+  systolic:       "HA tâm thu",
+  diastolic:      "HA tâm trương",
+  pulse:          "Nhịp tim",
+  glucose:        "Đường huyết",
+  temperature:    "Nhiệt độ",
+  spo2:           "SpO2",
+  respiratoryRate:"Nhịp thở",
 };
 
-const DashBoard = () => {
-  return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-800">Tổng quan</h1>
-        <p className="text-gray-500">Thống kê dữ liệu bệnh nhân hôm nay</p>
-      </div>
+// ─── Badge pill ───────────────────────────────────────────────────────────────
+const Badge: React.FC<{ value: number; up: boolean }> = ({ value, up }) => (
+  <span
+    className={`inline-flex items-center gap-0.5 text-[11px] font-semibold px-1.5 py-0.5 rounded-md ${
+      up
+        ? "bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400"
+        : "bg-red-50 dark:bg-red-900/30 text-red-500 dark:text-red-400"
+    }`}
+  >
+    {up ? <FaArrowTrendUp size={9} /> : <FaArrowTrendDown size={9} />}
+    {value}%
+  </span>
+);
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {statsData.map((item) => (
-          <StatCard key={item.id} item={item} />
-        ))}
+// ─── KPI card (top row) ───────────────────────────────────────────────────────
+const KpiCard: React.FC<KpiDef> = ({ label, value, change, up, Icon }) => (
+  <div className="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700/60 rounded-2xl p-5">
+    <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center gap-2 text-gray-400 dark:text-slate-500">
+        <Icon size={14} />
+        <span className="text-xs font-medium">{label}</span>
       </div>
-
-      <div className="mt-8 flex flex-col gap-6 md:flex-row">
-        <Chart />
-        <RecentAlerts />
-      </div>
+      {/* info dot */}
+      <div className="w-1.5 h-1.5 rounded-full bg-gray-200 dark:bg-slate-600" />
     </div>
-  );
-};
+    <div className="flex items-end gap-2">
+      <span className="text-3xl font-bold text-gray-900 dark:text-white leading-none">
+        {value}
+      </span>
+      <Badge value={change} up={up} />
+    </div>
+  </div>
+);
 
+// ─── Section header ───────────────────────────────────────────────────────────
+const SectionHeader: React.FC<{
+  title: string;
+  icon: React.ReactNode;
+  aside?: React.ReactNode;
+}> = ({ title, icon, aside }) => (
+  <div className="flex items-center justify-between mb-4">
+    <div className="flex items-center gap-2 text-gray-700 dark:text-slate-200">
+      <span className="text-gray-400 dark:text-slate-400">{icon}</span>
+      <span className="text-sm font-semibold">{title}</span>
+    </div>
+    {aside}
+  </div>
+);
+
+// ─── Recent Alerts list ───────────────────────────────────────────────────────
 const RecentAlerts: React.FC = () => {
   const navigate = useNavigate();
 
-  const recentAlerts = mockAlerts
-    .sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    )
-    .slice(0, 5);
+  const alerts = [...mockAlerts]
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 6);
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-
-    if (diffMins < 60) return `${diffMins} phút trước`;
-    if (diffHours < 24) return `${diffHours} giờ trước`;
-    return date.toLocaleDateString("vi-VN", {
-      day: "2-digit",
-      month: "2-digit",
-    });
+  const ago = (ds: string) => {
+    const mins = Math.floor((Date.now() - new Date(ds).getTime()) / 60000);
+    const hrs  = Math.floor(mins / 60);
+    if (mins < 60) return `${mins}p trước`;
+    if (hrs  < 24) return `${hrs}h trước`;
+    return new Date(ds).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" });
   };
 
   return (
-    <div className="p-6 bg-white rounded-xl shadow-sm flex-1 font-sans">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-bold text-gray-800">Cảnh báo gần đây</h2>
-        <button
-          onClick={() => navigate("/threshold-alerts")}
-          className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-        >
-          Xem tất cả →
-        </button>
+    <div className="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700/60 rounded-2xl overflow-hidden flex flex-col h-full">
+      <div className="px-5 pt-5 pb-3">
+        <SectionHeader
+          icon={<FaExclamationTriangle size={13} />}
+          title="Cảnh báo gần đây"
+          aside={
+            <button
+              onClick={() => navigate("/threshold-alerts")}
+              className="text-[11px] font-semibold text-indigo-500 dark:text-indigo-400 hover:opacity-75 transition-opacity"
+            >
+              Xem tất cả
+            </button>
+          }
+        />
       </div>
 
-      <div className="space-y-3">
-        {recentAlerts.length === 0 ? (
-          <p className="text-gray-500 text-center py-8">
-            Không có cảnh báo gần đây
-          </p>
+      <div className="border-t border-gray-50 dark:border-slate-700/40 flex-1 overflow-auto">
+        {alerts.length === 0 ? (
+          <p className="text-center text-xs text-gray-400 py-8">Không có cảnh báo</p>
         ) : (
-          recentAlerts.map((alert) => (
-            <div
-              key={alert.id}
-              className="flex items-start gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
-              onClick={() => navigate("/threshold-alerts")}
-            >
+          alerts.map((alert, i) => {
+            const isHigh = alert.severity === "high";
+            return (
               <div
-                className={`shrink-0 mt-1 ${alert.severity === "high" ? "text-red-500" : "text-yellow-500"
-                  }`}
+                key={alert.id}
+                className={`flex items-start gap-3 px-5 py-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700/40 transition-colors ${
+                  i > 0 ? "border-t border-gray-50 dark:border-slate-700/30" : ""
+                }`}
+                onClick={() => navigate("/threshold-alerts")}
               >
-                {alert.severity === "high" ? (
-                  <FaExclamationTriangle size={20} />
-                ) : (
-                  <FaInfoCircle size={20} />
-                )}
-              </div>
-
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-2 mb-1">
-                  <p className="font-medium text-gray-800 truncate">
-                    {alert.patientName}
-                  </p>
-                  <span className="text-xs text-gray-500 shrink-0">
-                    {formatDate(alert.createdAt)}
-                  </span>
+                <div
+                  className={`mt-0.5 shrink-0 p-1.5 rounded-lg ${
+                    isHigh
+                      ? "bg-red-50 dark:bg-red-900/30 text-red-400"
+                      : "bg-amber-50 dark:bg-amber-900/30 text-amber-400"
+                  }`}
+                >
+                  {isHigh
+                    ? <FaExclamationTriangle size={10} />
+                    : <FaInfoCircle size={10} />}
                 </div>
-                <p className="text-sm text-gray-600 line-clamp-2">
-                  {alert.violations.map((v, idx) => (
-                    <span key={idx}>
-                      {idx > 0 && ", "}
-                      <span className="font-medium">
-                        {v.type === "systolic" && "Huyết áp tâm thu"}
-                        {v.type === "diastolic" && "Huyết áp tâm trương"}
-                        {v.type === "pulse" && "Nhịp tim"}
-                        {v.type === "glucose" && "Đường huyết"}
-                        {v.type === "temperature" && "Nhiệt độ"}
-                        {v.type === "spo2" && "SpO2"}
-                        {v.type === "respiratoryRate" && "Nhịp thở"}
-                      </span>
-                      : {v.observed}
-                    </span>
-                  ))}
-                </p>
 
-                {alert.status === "ack" && (
-                  <span className="inline-block mt-1 text-xs text-green-600 font-medium">
-                    ✓ Đã xác nhận
-                  </span>
-                )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-semibold text-gray-800 dark:text-slate-100 truncate">
+                      {alert.patientName}
+                    </p>
+                    <span className="shrink-0 text-[10px] tabular-nums text-gray-400 dark:text-slate-500">
+                      {ago(alert.createdAt)}
+                    </span>
+                  </div>
+                  <p className="mt-0.5 text-[11px] text-gray-400 dark:text-slate-500 truncate">
+                    {alert.violations
+                      .map(v => `${violationLabel[v.type] ?? v.type}: ${v.observed}`)
+                      .join(" · ")}
+                  </p>
+                </div>
+
+                <div className={`mt-1.5 shrink-0 w-1.5 h-1.5 rounded-full ${
+                  alert.status === "ack" ? "bg-teal-400" : "bg-red-400"
+                }`} />
               </div>
-            </div>
-          ))
+            );
+          })
         )}
+      </div>
+    </div>
+  );
+};
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+const DashBoard = () => {
+  const now = new Date();
+  const dateRange = `${now.toLocaleDateString("vi-VN", { day: "2-digit", month: "short" })}`;
+
+  return (
+    <div className="min-h-screen bg-[#f5f6fa] dark:bg-slate-900 font-sans">
+      <div className="max-w-screen-2xl mx-auto px-6 py-6 space-y-4">
+
+        {/* ── Page header ────────────────────────────────── */}
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+            Tổng quan
+          </h1>
+          <div className="flex items-center gap-2">
+            <button className="inline-flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 text-gray-600 dark:text-slate-300 text-xs font-medium px-3 py-2 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
+              <BsCalendar3 size={11} />
+              {dateRange}
+            </button>
+            <button className="inline-flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 text-gray-600 dark:text-slate-300 text-xs font-medium px-3 py-2 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
+              <FaFilter size={10} />
+              Lọc
+            </button>
+            <button className="inline-flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 text-gray-600 dark:text-slate-300 text-xs font-medium px-3 py-2 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
+              <FaDownload size={10} />
+              Xuất
+            </button>
+          </div>
+        </div>
+
+        {/* ── KPI row ─────────────────────────────────────── */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {kpis.map((k) => <KpiCard key={k.label} {...k} />)}
+        </div>
+
+        {/* ── Main row: Chart + Alerts ─────────────────────── */}
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-3">
+
+          {/* Chart card */}
+          <div className="lg:col-span-3 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700/60 rounded-2xl p-5">
+            <SectionHeader
+              icon={<span className="text-[13px]">📊</span>}
+              title="Tổng quan bệnh nhân"
+              aside={
+                <div className="flex items-center gap-1.5">
+                  <button className="inline-flex items-center gap-1 text-[11px] text-gray-500 dark:text-slate-400 border border-gray-100 dark:border-slate-600 rounded-lg px-2 py-1 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
+                    <FaFilter size={9} /> Lọc
+                  </button>
+                  <button className="inline-flex items-center gap-1 text-[11px] text-gray-500 dark:text-slate-400 border border-gray-100 dark:border-slate-600 rounded-lg px-2 py-1 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
+                    ↕ Sắp xếp
+                  </button>
+                </div>
+              }
+            />
+            <Chart />
+          </div>
+
+          {/* Alerts card */}
+          <div className="lg:col-span-2">
+            <RecentAlerts />
+          </div>
+        </div>
+
       </div>
     </div>
   );
