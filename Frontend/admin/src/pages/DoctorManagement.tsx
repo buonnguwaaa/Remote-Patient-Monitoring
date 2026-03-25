@@ -32,7 +32,7 @@ const DoctorManagement: React.FC = () => {
           licenseNumber: u.licenseNumber || "",
           workplace: u.workplace || "",
           yearsOfExperience: u.yearsOfExperience || 0,
-          status: u.isActive ? "active" : "inactive",
+          status: u.status === "inactive" ? "inactive" : "active",
           profileImageUrl: u.avatarUrl || "/default-avatar.svg",
         }));
         setDoctors(apiDoctors);
@@ -90,16 +90,15 @@ const DoctorManagement: React.FC = () => {
     const status = formData.get("status") as "active" | "inactive";
 
     const apiGender = mapGenderToApi(gender);
-    const isActive = status !== "inactive";
-
     try {
       let savedUserId = editingDoctor?.id;
 
       if (editingDoctor?.id) {
         await api.patch(`/users/${editingDoctor.id}`, {
           name, email, gender: apiGender, phone, specialization,
-          licenseNumber, workplace, yearsOfExperience, isActive, roles: ["user.doctor"],
+          licenseNumber, workplace, yearsOfExperience, roles: ["user.doctor"],
         });
+        await api.patch(`/users/${editingDoctor.id}/status`, { status });
       } else {
         const password = formData.get("password") as string;
         if (!password || password.length < 8) {
@@ -115,8 +114,9 @@ const DoctorManagement: React.FC = () => {
         savedUserId = newUser?.id;
         if (savedUserId) {
           await api.patch(`/users/${savedUserId}`, {
-            phone, specialization, licenseNumber, workplace, yearsOfExperience, isActive,
+            phone, specialization, licenseNumber, workplace, yearsOfExperience,
           });
+          await api.patch(`/users/${savedUserId}/status`, { status });
         }
       }
 

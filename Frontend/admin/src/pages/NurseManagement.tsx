@@ -31,7 +31,7 @@ const NurseManagement: React.FC = () => {
           licenseNumber: u.licenseNumber || "",
           department: u.workplace || u.ward || u.departmentId || "",
           yearsOfExperience: 0,
-          status: u.isActive ? "active" : "inactive",
+          status: u.status === "inactive" ? "inactive" : "active",
           profileImageUrl: u.avatarUrl || "/avartar.jpg",
         }));
         setNurses(apiNurses);
@@ -89,8 +89,6 @@ const NurseManagement: React.FC = () => {
     const status = formData.get("status") as "active" | "inactive";
 
     const apiGender = mapGenderToApi(gender);
-    const isActive = status !== "inactive";
-
     try {
       let savedUserId = editingNurse?.id;
 
@@ -100,9 +98,9 @@ const NurseManagement: React.FC = () => {
           nurseLicenseNumber: licenseNumber,
           department,
           nurseYearsOfExperience: yearsOfExperience,
-          isActive,
           roles: ["user.nurse"],
         });
+        await api.patch(`/users/${editingNurse.id}/status`, { status });
       } else {
         const password = formData.get("password") as string;
         if (!password || password.length < 8) {
@@ -122,8 +120,8 @@ const NurseManagement: React.FC = () => {
             nurseLicenseNumber: licenseNumber,
             department,
             nurseYearsOfExperience: yearsOfExperience,
-            isActive,
           });
+          await api.patch(`/users/${savedUserId}/status`, { status });
         }
       }
 

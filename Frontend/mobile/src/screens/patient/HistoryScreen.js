@@ -31,6 +31,28 @@ function formatShortLabel(iso) {
   return `${dd}/${mm}`;
 }
 
+function matchesTab(measurement, tab) {
+  if (tab === "bp") {
+    return (
+      Number(measurement?.bloodPressure?.systolic) > 0 ||
+      Number(measurement?.bloodPressure?.diastolic) > 0
+    );
+  }
+  if (tab === "glucose") return Number(measurement?.glucose) > 0;
+  if (tab === "spo2") return Number(measurement?.spo2) > 0;
+  if (tab === "temp") return Number(measurement?.temperature) > 0;
+  if (tab === "heartRate") return Number(measurement?.heartRate) > 0;
+  if (tab === "respiratoryRate") return Number(measurement?.respiratoryRate) > 0;
+  return false;
+}
+
+function getAccentStyle(tab, styles) {
+  if (tab === "bp") return styles.recordCardBp;
+  if (tab === "glucose") return styles.recordCardGlucose;
+  if (tab === "spo2") return styles.recordCardSpo2;
+  return styles.recordCardTemp;
+}
+
 export default function HistoryScreen({ route }) {
   const { user } = useAuth() || {};
   const patientId = route?.params?.patientId || user?._id || user?.id || "p1";
@@ -53,7 +75,7 @@ export default function HistoryScreen({ route }) {
   );
 
   const activeMeasurements = measurements
-    .filter((m) => m.type === tab)
+    .filter((m) => matchesTab(m, tab))
     .sort(
       (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
     );
@@ -326,14 +348,7 @@ export default function HistoryScreen({ route }) {
           const dateStr = formatDate(m.createdAt);
           const timeStr = formatTime(m.createdAt);
 
-          const accentStyle =
-            m.type === "bp"
-              ? styles.recordCardBp
-              : m.type === "glucose"
-              ? styles.recordCardGlucose
-              : m.type === "spo2"
-              ? styles.recordCardSpo2
-              : styles.recordCardTemp;
+          const accentStyle = getAccentStyle(tab, styles);
 
           return (
             <View key={m.id} style={[styles.recordCard, accentStyle]}>
@@ -344,7 +359,7 @@ export default function HistoryScreen({ route }) {
                   <Text style={styles.recordTimeText}>· {timeStr}</Text>
                 </View>
 
-                {m.timing && (
+                {tab === "glucose" && m.timing && (
                   <View style={styles.timingBadge}>
                     <Text style={styles.timingBadgeText}>{m.timing}</Text>
                   </View>
@@ -352,7 +367,7 @@ export default function HistoryScreen({ route }) {
               </View>
 
               <View style={styles.recordValuesRow}>
-                {m.type === "bp" && (
+                {tab === "bp" && (
                   <>
                     <View style={styles.recordValueBox}>
                       <Text style={styles.recordValueNumber}>{m.bloodPressure?.systolic || m.systolic}</Text>
@@ -372,7 +387,7 @@ export default function HistoryScreen({ route }) {
                   </>
                 )}
 
-                {m.type === "glucose" && (
+                {tab === "glucose" && (
                   <View style={styles.recordValueBox}>
                     <Text style={styles.recordValueNumber}>{m.glucose}</Text>
                     <Text style={styles.recordValueUnit}>mg/dL</Text>
@@ -380,7 +395,7 @@ export default function HistoryScreen({ route }) {
                   </View>
                 )}
 
-                {m.type === "spo2" && (
+                {tab === "spo2" && (
                   <View style={styles.recordValueBox}>
                     <Text style={styles.recordValueNumber}>{m.spo2}</Text>
                     <Text style={styles.recordValueUnit}>%</Text>
@@ -388,7 +403,7 @@ export default function HistoryScreen({ route }) {
                   </View>
                 )}
 
-                {m.type === "temp" && (
+                {tab === "temp" && (
                   <View style={styles.recordValueBox}>
                     <Text style={styles.recordValueNumber}>{m.temperature}</Text>
                     <Text style={styles.recordValueUnit}>°C</Text>
@@ -396,7 +411,7 @@ export default function HistoryScreen({ route }) {
                   </View>
                 )}
 
-                {m.type === "heartRate" && (
+                {tab === "heartRate" && (
                   <View style={styles.recordValueBox}>
                     <Text style={styles.recordValueNumber}>{m.heartRate}</Text>
                     <Text style={styles.recordValueUnit}>bpm</Text>
@@ -404,7 +419,7 @@ export default function HistoryScreen({ route }) {
                   </View>
                 )}
 
-                {m.type === "respiratoryRate" && (
+                {tab === "respiratoryRate" && (
                   <View style={styles.recordValueBox}>
                     <Text style={styles.recordValueNumber}>{m.respiratoryRate}</Text>
                     <Text style={styles.recordValueUnit}>lần/phút</Text>
