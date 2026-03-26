@@ -2,10 +2,12 @@ package user
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	domain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/util"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -43,29 +45,25 @@ func NewStaffRepository[T StaffEntity](db *mongo.Database) StaffRepository[T] {
 }
 
 func (r *staffRepository[T]) Create(ctx context.Context, u *T) (*T, error) {
+	id := primitive.NewObjectID()
 	now := time.Now().UTC()
-	setStaffTimestamps(u, now, now)
+	setStaffInfo(u, id, now)
 
-	result, err := r.col.InsertOne(ctx, u)
+	_, err := r.col.InsertOne(ctx, u)
 	if err != nil {
 		return nil, err
 	}
-	setStaffID(u, result.InsertedID.(primitive.ObjectID))
+
 	return u, nil
 }
 
 func (r *staffRepository[T]) FindStaffs(ctx context.Context, f UserFilter) ([]T, error) {
 	bsonFilter, opts := buildFilterAndOptions(f)
-	// Ensure we only query staff (doctors or nurses)
-	switch any(*new(T)).(type) {
-	case domain.Doctor:
-		bsonFilter["role"] = domain.RoleDoctor
-	case domain.Nurse:
-		bsonFilter["role"] = domain.RoleNurse
-	default:
-		// This should never happen due to the StaffEntity constraint, but we add it for safety
-		return nil, fmt.Errorf("unsupported staff type")
+	expectedRole := expectedStaffRole[T]()
+	if expectedRole == "" {
+		return nil, invalidStaffRoleError[T]()
 	}
+	bsonFilter["role"] = expectedRole
 
 	cursor, err := r.col.Find(ctx, bsonFilter, opts)
 	if err != nil {
@@ -86,6 +84,15 @@ func (r *staffRepository[T]) FindStaffByID(ctx context.Context, id primitive.Obj
 	if err != nil {
 		return nil, err
 	}
+
+	expectedRole := expectedStaffRole[T]()
+	if expectedRole == "" {
+		return nil, invalidStaffRoleError[T]()
+	}
+	if roleOfStaff(u) != expectedRole {
+		return nil, invalidStaffRoleError[T]()
+	}
+
 	return &u, nil
 }
 
@@ -95,6 +102,15 @@ func (r *staffRepository[T]) FindStaffByEmail(ctx context.Context, email string)
 	if err != nil {
 		return nil, err
 	}
+
+	expectedRole := expectedStaffRole[T]()
+	if expectedRole == "" {
+		return nil, invalidStaffRoleError[T]()
+	}
+	if roleOfStaff(u) != expectedRole {
+		return nil, invalidStaffRoleError[T]()
+	}
+
 	return &u, nil
 }
 
@@ -111,28 +127,22 @@ func (r *staffRepository[T]) Delete(ctx context.Context, id primitive.ObjectID) 
 
 func (r *staffRepository[T]) CountByDepartmentID(ctx context.Context, deptID primitive.ObjectID) (int64, error) {
 	filter := bson.M{"departmentId": deptID}
-	switch any(*new(T)).(type) {
-	case domain.Doctor:
-		filter["role"] = domain.RoleDoctor
-	case domain.Nurse:
-		filter["role"] = domain.RoleNurse
-	default:
-		return 0, fmt.Errorf("unsupported staff type")
+	expectedRole := expectedStaffRole[T]()
+	if expectedRole == "" {
+		return 0, invalidStaffRoleError[T]()
 	}
+	filter["role"] = expectedRole
 
 	return r.col.CountDocuments(ctx, filter)
 }
 
 func (r *staffRepository[T]) FindByDepartmentID(ctx context.Context, deptID primitive.ObjectID) ([]T, error) {
 	filter := bson.M{"departmentId": deptID}
-	switch any(*new(T)).(type) {
-	case domain.Doctor:
-		filter["role"] = domain.RoleDoctor
-	case domain.Nurse:
-		filter["role"] = domain.RoleNurse
-	default:
-		return nil, fmt.Errorf("unsupported staff type")
+	expectedRole := expectedStaffRole[T]()
+	if expectedRole == "" {
+		return nil, invalidStaffRoleError[T]()
 	}
+	filter["role"] = expectedRole
 
 	cursor, err := r.col.Find(ctx, filter)
 	if err != nil {
@@ -158,23 +168,47 @@ func (r *staffRepository[T]) UpdateDepartmentID(ctx context.Context, userID prim
 }
 
 // Type switches vẫn cần vì Go chưa hỗ trợ field access trực tiếp trên type parameter
-// Nhưng giờ chỉ cần 2 case thay vì 3 như trước
-func setStaffTimestamps[T StaffEntity](u *T, createdAt, updatedAt time.Time) {
+func setStaffInfo[T StaffEntity](u *T, id primitive.ObjectID, now time.Time) {
 	switch v := any(u).(type) {
 	case *domain.Doctor:
-		v.CreatedAt = createdAt
-		v.UpdatedAt = updatedAt
+		v.ID = id
+		v.UserPublicID = util.GenerateUserPublicID(id, domain.RoleDoctor)
+		v.CreatedAt = now
+		v.UpdatedAt = now
 	case *domain.Nurse:
-		v.CreatedAt = createdAt
-		v.UpdatedAt = updatedAt
+		v.ID = id
+		v.UserPublicID = util.GenerateUserPublicID(id, domain.RoleNurse)
+		v.CreatedAt = now
+		v.UpdatedAt = now
 	}
 }
 
-func setStaffID[T StaffEntity](u *T, id primitive.ObjectID) {
+func expectedStaffRole[T StaffEntity]() domain.Role {
+	switch any(*new(T)).(type) {
+	case domain.Doctor:
+		return domain.RoleDoctor
+	case domain.Nurse:
+		return domain.RoleNurse
+	default:
+		return ""
+	}
+}
+
+func invalidStaffRoleError[T StaffEntity]() error {
+	expected := expectedStaffRole[T]()
+	if expected == "" {
+		return errors.New("invalid staff type")
+	}
+	return fmt.Errorf("invalid role: expected %s", expected)
+}
+
+func roleOfStaff[T StaffEntity](u T) domain.Role {
 	switch v := any(u).(type) {
-	case *domain.Doctor:
-		v.ID = id
-	case *domain.Nurse:
-		v.ID = id
+	case domain.Doctor:
+		return v.Role
+	case domain.Nurse:
+		return v.Role
+	default:
+		return ""
 	}
 }

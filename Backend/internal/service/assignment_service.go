@@ -101,14 +101,14 @@ func (s *assignmentService) GetAssignmentsByRole(ctx context.Context, input *use
 
 	var (
 		assignments []*domain.Assignment
-		nameMap     map[primitive.ObjectID]string
+		userInfoMap map[primitive.ObjectID]repository.UserDisplayInfo
 	)
 
 	switch input.Role {
 	case userDomain.RoleDoctor:
-		assignments, nameMap, err = s.assignmentRepo.FindByDoctorIDWithNames(ctx, userID)
+		assignments, userInfoMap, err = s.assignmentRepo.FindByDoctorIDWithNames(ctx, userID)
 	case userDomain.RoleNurse:
-		assignments, nameMap, err = s.assignmentRepo.FindByNurseIDWithNames(ctx, userID)
+		assignments, userInfoMap, err = s.assignmentRepo.FindByNurseIDWithNames(ctx, userID)
 	default:
 		return nil, errors.New("invalid role for getting assignments")
 	}
@@ -117,16 +117,16 @@ func (s *assignmentService) GetAssignmentsByRole(ctx context.Context, input *use
 		return nil, err
 	}
 
-	return s.mapListToResponse(assignments, nameMap), nil
+	return s.mapListToResponse(assignments, userInfoMap), nil
 }
 
 func (s *assignmentService) GetAllAssignments(ctx context.Context) ([]*dto.AssignmentResponse, error) {
-	assignments, nameMap, err := s.assignmentRepo.FindAll(ctx)
+	assignments, userInfoMap, err := s.assignmentRepo.FindAll(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	return s.mapListToResponse(assignments, nameMap), nil
+	return s.mapListToResponse(assignments, userInfoMap), nil
 }
 
 func (s *assignmentService) DeleteAssignmentByID(ctx context.Context, input *usecase.DeleteAssignmentInput) error {
@@ -138,26 +138,33 @@ func (s *assignmentService) DeleteAssignmentByID(ctx context.Context, input *use
 	return s.assignmentRepo.DeleteByID(ctx, assignmentID)
 }
 
-func (s *assignmentService) mapListToResponse(assignments []*domain.Assignment, nameMap map[primitive.ObjectID]string) []*dto.AssignmentResponse {
+func (s *assignmentService) mapListToResponse(assignments []*domain.Assignment, userInfoMap map[primitive.ObjectID]repository.UserDisplayInfo) []*dto.AssignmentResponse {
 	var responses []*dto.AssignmentResponse
 	for _, a := range assignments {
-		responses = append(responses, s.mapToResponseWithNames(a, nameMap))
+		responses = append(responses, s.mapToResponseWithNames(a, userInfoMap))
 	}
 	return responses
 }
 
-func (s *assignmentService) mapToResponseWithNames(a *domain.Assignment, nameMap map[primitive.ObjectID]string) *dto.AssignmentResponse {
+func (s *assignmentService) mapToResponseWithNames(a *domain.Assignment, userInfoMap map[primitive.ObjectID]repository.UserDisplayInfo) *dto.AssignmentResponse {
+	patient := userInfoMap[a.PatientID]
+	doctor := userInfoMap[a.DoctorID]
+	nurse := userInfoMap[a.NurseID]
+
 	return &dto.AssignmentResponse{
-		ID:          a.ID,
-		PatientID:   a.PatientID,
-		PatientName: nameMap[a.PatientID],
-		DoctorID:    a.DoctorID,
-		DoctorName:  nameMap[a.DoctorID],
-		NurseID:     a.NurseID,
-		NurseName:   nameMap[a.NurseID],
-		AssignedBy:  a.AssignedBy,
-		CreatedAt:   a.CreatedAt,
-		UpdatedAt:   a.UpdatedAt,
+		ID:              a.ID,
+		PatientID:       a.PatientID,
+		PatientPublicID: patient.PublicID,
+		PatientName:     patient.Name,
+		DoctorID:        a.DoctorID,
+		DoctorPublicID:  doctor.PublicID,
+		DoctorName:      doctor.Name,
+		NurseID:         a.NurseID,
+		NursePublicID:   nurse.PublicID,
+		NurseName:       nurse.Name,
+		AssignedBy:      a.AssignedBy,
+		CreatedAt:       a.CreatedAt,
+		UpdatedAt:       a.UpdatedAt,
 	}
 }
 
@@ -174,15 +181,18 @@ func (s *assignmentService) mapToResponse(ctx context.Context, a *domain.Assignm
 
 	if u, err := s.userRepo.FindByID(ctx, a.PatientID); err == nil {
 		resp.PatientName = u.Name
+		resp.PatientPublicID = u.UserPublicID
 	}
 	if !a.DoctorID.IsZero() {
 		if u, err := s.userRepo.FindByID(ctx, a.DoctorID); err == nil {
 			resp.DoctorName = u.Name
+			resp.DoctorPublicID = u.UserPublicID
 		}
 	}
 	if !a.NurseID.IsZero() {
 		if u, err := s.userRepo.FindByID(ctx, a.NurseID); err == nil {
 			resp.NurseName = u.Name
+			resp.NursePublicID = u.UserPublicID
 		}
 	}
 

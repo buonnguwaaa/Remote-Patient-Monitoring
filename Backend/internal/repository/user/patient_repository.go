@@ -2,10 +2,11 @@ package user
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"time"
 
 	domain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/util"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -33,11 +34,18 @@ func NewPatientRepository(db *mongo.Database) PatientRepository {
 	}
 }
 
+var ErrInvalidPatientRole = errors.New("invalid role: expected user.patient")
+
 func (r *patientRepository) Create(ctx context.Context, u *domain.Patient) (*domain.Patient, error) {
+	id := primitive.NewObjectID()
 	now := time.Now().UTC()
+
 	if u.Role != domain.RolePatient {
-		return nil, fmt.Errorf("invalid role for patient: %s", u.Role)
+		return nil, ErrInvalidPatientRole
 	}
+
+	u.ID = id
+	u.UserPublicID = util.GenerateUserPublicID(id, domain.RolePatient)
 	u.CreatedAt = now
 	u.UpdatedAt = now
 
@@ -76,19 +84,31 @@ func (r *patientRepository) FindPatients(ctx context.Context, f UserFilter) ([]d
 
 func (r *patientRepository) FindPatientByEmail(ctx context.Context, email string) (*domain.Patient, error) {
 	var u domain.Patient
-	err := r.col.FindOne(ctx, bson.M{"email": email, "role": domain.RolePatient}).Decode(&u)
+
+	err := r.col.FindOne(ctx, bson.M{"email": email}).Decode(&u)
 	if err != nil {
 		return nil, err
 	}
+
+	if u.Role != domain.RolePatient {
+		return nil, ErrInvalidPatientRole
+	}
+
 	return &u, nil
 }
 
 func (r *patientRepository) FindPatientByID(ctx context.Context, id primitive.ObjectID) (*domain.Patient, error) {
 	var u domain.Patient
-	err := r.col.FindOne(ctx, bson.M{"_id": id, "role": domain.RolePatient}).Decode(&u)
+
+	err := r.col.FindOne(ctx, bson.M{"_id": id}).Decode(&u)
 	if err != nil {
 		return nil, err
 	}
+
+	if u.Role != domain.RolePatient {
+		return nil, ErrInvalidPatientRole
+	}
+
 	return &u, nil
 }
 

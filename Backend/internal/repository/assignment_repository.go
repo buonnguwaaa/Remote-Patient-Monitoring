@@ -12,12 +12,17 @@ import (
 
 type AssignmentRepository interface {
 	Create(ctx context.Context, assignment *domain.Assignment) (*domain.Assignment, error)
-	FindAll(ctx context.Context) ([]*domain.Assignment, map[primitive.ObjectID]string, error)
+	FindAll(ctx context.Context) ([]*domain.Assignment, map[primitive.ObjectID]UserDisplayInfo, error)
 	FindByPatientID(ctx context.Context, patientID primitive.ObjectID) (*domain.Assignment, error)
 	FindByDoctorID(ctx context.Context, doctorID primitive.ObjectID) ([]*domain.Assignment, error)
-	FindByDoctorIDWithNames(ctx context.Context, doctorID primitive.ObjectID) ([]*domain.Assignment, map[primitive.ObjectID]string, error)
-	FindByNurseIDWithNames(ctx context.Context, nurseID primitive.ObjectID) ([]*domain.Assignment, map[primitive.ObjectID]string, error)
+	FindByDoctorIDWithNames(ctx context.Context, doctorID primitive.ObjectID) ([]*domain.Assignment, map[primitive.ObjectID]UserDisplayInfo, error)
+	FindByNurseIDWithNames(ctx context.Context, nurseID primitive.ObjectID) ([]*domain.Assignment, map[primitive.ObjectID]UserDisplayInfo, error)
 	DeleteByID(ctx context.Context, assignmentID primitive.ObjectID) error
+}
+
+type UserDisplayInfo struct {
+	Name     string
+	PublicID string
 }
 
 type assignmentRepository struct {
@@ -51,7 +56,7 @@ func (r *assignmentRepository) FindByPatientID(ctx context.Context, patientID pr
 	return &assignment, nil
 }
 
-func (r *assignmentRepository) FindAll(ctx context.Context) ([]*domain.Assignment, map[primitive.ObjectID]string, error) {
+func (r *assignmentRepository) FindAll(ctx context.Context) ([]*domain.Assignment, map[primitive.ObjectID]UserDisplayInfo, error) {
 	pipeline := mongo.Pipeline{
 		{{Key: "$sort", Value: bson.M{"updatedAt": -1}}},
 		{{Key: "$facet", Value: bson.M{
@@ -78,7 +83,7 @@ func (r *assignmentRepository) FindAll(ctx context.Context) ([]*domain.Assignmen
 					"as":           "user",
 				}},
 				bson.M{"$unwind": bson.M{"path": "$user", "preserveNullAndEmptyArrays": false}},
-				bson.M{"$project": bson.M{"_id": 1, "name": "$user.name"}},
+				bson.M{"$project": bson.M{"_id": 1, "name": "$user.name", "publicId": "$user.userPublicId"}},
 			},
 		}}},
 	}
@@ -92,8 +97,9 @@ func (r *assignmentRepository) FindAll(ctx context.Context) ([]*domain.Assignmen
 	var facetResults []struct {
 		Assignments []*domain.Assignment `bson:"assignments"`
 		Names       []struct {
-			ID   primitive.ObjectID `bson:"_id"`
-			Name string             `bson:"name"`
+			ID       primitive.ObjectID `bson:"_id"`
+			Name     string             `bson:"name"`
+			PublicID string             `bson:"publicId"`
 		} `bson:"names"`
 	}
 	if err := cursor.All(ctx, &facetResults); err != nil {
@@ -101,12 +107,12 @@ func (r *assignmentRepository) FindAll(ctx context.Context) ([]*domain.Assignmen
 	}
 
 	if len(facetResults) == 0 {
-		return []*domain.Assignment{}, map[primitive.ObjectID]string{}, nil
+		return []*domain.Assignment{}, map[primitive.ObjectID]UserDisplayInfo{}, nil
 	}
 
-	nameMap := make(map[primitive.ObjectID]string)
+	nameMap := make(map[primitive.ObjectID]UserDisplayInfo)
 	for _, u := range facetResults[0].Names {
-		nameMap[u.ID] = u.Name
+		nameMap[u.ID] = UserDisplayInfo{Name: u.Name, PublicID: u.PublicID}
 	}
 
 	return facetResults[0].Assignments, nameMap, nil
@@ -127,15 +133,15 @@ func (r *assignmentRepository) FindByDoctorID(ctx context.Context, doctorID prim
 	return assignments, nil
 }
 
-func (r *assignmentRepository) FindByDoctorIDWithNames(ctx context.Context, doctorID primitive.ObjectID) ([]*domain.Assignment, map[primitive.ObjectID]string, error) {
+func (r *assignmentRepository) FindByDoctorIDWithNames(ctx context.Context, doctorID primitive.ObjectID) ([]*domain.Assignment, map[primitive.ObjectID]UserDisplayInfo, error) {
 	return r.findByAssigneeWithNames(ctx, "doctorId", doctorID)
 }
 
-func (r *assignmentRepository) FindByNurseIDWithNames(ctx context.Context, nurseID primitive.ObjectID) ([]*domain.Assignment, map[primitive.ObjectID]string, error) {
+func (r *assignmentRepository) FindByNurseIDWithNames(ctx context.Context, nurseID primitive.ObjectID) ([]*domain.Assignment, map[primitive.ObjectID]UserDisplayInfo, error) {
 	return r.findByAssigneeWithNames(ctx, "nurseId", nurseID)
 }
 
-func (r *assignmentRepository) findByAssigneeWithNames(ctx context.Context, matchField string, assigneeID primitive.ObjectID) ([]*domain.Assignment, map[primitive.ObjectID]string, error) {
+func (r *assignmentRepository) findByAssigneeWithNames(ctx context.Context, matchField string, assigneeID primitive.ObjectID) ([]*domain.Assignment, map[primitive.ObjectID]UserDisplayInfo, error) {
 	pipeline := mongo.Pipeline{
 		{{Key: "$match", Value: bson.M{matchField: assigneeID}}},
 		{{Key: "$facet", Value: bson.M{
@@ -162,7 +168,7 @@ func (r *assignmentRepository) findByAssigneeWithNames(ctx context.Context, matc
 					"as":           "user",
 				}},
 				bson.M{"$unwind": bson.M{"path": "$user", "preserveNullAndEmptyArrays": false}},
-				bson.M{"$project": bson.M{"_id": 1, "name": "$user.name"}},
+				bson.M{"$project": bson.M{"_id": 1, "name": "$user.name", "publicId": "$user.userPublicId"}},
 			},
 		}}},
 	}
@@ -176,8 +182,9 @@ func (r *assignmentRepository) findByAssigneeWithNames(ctx context.Context, matc
 	var facetResults []struct {
 		Assignments []*domain.Assignment `bson:"assignments"`
 		Names       []struct {
-			ID   primitive.ObjectID `bson:"_id"`
-			Name string             `bson:"name"`
+			ID       primitive.ObjectID `bson:"_id"`
+			Name     string             `bson:"name"`
+			PublicID string             `bson:"publicId"`
 		} `bson:"names"`
 	}
 	if err := cursor.All(ctx, &facetResults); err != nil {
@@ -185,12 +192,12 @@ func (r *assignmentRepository) findByAssigneeWithNames(ctx context.Context, matc
 	}
 
 	if len(facetResults) == 0 {
-		return []*domain.Assignment{}, map[primitive.ObjectID]string{}, nil
+		return []*domain.Assignment{}, map[primitive.ObjectID]UserDisplayInfo{}, nil
 	}
 
-	nameMap := make(map[primitive.ObjectID]string)
+	nameMap := make(map[primitive.ObjectID]UserDisplayInfo)
 	for _, u := range facetResults[0].Names {
-		nameMap[u.ID] = u.Name
+		nameMap[u.ID] = UserDisplayInfo{Name: u.Name, PublicID: u.PublicID}
 	}
 
 	return facetResults[0].Assignments, nameMap, nil

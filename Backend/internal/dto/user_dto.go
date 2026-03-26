@@ -5,23 +5,23 @@ import (
 )
 
 type BaseUserInfoResponse struct {
-	ID        string        `json:"id"`
-	Name      string        `json:"name"`
-	Email     string        `json:"email"`
-	Provider  string        `json:"provider"`
-	Role      domain.Role   `json:"role"`
-	Gender    domain.Gender `json:"gender"`
-	Dob       string        `json:"dob"`
-	Phone     string        `json:"phone,omitempty"`
-	AvatarUrl string        `json:"avatarUrl,omitempty"`
-	Status    domain.Status `json:"status"`
-	CreatedAt string        `json:"createdAt"`
-	UpdatedAt string        `json:"updatedAt"`
+	ID           string        `json:"id"`
+	UserPublicID string        `json:"userPublicId"`
+	Name         string        `json:"name"`
+	Email        string        `json:"email"`
+	Provider     string        `json:"provider"`
+	Role         domain.Role   `json:"role"`
+	Gender       domain.Gender `json:"gender"`
+	Dob          string        `json:"dob"`
+	Phone        string        `json:"phone,omitempty"`
+	AvatarUrl    string        `json:"avatarUrl,omitempty"`
+	Status       domain.Status `json:"status"`
+	CreatedAt    string        `json:"createdAt"`
+	UpdatedAt    string        `json:"updatedAt"`
 }
 
 type PatientInfoResponse struct {
 	BaseUserInfoResponse
-	PatientCode           string `json:"patientCode,omitempty"`
 	InsuranceNumber       string `json:"insuranceNumber,omitempty"`
 	CCCD                  string `json:"cccd,omitempty"`
 	EmergencyContactName  string `json:"emergencyContactName,omitempty"`

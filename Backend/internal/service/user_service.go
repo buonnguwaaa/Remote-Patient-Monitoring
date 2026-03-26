@@ -10,7 +10,6 @@ import (
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
 	repository "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecase"
-	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/util"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -372,7 +371,6 @@ func mergeInto(target map[string]interface{}, source map[string]interface{}) {
 func mapPatient(user *domain.Patient) *dto.PatientInfoResponse {
 	return &dto.PatientInfoResponse{
 		BaseUserInfoResponse:  mapBaseUser(user.BaseUser),
-		PatientCode:           util.GeneratePatientCode(user.ID),
 		InsuranceNumber:       user.InsuranceNumber,
 		CCCD:                  user.CCCD,
 		EmergencyContactName:  user.EmergencyContactName,
@@ -408,18 +406,19 @@ func mapNurse(user *domain.Nurse) *dto.NurseInfoResponse {
 
 func mapBaseUser(user domain.BaseUser) dto.BaseUserInfoResponse {
 	return dto.BaseUserInfoResponse{
-		ID:        user.ID.Hex(),
-		Name:      user.Name,
-		Email:     user.Email,
-		Provider:  user.Provider,
-		Role:      user.Role,
-		Gender:    user.Gender,
-		Dob:       formatDate(user.Dob),
-		Phone:     user.Phone,
-		AvatarUrl: user.AvatarUrl,
-		Status:    user.Status,
-		CreatedAt: formatDateTime(user.CreatedAt),
-		UpdatedAt: formatDateTime(user.UpdatedAt),
+		ID:           user.ID.Hex(),
+		UserPublicID: user.UserPublicID,
+		Name:         user.Name,
+		Email:        user.Email,
+		Provider:     user.Provider,
+		Role:         user.Role,
+		Gender:       user.Gender,
+		Dob:          formatDate(user.Dob),
+		Phone:        user.Phone,
+		AvatarUrl:    user.AvatarUrl,
+		Status:       user.Status,
+		CreatedAt:    formatDateTime(user.CreatedAt),
+		UpdatedAt:    formatDateTime(user.UpdatedAt),
 	}
 }
 
