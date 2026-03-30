@@ -37,6 +37,14 @@ definitions:
     - StatusPaused
     - StatusExpired
     - StatusCanceled
+  domain.Status:
+    enum:
+    - open
+    - ack
+    type: string
+    x-enum-varnames:
+    - StatusOpen
+    - StatusAck
   domain.Timing:
     enum:
     - pre
@@ -64,6 +72,16 @@ definitions:
         type: string
     required:
     - patientId
+    type: object
+  dto.CreateConversationRequest:
+    properties:
+      participantIds:
+        items:
+          type: string
+        minItems: 1
+        type: array
+    required:
+    - participantIds
     type: object
   dto.CreateMeasurementRequest:
     properties:
@@ -461,7 +479,7 @@ definitions:
   dto.UpdateUserStatusRequest:
     properties:
       status:
-        $ref: '#/definitions/user.Status'
+        $ref: '#/definitions/domain.Status'
     required:
     - status
     type: object
@@ -496,14 +514,6 @@ definitions:
     - RoleDoctor
     - RoleNurse
     - RoleAdmin
-  user.Status:
-    enum:
-    - active
-    - inactive
-    type: string
-    x-enum-varnames:
-    - StatusActive
-    - StatusInactive
 host: localhost:8080
 info:
   contact:
@@ -1087,6 +1097,189 @@ paths:
       summary: Reset Password
       tags:
       - auth
+  /chat/conversations:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: Number of conversations to retrieve
+        in: query
+        name: limit
+        type: integer
+      - description: Cursor for pagination
+        in: query
+        name: cursor
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Conversations retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get user conversations
+      tags:
+      - chat
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Conversation info
+        in: body
+        name: conversation
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateConversationRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Conversation created successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Create a new conversation
+      tags:
+      - chat
+  /chat/conversations/{id}/messages:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: Conversation ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Number of messages to retrieve
+        in: query
+        name: limit
+        type: integer
+      - description: Cursor for pagination
+        in: query
+        name: cursor
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get conversation messages
+      tags:
+      - chat
+  /chat/ws:
+    get:
+      consumes:
+      - application/json
+      description: Upgrade HTTP request to WebSocket for real-time messaging. Client
+        must send valid Bearer token and a conversationId query param.
+      parameters:
+      - description: Conversation ID (ObjectID)
+        in: query
+        name: conversationId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "101":
+          description: Switching Protocols
+          schema:
+            type: string
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Conversation not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Open chat WebSocket connection
+      tags:
+      - chat
   /departments:
     get:
       produces:
