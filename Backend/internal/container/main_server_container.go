@@ -7,25 +7,29 @@ import (
 	domain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/handler"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository"
+	chatRepository "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository/chat"
 	userRepository "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/service"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/util"
+	ws "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/ws"
 )
 
 // Container holds all the dependencies
 type MainServerContainer struct {
 	// Repositories
-	BaseUserRepo    userRepository.BaseUserRepository
-	PatientRepo     userRepository.PatientRepository
-	DoctorRepo      userRepository.StaffRepository[domain.Doctor]
-	NurseRepo       userRepository.StaffRepository[domain.Nurse]
-	TokenRepo       repository.TokenRepository
-	MeasurementRepo repository.MeasurementRepository
-	ThresholdRepo   repository.ThresholdRepository
-	AlertRepo       repository.AlertRepository
-	DepartmentRepo  repository.DepartmentRepository
-	AssignmentRepo  repository.AssignmentRepository
-	ReminderRepo    repository.ReminderRepository
+	BaseUserRepo     userRepository.BaseUserRepository
+	PatientRepo      userRepository.PatientRepository
+	DoctorRepo       userRepository.StaffRepository[domain.Doctor]
+	NurseRepo        userRepository.StaffRepository[domain.Nurse]
+	TokenRepo        repository.TokenRepository
+	MeasurementRepo  repository.MeasurementRepository
+	ThresholdRepo    repository.ThresholdRepository
+	AlertRepo        repository.AlertRepository
+	DepartmentRepo   repository.DepartmentRepository
+	AssignmentRepo   repository.AssignmentRepository
+	ReminderRepo     repository.ReminderRepository
+	ConversationRepo chatRepository.ConversationRepository
+	MessageRepo      chatRepository.MessageRepository
 
 	// Services
 	AuthService        service.AuthService
@@ -36,6 +40,7 @@ type MainServerContainer struct {
 	DepartmentService  service.DepartmentService
 	AssignmentService  service.AssignmentService
 	ReminderService    service.ReminderService
+	ChatService        service.ChatService
 
 	// Handlers
 	AuthHandler        *handler.AuthHandler
@@ -46,6 +51,11 @@ type MainServerContainer struct {
 	DepartmentHandler  *handler.DepartmentHandler
 	AssignmentHandler  *handler.AssignmentHandler
 	ReminderHandler    *handler.ReminderHandler
+	ChatHandler        *handler.ChatHandler
+
+	// WebSocket
+	WSChatHandler *ws.Handler
+	Hub           *ws.Hub
 
 	// Utils
 	JWTManager *util.JWTManager
@@ -75,6 +85,8 @@ func NewMainServerContainer() *MainServerContainer {
 	c.DepartmentRepo = repository.NewDepartmentRepository(db)
 	c.AssignmentRepo = repository.NewAssignmentRepository(db)
 	c.ReminderRepo = repository.NewReminderRepository(db)
+	c.ConversationRepo = chatRepository.NewConversationRepository(db)
+	c.MessageRepo = chatRepository.NewMessageRepository(db)
 
 	// Initialize services
 	c.AuthService = service.NewAuthService(c.BaseUserRepo, c.PatientRepo, c.DoctorRepo, c.NurseRepo, c.TokenRepo, c.JWTManager)
@@ -85,6 +97,7 @@ func NewMainServerContainer() *MainServerContainer {
 	c.DepartmentService = service.NewDepartmentService(c.DepartmentRepo, c.DoctorRepo, c.NurseRepo)
 	c.AssignmentService = service.NewAssignmentService(c.AssignmentRepo, c.BaseUserRepo)
 	c.ReminderService = service.NewReminderService(c.PatientRepo, c.ReminderRepo)
+	c.ChatService = service.NewChatService(c.ConversationRepo, c.MessageRepo)
 
 	// Initialize handlers
 	c.AuthHandler = handler.NewAuthHandler(c.AuthService)
@@ -94,6 +107,12 @@ func NewMainServerContainer() *MainServerContainer {
 	c.DepartmentHandler = handler.NewDepartmentHandler(c.DepartmentService)
 	c.AssignmentHandler = handler.NewAssignmentHandler(c.AssignmentService)
 	c.ReminderHandler = handler.NewReminderHandler(c.ReminderService)
+	c.ChatHandler = handler.NewChatHandler(c.ChatService)
+
+	// Initialize WebSocket
+	c.Hub = ws.NewHub()
+	go c.Hub.Run()
+	c.WSChatHandler = ws.NewHandler(c.Hub, c.ChatService)
 
 	// Cloudinary — log warning nếu chưa cấu hình
 	if cldClient, err := config.NewCloudinaryClient(); err != nil {
