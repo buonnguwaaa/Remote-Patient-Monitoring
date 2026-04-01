@@ -359,14 +359,16 @@ func (h *UserHandler) UpdateMyPatientProfile(c *gin.Context) {
 	defer cancel()
 
 	err := h.service.UpdatePatientProfile(ctx, &usecase.UpdatePatientProfileInput{
-		ID:                    userID.(string),
-		Name:                  req.Name,
-		Phone:                 req.Phone,
-		InsuranceNumber:       req.InsuranceNumber,
-		CCCD:                  req.CCCD,
-		EmergencyContactName:  req.EmergencyContactName,
-		EmergencyContactPhone: req.EmergencyContactPhone,
-		MedicalHistory:        req.MedicalHistory,
+		ID:    userID.(string),
+		Name:  req.Name,
+		Phone: req.Phone,
+		PatientProfileFieldsInput: usecase.PatientProfileFieldsInput{
+			InsuranceNumber:       req.InsuranceNumber,
+			CCCD:                  req.CCCD,
+			EmergencyContactName:  req.EmergencyContactName,
+			EmergencyContactPhone: req.EmergencyContactPhone,
+			MedicalHistory:        req.MedicalHistory,
+		},
 	})
 	if err != nil {
 		var validationErr *service.ValidationError
@@ -492,16 +494,18 @@ func (h *UserHandler) UpdatePatientByID(c *gin.Context) {
 	defer cancel()
 
 	input := &usecase.UpdateUserInfoInput{
-		ID:                    id,
-		Name:                  req.Name,
-		Email:                 req.Email,
-		Gender:                domain.Gender(req.Gender),
-		Phone:                 req.Phone,
-		InsuranceNumber:       req.InsuranceNumber,
-		CCCD:                  req.CCCD,
-		EmergencyContactName:  req.EmergencyContactName,
-		EmergencyContactPhone: req.EmergencyContactPhone,
-		MedicalHistory:        req.MedicalHistory,
+		ID:     id,
+		Name:   req.Name,
+		Email:  req.Email,
+		Gender: domain.Gender(req.Gender),
+		Phone:  req.Phone,
+		PatientProfileFieldsInput: usecase.PatientProfileFieldsInput{
+			InsuranceNumber:       req.InsuranceNumber,
+			CCCD:                  req.CCCD,
+			EmergencyContactName:  req.EmergencyContactName,
+			EmergencyContactPhone: req.EmergencyContactPhone,
+			MedicalHistory:        req.MedicalHistory,
+		},
 	}
 
 	if err := h.service.UpdatePatient(ctx, input); err != nil {
@@ -611,16 +615,20 @@ func (h *UserHandler) UpdateDoctorByID(c *gin.Context) {
 	defer cancel()
 
 	input := &usecase.UpdateUserInfoInput{
-		ID:                id,
-		Name:              req.Name,
-		Email:             req.Email,
-		Gender:            domain.Gender(req.Gender),
-		Phone:             req.Phone,
-		DepartmentID:      req.DepartmentID,
-		LicenseNumber:     req.LicenseNumber,
-		Workplace:         req.Workplace,
-		Specialization:    req.Specialization,
-		YearsOfExperience: req.YearsOfExperience,
+		ID:     id,
+		Name:   req.Name,
+		Email:  req.Email,
+		Gender: domain.Gender(req.Gender),
+		Phone:  req.Phone,
+		StaffFieldsInput: usecase.StaffFieldsInput{
+			DepartmentID:  req.DepartmentID,
+			LicenseNumber: req.LicenseNumber,
+			Workplace:     req.Workplace,
+		},
+		DoctorFieldsInput: usecase.DoctorFieldsInput{
+			Specialization:    req.Specialization,
+			YearsOfExperience: req.YearsOfExperience,
+		},
 	}
 
 	if err := h.service.UpdateDoctor(ctx, input); err != nil {
@@ -731,15 +739,19 @@ func (h *UserHandler) UpdateNurseByID(c *gin.Context) {
 	defer cancel()
 
 	input := &usecase.UpdateUserInfoInput{
-		ID:            id,
-		Name:          req.Name,
-		Email:         req.Email,
-		Gender:        domain.Gender(req.Gender),
-		Phone:         req.Phone,
-		DepartmentID:  req.DepartmentID,
-		LicenseNumber: req.LicenseNumber,
-		Workplace:     req.Workplace,
-		Ward:          req.Ward,
+		ID:     id,
+		Name:   req.Name,
+		Email:  req.Email,
+		Gender: domain.Gender(req.Gender),
+		Phone:  req.Phone,
+		StaffFieldsInput: usecase.StaffFieldsInput{
+			DepartmentID:  req.DepartmentID,
+			LicenseNumber: req.LicenseNumber,
+			Workplace:     req.Workplace,
+		},
+		NurseFieldsInput: usecase.NurseFieldsInput{
+			Ward: req.Ward,
+		},
 	}
 
 	if err := h.service.UpdateNurse(ctx, input); err != nil {

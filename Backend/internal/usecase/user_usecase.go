@@ -18,6 +18,29 @@ type GetUserByIDInput struct {
 	ID string
 }
 
+type StaffFieldsInput struct {
+	DepartmentID  string
+	LicenseNumber string
+	Workplace     string
+}
+
+type DoctorFieldsInput struct {
+	Specialization    string
+	YearsOfExperience int
+}
+
+type NurseFieldsInput struct {
+	Ward string
+}
+
+type PatientProfileFieldsInput struct {
+	InsuranceNumber       string
+	CCCD                  string
+	EmergencyContactName  string
+	EmergencyContactPhone string
+	MedicalHistory        string
+}
+
 type UpdateUserInfoInput struct {
 	ID        string
 	Name      string
@@ -25,21 +48,10 @@ type UpdateUserInfoInput struct {
 	Gender    domain.Gender
 	Phone     string
 	AvatarUrl string
-	// Shared staff fields
-	DepartmentID  string
-	LicenseNumber string
-	Workplace     string
-	// Doctor specific
-	Specialization    string
-	YearsOfExperience int
-	// Nurse specific
-	Ward string
-	// Patient specific
-	InsuranceNumber       string
-	CCCD                  string
-	EmergencyContactName  string
-	EmergencyContactPhone string
-	MedicalHistory        string
+	StaffFieldsInput
+	DoctorFieldsInput
+	NurseFieldsInput
+	PatientProfileFieldsInput
 }
 
 type UpdateUserStatusInput struct {
@@ -48,14 +60,10 @@ type UpdateUserStatusInput struct {
 }
 
 type UpdatePatientProfileInput struct {
-	ID                    string
-	Name                  string
-	Phone                 string
-	InsuranceNumber       string
-	CCCD                  string
-	EmergencyContactName  string
-	EmergencyContactPhone string
-	MedicalHistory        string
+	ID    string
+	Name  string
+	Phone string
+	PatientProfileFieldsInput
 }
 
 type DeleteUserInput struct {

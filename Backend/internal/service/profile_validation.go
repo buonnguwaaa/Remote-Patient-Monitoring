@@ -43,14 +43,18 @@ func normalizePhone(value string) string {
 	return replacer.Replace(strings.TrimSpace(value))
 }
 
-func sanitizePatientProfileInput(input *usecase.UpdatePatientProfileInput) {
-	input.Name = strings.TrimSpace(input.Name)
-	input.Phone = normalizePhone(input.Phone)
+func sanitizePatientProfileFields(input *usecase.PatientProfileFieldsInput) {
 	input.InsuranceNumber = strings.ToUpper(strings.TrimSpace(input.InsuranceNumber))
 	input.CCCD = strings.TrimSpace(input.CCCD)
 	input.EmergencyContactName = strings.TrimSpace(input.EmergencyContactName)
 	input.EmergencyContactPhone = normalizePhone(input.EmergencyContactPhone)
 	input.MedicalHistory = strings.TrimSpace(input.MedicalHistory)
+}
+
+func sanitizePatientProfileInput(input *usecase.UpdatePatientProfileInput) {
+	input.Name = strings.TrimSpace(input.Name)
+	input.Phone = normalizePhone(input.Phone)
+	sanitizePatientProfileFields(&input.PatientProfileFieldsInput)
 }
 
 func validatePatientProfileUpdate(input *usecase.UpdatePatientProfileInput) error {

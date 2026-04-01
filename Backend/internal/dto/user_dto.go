@@ -58,8 +58,7 @@ type UpdateUserStatusRequest struct {
 	Status domain.Status `json:"status" binding:"required"`
 }
 
-type UpdatePatientRequest struct {
-	UpdateBaseUserRequest
+type PatientProfileFieldsRequest struct {
 	InsuranceNumber       string `json:"insuranceNumber"`
 	CCCD                  string `json:"cccd"`
 	EmergencyContactName  string `json:"emergencyContactName"`
@@ -67,14 +66,15 @@ type UpdatePatientRequest struct {
 	MedicalHistory        string `json:"medicalHistory"`
 }
 
+type UpdatePatientRequest struct {
+	UpdateBaseUserRequest
+	PatientProfileFieldsRequest
+}
+
 type UpdateMyPatientProfileRequest struct {
-	Name                  string `json:"name" binding:"required"`
-	Phone                 string `json:"phone"`
-	InsuranceNumber       string `json:"insuranceNumber"`
-	CCCD                  string `json:"cccd"`
-	EmergencyContactName  string `json:"emergencyContactName"`
-	EmergencyContactPhone string `json:"emergencyContactPhone"`
-	MedicalHistory        string `json:"medicalHistory"`
+	Name  string `json:"name" binding:"required"`
+	Phone string `json:"phone"`
+	PatientProfileFieldsRequest
 }
 
 // UpdateMyPatientProfileRawRequest keeps backward-compatible detection for sensitive fields

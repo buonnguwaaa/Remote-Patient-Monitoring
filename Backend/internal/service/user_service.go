@@ -43,7 +43,12 @@ type UserService interface {
 	UpdateNurse(context.Context, *usecase.UpdateUserInfoInput) error
 }
 
-func NewUserService(baseUserRepo repository.BaseUserRepository, patientRepo repository.PatientRepository, nurseRepo repository.StaffRepository[domain.Nurse], doctorRepo repository.StaffRepository[domain.Doctor]) UserService {
+func NewUserService(
+	baseUserRepo repository.BaseUserRepository,
+	patientRepo repository.PatientRepository,
+	nurseRepo repository.StaffRepository[domain.Nurse],
+	doctorRepo repository.StaffRepository[domain.Doctor],
+) UserService {
 	return &userService{
 		baseUserRepo: baseUserRepo,
 		patientRepo:  patientRepo,
@@ -97,7 +102,7 @@ func (s *userService) UpdateBaseUser(ctx context.Context, input *usecase.UpdateU
 	}
 
 	updateData := buildBaseUpdateData(input)
-	return s.patientRepo.Update(ctx, objID, updateData)
+	return s.baseUserRepo.Update(ctx, objID, updateData)
 }
 
 func (s *userService) UpdateBaseUserStatus(ctx context.Context, input *usecase.UpdateUserStatusInput) error {
@@ -171,7 +176,7 @@ func (s *userService) UpdatePatient(ctx context.Context, input *usecase.UpdateUs
 	}
 
 	updateData := buildBaseUpdateData(input)
-	mergeInto(updateData, buildPatientUpdateData(input))
+	mergeInto(updateData, buildPatientUpdateData(&input.PatientProfileFieldsInput))
 
 	return s.patientRepo.Update(ctx, objID, updateData)
 }
@@ -186,16 +191,7 @@ func (s *userService) UpdatePatientProfile(ctx context.Context, input *usecase.U
 		return err
 	}
 
-	updateData := map[string]interface{}{
-		"name":                  input.Name,
-		"phone":                 input.Phone,
-		"insuranceNumber":       input.InsuranceNumber,
-		"cccd":                  input.CCCD,
-		"emergencyContactName":  input.EmergencyContactName,
-		"emergencyContactPhone": input.EmergencyContactPhone,
-		"medicalHistory":        input.MedicalHistory,
-	}
-
+	updateData := buildPatientProfileSelfUpdateData(input)
 	return s.patientRepo.Update(ctx, objID, updateData)
 }
 
@@ -244,18 +240,13 @@ func (s *userService) UpdateDoctor(ctx context.Context, input *usecase.UpdateUse
 	}
 
 	updateData := buildBaseUpdateData(input)
-	if value := strings.TrimSpace(input.Specialization); value != "" {
-		updateData["specialization"] = value
+
+	staffData, err := buildStaffUpdateData(&input.StaffFieldsInput)
+	if err != nil {
+		return err
 	}
-	if value := strings.TrimSpace(input.LicenseNumber); value != "" {
-		updateData["licenseNumber"] = value
-	}
-	if value := strings.TrimSpace(input.Workplace); value != "" {
-		updateData["workplace"] = value
-	}
-	if input.YearsOfExperience > 0 {
-		updateData["yearsOfExperience"] = input.YearsOfExperience
-	}
+	mergeInto(updateData, staffData)
+	mergeInto(updateData, buildDoctorUpdateData(&input.DoctorFieldsInput))
 
 	return s.doctorRepo.Update(ctx, objID, updateData)
 }
@@ -305,15 +296,13 @@ func (s *userService) UpdateNurse(ctx context.Context, input *usecase.UpdateUser
 	}
 
 	updateData := buildBaseUpdateData(input)
-	if value := strings.TrimSpace(input.LicenseNumber); value != "" {
-		updateData["licenseNumber"] = value
+
+	staffData, err := buildStaffUpdateData(&input.StaffFieldsInput)
+	if err != nil {
+		return err
 	}
-	if value := strings.TrimSpace(input.Workplace); value != "" {
-		updateData["workplace"] = value
-	}
-	if value := strings.TrimSpace(input.Ward); value != "" {
-		updateData["ward"] = value
-	}
+	mergeInto(updateData, staffData)
+	mergeInto(updateData, buildNurseUpdateData(&input.NurseFieldsInput))
 
 	return s.nurseRepo.Update(ctx, objID, updateData)
 }
@@ -340,7 +329,7 @@ func buildBaseUpdateData(input *usecase.UpdateUserInfoInput) map[string]interfac
 	return updateData
 }
 
-func buildPatientUpdateData(input *usecase.UpdateUserInfoInput) map[string]interface{} {
+func buildPatientUpdateData(input *usecase.PatientProfileFieldsInput) map[string]interface{} {
 	updateData := make(map[string]interface{})
 
 	if value := strings.TrimSpace(input.InsuranceNumber); value != "" {
@@ -357,6 +346,63 @@ func buildPatientUpdateData(input *usecase.UpdateUserInfoInput) map[string]inter
 	}
 	if value := strings.TrimSpace(input.MedicalHistory); value != "" {
 		updateData["medicalHistory"] = value
+	}
+
+	return updateData
+}
+
+func buildPatientProfileSelfUpdateData(input *usecase.UpdatePatientProfileInput) map[string]interface{} {
+	updateData := make(map[string]interface{})
+
+	if value := strings.TrimSpace(input.Name); value != "" {
+		updateData["name"] = value
+	}
+	if value := strings.TrimSpace(input.Phone); value != "" {
+		updateData["phone"] = value
+	}
+
+	mergeInto(updateData, buildPatientUpdateData(&input.PatientProfileFieldsInput))
+	return updateData
+}
+
+func buildStaffUpdateData(input *usecase.StaffFieldsInput) (map[string]interface{}, error) {
+	updateData := make(map[string]interface{})
+
+	if value := strings.TrimSpace(input.DepartmentID); value != "" {
+		departmentID, err := primitive.ObjectIDFromHex(value)
+		if err != nil {
+			return nil, err
+		}
+		updateData["departmentID"] = departmentID
+	}
+	if value := strings.TrimSpace(input.LicenseNumber); value != "" {
+		updateData["licenseNumber"] = value
+	}
+	if value := strings.TrimSpace(input.Workplace); value != "" {
+		updateData["workplace"] = value
+	}
+
+	return updateData, nil
+}
+
+func buildDoctorUpdateData(input *usecase.DoctorFieldsInput) map[string]interface{} {
+	updateData := make(map[string]interface{})
+
+	if value := strings.TrimSpace(input.Specialization); value != "" {
+		updateData["specialization"] = value
+	}
+	if input.YearsOfExperience > 0 {
+		updateData["yearsOfExperience"] = input.YearsOfExperience
+	}
+
+	return updateData
+}
+
+func buildNurseUpdateData(input *usecase.NurseFieldsInput) map[string]interface{} {
+	updateData := make(map[string]interface{})
+
+	if value := strings.TrimSpace(input.Ward); value != "" {
+		updateData["ward"] = value
 	}
 
 	return updateData
