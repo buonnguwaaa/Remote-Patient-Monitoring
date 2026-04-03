@@ -8,6 +8,7 @@ import {
   MdPerson,
   MdPhoneInTalk,
   MdContactEmergency,
+  MdNotificationsActive,
   MdShowChart,
   MdDateRange,
 } from "react-icons/md";
@@ -288,7 +289,14 @@ const PatientDetailPage = () => {
                   {mapStatusLabel(patient.status)}
                 </span>
               </div>
-              <div className="mt-4 flex justify-center sm:justify-start">
+              <div className="mt-4 flex flex-wrap justify-center sm:justify-start gap-3">
+                <button
+                  onClick={() => navigate(`/reminders?patientId=${patientId}`)}
+                  className="inline-flex items-center rounded-xl border border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/30 px-4 py-2 text-sm font-medium text-blue-700 dark:text-blue-300 transition hover:bg-blue-100 dark:hover:bg-blue-900/50"
+                >
+                  <MdNotificationsActive className="mr-2" size={18} />
+                  Quản lý nhắc nhở
+                </button>
                 <button
                   onClick={() => navigate(`/patient/chat/${patientId}`)}
                   className="relative group p-1"
