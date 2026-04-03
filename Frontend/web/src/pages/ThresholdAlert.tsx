@@ -321,11 +321,11 @@ const ThresholdAlert = () => {
     if (alert.status === "ack") {
       return (
         <div>
-          <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-800">
+          <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-800 dark:bg-emerald-500/15 dark:text-emerald-300 dark:ring-1 dark:ring-emerald-500/25">
             <FaCheckCircle />
             Đã xác nhận
           </span>
-          <div className="mt-1 text-xs text-gray-500">
+          <div className="mt-1 text-xs text-gray-500 dark:text-slate-400">
             {alert.acknowledgedByName || alert.acknowledgedBy || "Đã xử lý"}
           </div>
         </div>
@@ -333,7 +333,7 @@ const ThresholdAlert = () => {
     }
 
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-800">
+      <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-800 dark:bg-slate-700/80 dark:text-slate-200 dark:ring-1 dark:ring-slate-600">
         <FaRegClock />
         Chờ xử lý
       </span>
@@ -345,7 +345,7 @@ const ThresholdAlert = () => {
 
   return (
     <>
-      <div className="p-6 bg-gray-50 dark:bg-slate-900 min-h-screen">
+      <div className="min-h-screen bg-gray-50 p-6 dark:bg-slate-950">
         <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-800 dark:text-slate-100">Quản Lý Cảnh Báo</h1>
@@ -367,31 +367,31 @@ const ThresholdAlert = () => {
         </div>
 
         <div className="mb-6 grid gap-4 md:grid-cols-4">
-          <div className="rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-sm">
+          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
             <div className="text-sm text-slate-500 dark:text-slate-400">Tổng cảnh báo</div>
             <div className="mt-2 text-3xl font-bold text-slate-900 dark:text-slate-100">{stats.total}</div>
             <div className="mt-4 text-xs text-slate-500 dark:text-slate-400">
               {lastUpdated ? `Cập nhật lúc ${formatDate(lastUpdated)}` : "Chưa đồng bộ"}
             </div>
           </div>
-          <div className="rounded-3xl border border-red-100 dark:border-red-800 bg-gradient-to-br from-red-50 dark:from-red-900/30 to-white dark:to-slate-800 p-5 shadow-sm">
+          <div className="rounded-3xl border border-red-100 bg-red-50/70 p-5 shadow-sm dark:border-red-900/60 dark:bg-slate-900 dark:shadow-none">
             <div className="text-sm text-red-600 dark:text-red-400">Mức cao</div>
             <div className="mt-2 text-3xl font-bold text-red-700 dark:text-red-300">{stats.high}</div>
             <div className="mt-4 text-xs text-red-500 dark:text-red-400">Cần ưu tiên xử lý sớm</div>
           </div>
-          <div className="rounded-3xl border border-amber-100 dark:border-amber-800 bg-gradient-to-br from-amber-50 dark:from-amber-900/30 to-white dark:to-slate-800 p-5 shadow-sm">
+          <div className="rounded-3xl border border-amber-100 bg-amber-50/70 p-5 shadow-sm dark:border-amber-900/60 dark:bg-slate-900 dark:shadow-none">
             <div className="text-sm text-amber-700 dark:text-amber-300">Chờ xử lý</div>
             <div className="mt-2 text-3xl font-bold text-amber-800 dark:text-amber-200">{stats.open}</div>
             <div className="mt-4 text-xs text-amber-600 dark:text-amber-400">Chưa được acknowledge</div>
           </div>
-          <div className="rounded-3xl border border-green-100 dark:border-green-800 bg-gradient-to-br from-green-50 dark:from-green-900/30 to-white dark:to-slate-800 p-5 shadow-sm">
+          <div className="rounded-3xl border border-green-100 bg-green-50/70 p-5 shadow-sm dark:border-emerald-900/60 dark:bg-slate-900 dark:shadow-none">
             <div className="text-sm text-green-700 dark:text-green-300">Đã xác nhận</div>
             <div className="mt-2 text-3xl font-bold text-green-800 dark:text-green-200">{stats.ack}</div>
             <div className="mt-4 text-xs text-green-600 dark:text-green-400">Đã có người xử lý</div>
           </div>
         </div>
 
-        <div className="mb-6 flex flex-wrap gap-4 rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">
+        <div className="mb-6 flex flex-wrap gap-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
           <div className="flex items-center gap-2">
             <label className="text-sm font-medium text-gray-700 dark:text-slate-300">Trạng thái:</label>
             <select
@@ -423,10 +423,10 @@ const ThresholdAlert = () => {
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-3xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm">
+        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
-              <thead className="bg-gray-50 dark:bg-slate-700">
+              <thead className="bg-gray-50 dark:bg-slate-800">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-300">
                     Bệnh nhân
@@ -448,7 +448,7 @@ const ThresholdAlert = () => {
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-slate-700 bg-white dark:bg-slate-800">
+              <tbody className="divide-y divide-gray-200 bg-white dark:divide-slate-800 dark:bg-slate-900">
                 {loading ? (
                   <tr>
                     <td colSpan={6} className="px-6 py-10 text-center text-gray-500 dark:text-slate-400">
@@ -465,10 +465,10 @@ const ThresholdAlert = () => {
                   filteredAlerts.map((alert) => {
                     const messageCount = messageThreads[alert.id]?.length || 0;
                     return (
-                      <tr key={alert.id} className="transition-colors hover:bg-slate-50">
+                      <tr key={alert.id} className="transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/70">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
-                            <div className="mr-3 flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-blue-100 text-sm font-semibold text-blue-700">
+                            <div className="mr-3 flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-blue-100 text-sm font-semibold text-blue-700 dark:bg-blue-500/15 dark:text-blue-200">
                               {alert.patientAvatarUrl ? (
                                 <img
                                   src={alert.patientAvatarUrl}
@@ -480,10 +480,10 @@ const ThresholdAlert = () => {
                               )}
                             </div>
                             <div>
-                              <div className="text-sm font-medium text-gray-900">
+                              <div className="text-sm font-medium text-gray-900 dark:text-slate-100">
                                 {alert.patientName || alert.patientId}
                               </div>
-                              <div className="text-xs text-gray-500">ID: {alert.patientId}</div>
+                              <div className="text-xs text-gray-500 dark:text-slate-400">ID: {alert.patientId}</div>
                             </div>
                           </div>
                         </td>
@@ -492,11 +492,11 @@ const ThresholdAlert = () => {
                           <div className="space-y-1.5">
                             {alert.violations.map((violation, index) => (
                               <div key={`${alert.id}-${index}`} className="text-sm">
-                                <span className="font-medium text-gray-700">
+                                <span className="font-medium text-gray-700 dark:text-slate-200">
                                   {getViolationLabel(violation.type)}:
                                 </span>{" "}
-                                <span className="font-semibold text-red-600">{violation.observed}</span>
-                                <span className="ml-1 text-xs text-gray-500">
+                                <span className="font-semibold text-red-600 dark:text-red-300">{violation.observed}</span>
+                                <span className="ml-1 text-xs text-gray-500 dark:text-slate-400">
                                   (Ngưỡng: {violation.threshold})
                                 </span>
                               </div>
@@ -506,12 +506,12 @@ const ThresholdAlert = () => {
 
                         <td className="px-6 py-4 text-center">
                           {alert.severity === "high" ? (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-800">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-800 dark:bg-red-500/15 dark:text-red-300 dark:ring-1 dark:ring-red-500/25">
                               <FaExclamationTriangle />
                               Nghiêm trọng
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800 dark:bg-amber-500/15 dark:text-amber-200 dark:ring-1 dark:ring-amber-500/25">
                               <FaInfoCircle />
                               Thông tin
                             </span>
@@ -520,10 +520,10 @@ const ThresholdAlert = () => {
 
                         <td className="px-6 py-4 text-center">{renderStatusBadge(alert)}</td>
 
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-slate-300">
                           <div>{formatDate(alert.createdAt)}</div>
                           {alert.acknowledgedAt && (
-                            <div className="mt-1 text-xs text-green-600">
+                            <div className="mt-1 text-xs text-green-600 dark:text-emerald-300">
                               Đã xác nhận lúc: {formatDate(alert.acknowledgedAt)}
                             </div>
                           )}
@@ -545,12 +545,12 @@ const ThresholdAlert = () => {
                             <button
                               type="button"
                               onClick={() => handleOpenMessageDrawer(alert)}
-                              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+                              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 dark:border-slate-600 dark:bg-slate-700/70 dark:text-slate-100 dark:hover:border-blue-400/40 dark:hover:bg-slate-700 dark:hover:text-blue-200"
                             >
                               <FaCommentDots />
                               Tin nhắn
                               {messageCount > 0 && (
-                                <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700">
+                                <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700 dark:bg-blue-500/20 dark:text-blue-200">
                                   {messageCount}
                                 </span>
                               )}
@@ -568,11 +568,11 @@ const ThresholdAlert = () => {
 
         {showResolveModal && currentAlert && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
-            <div className="w-full max-w-2xl rounded-[28px] bg-white shadow-2xl">
-              <div className="flex items-start justify-between border-b border-slate-200 p-6">
+            <div className="w-full max-w-2xl rounded-[28px] bg-white shadow-2xl dark:bg-slate-900 dark:ring-1 dark:ring-slate-700/80">
+              <div className="flex items-start justify-between border-b border-slate-200 p-6 dark:border-slate-700">
                 <div>
-                  <h3 className="text-xl font-semibold text-slate-900">Xác nhận & nhắn bệnh nhân</h3>
-                  <p className="mt-1 text-sm text-slate-500">
+                  <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Xác nhận & nhắn bệnh nhân</h3>
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                     Xử lý cảnh báo của {currentAlert.patientName || currentAlert.patientId} và gửi hướng dẫn
                     ngay nếu cần.
                   </p>
@@ -580,35 +580,35 @@ const ThresholdAlert = () => {
                 <button
                   type="button"
                   onClick={closeResolveModal}
-                  className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                  className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
                 >
                   <FaTimes size={18} />
                 </button>
               </div>
 
               <div className="space-y-5 p-6">
-                <div className="rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-5">
+                <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-950">
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
-                      <div className="text-xs font-medium uppercase tracking-[0.2em] text-slate-400">Bệnh nhân</div>
-                      <div className="mt-2 text-lg font-semibold text-slate-900">
+                      <div className="text-xs font-medium uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Bệnh nhân</div>
+                      <div className="mt-2 text-lg font-semibold text-slate-900 dark:text-slate-100">
                         {currentAlert.patientName || currentAlert.patientId}
                       </div>
-                      <div className="mt-1 text-sm text-slate-500">Alert ID: {currentAlert.id}</div>
+                      <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">Alert ID: {currentAlert.id}</div>
                     </div>
 
                     <div className="flex flex-wrap gap-2">
                       <span
                         className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${
                           currentAlert.severity === "high"
-                            ? "bg-red-100 text-red-700"
-                            : "bg-amber-100 text-amber-700"
+                            ? "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300 dark:ring-1 dark:ring-red-500/25"
+                            : "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-200 dark:ring-1 dark:ring-amber-500/25"
                         }`}
                       >
                         {currentAlert.severity === "high" ? <FaExclamationTriangle /> : <FaInfoCircle />}
                         {currentAlert.severity === "high" ? "Nghiêm trọng" : "Thông tin"}
                       </span>
-                      <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+                      <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600 dark:bg-slate-700/80 dark:text-slate-200 dark:ring-1 dark:ring-slate-600">
                         Đo lúc {formatDate(currentAlert.createdAt)}
                       </span>
                     </div>
@@ -616,34 +616,34 @@ const ThresholdAlert = () => {
 
                   <div className="mt-4 grid gap-3 md:grid-cols-2">
                     {getPrimaryViolations(currentAlert).map((violation, index) => (
-                      <div key={`${currentAlert.id}-summary-${index}`} className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
-                        <div className="text-sm font-medium text-slate-700">{getViolationLabel(violation.type)}</div>
-                        <div className="mt-2 text-lg font-semibold text-red-600">{violation.observed}</div>
-                        <div className="text-xs text-slate-500">Ngưỡng tham chiếu: {violation.threshold}</div>
+                      <div key={`${currentAlert.id}-summary-${index}`} className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800 dark:shadow-none">
+                        <div className="text-sm font-medium text-slate-700 dark:text-slate-200">{getViolationLabel(violation.type)}</div>
+                        <div className="mt-2 text-lg font-semibold text-red-600 dark:text-red-300">{violation.observed}</div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400">Ngưỡng tham chiếu: {violation.threshold}</div>
                       </div>
                     ))}
                   </div>
 
                   {currentAlert.violations.length > 2 && (
-                    <div className="mt-3 text-xs text-slate-500">
+                    <div className="mt-3 text-xs text-slate-500 dark:text-slate-400">
                       Còn {currentAlert.violations.length - 2} vi phạm khác sẽ tiếp tục hiển thị trong danh sách
                       chính.
                     </div>
                   )}
                 </div>
 
-                <div className="rounded-3xl border border-slate-200 bg-white p-5">
+                <div className="rounded-3xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800/70">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <div className="text-sm font-semibold text-slate-800">Lời nhắn gửi bệnh nhân</div>
-                      <div className="mt-1 text-sm text-slate-500">
+                      <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">Lời nhắn gửi bệnh nhân</div>
+                      <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                         Có thể dùng mẫu nhanh rồi chỉnh lại cho phù hợp từng ca.
                       </div>
                     </div>
                     <button
                       type="button"
                       onClick={() => handleOpenMessageDrawer(currentAlert)}
-                      className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+                      className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 dark:border-slate-600 dark:text-slate-200 dark:hover:border-blue-400/40 dark:hover:bg-slate-700 dark:hover:text-blue-200"
                     >
                       <FaCommentDots />
                       Xem lịch sử
@@ -656,7 +656,7 @@ const ThresholdAlert = () => {
                         key={template}
                         type="button"
                         onClick={() => setDraftMessage(template)}
-                        className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 transition hover:border-blue-200 hover:bg-blue-100"
+                        className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 transition hover:border-blue-200 hover:bg-blue-100 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-200 dark:hover:border-blue-400/40 dark:hover:bg-blue-500/20"
                       >
                         {template}
                       </button>
@@ -668,26 +668,26 @@ const ThresholdAlert = () => {
                     onChange={(event) => setDraftMessage(event.target.value)}
                     rows={5}
                     placeholder="Nhập hướng dẫn cho bệnh nhân..."
-                    className="mt-4 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                    className="mt-4 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100 dark:border-slate-600 dark:bg-slate-900/80 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-blue-500/20"
                   />
 
-                  <label className="mt-4 flex items-center gap-3 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                  <label className="mt-4 flex items-center gap-3 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                     <input
                       type="checkbox"
                       checked={sendToPatient}
                       onChange={(event) => setSendToPatient(event.target.checked)}
-                      className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                      className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-500 dark:bg-slate-900"
                     />
                     Gửi cho bệnh nhân ngay sau khi xác nhận
                   </label>
                 </div>
               </div>
 
-              <div className="flex flex-col gap-3 rounded-b-[28px] border-t border-slate-200 bg-slate-50 p-5 sm:flex-row">
+              <div className="flex flex-col gap-3 rounded-b-[28px] border-t border-slate-200 bg-slate-50 p-5 sm:flex-row dark:border-slate-700 dark:bg-slate-900/80">
                 <button
                   type="button"
                   onClick={closeResolveModal}
-                  className="flex-1 rounded-2xl bg-white px-4 py-3 font-medium text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-100"
+                  className="flex-1 rounded-2xl bg-white px-4 py-3 font-medium text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-100 dark:ring-slate-700 dark:hover:bg-slate-700"
                 >
                   Hủy
                 </button>
@@ -712,41 +712,41 @@ const ThresholdAlert = () => {
         )}
         {showMessageDrawer && currentAlert && (
           <div className="fixed inset-0 z-40 bg-slate-950/35 backdrop-blur-sm">
-            <div className="absolute inset-y-0 right-0 flex w-full max-w-xl flex-col bg-white shadow-2xl">
-              <div className="flex items-start justify-between border-b border-slate-200 p-6">
+            <div className="absolute inset-y-0 right-0 flex w-full max-w-xl flex-col bg-white shadow-2xl dark:bg-slate-900 dark:ring-1 dark:ring-slate-700/80">
+              <div className="flex items-start justify-between border-b border-slate-200 p-6 dark:border-slate-700">
                 <div>
-                  <div className="text-xs font-medium uppercase tracking-[0.2em] text-slate-400">Lịch sử nhắn</div>
-                  <h3 className="mt-2 text-xl font-semibold text-slate-900">
+                  <div className="text-xs font-medium uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Lịch sử nhắn</div>
+                  <h3 className="mt-2 text-xl font-semibold text-slate-900 dark:text-slate-100">
                     {currentAlert.patientName || currentAlert.patientId}
                   </h3>
-                  <p className="mt-1 text-sm text-slate-500">
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                     Xem lại trao đổi quanh cảnh báo này và chỉnh sửa lời nhắn bác sĩ khi cần.
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowMessageDrawer(false)}
-                  className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                  className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
                 >
                   <FaTimes size={18} />
                 </button>
               </div>
 
-              <div className="border-b border-slate-200 bg-slate-50 px-6 py-4">
-                <div className="rounded-2xl bg-white p-4 ring-1 ring-slate-100">
+              <div className="border-b border-slate-200 bg-slate-50 px-6 py-4 dark:border-slate-700 dark:bg-slate-900/70">
+                <div className="rounded-2xl bg-white p-4 ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <div className="text-sm font-semibold text-slate-800">Alert đang xem</div>
-                      <div className="mt-1 text-xs text-slate-500">Đo lúc {formatDate(currentAlert.createdAt)}</div>
+                      <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">Alert đang xem</div>
+                      <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">Đo lúc {formatDate(currentAlert.createdAt)}</div>
                     </div>
-                    <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700">
+                    <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700 dark:bg-blue-500/20 dark:text-blue-200">
                       {currentMessages.length} tin nhắn
                     </span>
                   </div>
 
                   {latestMessage && (
-                    <div className="mt-3 rounded-2xl bg-slate-50 p-3 text-sm text-slate-600">
-                      <span className="font-medium text-slate-800">Tin gần nhất:</span> {latestMessage.content}
+                    <div className="mt-3 rounded-2xl bg-slate-50 p-3 text-sm text-slate-600 dark:bg-slate-700/60 dark:text-slate-300">
+                      <span className="font-medium text-slate-800 dark:text-slate-100">Tin gần nhất:</span> {latestMessage.content}
                     </div>
                   )}
                 </div>
@@ -754,7 +754,7 @@ const ThresholdAlert = () => {
 
               <div className="flex-1 space-y-4 overflow-y-auto px-6 py-6">
                 {currentMessages.length === 0 ? (
-                  <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center text-sm text-slate-500">
+                  <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-400">
                     Chưa có lời nhắn nào cho cảnh báo này.
                   </div>
                 ) : (
@@ -769,13 +769,13 @@ const ThresholdAlert = () => {
                           className={`max-w-[85%] rounded-3xl px-4 py-4 shadow-sm ring-1 ${
                             isDoctor
                               ? "bg-blue-600 text-white ring-blue-500/20"
-                              : "bg-white text-slate-700 ring-slate-200"
+                              : "bg-white text-slate-700 ring-slate-200 dark:bg-slate-800 dark:text-slate-100 dark:ring-slate-700"
                           }`}
                         >
                           <div className="flex items-center gap-2 text-xs font-medium">
                             <span
                               className={`inline-flex h-7 w-7 items-center justify-center rounded-full ${
-                                isDoctor ? "bg-white/15 text-white" : "bg-emerald-100 text-emerald-700"
+                                isDoctor ? "bg-white/15 text-white" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"
                               }`}
                             >
                               {isDoctor ? <FaUserMd /> : <FaUser />}
@@ -788,12 +788,12 @@ const ThresholdAlert = () => {
                             )}
                           </div>
 
-                          <div className={`mt-3 text-sm leading-6 ${isDoctor ? "text-white" : "text-slate-700"}`}>
+                          <div className={`mt-3 text-sm leading-6 ${isDoctor ? "text-white" : "text-slate-700 dark:text-slate-100"}`}>
                             {message.content}
                           </div>
 
                           <div className="mt-3 flex items-center justify-between gap-3">
-                            <div className={`text-xs ${isDoctor ? "text-blue-100" : "text-slate-400"}`}>
+                            <div className={`text-xs ${isDoctor ? "text-blue-100" : "text-slate-400 dark:text-slate-500"}`}>
                               {formatDate(message.createdAt)}
                               {message.updatedAt && ` • Sửa ${formatDate(message.updatedAt)}`}
                             </div>
@@ -820,7 +820,7 @@ const ThresholdAlert = () => {
                 )}
               </div>
 
-              <div className="border-t border-slate-200 bg-white px-6 py-4">
+              <div className="border-t border-slate-200 bg-white px-6 py-4 dark:border-slate-700 dark:bg-slate-900/80">
                 <button
                   type="button"
                   onClick={() => {
@@ -839,45 +839,45 @@ const ThresholdAlert = () => {
 
         {showEditModal && editingMessage && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
-            <div className="w-full max-w-lg rounded-[28px] bg-white shadow-2xl">
-              <div className="flex items-start justify-between border-b border-slate-200 p-5">
+            <div className="w-full max-w-lg rounded-[28px] bg-white shadow-2xl dark:bg-slate-900 dark:ring-1 dark:ring-slate-700/80">
+              <div className="flex items-start justify-between border-b border-slate-200 p-5 dark:border-slate-700">
                 <div>
-                  <h3 className="text-lg font-semibold text-slate-900">Chỉnh sửa lời nhắn</h3>
-                  <p className="mt-1 text-sm text-slate-500">
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Chỉnh sửa lời nhắn</h3>
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                     Nội dung mới sẽ cập nhật trong lịch sử trao đổi của cảnh báo này.
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={closeEditModal}
-                  className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                  className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
                 >
                   <FaTimes size={18} />
                 </button>
               </div>
 
               <div className="space-y-4 p-5">
-                <div className="rounded-2xl bg-slate-50 p-4">
-                  <div className="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">Nội dung cũ</div>
-                  <div className="mt-2 text-sm leading-6 text-slate-700">{editingMessage.message.content}</div>
+                <div className="rounded-2xl bg-slate-50 p-4 dark:bg-slate-800">
+                  <div className="text-xs font-medium uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">Nội dung cũ</div>
+                  <div className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-100">{editingMessage.message.content}</div>
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">Nội dung chỉnh sửa</label>
+                  <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">Nội dung chỉnh sửa</label>
                   <textarea
                     value={editedMessageContent}
                     onChange={(event) => setEditedMessageContent(event.target.value)}
                     rows={5}
-                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100 dark:border-slate-600 dark:bg-slate-900/80 dark:text-slate-100 dark:focus:ring-blue-500/20"
                   />
                 </div>
               </div>
 
-              <div className="flex gap-3 rounded-b-[28px] border-t border-slate-200 bg-slate-50 p-5">
+              <div className="flex gap-3 rounded-b-[28px] border-t border-slate-200 bg-slate-50 p-5 dark:border-slate-700 dark:bg-slate-900/80">
                 <button
                   type="button"
                   onClick={closeEditModal}
-                  className="flex-1 rounded-2xl bg-white px-4 py-3 font-medium text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-100"
+                  className="flex-1 rounded-2xl bg-white px-4 py-3 font-medium text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-100 dark:ring-slate-700 dark:hover:bg-slate-700"
                 >
                   Hủy
                 </button>

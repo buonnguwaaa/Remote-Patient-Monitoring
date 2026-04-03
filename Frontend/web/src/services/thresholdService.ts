@@ -151,3 +151,7 @@ export const updateThreshold = async (id: string, payload: ThresholdPayload) => 
 
   return mapThreshold(response.data.data);
 };
+
+export const deleteThreshold = async (id: string) => {
+  await api.delete(`/thresholds/${id}`);
+};

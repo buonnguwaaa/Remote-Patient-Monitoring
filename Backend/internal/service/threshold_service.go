@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
@@ -23,6 +24,7 @@ type ThresholdService interface {
 	CreateThreshold(context.Context, *usecase.CreateThresholdInput) (*dto.ThresholdResponse, error)
 	UpdateThreshold(context.Context, *usecase.UpdateThresholdInput) (*dto.ThresholdResponse, error)
 	GetThresholds(context.Context, *usecase.GetThresholdsInput) ([]dto.ThresholdResponse, error)
+	DeleteThreshold(context.Context, *usecase.DeleteThresholdInput) error
 }
 
 func NewThresholdService(patientRepo userRepository.PatientRepository, doctorRepo userRepository.StaffRepository[userDomain.Doctor], thresholdRepo repository.ThresholdRepository) ThresholdService {
@@ -194,4 +196,41 @@ func (s *thresholdService) UpdateThreshold(ctx context.Context, input *usecase.U
 		CreatedAt:          updated.CreatedAt,
 		UpdatedAt:          updated.UpdatedAt,
 	}, nil
+}
+
+func (s *thresholdService) DeleteThreshold(ctx context.Context, input *usecase.DeleteThresholdInput) error {
+	id, err := util.MustHexToObjectID(input.ID)
+	if err != nil {
+		return err
+	}
+
+	threshold, err := s.thresholdRepo.FindByID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	if input.DoctorID != "" {
+		doctorID, err := util.MustHexToObjectID(input.DoctorID)
+		if err != nil {
+			return err
+		}
+		if threshold.DoctorID != doctorID {
+			return errors.New("you do not have permission to delete this threshold")
+		}
+	}
+
+	activeThresholds, err := s.thresholdRepo.FindWithFilter(ctx, repository.ThresholdFilter{
+		PatientID: threshold.PatientID.Hex(),
+		DoctorID:  threshold.DoctorID.Hex(),
+		IsLatest:  true,
+	})
+	if err != nil {
+		return err
+	}
+
+	if len(activeThresholds) > 0 && activeThresholds[0].ID == threshold.ID {
+		return errors.New("cannot delete the active threshold")
+	}
+
+	return s.thresholdRepo.DeleteByID(ctx, id)
 }

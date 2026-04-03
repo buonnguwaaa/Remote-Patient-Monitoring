@@ -7,6 +7,7 @@ import Toast from "../components/ui/Toast";
 import AvatarUploader from "../components/ui/AvatarUploader";
 import type { Nurse } from "../types";
 import { mapGenderToDisplay, mapGenderToApi } from "../utils/genderConverter";
+import { adminPrimaryButtonClass, adminSecondaryButtonClass } from "../styles/buttonStyles";
 
 const NurseManagement: React.FC = () => {
   const [nurses, setNurses] = useState<Nurse[]>([]);
@@ -151,7 +152,7 @@ const NurseManagement: React.FC = () => {
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-2">Tổng số: {nurses.length} y tá</p>
         </div>
-        <button onClick={handleAdd} className="flex items-center bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition">
+        <button onClick={handleAdd} className={adminPrimaryButtonClass}>
           <FaPlus className="mr-2" />Thêm y tá
         </button>
       </div>
@@ -278,8 +279,8 @@ const NurseManagement: React.FC = () => {
                 )}
               </div>
               <div className="flex justify-end space-x-3 mt-6">
-                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 border border-gray-300 dark:border-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">Hủy</button>
-                <button type="submit" className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">{editingNurse ? "Cập nhật" : "Thêm mới"}</button>
+                <button type="button" onClick={() => setShowModal(false)} className={adminSecondaryButtonClass}>Hủy</button>
+                <button type="submit" className={adminPrimaryButtonClass}>{editingNurse ? "Cập nhật" : "Thêm mới"}</button>
               </div>
             </form>
           </div>

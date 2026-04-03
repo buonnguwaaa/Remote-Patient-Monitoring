@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FaArrowTrendUp,
@@ -16,23 +16,18 @@ import {
 import { BsCalendar3 } from "react-icons/bs";
 import Chart from "../components/ui/Chart";
 import { mockAlerts } from "../data/mockData";
+import { getMyPatients } from "../services/patientService";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface KpiDef {
   label: string;
   value: string;
-  change: number;
-  up: boolean;
+  change?: number;
+  up?: boolean;
   Icon: React.ElementType;
 }
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
-const kpis: KpiDef[] = [
-  { label: "Tổng bệnh nhân", value: "1,200", change: 15.8, up: true,  Icon: FaUserFriends },
-  { label: "Đang ổn định",   value: "850",   change: 34.0, up: true,  Icon: FaHeartbeat },
-  { label: "Cần chú ý",      value: "300",   change: 24.2, up: false, Icon: FaEye },
-];
-
 const violationLabel: Record<string, string> = {
   systolic:       "HA tâm thu",
   diastolic:      "HA tâm trương",
@@ -72,7 +67,9 @@ const KpiCard: React.FC<KpiDef> = ({ label, value, change, up, Icon }) => (
       <span className="text-3xl font-bold text-gray-900 dark:text-white leading-none">
         {value}
       </span>
-      <Badge value={change} up={up} />
+      {typeof change === "number" && typeof up === "boolean" && (
+        <Badge value={change} up={up} />
+      )}
     </div>
   </div>
 );
@@ -181,8 +178,41 @@ const RecentAlerts: React.FC = () => {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 const DashBoard = () => {
+  const [patientCount, setPatientCount] = useState<number | null | undefined>(undefined);
   const now = new Date();
   const dateRange = `${now.toLocaleDateString("vi-VN", { day: "2-digit", month: "short" })}`;
+
+  useEffect(() => {
+    const loadMyPatients = async () => {
+      try {
+        const assignments = await getMyPatients();
+        setPatientCount(assignments.length);
+      } catch (error) {
+        console.error("Failed to load doctor patient count", error);
+        setPatientCount(null);
+      }
+    };
+
+    void loadMyPatients();
+  }, []);
+
+  const kpis = useMemo<KpiDef[]>(
+    () => [
+      {
+        label: "Tổng bệnh nhân",
+        value:
+          patientCount === undefined
+            ? "..."
+            : patientCount === null
+              ? "--"
+              : new Intl.NumberFormat("vi-VN").format(patientCount),
+        Icon: FaUserFriends,
+      },
+      { label: "Đang ổn định", value: "850", change: 34.0, up: true, Icon: FaHeartbeat },
+      { label: "Cần chú ý", value: "300", change: 24.2, up: false, Icon: FaEye },
+    ],
+    [patientCount]
+  );
 
   return (
     <div className="min-h-screen bg-[#f5f6fa] dark:bg-slate-900 font-sans">

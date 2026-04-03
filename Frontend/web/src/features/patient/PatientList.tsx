@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import Table, { type Column } from "../../components/ui/Table";
-import { getLatestAlertForPatient, getMyPatients } from "../../services/patientService";
+import { getAlerts, getMyPatients } from "../../services/patientService";
 import type { PatientItem } from "../../types/patient";
 import { Chat, Edit } from "./ActionButton";
 
@@ -12,9 +12,9 @@ const PatientList = () => {
   const [patients, setPatients] = useState<PatientItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filterDate, setFilterDate] = useState<string>("");
-  const [filterStatus, setFilterStatus] = useState<string>("");
-  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [filterDate, setFilterDate] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     const fetchPatients = async () => {
@@ -22,32 +22,37 @@ const PatientList = () => {
         setLoading(true);
         setError(null);
 
-        const assignments = await getMyPatients();
+        const [assignments, alerts] = await Promise.all([getMyPatients(), getAlerts()]);
 
-        const patientItems: PatientItem[] = await Promise.all(
-          assignments.map(async (assignment) => {
-            let status: PatientItem["status"] = "Bình thường";
-
-            try {
-              const latestAlert = await getLatestAlertForPatient(assignment.patientId);
-              if (latestAlert && latestAlert.severity === "high" && latestAlert.status === "open") {
-                status = "Cảnh báo";
-              }
-            } catch {
-              // Keep the default status when alert lookup fails.
-            }
-
-            return {
-              id: assignment.patientId,
-              name: assignment.patientName || "Không rõ tên",
-              patientCode: assignment.patientCode || "Chưa có mã",
-              updatedAt: assignment.updatedAt
-                ? new Date(assignment.updatedAt).toISOString().split("T")[0]
-                : undefined,
-              status,
-            };
-          })
+        const latestAlertByPatient = new Map<string, (typeof alerts)[number]>();
+        const sortedAlerts = [...alerts].sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         );
+
+        sortedAlerts.forEach((alert) => {
+          if (!latestAlertByPatient.has(alert.patientId)) {
+            latestAlertByPatient.set(alert.patientId, alert);
+          }
+        });
+
+        const patientItems: PatientItem[] = assignments.map((assignment) => {
+          let status: PatientItem["status"] = "Bình thường";
+
+          const latestAlert = latestAlertByPatient.get(assignment.patientId);
+          if (latestAlert && latestAlert.severity === "high" && latestAlert.status === "open") {
+            status = "Cảnh báo";
+          }
+
+          return {
+            id: assignment.patientId,
+            name: assignment.patientName || "Không rõ tên",
+            patientCode: assignment.patientCode || "Chưa có mã",
+            updatedAt: assignment.updatedAt
+              ? new Date(assignment.updatedAt).toISOString().split("T")[0]
+              : undefined,
+            status,
+          };
+        });
 
         setPatients(patientItems);
       } catch (err: any) {
@@ -57,7 +62,7 @@ const PatientList = () => {
       }
     };
 
-    fetchPatients();
+    void fetchPatients();
   }, []);
 
   const filteredPatients = useMemo(() => {
