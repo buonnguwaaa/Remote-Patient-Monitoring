@@ -17,10 +17,11 @@ type GetUserConversationsInput struct {
 }
 
 type SendMessageInput struct {
-	ConversationID primitive.ObjectID
-	SenderID       primitive.ObjectID
-	Content        string
-	RelatedAlertID *primitive.ObjectID
+	ConversationID   primitive.ObjectID
+	SenderID         primitive.ObjectID
+	Content          string
+	ReplyToMessageID *primitive.ObjectID
+	RelatedAlertID   *primitive.ObjectID
 }
 
 type GetConversationMessagesInput struct {

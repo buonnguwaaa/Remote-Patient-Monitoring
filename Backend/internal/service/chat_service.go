@@ -18,6 +18,7 @@ var (
 	ErrChatInvalidParticipants = errors.New("chat: invalid participants")
 	ErrChatConversationMissing = errors.New("chat: conversation not found")
 	ErrChatInvalidMessage      = errors.New("chat: invalid message")
+	ErrChatInvalidReplyTarget  = errors.New("chat: invalid reply target")
 	ErrChatForbidden           = errors.New("chat: user is not a participant")
 )
 
@@ -145,11 +146,22 @@ func (s *chatService) SendMessage(ctx context.Context, input *usecase.SendMessag
 		return nil, ErrChatForbidden
 	}
 
+	if input.ReplyToMessageID != nil {
+		replyToMessage, err := s.messageRepo.FindByID(ctx, *input.ReplyToMessageID)
+		if err != nil {
+			return nil, err
+		}
+		if replyToMessage == nil || replyToMessage.ConversationID != input.ConversationID {
+			return nil, ErrChatInvalidReplyTarget
+		}
+	}
+
 	message := &chatDomain.Message{
-		ConversationID: input.ConversationID,
-		SenderID:       input.SenderID,
-		Content:        strings.TrimSpace(input.Content),
-		RelatedAlertID: input.RelatedAlertID,
+		ConversationID:   input.ConversationID,
+		SenderID:         input.SenderID,
+		Content:          strings.TrimSpace(input.Content),
+		ReplyToMessageID: input.ReplyToMessageID,
+		RelatedAlertID:   input.RelatedAlertID,
 	}
 
 	created, err := s.messageRepo.Create(ctx, message)
@@ -291,13 +303,14 @@ func mapMessageToDTO(m *chatDomain.Message) *dto.MessageResponse {
 	}
 
 	return &dto.MessageResponse{
-		ID:             m.ID,
-		ConversationID: m.ConversationID,
-		SenderID:       m.SenderID,
-		Content:        m.Content,
-		RelatedAlertID: m.RelatedAlertID,
-		CreatedAt:      m.CreatedAt,
-		UpdatedAt:      m.CreatedAt,
+		ID:               m.ID,
+		ConversationID:   m.ConversationID,
+		SenderID:         m.SenderID,
+		Content:          m.Content,
+		ReplyToMessageID: m.ReplyToMessageID,
+		RelatedAlertID:   m.RelatedAlertID,
+		CreatedAt:        m.CreatedAt,
+		UpdatedAt:        m.CreatedAt,
 	}
 }
 

@@ -29,8 +29,9 @@ type Client struct {
 }
 
 type incomingMessage struct {
-	Content        string              `json:"content"`
-	RelatedAlertID *primitive.ObjectID `json:"relatedAlertId,omitempty"`
+	Content          string              `json:"content"`
+	ReplyToMessageID *primitive.ObjectID `json:"replyToMessageId,omitempty"`
+	RelatedAlertID   *primitive.ObjectID `json:"relatedAlertId,omitempty"`
 }
 
 func (c *Client) readPump() {
@@ -65,10 +66,11 @@ func (c *Client) readPump() {
 		}
 
 		saved, err := c.ChatService.SendMessage(context.Background(), &usecase.SendMessageInput{
-			ConversationID: c.ConversationID,
-			SenderID:       c.UserID,
-			Content:        incoming.Content,
-			RelatedAlertID: incoming.RelatedAlertID,
+			ConversationID:   c.ConversationID,
+			SenderID:         c.UserID,
+			Content:          incoming.Content,
+			ReplyToMessageID: incoming.ReplyToMessageID,
+			RelatedAlertID:   incoming.RelatedAlertID,
 		})
 		if err != nil {
 			log.Printf("failed to save message from user %s: %v", c.UserID.Hex(), err)

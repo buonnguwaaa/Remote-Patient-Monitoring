@@ -11,8 +11,9 @@ type CreateConversationRequest struct {
 }
 
 type SendMessageRequest struct {
-	Content        string              `json:"content" binding:"required"`
-	RelatedAlertID *primitive.ObjectID `json:"relatedAlertId,omitempty"`
+	Content          string              `json:"content" binding:"required"`
+	ReplyToMessageID *primitive.ObjectID `json:"replyToMessageId,omitempty"`
+	RelatedAlertID   *primitive.ObjectID `json:"relatedAlertId,omitempty"`
 }
 
 type ConversationResponse struct {
@@ -23,13 +24,14 @@ type ConversationResponse struct {
 }
 
 type MessageResponse struct {
-	ID             primitive.ObjectID  `json:"id"`
-	ConversationID primitive.ObjectID  `json:"conversationId"`
-	SenderID       primitive.ObjectID  `json:"senderId"`
-	Content        string              `json:"content"`
-	RelatedAlertID *primitive.ObjectID `json:"relatedAlertId,omitempty"`
-	CreatedAt      time.Time           `json:"createdAt"`
-	UpdatedAt      time.Time           `json:"updatedAt"`
+	ID               primitive.ObjectID  `json:"id"`
+	ConversationID   primitive.ObjectID  `json:"conversationId"`
+	SenderID         primitive.ObjectID  `json:"senderId"`
+	Content          string              `json:"content"`
+	ReplyToMessageID *primitive.ObjectID `json:"replyToMessageId,omitempty"`
+	RelatedAlertID   *primitive.ObjectID `json:"relatedAlertId,omitempty"`
+	CreatedAt        time.Time           `json:"createdAt"`
+	UpdatedAt        time.Time           `json:"updatedAt"`
 }
 
 type GetConversationsResponse struct {
