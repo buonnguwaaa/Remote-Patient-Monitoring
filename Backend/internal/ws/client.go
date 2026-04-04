@@ -28,10 +28,23 @@ type Client struct {
 	ChatService    service.ChatService
 }
 
+type wsRequest struct {
+	Type string          `json:"type"`
+	Data json.RawMessage `json:"data"`
+}
+
 type incomingMessage struct {
 	Content          string              `json:"content"`
 	ReplyToMessageID *primitive.ObjectID `json:"replyToMessageId,omitempty"`
 	RelatedAlertID   *primitive.ObjectID `json:"relatedAlertId,omitempty"`
+}
+
+type deliveredPayload struct {
+	MessageID primitive.ObjectID `json:"messageId"`
+}
+
+type readPayload struct {
+	LastReadMessageID primitive.ObjectID `json:"lastReadMessageId"`
 }
 
 type wsErrorPayload struct {
@@ -65,47 +78,126 @@ func (c *Client) readPump() {
 			break
 		}
 
-		var incoming incomingMessage
-		if err := json.Unmarshal(raw, &incoming); err != nil {
-			log.Printf("invalid message format from user %s: %v", c.UserID.Hex(), err)
-			c.writeError("invalid_payload", "invalid message payload")
+		var req wsRequest
+		if err := json.Unmarshal(raw, &req); err != nil {
+			c.writeError("invalid_payload", "invalid request")
 			continue
 		}
 
-		saved, err := c.ChatService.SendMessage(context.Background(), &usecase.SendMessageInput{
-			ConversationID:   c.ConversationID,
-			SenderID:         c.UserID,
-			Content:          incoming.Content,
-			ReplyToMessageID: incoming.ReplyToMessageID,
-			RelatedAlertID:   incoming.RelatedAlertID,
-		})
-		if err != nil {
-			log.Printf("failed to save message from user %s: %v", c.UserID.Hex(), err)
-			switch err {
-			case service.ErrChatInvalidReplyTarget:
-				c.writeError("invalid_reply_target", err.Error())
-			case service.ErrChatInvalidMessage:
-				c.writeError("invalid_message", err.Error())
-			case service.ErrChatForbidden:
-				c.writeError("forbidden", err.Error())
-			case service.ErrChatConversationMissing:
-				c.writeError("conversation_not_found", err.Error())
-			default:
-				c.writeError("internal_error", "failed to send message")
-			}
-			continue
-		}
+		switch req.Type {
 
-		payload, err := json.Marshal(saved)
-		if err != nil {
-			log.Printf("failed to marshal message: %v", err)
-			continue
-		}
+		case "SEND_MESSAGE":
+			c.handleSendMessage(req.Data)
 
-		c.Hub.Broadcast <- BroadcastMessage{
-			ConversationID: c.ConversationID,
-			Message:        payload,
+		case "DELIVERED":
+			c.handleDelivered(req.Data)
+
+		case "READ":
+			c.handleRead(req.Data)
+
+		default:
+			c.writeError("unknown_type", "unsupported message type")
 		}
+	}
+}
+
+func (c *Client) handleSendMessage(data json.RawMessage) {
+	var incoming incomingMessage
+	if err := json.Unmarshal(data, &incoming); err != nil {
+		c.writeError("invalid_payload", "invalid message payload")
+		return
+	}
+
+	saved, err := c.ChatService.SendMessage(context.Background(), &usecase.SendMessageInput{
+		ConversationID:   c.ConversationID,
+		SenderID:         c.UserID,
+		Content:          incoming.Content,
+		ReplyToMessageID: incoming.ReplyToMessageID,
+		RelatedAlertID:   incoming.RelatedAlertID,
+	})
+	if err != nil {
+		log.Printf("failed to save message: %v", err)
+		c.writeError("send_failed", err.Error())
+		return
+	}
+
+	payload, _ := json.Marshal(map[string]interface{}{
+		"type": "NEW_MESSAGE",
+		"data": saved,
+	})
+
+	c.Hub.Broadcast <- BroadcastMessage{
+		ConversationID: c.ConversationID,
+		Message:        payload,
+	}
+}
+
+func (c *Client) handleDelivered(data json.RawMessage) {
+	var payload deliveredPayload
+	if err := json.Unmarshal(data, &payload); err != nil {
+		return
+	}
+
+	err := c.ChatService.UpdateParticipantState(
+		context.Background(),
+		&usecase.UpdateParticipantStateInput{
+			ConversationID:         c.ConversationID,
+			UserID:                 c.UserID,
+			LastReadMessageID:      nil,
+			LastDeliveredMessageID: &payload.MessageID,
+		},
+	)
+
+	if err != nil {
+		log.Printf("failed to update delivered state: %v", err)
+		return
+	}
+
+	res, _ := json.Marshal(map[string]interface{}{
+		"type": "DELIVERED",
+		"data": map[string]interface{}{
+			"userId":    c.UserID,
+			"messageId": payload.MessageID,
+		},
+	})
+
+	c.Hub.Broadcast <- BroadcastMessage{
+		ConversationID: c.ConversationID,
+		Message:        res,
+	}
+}
+
+func (c *Client) handleRead(data json.RawMessage) {
+	var payload readPayload
+	if err := json.Unmarshal(data, &payload); err != nil {
+		return
+	}
+
+	err := c.ChatService.UpdateParticipantState(
+		context.Background(),
+		&usecase.UpdateParticipantStateInput{
+			ConversationID:         c.ConversationID,
+			UserID:                 c.UserID,
+			LastReadMessageID:      &payload.LastReadMessageID,
+			LastDeliveredMessageID: nil,
+		},
+	)
+	if err != nil {
+		log.Printf("failed to update read state: %v", err)
+		return
+	}
+
+	res, _ := json.Marshal(map[string]interface{}{
+		"type": "READ",
+		"data": map[string]interface{}{
+			"userId":            c.UserID,
+			"lastReadMessageId": payload.LastReadMessageID,
+		},
+	})
+
+	c.Hub.Broadcast <- BroadcastMessage{
+		ConversationID: c.ConversationID,
+		Message:        res,
 	}
 }
 
