@@ -9,7 +9,8 @@ import (
 
 	chatDomain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/chat"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
-	repository "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository/chat"
+	repository "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository"
+	chatRepository "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository/chat"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecase"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -20,6 +21,7 @@ var (
 	ErrChatInvalidMessage      = errors.New("chat: invalid message")
 	ErrChatInvalidReplyTarget  = errors.New("chat: invalid reply target")
 	ErrChatForbidden           = errors.New("chat: user is not a participant")
+	ErrChatAssignmentMismatch  = errors.New("chat: participants must have an assignment record")
 )
 
 type ChatService interface {
@@ -32,14 +34,20 @@ type ChatService interface {
 }
 
 type chatService struct {
-	conversationRepo repository.ConversationRepository
-	messageRepo      repository.MessageRepository
+	conversationRepo chatRepository.ConversationRepository
+	messageRepo      chatRepository.MessageRepository
+	assignmentRepo   repository.AssignmentRepository
 }
 
-func NewChatService(conversationRepo repository.ConversationRepository, messageRepo repository.MessageRepository) ChatService {
+func NewChatService(
+	conversationRepo chatRepository.ConversationRepository,
+	messageRepo chatRepository.MessageRepository,
+	assignmentRepo repository.AssignmentRepository,
+) ChatService {
 	return &chatService{
 		conversationRepo: conversationRepo,
 		messageRepo:      messageRepo,
+		assignmentRepo:   assignmentRepo,
 	}
 }
 
@@ -51,6 +59,13 @@ func (s *chatService) CreateConversation(ctx context.Context, input *usecase.Cre
 	uniqueParticipants := uniqueObjectIDs(input.ParticipantIDs)
 	if len(uniqueParticipants) < 2 {
 		return nil, ErrChatInvalidParticipants
+	}
+	if len(uniqueParticipants) != 2 {
+		return nil, ErrChatInvalidParticipants
+	}
+
+	if err := s.validateAssignmentRecordForParticipants(ctx, uniqueParticipants); err != nil {
+		return nil, err
 	}
 
 	existing, err := s.conversationRepo.FindByParticipants(ctx, uniqueParticipants)
@@ -71,6 +86,21 @@ func (s *chatService) CreateConversation(ctx context.Context, input *usecase.Cre
 	}
 
 	return mapConversationToDTO(inserted), nil
+}
+
+func (s *chatService) validateAssignmentRecordForParticipants(ctx context.Context, participantIDs []primitive.ObjectID) error {
+	firstID := participantIDs[0]
+	secondID := participantIDs[1]
+
+	hasRecord, err := s.assignmentRepo.HasAssignmentRecordForPair(ctx, firstID, secondID)
+	if err != nil {
+		return err
+	}
+	if hasRecord {
+		return nil
+	}
+
+	return ErrChatAssignmentMismatch
 }
 
 func (s *chatService) GetConversationByID(ctx context.Context, conversationID primitive.ObjectID) (*dto.ConversationResponse, error) {
@@ -96,7 +126,7 @@ func (s *chatService) GetUserConversations(ctx context.Context, input *usecase.G
 
 	limit := input.Limit
 
-	conversations, err := s.conversationRepo.FindWithFilter(ctx, repository.ConversationFilter{
+	conversations, err := s.conversationRepo.FindWithFilter(ctx, chatRepository.ConversationFilter{
 		ParticipantID: input.UserID,
 		Cursor:        input.Cursor,
 		Limit:         limit,
@@ -194,7 +224,7 @@ func (s *chatService) GetConversationMessages(ctx context.Context, input *usecas
 
 	limit := input.Limit
 
-	messages, err := s.messageRepo.FindWithFilter(ctx, repository.MessageFilter{
+	messages, err := s.messageRepo.FindWithFilter(ctx, chatRepository.MessageFilter{
 		ConversationID: input.ConversationID,
 		Cursor:         input.Cursor,
 		Limit:          limit,

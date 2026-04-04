@@ -56,6 +56,8 @@ func (h *ChatHandler) CreateConversation(c *gin.Context) {
 		switch err {
 		case service.ErrChatInvalidParticipants:
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		case service.ErrChatAssignmentMismatch:
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
 		}

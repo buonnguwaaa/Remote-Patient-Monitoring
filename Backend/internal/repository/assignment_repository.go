@@ -14,6 +14,7 @@ type AssignmentRepository interface {
 	Create(ctx context.Context, assignment *domain.Assignment) (*domain.Assignment, error)
 	FindAll(ctx context.Context) ([]*domain.Assignment, map[primitive.ObjectID]UserDisplayInfo, error)
 	FindByPatientID(ctx context.Context, patientID primitive.ObjectID) (*domain.Assignment, error)
+	HasAssignmentRecordForPair(ctx context.Context, firstID primitive.ObjectID, secondID primitive.ObjectID) (bool, error)
 	FindByDoctorID(ctx context.Context, doctorID primitive.ObjectID) ([]*domain.Assignment, error)
 	FindByDoctorIDWithNames(ctx context.Context, doctorID primitive.ObjectID) ([]*domain.Assignment, map[primitive.ObjectID]UserDisplayInfo, error)
 	FindByNurseIDWithNames(ctx context.Context, nurseID primitive.ObjectID) ([]*domain.Assignment, map[primitive.ObjectID]UserDisplayInfo, error)
@@ -54,6 +55,22 @@ func (r *assignmentRepository) FindByPatientID(ctx context.Context, patientID pr
 		return nil, err
 	}
 	return &assignment, nil
+}
+
+func (r *assignmentRepository) HasAssignmentRecordForPair(ctx context.Context, firstID primitive.ObjectID, secondID primitive.ObjectID) (bool, error) {
+	filter := bson.M{
+		"$or": bson.A{
+			bson.M{"patientId": firstID, "doctorId": secondID},
+			bson.M{"patientId": secondID, "doctorId": firstID},
+		},
+	}
+
+	count, err := r.collection.CountDocuments(ctx, filter)
+	if err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
 }
 
 func (r *assignmentRepository) FindAll(ctx context.Context) ([]*domain.Assignment, map[primitive.ObjectID]UserDisplayInfo, error) {
