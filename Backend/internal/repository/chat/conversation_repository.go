@@ -73,7 +73,7 @@ func (r *conversationRepository) FindByParticipants(ctx context.Context, partici
 	}
 
 	filter := bson.M{
-		"participant_ids": bson.M{
+		"participantIds": bson.M{
 			"$all":  participantIDs,
 			"$size": len(participantIDs),
 		},
@@ -103,7 +103,7 @@ func (r *conversationRepository) FindWithFilter(ctx context.Context, filter Conv
 	bsonFilter := bson.M{}
 
 	if !filter.ParticipantID.IsZero() {
-		bsonFilter["participant_ids"] = filter.ParticipantID
+		bsonFilter["participantIds"] = filter.ParticipantID
 	}
 
 	if len(filter.ParticipantIDs) > 0 {
@@ -111,7 +111,7 @@ func (r *conversationRepository) FindWithFilter(ctx context.Context, filter Conv
 		if filter.ExactMatch {
 			participantsFilter["$size"] = len(filter.ParticipantIDs)
 		}
-		bsonFilter["participant_ids"] = participantsFilter
+		bsonFilter["participantIds"] = participantsFilter
 	}
 
 	if !filter.Cursor.IsZero() {
@@ -153,7 +153,7 @@ func (r *conversationRepository) TouchUpdatedAt(ctx context.Context, id primitiv
 func (r *conversationRepository) EnsureIndexes(ctx context.Context) error {
 	_, err := r.col.Indexes().CreateMany(ctx, []mongo.IndexModel{
 		{
-			Keys: bson.D{{Key: "participant_ids", Value: 1}},
+			Keys: bson.D{{Key: "participantIds", Value: 1}},
 		},
 		{
 			Keys: bson.D{{Key: "updatedAt", Value: -1}},
