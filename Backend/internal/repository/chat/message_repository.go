@@ -76,13 +76,13 @@ func (r *messageRepository) FindWithFilter(ctx context.Context, filter MessageFi
 	bsonFilter := bson.M{}
 
 	if !filter.ConversationID.IsZero() {
-		bsonFilter["conversation_id"] = filter.ConversationID
+		bsonFilter["conversationId"] = filter.ConversationID
 	}
 	if !filter.SenderID.IsZero() {
-		bsonFilter["sender_id"] = filter.SenderID
+		bsonFilter["senderId"] = filter.SenderID
 	}
 	if filter.RelatedAlertID != nil {
-		bsonFilter["related_alert_id"] = *filter.RelatedAlertID
+		bsonFilter["relatedAlertId"] = *filter.RelatedAlertID
 	}
 	if !filter.Cursor.IsZero() {
 		// Cursor points to the oldest item the client has; fetch older items only.
@@ -90,7 +90,7 @@ func (r *messageRepository) FindWithFilter(ctx context.Context, filter MessageFi
 	}
 
 	if filter.IsLatest {
-		opts := options.FindOne().SetSort(bson.D{{Key: "created_at", Value: -1}})
+		opts := options.FindOne().SetSort(bson.D{{Key: "createdAt", Value: -1}})
 		var latest chatDomain.Message
 
 		err := r.col.FindOne(ctx, bsonFilter, opts).Decode(&latest)
@@ -104,7 +104,7 @@ func (r *messageRepository) FindWithFilter(ctx context.Context, filter MessageFi
 		return []*chatDomain.Message{&latest}, nil
 	}
 
-	opts := options.Find().SetSort(bson.D{{Key: "created_at", Value: -1}, {Key: "_id", Value: -1}})
+	opts := options.Find().SetSort(bson.D{{Key: "createdAt", Value: -1}, {Key: "_id", Value: -1}})
 
 	effectiveLimit := filter.Limit
 	if filter.FetchOneExtra && effectiveLimit > 0 {
@@ -147,13 +147,13 @@ func (r *messageRepository) FindLatestByConversationID(ctx context.Context, conv
 func (r *messageRepository) EnsureIndexes(ctx context.Context) error {
 	_, err := r.col.Indexes().CreateMany(ctx, []mongo.IndexModel{
 		{
-			Keys: bson.D{{Key: "conversation_id", Value: 1}, {Key: "created_at", Value: -1}},
+			Keys: bson.D{{Key: "conversationId", Value: 1}, {Key: "createdAt", Value: -1}},
 		},
 		{
-			Keys: bson.D{{Key: "sender_id", Value: 1}},
+			Keys: bson.D{{Key: "senderId", Value: 1}},
 		},
 		{
-			Keys:    bson.D{{Key: "related_alert_id", Value: 1}},
+			Keys:    bson.D{{Key: "relatedAlertId", Value: 1}},
 			Options: options.Index().SetSparse(true),
 		},
 	})

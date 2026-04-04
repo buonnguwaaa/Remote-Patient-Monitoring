@@ -29,8 +29,15 @@ type Client struct {
 }
 
 type incomingMessage struct {
-	Content        string              `json:"content"`
-	RelatedAlertID *primitive.ObjectID `json:"relatedAlertId,omitempty"`
+	Content          string              `json:"content"`
+	ReplyToMessageID *primitive.ObjectID `json:"replyToMessageId,omitempty"`
+	RelatedAlertID   *primitive.ObjectID `json:"relatedAlertId,omitempty"`
+}
+
+type wsErrorPayload struct {
+	Type  string `json:"type"`
+	Code  string `json:"code"`
+	Error string `json:"error"`
 }
 
 func (c *Client) readPump() {
@@ -61,17 +68,31 @@ func (c *Client) readPump() {
 		var incoming incomingMessage
 		if err := json.Unmarshal(raw, &incoming); err != nil {
 			log.Printf("invalid message format from user %s: %v", c.UserID.Hex(), err)
+			c.writeError("invalid_payload", "invalid message payload")
 			continue
 		}
 
 		saved, err := c.ChatService.SendMessage(context.Background(), &usecase.SendMessageInput{
-			ConversationID: c.ConversationID,
-			SenderID:       c.UserID,
-			Content:        incoming.Content,
-			RelatedAlertID: incoming.RelatedAlertID,
+			ConversationID:   c.ConversationID,
+			SenderID:         c.UserID,
+			Content:          incoming.Content,
+			ReplyToMessageID: incoming.ReplyToMessageID,
+			RelatedAlertID:   incoming.RelatedAlertID,
 		})
 		if err != nil {
 			log.Printf("failed to save message from user %s: %v", c.UserID.Hex(), err)
+			switch err {
+			case service.ErrChatInvalidReplyTarget:
+				c.writeError("invalid_reply_target", err.Error())
+			case service.ErrChatInvalidMessage:
+				c.writeError("invalid_message", err.Error())
+			case service.ErrChatForbidden:
+				c.writeError("forbidden", err.Error())
+			case service.ErrChatConversationMissing:
+				c.writeError("conversation_not_found", err.Error())
+			default:
+				c.writeError("internal_error", "failed to send message")
+			}
 			continue
 		}
 
@@ -85,6 +106,24 @@ func (c *Client) readPump() {
 			ConversationID: c.ConversationID,
 			Message:        payload,
 		}
+	}
+}
+
+func (c *Client) writeError(code, message string) {
+	payload, err := json.Marshal(wsErrorPayload{
+		Type:  "error",
+		Code:  code,
+		Error: message,
+	})
+	if err != nil {
+		log.Printf("failed to marshal ws error payload: %v", err)
+		return
+	}
+
+	select {
+	case c.Send <- payload:
+	default:
+		log.Printf("dropping ws error payload for user %s: send buffer full", c.UserID.Hex())
 	}
 }
 

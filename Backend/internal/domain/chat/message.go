@@ -7,10 +7,11 @@ import (
 )
 
 type Message struct {
-	ID             primitive.ObjectID  `bson:"_id,omitempty"`
-	ConversationID primitive.ObjectID  `bson:"conversation_id"`
-	SenderID       primitive.ObjectID  `bson:"sender_id"`
-	Content        string              `bson:"content"`
-	RelatedAlertID *primitive.ObjectID `bson:"related_alert_id,omitempty"`
-	CreatedAt      time.Time           `bson:"created_at"`
+	ID               primitive.ObjectID  `bson:"_id,omitempty"`
+	ConversationID   primitive.ObjectID  `bson:"conversationId"`
+	SenderID         primitive.ObjectID  `bson:"senderId"`
+	Content          string              `bson:"content"`
+	ReplyToMessageID *primitive.ObjectID `bson:"replyToMessageId,omitempty"`
+	RelatedAlertID   *primitive.ObjectID `bson:"relatedAlertId,omitempty"`
+	CreatedAt        time.Time           `bson:"createdAt"`
 }
