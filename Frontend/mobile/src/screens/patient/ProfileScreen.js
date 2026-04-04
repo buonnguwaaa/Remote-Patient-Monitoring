@@ -153,7 +153,7 @@ function normalizeProfile(profile = {}) {
 
   const patient = {
     id: profile.id || "",
-    patientCode: profile.patientCode || "",
+    patientCode: profile.patientCode || profile.userPublicId || "",
     insuranceNumber: profile.insuranceNumber || "",
     cccd: profile.cccd || "",
     emergencyContactName: profile.emergencyContactName || "",

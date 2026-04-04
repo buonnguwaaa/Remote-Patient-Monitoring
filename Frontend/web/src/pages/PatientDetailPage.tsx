@@ -50,9 +50,9 @@ const normalizeMeasurements = (data: MeasurementResponse[]): ChartRow[] =>
   data.map((m) => ({
     systolic: m.bloodPressure?.systolic ?? m.systolic ?? 0,
     diastolic: m.bloodPressure?.diastolic ?? m.diastolic ?? 0,
-    pulse: m.heartRate,
+    pulse: m.heartRate ?? 0,
     glucose: m.glucose ?? 0,
-    spo2: m.spo2,
+    spo2: m.spo2 ?? 0,
     updateAt: m.createdAt,
   }));
 

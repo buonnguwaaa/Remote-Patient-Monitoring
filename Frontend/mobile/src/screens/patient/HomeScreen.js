@@ -9,22 +9,19 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 
+import { getMyAlerts } from "../../api/alertApi";
 import { useAuth } from "../../hooks/useAuth";
 import { getMeasurements } from "../../api/measurementApi";
 import { getMyPatientProfile } from "../../api/profileApi";
-
-function extractData(response) {
-  if (!response?.ok) return null;
-  return response.body?.data || response.body || null;
-}
-
-function extractList(response) {
-  const data = extractData(response);
-  return Array.isArray(data) ? data : [];
-}
+import {
+  buildAlertPreviewItems,
+  extractData,
+  extractList,
+  sortAlertsByCreatedAt,
+} from "../../utils/patientAlertUtils";
 
 function formatRelativeTime(iso) {
   if (!iso) return "Chưa có thời gian";
@@ -58,51 +55,39 @@ function formatTimingLabel(timing) {
   return timing;
 }
 
-function getLatestMeasurement(measurements, predicate) {
-  return measurements
-    .filter(predicate)
-    .sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    )[0] || null;
+function hasPositiveNumber(value) {
+  return Number(value) > 0;
 }
 
-const alertPreviewItems = [
-  {
-    id: "preview-high",
-    typeLabel: "Đường huyết",
-    observed: "145 mg/dL",
-    severityText: "Cao",
-    statusText: "Mới",
-    rule: "Glucose > 130 mg/dL",
-    createdAt: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
-    iconName: "water",
-    isHigh: true,
-  },
-  {
-    id: "preview-normal",
-    typeLabel: "Huyết áp",
-    observed: "120/80 mmHg",
-    severityText: "Bình thường",
-    statusText: "Đã xử lý",
-    rule: "BP tâm thu > 150",
-    createdAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
-    iconName: "fitness",
-    isHigh: false,
-  },
-];
+function hasBloodPressure(measurement) {
+  return (
+    hasPositiveNumber(measurement?.bloodPressure?.systolic) ||
+    hasPositiveNumber(measurement?.bloodPressure?.diastolic)
+  );
+}
+
+function isWithinRecentDays(value, days = 5) {
+  const timestamp = new Date(value).getTime();
+  if (Number.isNaN(timestamp)) return false;
+  return Date.now() - timestamp <= days * 24 * 60 * 60 * 1000;
+}
 
 export default function HomeScreen() {
   const { user } = useAuth() || {};
+  const navigation = useNavigation();
 
   const [profile, setProfile] = useState(null);
   const [measurements, setMeasurements] = useState([]);
+  const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
+  const [alertError, setAlertError] = useState("");
 
   const loadHomeData = useCallback(async (isRefresh = false) => {
     try {
       setError("");
+      setAlertError("");
       if (isRefresh) {
         setRefreshing(true);
       } else {
@@ -113,23 +98,45 @@ export default function HomeScreen() {
       const profileData = extractData(profileResponse);
 
       if (!profileResponse?.ok || !profileData) {
+        setProfile(null);
+        setMeasurements([]);
+        setAlerts([]);
         throw new Error("Không thể tải hồ sơ bệnh nhân.");
       }
 
       setProfile(profileData);
 
       const patientId = profileData.id || user?._id || user?.id;
+      const [measurementResponse, alertResponse] = await Promise.all([
+        patientId ? getMeasurements(patientId) : Promise.resolve(null),
+        getMyAlerts(),
+      ]);
+
+      let nextError = "";
+
       if (!patientId) {
         setMeasurements([]);
-        return;
+      } else if (!measurementResponse?.ok) {
+        setMeasurements([]);
+        nextError = "Không thể tải dữ liệu đo gần đây.";
+      } else {
+        setMeasurements(extractList(measurementResponse));
       }
 
-      const measurementResponse = await getMeasurements(patientId);
-      if (!measurementResponse?.ok) {
-        throw new Error("Không thể tải dữ liệu đo gần đây.");
+      if (!alertResponse?.ok) {
+        setAlerts([]);
+        setAlertError(
+          alertResponse?.body?.error ||
+            alertResponse?.error ||
+            "Không thể tải cảnh báo gần đây."
+        );
+      } else {
+        setAlerts(sortAlertsByCreatedAt(extractList(alertResponse)));
       }
 
-      setMeasurements(extractList(measurementResponse));
+      if (nextError) {
+        throw new Error(nextError);
+      }
     } catch (fetchError) {
       setError(fetchError?.message || "Không thể tải dữ liệu trang chủ.");
     } finally {
@@ -144,41 +151,72 @@ export default function HomeScreen() {
     }, [loadHomeData])
   );
 
-  const latestBp = useMemo(
-    () =>
-      getLatestMeasurement(
-        measurements,
-        (m) =>
-          Number(m?.bloodPressure?.systolic) > 0 ||
-          Number(m?.bloodPressure?.diastolic) > 0
-      ),
-    [measurements]
+  const latestVitals = useMemo(() => {
+    const latest = {
+      bp: null,
+      glucose: null,
+      spo2: null,
+      temperature: null,
+      heartRate: null,
+      respiratoryRate: null,
+    };
+
+    const sortedMeasurements = [...measurements].sort(
+      (left, right) =>
+        new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
+    );
+
+    for (const measurement of sortedMeasurements) {
+      if (!latest.bp && hasBloodPressure(measurement)) {
+        latest.bp = measurement;
+      }
+      if (!latest.glucose && hasPositiveNumber(measurement?.glucose)) {
+        latest.glucose = measurement;
+      }
+      if (!latest.spo2 && hasPositiveNumber(measurement?.spo2)) {
+        latest.spo2 = measurement;
+      }
+      if (!latest.temperature && hasPositiveNumber(measurement?.temperature)) {
+        latest.temperature = measurement;
+      }
+      if (!latest.heartRate && hasPositiveNumber(measurement?.heartRate)) {
+        latest.heartRate = measurement;
+      }
+      if (
+        !latest.respiratoryRate &&
+        hasPositiveNumber(measurement?.respiratoryRate)
+      ) {
+        latest.respiratoryRate = measurement;
+      }
+
+      if (
+        latest.bp &&
+        latest.glucose &&
+        latest.spo2 &&
+        latest.temperature &&
+        latest.heartRate &&
+        latest.respiratoryRate
+      ) {
+        break;
+      }
+    }
+
+    return latest;
+  }, [measurements]);
+
+  const recentAlerts = useMemo(
+    () => alerts.filter((item) => isWithinRecentDays(item?.createdAt, 5)),
+    [alerts]
   );
 
-  const latestGlucose = useMemo(
-    () => getLatestMeasurement(measurements, (m) => Number(m?.glucose) > 0),
-    [measurements]
+  const alertPreviewItems = useMemo(
+    () => buildAlertPreviewItems(recentAlerts, 5),
+    [recentAlerts]
   );
 
-  const latestSpo2 = useMemo(
-    () => getLatestMeasurement(measurements, (m) => Number(m?.spo2) > 0),
-    [measurements]
-  );
-
-  const latestTemp = useMemo(
-    () => getLatestMeasurement(measurements, (m) => Number(m?.temperature) > 0),
-    [measurements]
-  );
-
-  const latestHeartRate = useMemo(
-    () => getLatestMeasurement(measurements, (m) => Number(m?.heartRate) > 0),
-    [measurements]
-  );
-
-  const latestResp = useMemo(
-    () =>
-      getLatestMeasurement(measurements, (m) => Number(m?.respiratoryRate) > 0),
-    [measurements]
+  const openAlertCount = useMemo(
+    () => recentAlerts.filter((item) => item.status === "open").length,
+    [recentAlerts]
   );
 
   const displayName = profile?.name || user?.name || user?.username || "Bệnh nhân";
@@ -251,18 +289,18 @@ export default function HomeScreen() {
                     <Ionicons name="fitness" size={18} color="#316BFF" />
                     <Text style={styles.vitalTitle}>Huyết áp</Text>
                   </View>
-                  {latestBp ? (
+                  {latestVitals.bp ? (
                     <>
                       <Text style={styles.vitalMainValue}>
-                        {latestBp.bloodPressure?.systolic || 0}/
-                        {latestBp.bloodPressure?.diastolic || 0}
+                        {latestVitals.bp.bloodPressure?.systolic || 0}/
+                        {latestVitals.bp.bloodPressure?.diastolic || 0}
                       </Text>
                       <Text style={styles.vitalUnit}>
-                        mmHg · {latestBp.heartRate || 0} bpm
+                        mmHg · {latestVitals.bp.heartRate || 0} bpm
                       </Text>
                       <Text style={styles.vitalMeta}>
-                        {formatTimingLabel(latestBp.timing)} ·{" "}
-                        {formatRelativeTime(latestBp.createdAt)}
+                        {formatTimingLabel(latestVitals.bp.timing)} ·{" "}
+                        {formatRelativeTime(latestVitals.bp.createdAt)}
                       </Text>
                     </>
                   ) : (
@@ -275,14 +313,14 @@ export default function HomeScreen() {
                     <Ionicons name="water" size={18} color="#2C9F5A" />
                     <Text style={styles.vitalTitle}>Đường huyết</Text>
                   </View>
-                  {latestGlucose ? (
+                  {latestVitals.glucose ? (
                     <>
-                      <Text style={styles.vitalMainValue}>{latestGlucose.glucose}</Text>
+                      <Text style={styles.vitalMainValue}>{latestVitals.glucose.glucose}</Text>
                       <Text style={styles.vitalUnit}>
-                        mg/dL · {formatTimingLabel(latestGlucose.timing)}
+                        mg/dL · {formatTimingLabel(latestVitals.glucose.timing)}
                       </Text>
                       <Text style={styles.vitalMeta}>
-                        {formatRelativeTime(latestGlucose.createdAt)}
+                        {formatRelativeTime(latestVitals.glucose.createdAt)}
                       </Text>
                     </>
                   ) : (
@@ -295,12 +333,12 @@ export default function HomeScreen() {
                     <Ionicons name="pulse" size={18} color="#EA4C89" />
                     <Text style={styles.vitalTitle}>SpO₂</Text>
                   </View>
-                  {latestSpo2 ? (
+                  {latestVitals.spo2 ? (
                     <>
-                      <Text style={styles.vitalMainValue}>{latestSpo2.spo2}%</Text>
+                      <Text style={styles.vitalMainValue}>{latestVitals.spo2.spo2}%</Text>
                       <Text style={styles.vitalUnit}>Độ bão hòa oxy</Text>
                       <Text style={styles.vitalMeta}>
-                        {formatRelativeTime(latestSpo2.createdAt)}
+                        {formatRelativeTime(latestVitals.spo2.createdAt)}
                       </Text>
                     </>
                   ) : (
@@ -313,12 +351,12 @@ export default function HomeScreen() {
                     <Ionicons name="thermometer" size={18} color="#FF9933" />
                     <Text style={styles.vitalTitle}>Nhiệt độ</Text>
                   </View>
-                  {latestTemp ? (
+                  {latestVitals.temperature ? (
                     <>
-                      <Text style={styles.vitalMainValue}>{latestTemp.temperature}</Text>
+                      <Text style={styles.vitalMainValue}>{latestVitals.temperature.temperature}</Text>
                       <Text style={styles.vitalUnit}>°C</Text>
                       <Text style={styles.vitalMeta}>
-                        {formatRelativeTime(latestTemp.createdAt)}
+                        {formatRelativeTime(latestVitals.temperature.createdAt)}
                       </Text>
                     </>
                   ) : (
@@ -335,12 +373,12 @@ export default function HomeScreen() {
                     />
                     <Text style={styles.vitalTitle}>Nhịp tim</Text>
                   </View>
-                  {latestHeartRate ? (
+                  {latestVitals.heartRate ? (
                     <>
-                      <Text style={styles.vitalMainValue}>{latestHeartRate.heartRate}</Text>
+                      <Text style={styles.vitalMainValue}>{latestVitals.heartRate.heartRate}</Text>
                       <Text style={styles.vitalUnit}>bpm</Text>
                       <Text style={styles.vitalMeta}>
-                        {formatRelativeTime(latestHeartRate.createdAt)}
+                        {formatRelativeTime(latestVitals.heartRate.createdAt)}
                       </Text>
                     </>
                   ) : (
@@ -353,14 +391,14 @@ export default function HomeScreen() {
                     <MaterialIcons name="air" size={20} color="#10B981" />
                     <Text style={styles.vitalTitle}>Nhịp thở</Text>
                   </View>
-                  {latestResp ? (
+                  {latestVitals.respiratoryRate ? (
                     <>
                       <Text style={styles.vitalMainValue}>
-                        {latestResp.respiratoryRate}
+                        {latestVitals.respiratoryRate.respiratoryRate}
                       </Text>
                       <Text style={styles.vitalUnit}>lần/phút</Text>
                       <Text style={styles.vitalMeta}>
-                        {formatRelativeTime(latestResp.createdAt)}
+                        {formatRelativeTime(latestVitals.respiratoryRate.createdAt)}
                       </Text>
                     </>
                   ) : (
@@ -371,60 +409,106 @@ export default function HomeScreen() {
             </View>
 
             <View style={styles.alertSectionCard}>
-              <Text style={styles.sectionTitle}>Cảnh báo gần đây</Text>
+              <View style={styles.sectionHeaderRow}>
+                <Text style={styles.sectionTitle}>Cảnh báo 5 ngày gần nhất</Text>
+                <Text style={styles.sectionBadge}>
+                  {openAlertCount > 0
+                    ? `${openAlertCount} chưa xác nhận`
+                    : alertPreviewItems.length > 0
+                      ? `${alertPreviewItems.length} mục mới nhất`
+                      : "Chưa có cảnh báo"}
+                </Text>
+              </View>
 
-              {alertPreviewItems.map((alert) => (
-                <View
-                  key={alert.id}
-                  style={[
-                    styles.warningItem,
-                    alert.isHigh && styles.warningItemHigh,
-                  ]}
-                >
-                  <View style={styles.alertHeaderRow}>
-                    <View style={styles.alertTitleWrapper}>
-                      <Ionicons
-                        name={alert.iconName}
-                        size={18}
-                        color={alert.isHigh ? "#D63031" : "#1A8F4A"}
-                      />
-                      <Text style={styles.warnLabel}>
-                        {alert.typeLabel} · {alert.observed}
-                      </Text>
-                    </View>
+              {alertError ? (
+                <View style={styles.sectionStateCard}>
+                  <Text style={styles.sectionStateText}>{alertError}</Text>
+                  <TouchableOpacity
+                    style={styles.retryButton}
+                    onPress={() => void loadHomeData()}
+                  >
+                    <Text style={styles.retryButtonText}>Tải lại cảnh báo</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : alertPreviewItems.length === 0 ? (
+                <View style={styles.sectionStateCard}>
+                  <Text style={styles.sectionStateText}>
+                    Hiện chưa có cảnh báo nào được tạo từ hệ thống.
+                  </Text>
+                </View>
+              ) : (
+                alertPreviewItems.map((alert) => (
+                  <TouchableOpacity
+                    key={alert.id}
+                    activeOpacity={0.92}
+                    style={[
+                      styles.warningItem,
+                      alert.isHigh && styles.warningItemHigh,
+                    ]}
+                    onPress={() =>
+                      navigation.navigate("PatientAlerts", {
+                        selectedAlertId: alert.alertId || alert.id,
+                      })
+                    }
+                  >
+                    <View style={styles.alertHeaderRow}>
+                      <View style={styles.alertTitleWrapper}>
+                        <Ionicons
+                          name={alert.iconName}
+                          size={18}
+                          color={alert.isHigh ? "#D63031" : "#1A8F4A"}
+                        />
+                        <Text style={styles.warnLabel}>
+                          {alert.title} · {alert.observedText}
+                        </Text>
+                      </View>
 
-                    <View
-                      style={
-                        alert.isHigh
-                          ? styles.alertStatusPillHigh
-                          : styles.alertStatusPillNormal
-                      }
-                    >
-                      <Text
+                      <View
                         style={
                           alert.isHigh
-                            ? styles.alertStatusTextHigh
-                            : styles.alertStatusTextNormal
+                            ? styles.alertStatusPillHigh
+                            : styles.alertStatusPillNormal
                         }
                       >
-                        {alert.severityText}
+                        <Text
+                          style={
+                            alert.isHigh
+                              ? styles.alertStatusTextHigh
+                              : styles.alertStatusTextNormal
+                          }
+                        >
+                          {alert.severityText}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {alert.additionalSummary ? (
+                      <Text style={styles.alertExtraText}>{alert.additionalSummary}</Text>
+                    ) : null}
+
+                    <View style={styles.alertRuleRow}>
+                      <Text style={styles.alertRuleText}>Quy tắc: {alert.ruleText}</Text>
+                      <Text
+                        style={[
+                          styles.alertRuleText,
+                          alert.isAcknowledged
+                            ? styles.alertRuleTextAcknowledged
+                            : styles.alertRuleTextPending,
+                        ]}
+                      >
+                        {alert.statusText}
                       </Text>
                     </View>
-                  </View>
 
-                  <View style={styles.alertRuleRow}>
-                    <Text style={styles.alertRuleText}>Quy tắc: {alert.rule}</Text>
-                    <Text style={styles.alertRuleText}>{alert.statusText}</Text>
-                  </View>
-
-                  <View style={styles.alertTimeRow}>
-                    <Ionicons name="time-outline" size={14} color="#9CA3AF" />
-                    <Text style={styles.alertTimeText}>
-                      {formatRelativeTime(alert.createdAt)}
-                    </Text>
-                  </View>
-                </View>
-              ))}
+                    <View style={styles.alertTimeRow}>
+                      <Ionicons name="time-outline" size={14} color="#9CA3AF" />
+                      <Text style={styles.alertTimeText}>
+                        {formatRelativeTime(alert.createdAt)}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                ))
+              )}
             </View>
           </>
         )}
@@ -621,11 +705,41 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#1A2740",
   },
+  sectionHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  sectionBadge: {
+    color: "#316BFF",
+    backgroundColor: "#E5EDFF",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    fontSize: 11,
+    fontWeight: "600",
+    overflow: "hidden",
+  },
   alertSectionCard: {
     backgroundColor: "#FFFFFF",
     padding: 18,
     borderRadius: 18,
     marginBottom: 20,
+  },
+  sectionStateCard: {
+    marginTop: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    backgroundColor: "#F9FAFB",
+    padding: 14,
+    gap: 10,
+  },
+  sectionStateText: {
+    color: "#6B7280",
+    fontSize: 13,
+    lineHeight: 19,
   },
   warningItem: {
     backgroundColor: "#FFFFFF",
@@ -692,6 +806,20 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: "#6B7280",
     flexShrink: 1,
+  },
+  alertRuleTextPending: {
+    color: "#D97706",
+    fontWeight: "700",
+  },
+  alertRuleTextAcknowledged: {
+    color: "#15803D",
+    fontWeight: "700",
+  },
+  alertExtraText: {
+    marginTop: 6,
+    fontSize: 11,
+    color: "#4B5563",
+    lineHeight: 17,
   },
   alertTimeRow: {
     flexDirection: "row",

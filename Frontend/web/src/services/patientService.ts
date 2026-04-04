@@ -20,15 +20,18 @@ export interface PatientDetailResponse {
 export interface MeasurementResponse {
   id: string;
   patientId: string;
-  temperature: number;
-  heartRate: number;
-  respiratoryRate: number;
-  spo2: number;
-  bloodPressure: { systolic: number; diastolic: number };
+  temperature?: number | null;
+  heartRate?: number | null;
+  respiratoryRate?: number | null;
+  spo2?: number | null;
+  bloodPressure?: {
+    systolic?: number | null;
+    diastolic?: number | null;
+  } | null;
   type: string;
-  systolic?: number;
-  diastolic?: number;
-  glucose?: number;
+  systolic?: number | null;
+  diastolic?: number | null;
+  glucose?: number | null;
   timing?: string;
   device?: string;
   note?: string;
@@ -37,6 +40,7 @@ export interface MeasurementResponse {
 }
 
 interface AssignmentApiResponse extends Omit<AssignmentResponse, "patientCode"> {
+  patientCode?: string;
   patientPublicId?: string;
 }
 
