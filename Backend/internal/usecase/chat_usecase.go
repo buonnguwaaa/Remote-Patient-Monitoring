@@ -35,3 +35,10 @@ type ValidateParticipantInput struct {
 	ConversationID primitive.ObjectID
 	UserID         primitive.ObjectID
 }
+
+type UpdateParticipantStateInput struct {
+	ConversationID         primitive.ObjectID
+	UserID                 primitive.ObjectID
+	LastDeliveredMessageID *primitive.ObjectID
+	LastReadMessageID      *primitive.ObjectID
+}

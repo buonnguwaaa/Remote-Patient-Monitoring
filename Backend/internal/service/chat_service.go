@@ -9,7 +9,8 @@ import (
 
 	chatDomain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/chat"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
-	repository "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository/chat"
+	repository "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository"
+	chatRepository "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository/chat"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecase"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -20,6 +21,7 @@ var (
 	ErrChatInvalidMessage      = errors.New("chat: invalid message")
 	ErrChatInvalidReplyTarget  = errors.New("chat: invalid reply target")
 	ErrChatForbidden           = errors.New("chat: user is not a participant")
+	ErrChatAssignmentMismatch  = errors.New("chat: participants must have an assignment record")
 )
 
 type ChatService interface {
@@ -29,17 +31,24 @@ type ChatService interface {
 	SendMessage(ctx context.Context, input *usecase.SendMessageInput) (*dto.MessageResponse, error)
 	GetConversationMessages(ctx context.Context, input *usecase.GetConversationMessagesInput) (*dto.GetMessagesResponse, error)
 	ValidateParticipant(ctx context.Context, input *usecase.ValidateParticipantInput) error
+	UpdateParticipantState(ctx context.Context, input *usecase.UpdateParticipantStateInput) error
 }
 
 type chatService struct {
-	conversationRepo repository.ConversationRepository
-	messageRepo      repository.MessageRepository
+	conversationRepo chatRepository.ConversationRepository
+	messageRepo      chatRepository.MessageRepository
+	assignmentRepo   repository.AssignmentRepository
 }
 
-func NewChatService(conversationRepo repository.ConversationRepository, messageRepo repository.MessageRepository) ChatService {
+func NewChatService(
+	conversationRepo chatRepository.ConversationRepository,
+	messageRepo chatRepository.MessageRepository,
+	assignmentRepo repository.AssignmentRepository,
+) ChatService {
 	return &chatService{
 		conversationRepo: conversationRepo,
 		messageRepo:      messageRepo,
+		assignmentRepo:   assignmentRepo,
 	}
 }
 
@@ -52,6 +61,13 @@ func (s *chatService) CreateConversation(ctx context.Context, input *usecase.Cre
 	if len(uniqueParticipants) < 2 {
 		return nil, ErrChatInvalidParticipants
 	}
+	if len(uniqueParticipants) != 2 {
+		return nil, ErrChatInvalidParticipants
+	}
+
+	if err := s.validateAssignmentRecordForParticipants(ctx, uniqueParticipants); err != nil {
+		return nil, err
+	}
 
 	existing, err := s.conversationRepo.FindByParticipants(ctx, uniqueParticipants)
 	if err != nil {
@@ -62,7 +78,7 @@ func (s *chatService) CreateConversation(ctx context.Context, input *usecase.Cre
 	}
 
 	conversation := &chatDomain.Conversation{
-		ParticipantIDs: uniqueParticipants,
+		Participants: buildParticipants(uniqueParticipants),
 	}
 
 	inserted, err := s.conversationRepo.Create(ctx, conversation)
@@ -71,6 +87,21 @@ func (s *chatService) CreateConversation(ctx context.Context, input *usecase.Cre
 	}
 
 	return mapConversationToDTO(inserted), nil
+}
+
+func (s *chatService) validateAssignmentRecordForParticipants(ctx context.Context, participantIDs []primitive.ObjectID) error {
+	firstID := participantIDs[0]
+	secondID := participantIDs[1]
+
+	hasRecord, err := s.assignmentRepo.HasAssignmentRecordForPair(ctx, firstID, secondID)
+	if err != nil {
+		return err
+	}
+	if hasRecord {
+		return nil
+	}
+
+	return ErrChatAssignmentMismatch
 }
 
 func (s *chatService) GetConversationByID(ctx context.Context, conversationID primitive.ObjectID) (*dto.ConversationResponse, error) {
@@ -96,7 +127,7 @@ func (s *chatService) GetUserConversations(ctx context.Context, input *usecase.G
 
 	limit := input.Limit
 
-	conversations, err := s.conversationRepo.FindWithFilter(ctx, repository.ConversationFilter{
+	conversations, err := s.conversationRepo.FindWithFilter(ctx, chatRepository.ConversationFilter{
 		ParticipantID: input.UserID,
 		Cursor:        input.Cursor,
 		Limit:         limit,
@@ -142,7 +173,7 @@ func (s *chatService) SendMessage(ctx context.Context, input *usecase.SendMessag
 	if conversation == nil {
 		return nil, ErrChatConversationMissing
 	}
-	if !containsObjectID(conversation.ParticipantIDs, input.SenderID) {
+	if !containsParticipant(conversation.Participants, input.SenderID) {
 		return nil, ErrChatForbidden
 	}
 
@@ -188,13 +219,13 @@ func (s *chatService) GetConversationMessages(ctx context.Context, input *usecas
 	if conversation == nil {
 		return nil, ErrChatConversationMissing
 	}
-	if !containsObjectID(conversation.ParticipantIDs, input.RequesterID) {
+	if !containsParticipant(conversation.Participants, input.RequesterID) {
 		return nil, ErrChatForbidden
 	}
 
 	limit := input.Limit
 
-	messages, err := s.messageRepo.FindWithFilter(ctx, repository.MessageFilter{
+	messages, err := s.messageRepo.FindWithFilter(ctx, chatRepository.MessageFilter{
 		ConversationID: input.ConversationID,
 		Cursor:         input.Cursor,
 		Limit:          limit,
@@ -240,10 +271,44 @@ func (s *chatService) ValidateParticipant(ctx context.Context, input *usecase.Va
 	if conversation == nil {
 		return ErrChatConversationMissing
 	}
-	if !containsObjectID(conversation.ParticipantIDs, input.UserID) {
+	if !containsParticipant(conversation.Participants, input.UserID) {
 		return ErrChatForbidden
 	}
 	return nil
+}
+
+func (s *chatService) UpdateParticipantState(ctx context.Context, input *usecase.UpdateParticipantStateInput) error {
+	if input == nil || input.ConversationID.IsZero() || input.UserID.IsZero() {
+		return ErrChatInvalidParticipants
+	}
+
+	if input.LastDeliveredMessageID == nil && input.LastReadMessageID == nil {
+		return ErrChatInvalidMessage
+	}
+
+	if err := s.ValidateParticipant(ctx, &usecase.ValidateParticipantInput{
+		ConversationID: input.ConversationID,
+		UserID:         input.UserID,
+	}); err != nil {
+		return err
+	}
+
+	return s.conversationRepo.UpdateParticipantState(
+		ctx,
+		input.ConversationID,
+		input.UserID,
+		input.LastDeliveredMessageID,
+		input.LastReadMessageID,
+	)
+}
+
+func buildParticipants(ids []primitive.ObjectID) []chatDomain.Participant {
+	participants := make([]chatDomain.Participant, 0, len(ids))
+	for _, id := range ids {
+		participants = append(participants, chatDomain.Participant{UserID: id})
+	}
+
+	return participants
 }
 
 func uniqueObjectIDs(ids []primitive.ObjectID) []primitive.ObjectID {
@@ -264,9 +329,9 @@ func uniqueObjectIDs(ids []primitive.ObjectID) []primitive.ObjectID {
 	return result
 }
 
-func containsObjectID(ids []primitive.ObjectID, target primitive.ObjectID) bool {
-	for _, id := range ids {
-		if id == target {
+func containsParticipant(participants []chatDomain.Participant, target primitive.ObjectID) bool {
+	for _, participant := range participants {
+		if participant.UserID == target {
 			return true
 		}
 	}
@@ -279,11 +344,24 @@ func mapConversationToDTO(c *chatDomain.Conversation) *dto.ConversationResponse 
 	}
 
 	return &dto.ConversationResponse{
-		ID:             c.ID,
-		ParticipantIDs: c.ParticipantIDs,
-		CreatedAt:      c.CreatedAt,
-		UpdatedAt:      c.UpdatedAt,
+		ID:           c.ID,
+		Participants: mapParticipantsToDTO(c.Participants),
+		CreatedAt:    c.CreatedAt,
+		UpdatedAt:    c.UpdatedAt,
 	}
+}
+
+func mapParticipantsToDTO(participants []chatDomain.Participant) []dto.ConversationParticipantResponse {
+	results := make([]dto.ConversationParticipantResponse, 0, len(participants))
+	for _, participant := range participants {
+		results = append(results, dto.ConversationParticipantResponse{
+			UserID:                 participant.UserID,
+			LastReadMessageID:      participant.LastReadMessageID,
+			LastDeliveredMessageID: participant.LastDeliveredMessageID,
+		})
+	}
+
+	return results
 }
 
 func mapConversationsToDTO(conversations []*chatDomain.Conversation) []dto.ConversationResponse {

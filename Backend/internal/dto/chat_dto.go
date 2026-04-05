@@ -16,11 +16,17 @@ type SendMessageRequest struct {
 	RelatedAlertID   *primitive.ObjectID `json:"relatedAlertId,omitempty"`
 }
 
+type ConversationParticipantResponse struct {
+	UserID                 primitive.ObjectID  `json:"userId"`
+	LastReadMessageID      *primitive.ObjectID `json:"lastReadMessageId,omitempty"`
+	LastDeliveredMessageID *primitive.ObjectID `json:"lastDeliveredMessageId,omitempty"`
+}
+
 type ConversationResponse struct {
-	ID             primitive.ObjectID   `json:"id"`
-	ParticipantIDs []primitive.ObjectID `json:"participantIds"`
-	CreatedAt      time.Time            `json:"createdAt"`
-	UpdatedAt      time.Time            `json:"updatedAt"`
+	ID           primitive.ObjectID                `json:"id"`
+	Participants []ConversationParticipantResponse `json:"participants"`
+	CreatedAt    time.Time                         `json:"createdAt"`
+	UpdatedAt    time.Time                         `json:"updatedAt"`
 }
 
 type MessageResponse struct {
