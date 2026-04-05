@@ -2,6 +2,8 @@ package chat
 
 import (
 	"context"
+	"sort"
+	"strings"
 	"time"
 
 	chatDomain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/chat"
@@ -44,6 +46,7 @@ func (r *conversationRepository) Create(ctx context.Context, conversation *chatD
 	now := time.Now().UTC()
 	conversation.CreatedAt = now
 	conversation.UpdatedAt = now
+	conversation.ParticipantKey = buildParticipantKey(conversation.ParticipantIDs)
 
 	result, err := r.col.InsertOne(ctx, conversation)
 	if err != nil {
@@ -79,8 +82,10 @@ func (r *conversationRepository) FindByParticipants(ctx context.Context, partici
 		},
 	}
 
+	opts := options.FindOne().SetSort(bson.D{{Key: "updatedAt", Value: -1}, {Key: "_id", Value: -1}})
+
 	var conversation chatDomain.Conversation
-	err := r.col.FindOne(ctx, filter).Decode(&conversation)
+	err := r.col.FindOne(ctx, filter, opts).Decode(&conversation)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return nil, nil
@@ -156,8 +161,33 @@ func (r *conversationRepository) EnsureIndexes(ctx context.Context) error {
 			Keys: bson.D{{Key: "participantIds", Value: 1}},
 		},
 		{
+			Keys:    bson.D{{Key: "participantKey", Value: 1}},
+			Options: options.Index().SetUnique(true).SetSparse(true),
+		},
+		{
 			Keys: bson.D{{Key: "updatedAt", Value: -1}},
 		},
 	})
 	return err
+}
+
+func buildParticipantKey(ids []primitive.ObjectID) string {
+	if len(ids) == 0 {
+		return ""
+	}
+
+	values := make([]string, 0, len(ids))
+	for _, id := range ids {
+		if id.IsZero() {
+			continue
+		}
+		values = append(values, id.Hex())
+	}
+
+	if len(values) == 0 {
+		return ""
+	}
+
+	sort.Strings(values)
+	return strings.Join(values, "|")
 }

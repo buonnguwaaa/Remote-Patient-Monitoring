@@ -1,6 +1,8 @@
 package container
 
 import (
+	"context"
+	"log"
 	"os"
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/config"
@@ -87,6 +89,12 @@ func NewMainServerContainer() *MainServerContainer {
 	c.ReminderRepo = repository.NewReminderRepository(db)
 	c.ConversationRepo = chatRepository.NewConversationRepository(db)
 	c.MessageRepo = chatRepository.NewMessageRepository(db)
+	if err := c.ConversationRepo.EnsureIndexes(context.Background()); err != nil {
+		log.Printf("[WARN] failed to ensure conversation indexes: %v", err)
+	}
+	if err := c.MessageRepo.EnsureIndexes(context.Background()); err != nil {
+		log.Printf("[WARN] failed to ensure message indexes: %v", err)
+	}
 
 	// Initialize services
 	c.AuthService = service.NewAuthService(c.BaseUserRepo, c.PatientRepo, c.DoctorRepo, c.NurseRepo, c.TokenRepo, c.JWTManager)
