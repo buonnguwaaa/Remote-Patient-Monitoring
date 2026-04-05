@@ -21,7 +21,6 @@ type ThresholdRepository interface {
 	FindWithFilter(ctx context.Context, filter ThresholdFilter) ([]domain.Threshold, error)
 	FindByID(ctx context.Context, id primitive.ObjectID) (*domain.Threshold, error)
 	Update(ctx context.Context, t *domain.Threshold) (*domain.Threshold, error)
-	DeleteByID(ctx context.Context, id primitive.ObjectID) error
 }
 
 type ThresholdFilter struct {
@@ -187,7 +186,3 @@ func (r *thresholdRepository) Update(ctx context.Context, t *domain.Threshold) (
 	return &updated, nil
 }
 
-func (r *thresholdRepository) DeleteByID(ctx context.Context, id primitive.ObjectID) error {
-	_, err := r.col.DeleteOne(ctx, bson.M{"_id": id})
-	return err
-}

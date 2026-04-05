@@ -43,11 +43,6 @@ type UpdateThresholdInput struct {
 	EffectiveTo        *time.Time
 }
 
-type DeleteThresholdInput struct {
-	ID       string
-	DoctorID string
-}
-
 type GetThresholdsInput struct {
 	PatientID string
 	DoctorID  string

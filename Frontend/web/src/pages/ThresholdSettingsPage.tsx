@@ -1,5 +1,5 @@
 import { type ChangeEvent, type FormEvent, useEffect, useMemo, useState } from "react";
-import { FaEdit, FaPlus, FaSave, FaStopCircle, FaTrash, FaUndo } from "react-icons/fa";
+import { FaChevronLeft, FaChevronRight, FaEdit, FaPlus, FaSave, FaStopCircle, FaUndo } from "react-icons/fa";
 
 import Toast from "../components/ui/Toast";
 import { useAuth } from "../context/AuthContext";
@@ -7,7 +7,6 @@ import { useToast } from "../hooks/useToast";
 import { getMyPatients } from "../services/patientService";
 import {
   createThreshold,
-  deleteThreshold,
   getThresholds,
   updateThreshold,
   type ThresholdPayload,
@@ -57,6 +56,7 @@ const toDateInputValue = (value?: string | null) => (value ? value.slice(0, 10) 
 const toStartOfDayIso = (value: string) => new Date(`${value}T00:00:00`).toISOString();
 const toEndOfDayIso = (value: string) => new Date(`${value}T23:59:59`).toISOString();
 const toNumber = (value: string) => Number.parseFloat(value || "0");
+const HISTORY_PAGE_SIZE = 5;
 
 const formatDateTime = (value?: string | null) => {
   if (!value) return "Không giới hạn";
@@ -138,6 +138,7 @@ const ThresholdSettingsPage = () => {
   const [loadingThresholds, setLoadingThresholds] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editingThresholdId, setEditingThresholdId] = useState<string | null>(null);
+  const [historyPage, setHistoryPage] = useState(1);
 
   const patientOptions = useMemo(() => {
     const patientMap = new Map<string, AssignmentResponse>();
@@ -160,6 +161,11 @@ const ThresholdSettingsPage = () => {
 
   const modeLabel = editingThresholdId ? "Cập nhật cấu hình hiện tại" : "Tạo cấu hình mới";
   const reusableHistoryCount = thresholdHistory.filter((item) => item.id !== activeThreshold?.id).length;
+  const totalHistoryPages = Math.max(1, Math.ceil(thresholdHistory.length / HISTORY_PAGE_SIZE));
+  const paginatedHistory = useMemo(() => {
+    const startIndex = (historyPage - 1) * HISTORY_PAGE_SIZE;
+    return thresholdHistory.slice(startIndex, startIndex + HISTORY_PAGE_SIZE);
+  }, [historyPage, thresholdHistory]);
 
   const applyThresholdToForm = (threshold: ThresholdRecord, mode: "edit" | "clone" = "edit") => {
     setFormData({
@@ -250,6 +256,7 @@ const ThresholdSettingsPage = () => {
       setActiveThreshold(null);
       setThresholdHistory([]);
       setEditingThresholdId(null);
+      setHistoryPage(1);
       return;
     }
 
@@ -263,6 +270,7 @@ const ThresholdSettingsPage = () => {
       const latestThreshold = latest[0] || null;
       setActiveThreshold(latestThreshold);
       setThresholdHistory(history);
+      setHistoryPage(1);
 
       if (latestThreshold) {
         applyThresholdToForm(latestThreshold, "edit");
@@ -300,11 +308,18 @@ const ThresholdSettingsPage = () => {
       setActiveThreshold(null);
       setThresholdHistory([]);
       setEditingThresholdId(null);
+      setHistoryPage(1);
       return;
     }
 
     void loadPatientThresholds(formData.patientId);
   }, [formData.patientId, user?.id]);
+
+  useEffect(() => {
+    if (historyPage > totalHistoryPages) {
+      setHistoryPage(totalHistoryPages);
+    }
+  }, [historyPage, totalHistoryPages]);
 
   const handleChange = (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = event.target;
@@ -381,30 +396,6 @@ const ThresholdSettingsPage = () => {
     } catch (error: any) {
       console.error("Failed to archive threshold", error);
       showToast(error?.response?.data?.error || "Không thể ngừng hiệu lực cấu hình hiện tại.", "error");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleDeleteHistoricalThreshold = async (threshold: ThresholdRecord) => {
-    const confirmed = window.confirm(
-      "Thao tác này sẽ xóa hẳn bản cấu hình lịch sử đã chọn. Bạn có muốn tiếp tục không?"
-    );
-    if (!confirmed) return;
-
-    try {
-      setSaving(true);
-      await deleteThreshold(threshold.id);
-      await loadPatientThresholds(threshold.patientId);
-
-      if (editingThresholdId === threshold.id) {
-        resetForm(threshold.patientId);
-      }
-
-      showToast("Đã xóa bản cấu hình lịch sử.", "success");
-    } catch (error: any) {
-      console.error("Failed to delete threshold", error);
-      showToast(error?.response?.data?.error || "Không thể xóa bản cấu hình này.", "error");
     } finally {
       setSaving(false);
     }
@@ -567,81 +558,101 @@ const ThresholdSettingsPage = () => {
               </div>
             )}
 
-            {thresholdHistory.map((item, index) => (
-              <div
-                key={item.id}
-                className={`group relative overflow-hidden rounded-2xl border px-4 py-4 transition ${
-                  item.id === activeThreshold?.id
-                    ? "border-emerald-200 dark:border-emerald-700 bg-gradient-to-br from-emerald-50 dark:from-emerald-900/30 to-white dark:to-slate-800 shadow-sm"
-                    : "border-slate-200 dark:border-slate-600 bg-gradient-to-br from-slate-50 dark:from-slate-700/50 to-white dark:to-slate-800 hover:border-blue-200 dark:hover:border-blue-600 hover:shadow-sm"
-                }`}
-              >
+            {paginatedHistory.map((item, index) => {
+              const absoluteIndex = (historyPage - 1) * HISTORY_PAGE_SIZE + index;
+
+              return (
                 <div
-                  className={`absolute inset-y-0 left-0 w-1 ${
-                    item.id === activeThreshold?.id ? "bg-emerald-400" : "bg-slate-200 dark:bg-slate-600 group-hover:bg-blue-300 dark:group-hover:bg-blue-500"
+                  key={item.id}
+                  className={`group relative overflow-hidden rounded-2xl border px-4 py-4 transition ${
+                    item.id === activeThreshold?.id
+                      ? "border-emerald-200 dark:border-emerald-700 bg-gradient-to-br from-emerald-50 dark:from-emerald-900/30 to-white dark:to-slate-800 shadow-sm"
+                      : "border-slate-200 dark:border-slate-600 bg-gradient-to-br from-slate-50 dark:from-slate-700/50 to-white dark:to-slate-800 hover:border-blue-200 dark:hover:border-blue-600 hover:shadow-sm"
                   }`}
-                />
-
-                <button
-                  type="button"
-                  onClick={() => applyThresholdToForm(item, item.id === activeThreshold?.id ? "edit" : "clone")}
-                  className="w-full text-left"
                 >
-                  <div className="flex items-start justify-between gap-3 pl-2">
-                    <div className="w-full">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-sm font-semibold text-gray-800 dark:text-slate-100">
-                          Bản cấu hình #{thresholdHistory.length - index}
-                        </p>
-                        <span className="rounded-full bg-white/90 dark:bg-slate-700 px-2.5 py-1 text-[11px] font-medium text-slate-500 dark:text-slate-300 shadow-sm">
-                          Cập nhật {formatDateTime(item.updatedAt)}
-                        </span>
-                      </div>
+                  <div
+                    className={`absolute inset-y-0 left-0 w-1 ${
+                      item.id === activeThreshold?.id
+                        ? "bg-emerald-400"
+                        : "bg-slate-200 dark:bg-slate-600 group-hover:bg-blue-300 dark:group-hover:bg-blue-500"
+                    }`}
+                  />
 
-                      <div className="mt-3 grid gap-2 text-xs text-slate-500 dark:text-slate-400">
-                        <div>Từ {formatDateTime(item.effectiveFrom)}</div>
-                        <div>Đến {formatDateTime(item.effectiveTo)}</div>
-                      </div>
-
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        {buildHistoryChips(item).map((chip) => (
-                          <span
-                            key={`${item.id}-${chip}`}
-                            className="rounded-full bg-white dark:bg-slate-700 px-2.5 py-1 text-[11px] font-medium text-gray-600 dark:text-slate-300 shadow-sm"
-                          >
-                            {chip}
+                  <button
+                    type="button"
+                    onClick={() => applyThresholdToForm(item, item.id === activeThreshold?.id ? "edit" : "clone")}
+                    className="w-full text-left"
+                  >
+                    <div className="flex items-start justify-between gap-3 pl-2">
+                      <div className="w-full">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-sm font-semibold text-gray-800 dark:text-slate-100">
+                            Bản cấu hình #{thresholdHistory.length - absoluteIndex}
+                          </p>
+                          <span className="rounded-full bg-white/90 dark:bg-slate-700 px-2.5 py-1 text-[11px] font-medium text-slate-500 dark:text-slate-300 shadow-sm">
+                            Cập nhật {formatDateTime(item.updatedAt)}
                           </span>
-                        ))}
+                        </div>
+
+                        <div className="mt-3 grid gap-2 text-xs text-slate-500 dark:text-slate-400">
+                          <div>Từ {formatDateTime(item.effectiveFrom)}</div>
+                          <div>Đến {formatDateTime(item.effectiveTo)}</div>
+                        </div>
+
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          {buildHistoryChips(item).map((chip) => (
+                            <span
+                              key={`${item.id}-${chip}`}
+                              className="rounded-full bg-white dark:bg-slate-700 px-2.5 py-1 text-[11px] font-medium text-gray-600 dark:text-slate-300 shadow-sm"
+                            >
+                              {chip}
+                            </span>
+                          ))}
+                        </div>
                       </div>
+
+                      <span
+                        className={`inline-flex shrink-0 self-start whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold ${
+                          item.id === activeThreshold?.id
+                            ? "bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300"
+                            : "bg-slate-200 dark:bg-slate-600 text-slate-600 dark:text-slate-300"
+                        }`}
+                      >
+                        {item.id === activeThreshold?.id ? "Hiện tại" : "Lịch sử"}
+                      </span>
                     </div>
+                  </button>
+                </div>
+              );
+            })}
 
-                    <span
-                      className={`inline-flex shrink-0 self-start whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold ${
-                        item.id === activeThreshold?.id
-                          ? "bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300"
-                          : "bg-slate-200 dark:bg-slate-600 text-slate-600 dark:text-slate-300"
-                      }`}
-                    >
-                      {item.id === activeThreshold?.id ? "Hiện tại" : "Lịch sử"}
-                    </span>
-                  </div>
-                </button>
-
-                {item.id !== activeThreshold?.id && (
-                  <div className="mt-4 flex justify-end pl-2">
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteHistoricalThreshold(item)}
-                      disabled={saving}
-                      className="inline-flex items-center rounded-xl border border-rose-200 dark:border-rose-700 bg-rose-50 dark:bg-rose-900/30 px-3 py-2 text-xs font-semibold text-rose-700 dark:text-rose-300 transition hover:bg-rose-100 dark:hover:bg-rose-900/50 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      <FaTrash className="mr-2" />
-                      Xóa bản cũ
-                    </button>
-                  </div>
-                )}
+            {thresholdHistory.length > HISTORY_PAGE_SIZE && (
+              <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-900/60">
+                <div className="text-slate-500 dark:text-slate-400">
+                  Trang {historyPage}/{totalHistoryPages}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setHistoryPage((current) => Math.max(1, current - 1))}
+                    disabled={historyPage === 1}
+                    className="inline-flex items-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                  >
+                    <FaChevronLeft className="mr-2" />
+                    Trước
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setHistoryPage((current) => Math.min(totalHistoryPages, current + 1))}
+                    disabled={historyPage === totalHistoryPages}
+                    className="inline-flex items-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                  >
+                    Sau
+                    <FaChevronRight className="ml-2" />
+                  </button>
+                </div>
               </div>
-            ))}
+            )}
           </div>
         </div>
       </div>

@@ -154,38 +154,3 @@ func (h *ThresholdHandler) UpdateThreshold(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": resp, "message": "Threshold updated successfully"})
 }
 
-// DeleteThreshold handles deleting a historical threshold
-// @Summary Delete a threshold
-// @Description Delete an existing historical threshold record
-// @Tags thresholds
-// @Accept json
-// @Produce json
-// @Param id path string true "Threshold ID"
-// @Success 200 {object} map[string]interface{} "Threshold deleted successfully"
-// @Failure 400 {object} map[string]string "Bad request"
-// @Failure 500 {object} map[string]string "Internal server error"
-// @Router /thresholds/{id} [delete]
-func (h *ThresholdHandler) DeleteThreshold(c *gin.Context) {
-	id := c.Param("id")
-	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "missing threshold id"})
-		return
-	}
-
-	doctorID := ""
-	if userID, exists := c.Get("userId"); exists {
-		doctorID = userID.(string)
-	}
-
-	input := &usecase.DeleteThresholdInput{
-		ID:       id,
-		DoctorID: doctorID,
-	}
-
-	if err := h.service.DeleteThreshold(c.Request.Context(), input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "Threshold deleted successfully"})
-}

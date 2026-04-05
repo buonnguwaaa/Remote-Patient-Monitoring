@@ -47,7 +47,7 @@ func (r *conversationRepository) Create(ctx context.Context, conversation *chatD
 	now := time.Now().UTC()
 	conversation.CreatedAt = now
 	conversation.UpdatedAt = now
-	conversation.ParticipantKey = buildParticipantKey(conversation.ParticipantIDs)
+	conversation.ParticipantKey = buildParticipantKey(participantIDsFromParticipants(conversation.Participants))
 
 	result, err := r.col.InsertOne(ctx, conversation)
 	if err != nil {
@@ -220,4 +220,16 @@ func buildParticipantKey(ids []primitive.ObjectID) string {
 
 	sort.Strings(values)
 	return strings.Join(values, "|")
+}
+
+func participantIDsFromParticipants(participants []chatDomain.Participant) []primitive.ObjectID {
+	ids := make([]primitive.ObjectID, 0, len(participants))
+	for _, participant := range participants {
+		if participant.UserID.IsZero() {
+			continue
+		}
+		ids = append(ids, participant.UserID)
+	}
+
+	return ids
 }
