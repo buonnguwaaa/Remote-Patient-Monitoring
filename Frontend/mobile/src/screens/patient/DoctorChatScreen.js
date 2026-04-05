@@ -60,6 +60,7 @@ function normalizeMessage(message) {
     conversationId: message.conversationId || message.chatId,
     senderId: message.senderId,
     content: message.content || message.message || "",
+    replyToMessageId: message.replyToMessageId || null,
     relatedAlertId: message.relatedAlertId || null,
     createdAt: message.createdAt,
     updatedAt: message.updatedAt || message.createdAt,
@@ -118,6 +119,7 @@ function parseAlertLinkedMessage(content, relatedAlertId) {
 
   if (segments.length === 0) {
     return {
+      hasStructuredAlertSummary: false,
       alertSummary: "",
       note: "",
       shortAlertId: String(relatedAlertId).slice(-8),
@@ -129,6 +131,7 @@ function parseAlertLinkedMessage(content, relatedAlertId) {
 
   if (firstLine.startsWith(alertPrefix)) {
     return {
+      hasStructuredAlertSummary: true,
       alertSummary: firstLine.slice(alertPrefix.length).trim(),
       note: segments.slice(1).join("\n").trim(),
       shortAlertId: String(relatedAlertId).slice(-8),
@@ -136,10 +139,28 @@ function parseAlertLinkedMessage(content, relatedAlertId) {
   }
 
   return {
+    hasStructuredAlertSummary: false,
     alertSummary: "",
     note: segments.join("\n").trim(),
     shortAlertId: String(relatedAlertId).slice(-8),
   };
+}
+
+function getReplyPreviewContent(message) {
+  const alertMessage = parseAlertLinkedMessage(message?.content, message?.relatedAlertId);
+  if (alertMessage?.hasStructuredAlertSummary && alertMessage.alertSummary) {
+    return `Cảnh báo chỉ số: ${alertMessage.alertSummary}`;
+  }
+
+  const normalized = String(message?.content || "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!normalized) {
+    return "Tin nhắn không có nội dung";
+  }
+
+  return normalized.length > 100 ? `${normalized.slice(0, 97)}...` : normalized;
 }
 
 export default function DoctorChatScreen() {
@@ -153,6 +174,7 @@ export default function DoctorChatScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [socketState, setSocketState] = useState("idle");
+  const [replyTarget, setReplyTarget] = useState(null);
 
   const socketRef = useRef(null);
   const scrollViewRef = useRef(null);
@@ -332,6 +354,24 @@ export default function DoctorChatScreen() {
     return items;
   }, [messages]);
 
+  const messageLookup = useMemo(() => {
+    return new Map(messages.map((message) => [message.id, message]));
+  }, [messages]);
+
+  useEffect(() => {
+    if (!replyTarget) {
+      return;
+    }
+
+    if (!messageLookup.has(replyTarget.id)) {
+      setReplyTarget(null);
+    }
+  }, [messageLookup, replyTarget]);
+
+  useEffect(() => {
+    setReplyTarget(null);
+  }, [conversation?.id]);
+
   const handleSend = (nextContent = draft) => {
     const content = String(nextContent || "").trim();
     if (!content) {
@@ -343,8 +383,14 @@ export default function DoctorChatScreen() {
       return;
     }
 
-    socketRef.current.send(JSON.stringify({ content }));
+    const payload = { content };
+    if (replyTarget?.id) {
+      payload.replyToMessageId = replyTarget.id;
+    }
+
+    socketRef.current.send(JSON.stringify(payload));
     setDraft("");
+    setReplyTarget(null);
     setError(null);
   };
 
@@ -453,6 +499,14 @@ export default function DoctorChatScreen() {
                   item.message.relatedAlertId
                 );
                 const hasAlertTag = Boolean(item.message.relatedAlertId);
+                const repliedMessage = item.message.replyToMessageId
+                  ? messageLookup.get(item.message.replyToMessageId)
+                  : null;
+                const repliedSenderLabel = repliedMessage
+                  ? repliedMessage.senderId === currentUserId
+                    ? "Bạn"
+                    : "Bác sĩ"
+                  : "";
 
                 return (
                   <View
@@ -491,7 +545,7 @@ export default function DoctorChatScreen() {
                           <Text style={styles.senderNameSmall}>Bác sĩ</Text>
                         ) : null}
 
-                        {hasAlertTag && alertMessage ? (
+                        {hasAlertTag && alertMessage?.hasStructuredAlertSummary ? (
                           <View style={styles.alertContentBlock}>
                             <View
                               style={[
@@ -575,24 +629,85 @@ export default function DoctorChatScreen() {
                             ) : null}
                           </View>
                         ) : (
-                          <Text
-                            style={[
-                              styles.messageText,
-                              !isDoctor && styles.messageTextPatient,
-                            ]}
-                          >
-                            {item.message.content}
-                          </Text>
+                          <>
+                            {repliedMessage ? (
+                              <View
+                                style={[
+                                  styles.replyPreviewCard,
+                                  isDoctor
+                                    ? styles.replyPreviewCardDoctor
+                                    : styles.replyPreviewCardPatient,
+                                ]}
+                              >
+                                <Text
+                                  style={[
+                                    styles.replyPreviewSender,
+                                    isDoctor
+                                      ? styles.replyPreviewSenderDoctor
+                                      : styles.replyPreviewSenderPatient,
+                                  ]}
+                                >
+                                  {repliedSenderLabel}
+                                </Text>
+                                <Text
+                                  style={[
+                                    styles.replyPreviewText,
+                                    isDoctor
+                                      ? styles.replyPreviewTextDoctor
+                                      : styles.replyPreviewTextPatient,
+                                  ]}
+                                  numberOfLines={2}
+                                >
+                                  {getReplyPreviewContent(repliedMessage)}
+                                </Text>
+                              </View>
+                            ) : null}
+                            <Text
+                              style={[
+                                styles.messageText,
+                                !isDoctor && styles.messageTextPatient,
+                              ]}
+                            >
+                              {item.message.content}
+                            </Text>
+                          </>
                         )}
 
-                        <Text
-                          style={[
-                            styles.timeText,
-                            isDoctor ? styles.timeTextDoctor : styles.timeTextPatient,
-                          ]}
-                        >
-                          {formatTime(item.message.createdAt)}
-                        </Text>
+                        <View style={styles.messageFooterRow}>
+                          <TouchableOpacity
+                            onPress={() => setReplyTarget(item.message)}
+                            activeOpacity={0.85}
+                            style={[
+                              styles.replyButton,
+                              isDoctor ? styles.replyButtonDoctor : styles.replyButtonPatient,
+                            ]}
+                          >
+                            <Ionicons
+                              name="arrow-undo-outline"
+                              size={12}
+                              color={isDoctor ? "#6B7280" : "#DBEAFE"}
+                            />
+                            <Text
+                              style={[
+                                styles.replyButtonText,
+                                isDoctor
+                                  ? styles.replyButtonTextDoctor
+                                  : styles.replyButtonTextPatient,
+                              ]}
+                            >
+                              Trả lời
+                            </Text>
+                          </TouchableOpacity>
+
+                          <Text
+                            style={[
+                              styles.timeText,
+                              isDoctor ? styles.timeTextDoctor : styles.timeTextPatient,
+                            ]}
+                          >
+                            {formatTime(item.message.createdAt)}
+                          </Text>
+                        </View>
                       </View>
                     </View>
                   </View>
@@ -624,6 +739,26 @@ export default function DoctorChatScreen() {
 
         <View style={styles.composerWrapper}>
           <View style={styles.composerInputWrap}>
+            {replyTarget ? (
+              <View style={styles.replyComposerCard}>
+                <View style={styles.replyComposerBody}>
+                  <Text style={styles.replyComposerLabel}>Đang trả lời</Text>
+                  <Text style={styles.replyComposerSender}>
+                    {replyTarget.senderId === currentUserId ? "Bạn" : "Bác sĩ"}
+                  </Text>
+                  <Text style={styles.replyComposerText} numberOfLines={2}>
+                    {getReplyPreviewContent(replyTarget)}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setReplyTarget(null)}
+                  activeOpacity={0.85}
+                  style={styles.replyComposerClose}
+                >
+                  <Ionicons name="close" size={16} color="#6B7280" />
+                </TouchableOpacity>
+              </View>
+            ) : null}
             <TextInput
               value={draft}
               onChangeText={setDraft}
@@ -983,6 +1118,42 @@ const styles = StyleSheet.create({
   alertNoteTextPatient: {
     color: "#EFF6FF",
   },
+  replyPreviewCard: {
+    marginBottom: 8,
+    borderLeftWidth: 3,
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  replyPreviewCardDoctor: {
+    backgroundColor: "#F8FAFC",
+    borderLeftColor: "#93C5FD",
+  },
+  replyPreviewCardPatient: {
+    backgroundColor: "rgba(255,255,255,0.12)",
+    borderLeftColor: "#BFDBFE",
+  },
+  replyPreviewSender: {
+    fontSize: 11,
+    fontWeight: "700",
+    marginBottom: 3,
+  },
+  replyPreviewSenderDoctor: {
+    color: "#2563EB",
+  },
+  replyPreviewSenderPatient: {
+    color: "#DBEAFE",
+  },
+  replyPreviewText: {
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  replyPreviewTextDoctor: {
+    color: "#4B5563",
+  },
+  replyPreviewTextPatient: {
+    color: "rgba(239,246,255,0.92)",
+  },
   messageText: {
     fontSize: 14,
     lineHeight: 20,
@@ -1001,6 +1172,37 @@ const styles = StyleSheet.create({
   },
   timeTextPatient: {
     color: "rgba(224,231,255,0.95)",
+  },
+  messageFooterRow: {
+    marginTop: 6,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+  replyButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  replyButtonDoctor: {
+    backgroundColor: "#F3F4F6",
+  },
+  replyButtonPatient: {
+    backgroundColor: "rgba(255,255,255,0.12)",
+  },
+  replyButtonText: {
+    marginLeft: 4,
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  replyButtonTextDoctor: {
+    color: "#6B7280",
+  },
+  replyButtonTextPatient: {
+    color: "#DBEAFE",
   },
   quickBarWrapper: {
     borderTopWidth: 1,
@@ -1047,6 +1249,43 @@ const styles = StyleSheet.create({
     backgroundColor: "#F3F4F6",
     paddingHorizontal: 14,
     paddingVertical: 10,
+  },
+  replyComposerCard: {
+    marginBottom: 10,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    borderRadius: 16,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#DBEAFE",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  replyComposerBody: {
+    flex: 1,
+  },
+  replyComposerLabel: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#2563EB",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  replyComposerSender: {
+    marginTop: 3,
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#111827",
+  },
+  replyComposerText: {
+    marginTop: 3,
+    fontSize: 12,
+    lineHeight: 17,
+    color: "#6B7280",
+  },
+  replyComposerClose: {
+    marginLeft: 8,
+    padding: 2,
   },
   composerInput: {
     minHeight: 24,

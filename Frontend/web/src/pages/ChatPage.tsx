@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams, useSearchParams } from "react-rout
 import {
   AlertTriangle,
   ArrowLeft,
+  CornerUpLeft,
   Info,
   Loader2,
   MoreVertical,
@@ -121,6 +122,7 @@ function parseAlertLinkedMessage(
 
   if (segments.length === 0) {
     return {
+      hasStructuredAlertSummary: false,
       alertSummary: "",
       note: "",
       shortAlertId: relatedAlertId.slice(-8),
@@ -132,6 +134,7 @@ function parseAlertLinkedMessage(
 
   if (firstLine.startsWith(alertPrefix)) {
     return {
+      hasStructuredAlertSummary: true,
       alertSummary: firstLine.slice(alertPrefix.length).trim(),
       note: segments.slice(1).join("\n").trim(),
       shortAlertId: relatedAlertId.slice(-8),
@@ -139,10 +142,25 @@ function parseAlertLinkedMessage(
   }
 
   return {
+    hasStructuredAlertSummary: false,
     alertSummary: "",
     note: segments.join("\n").trim(),
     shortAlertId: relatedAlertId.slice(-8),
   };
+}
+
+function getReplyPreviewContent(message: MessageResponse) {
+  const alertMessage = parseAlertLinkedMessage(message.content, message.relatedAlertId);
+  if (alertMessage?.hasStructuredAlertSummary && alertMessage.alertSummary) {
+    return `Cảnh báo chỉ số: ${alertMessage.alertSummary}`;
+  }
+
+  const normalized = String(message.content || "").replace(/\s+/g, " ").trim();
+  if (!normalized) {
+    return "Tin nhắn không có nội dung";
+  }
+
+  return normalized.length > 120 ? `${normalized.slice(0, 117)}...` : normalized;
 }
 
 function formatTime(iso: string) {
@@ -251,6 +269,7 @@ const ChatPage = () => {
   const [alertContextError, setAlertContextError] = useState<string | null>(null);
   const [alertContextLoading, setAlertContextLoading] = useState(Boolean(activeAlertId));
   const [socketState, setSocketState] = useState<SocketState>("idle");
+  const [replyTarget, setReplyTarget] = useState<MessageResponse | null>(null);
 
   useEffect(() => {
     if (location.state) {
@@ -453,6 +472,10 @@ const ChatPage = () => {
     setError("Không thể tự gửi lời nhắn đã chuẩn bị. Nội dung đã được giữ lại ở ô soạn tin.");
   }, [pendingAutoMessage, socketState]);
 
+  useEffect(() => {
+    setReplyTarget(null);
+  }, [conversation?.id]);
+
   const messageItems = useMemo(() => {
     const items: Array<
       | { type: "day"; key: string; label: string }
@@ -481,6 +504,20 @@ const ChatPage = () => {
     return items;
   }, [messages]);
 
+  const messageLookup = useMemo(() => {
+    return new Map(messages.map((message) => [message.id, message]));
+  }, [messages]);
+
+  useEffect(() => {
+    if (!replyTarget) {
+      return;
+    }
+
+    if (!messageLookup.has(replyTarget.id)) {
+      setReplyTarget(null);
+    }
+  }, [messageLookup, replyTarget]);
+
   const sendMessage = (rawContent: string) => {
     const content = rawContent.trim();
     if (!content) {
@@ -492,9 +529,16 @@ const ChatPage = () => {
       return false;
     }
 
-    const payload: { content: string; relatedAlertId?: string } = { content };
+    const payload: {
+      content: string;
+      relatedAlertId?: string;
+      replyToMessageId?: string;
+    } = { content };
     if (activeAlertId) {
       payload.relatedAlertId = activeAlertId;
+    }
+    if (replyTarget?.id) {
+      payload.replyToMessageId = replyTarget.id;
     }
 
     socketRef.current.send(JSON.stringify(payload));
@@ -510,6 +554,7 @@ const ChatPage = () => {
     if (nextContent === draft) {
       setDraft("");
     }
+    setReplyTarget(null);
   };
 
   const clearAlertContext = () => {
@@ -714,15 +759,23 @@ const ChatPage = () => {
                 item.message.content,
                 item.message.relatedAlertId
               );
+              const repliedMessage = item.message.replyToMessageId
+                ? messageLookup.get(item.message.replyToMessageId)
+                : null;
+              const repliedSenderLabel = repliedMessage
+                ? repliedMessage.senderId === user?.id
+                  ? "Bạn"
+                  : patient?.name || "Bệnh nhân"
+                : "";
 
-                return (
-                  <div
-                    key={item.key}
-                    ref={(node) => {
-                      messageRefs.current[item.message.id] = node;
-                    }}
-                    className={`flex ${isMe ? "justify-end" : "justify-start"}`}
-                  >
+              return (
+                <div
+                  key={item.key}
+                  ref={(node) => {
+                    messageRefs.current[item.message.id] = node;
+                  }}
+                  className={`flex ${isMe ? "justify-end" : "justify-start"}`}
+                >
                   <div
                     className={`max-w-[78%] rounded-3xl px-4 py-3 text-sm shadow-sm ${
                       isMe
@@ -742,7 +795,7 @@ const ChatPage = () => {
                       </div>
                     ) : null}
 
-                    {hasAlertTag && alertMessage ? (
+                    {hasAlertTag && alertMessage?.hasStructuredAlertSummary ? (
                       <div className="space-y-3">
                         <div
                           className={`rounded-2xl border px-3 py-3 ${
@@ -794,15 +847,52 @@ const ChatPage = () => {
                         ) : null}
                       </div>
                     ) : (
-                      <p className="whitespace-pre-wrap leading-relaxed">{item.message.content}</p>
+                      <>
+                        {repliedMessage ? (
+                          <div
+                            className={`mb-3 rounded-2xl border-l-4 px-3 py-2 ${
+                              isMe
+                                ? "border-white/55 bg-white/12 text-blue-50"
+                                : "border-blue-300 bg-slate-50 text-slate-600"
+                            }`}
+                          >
+                            <div
+                              className={`text-[11px] font-semibold ${
+                                isMe ? "text-blue-100" : "text-blue-700"
+                              }`}
+                            >
+                              {repliedSenderLabel}
+                            </div>
+                            <div className="mt-1 text-[13px] leading-5 opacity-90">
+                              {getReplyPreviewContent(repliedMessage)}
+                            </div>
+                          </div>
+                        ) : null}
+                        <p className="whitespace-pre-wrap leading-relaxed">{item.message.content}</p>
+                      </>
                     )}
 
-                    <div
-                      className={`mt-2 text-right text-[11px] ${
-                        isMe ? "text-blue-100" : "text-gray-400"
-                      }`}
-                    >
-                      {formatTime(item.message.createdAt)}
+                    <div className="mt-3 flex items-center justify-between gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setReplyTarget(item.message)}
+                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
+                          isMe
+                            ? "bg-white/12 text-blue-50 hover:bg-white/18"
+                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                        }`}
+                      >
+                        <CornerUpLeft size={12} />
+                        Trả lời
+                      </button>
+
+                      <div
+                        className={`text-right text-[11px] ${
+                          isMe ? "text-blue-100" : "text-gray-400"
+                        }`}
+                      >
+                        {formatTime(item.message.createdAt)}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -828,6 +918,28 @@ const ChatPage = () => {
 
         <div className="flex items-end gap-3 p-3">
           <div className="flex-1 rounded-3xl bg-gray-100 px-4 py-3 transition focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-500">
+            {replyTarget ? (
+              <div className="mb-3 flex items-start justify-between gap-3 rounded-2xl border border-blue-100 bg-white px-3 py-2">
+                <div className="min-w-0">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-blue-700">
+                    Đang trả lời
+                  </div>
+                  <div className="mt-1 text-xs font-medium text-slate-700">
+                    {replyTarget.senderId === user?.id ? "Bạn" : patient?.name || "Bệnh nhân"}
+                  </div>
+                  <div className="mt-1 truncate text-sm text-slate-500">
+                    {getReplyPreviewContent(replyTarget)}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setReplyTarget(null)}
+                  className="rounded-full p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ) : null}
             <textarea
               placeholder={
                 activeAlertId
