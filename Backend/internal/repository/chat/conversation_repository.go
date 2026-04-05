@@ -19,6 +19,7 @@ type ConversationRepository interface {
 	FindWithFilter(ctx context.Context, filter ConversationFilter) ([]*chatDomain.Conversation, error)
 	FindByParticipants(ctx context.Context, participantIDs []primitive.ObjectID) (*chatDomain.Conversation, error)
 	FindByParticipantID(ctx context.Context, participantID primitive.ObjectID, limit int, cursor time.Time) ([]*chatDomain.Conversation, error)
+	UpdateParticipantState(ctx context.Context, conversationID primitive.ObjectID, userID primitive.ObjectID, lastDeliveredMessageID *primitive.ObjectID, lastReadMessageID *primitive.ObjectID) error
 	TouchUpdatedAt(ctx context.Context, id primitive.ObjectID) error
 	EnsureIndexes(ctx context.Context) error
 }
@@ -76,10 +77,10 @@ func (r *conversationRepository) FindByParticipants(ctx context.Context, partici
 	}
 
 	filter := bson.M{
-		"participantIds": bson.M{
-			"$all":  participantIDs,
-			"$size": len(participantIDs),
+		"participants.userId": bson.M{
+			"$all": participantIDs,
 		},
+		"participants": bson.M{"$size": len(participantIDs)},
 	}
 
 	opts := options.FindOne().SetSort(bson.D{{Key: "updatedAt", Value: -1}, {Key: "_id", Value: -1}})
@@ -108,15 +109,15 @@ func (r *conversationRepository) FindWithFilter(ctx context.Context, filter Conv
 	bsonFilter := bson.M{}
 
 	if !filter.ParticipantID.IsZero() {
-		bsonFilter["participantIds"] = filter.ParticipantID
+		bsonFilter["participants.userId"] = filter.ParticipantID
 	}
 
 	if len(filter.ParticipantIDs) > 0 {
 		participantsFilter := bson.M{"$all": filter.ParticipantIDs}
+		bsonFilter["participants.userId"] = participantsFilter
 		if filter.ExactMatch {
-			participantsFilter["$size"] = len(filter.ParticipantIDs)
+			bsonFilter["participants"] = bson.M{"$size": len(filter.ParticipantIDs)}
 		}
-		bsonFilter["participantIds"] = participantsFilter
 	}
 
 	if !filter.Cursor.IsZero() {
@@ -155,10 +156,39 @@ func (r *conversationRepository) TouchUpdatedAt(ctx context.Context, id primitiv
 	return err
 }
 
+func (r *conversationRepository) UpdateParticipantState(
+	ctx context.Context,
+	conversationID primitive.ObjectID,
+	userID primitive.ObjectID,
+	lastDeliveredMessageID *primitive.ObjectID,
+	lastReadMessageID *primitive.ObjectID,
+) error {
+	setFields := bson.M{"updatedAt": time.Now().UTC()}
+
+	if lastDeliveredMessageID != nil {
+		setFields["participants.$.lastDeliveredMessageId"] = *lastDeliveredMessageID
+	}
+
+	if lastReadMessageID != nil {
+		setFields["participants.$.lastReadMessageId"] = *lastReadMessageID
+	}
+
+	_, err := r.col.UpdateOne(
+		ctx,
+		bson.M{
+			"_id":                 conversationID,
+			"participants.userId": userID,
+		},
+		bson.M{"$set": setFields},
+	)
+
+	return err
+}
+
 func (r *conversationRepository) EnsureIndexes(ctx context.Context) error {
 	_, err := r.col.Indexes().CreateMany(ctx, []mongo.IndexModel{
 		{
-			Keys: bson.D{{Key: "participantIds", Value: 1}},
+			Keys: bson.D{{Key: "participants.userId", Value: 1}},
 		},
 		{
 			Keys:    bson.D{{Key: "participantKey", Value: 1}},
