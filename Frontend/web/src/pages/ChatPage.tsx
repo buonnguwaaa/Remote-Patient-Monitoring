@@ -569,18 +569,18 @@ const ChatPage = () => {
 
   if (loading) {
     return (
-      <div className="flex min-h-[70vh] items-center justify-center bg-[#F0F2F5]">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      <div className="flex min-h-[70vh] items-center justify-center bg-[#F0F2F5] dark:bg-slate-950">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
       </div>
     );
   }
 
   if (error && !conversation) {
     return (
-      <div className="flex min-h-[70vh] flex-col items-center justify-center gap-4 bg-[#F0F2F5] px-4 text-center">
-        <p className="text-sm text-red-500">{error}</p>
+      <div className="flex min-h-[70vh] flex-col items-center justify-center gap-4 bg-[#F0F2F5] px-4 text-center dark:bg-slate-950">
+        <p className="text-sm text-red-500 dark:text-red-300">{error}</p>
         <button
-          className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white"
+          className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-400"
           onClick={() => navigate(-1)}
         >
           Quay lại
@@ -592,32 +592,34 @@ const ChatPage = () => {
   const patientSummary = patient ? getPatientSummary(patient) : "";
 
   return (
-    <div className="flex h-[calc(100vh-2rem)] flex-col overflow-hidden rounded-3xl bg-[#F0F2F5] shadow-sm">
-      <header className="sticky top-0 z-20 border-b border-gray-200 bg-white px-4 py-3 shadow-sm">
+    <div className="flex h-[calc(100vh-2rem)] flex-col overflow-hidden rounded-3xl bg-[#F0F2F5] shadow-sm dark:bg-slate-950 dark:ring-1 dark:ring-slate-800/80">
+      <header className="sticky top-0 z-20 border-b border-gray-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <button
-              className="rounded-full p-2 text-gray-600 transition hover:bg-gray-100"
+              className="rounded-full p-2 text-gray-600 transition hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800"
               onClick={() => navigate(-1)}
             >
               <ArrowLeft size={22} />
             </button>
 
             <div className="flex items-center gap-3">
-              <div className="relative flex h-10 w-10 items-center justify-center rounded-full border border-indigo-200 bg-indigo-100 text-indigo-600">
+              <div className="relative flex h-10 w-10 items-center justify-center rounded-full border border-indigo-200 bg-indigo-100 text-indigo-600 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300">
                 <User size={20} />
               </div>
 
               <div>
-                <h1 className="text-base font-bold leading-tight text-gray-800">
+                <h1 className="text-base font-bold leading-tight text-gray-800 dark:text-slate-100">
                   {patient?.name || "Bệnh nhân"}
                 </h1>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-500 dark:text-slate-400">
                   {patientSummary || "Trao đổi trực tiếp với bệnh nhân"}
                 </p>
                 <p
                   className={`mt-1 text-[11px] font-medium ${
-                    socketState === "open" ? "text-green-600" : "text-amber-600"
+                    socketState === "open"
+                      ? "text-green-600 dark:text-emerald-300"
+                      : "text-amber-600 dark:text-amber-300"
                   }`}
                 >
                   {socketState === "open"
@@ -628,7 +630,7 @@ const ChatPage = () => {
             </div>
           </div>
 
-          <button className="rounded-full p-2 text-gray-500 transition hover:bg-gray-100">
+          <button className="rounded-full p-2 text-gray-500 transition hover:bg-gray-100 dark:text-slate-400 dark:hover:bg-slate-800">
             <MoreVertical size={20} />
           </button>
         </div>
@@ -636,39 +638,39 @@ const ChatPage = () => {
 
       <main className="flex-1 overflow-y-auto px-4 py-5">
         {error && conversation ? (
-          <div className="mb-4 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
+          <div className="mb-4 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-200">
             {error}
           </div>
         ) : null}
 
         {activeAlertId ? (
-          <section className="mb-4 rounded-3xl border border-amber-200 bg-white p-4 shadow-sm">
+          <section className="mb-4 rounded-3xl border border-amber-200 bg-white p-4 shadow-sm dark:border-amber-500/20 dark:bg-slate-900 dark:shadow-none">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-600">
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-600 dark:text-amber-300">
                   Ngữ cảnh cảnh báo
                 </div>
-                <h2 className="mt-2 text-base font-semibold text-slate-900">
+                <h2 className="mt-2 text-base font-semibold text-slate-900 dark:text-slate-100">
                   Tin nhắn mới sẽ được gắn với cảnh báo này
                 </h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  Alert ID: <span className="font-medium text-slate-700">{activeAlertId}</span>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                  Alert ID: <span className="font-medium text-slate-700 dark:text-slate-200">{activeAlertId}</span>
                 </p>
               </div>
 
               <button
                 type="button"
                 onClick={clearAlertContext}
-                className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
+                className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:bg-slate-800"
               >
                 <X size={16} />
                 Bỏ ngữ cảnh
               </button>
             </div>
 
-            <div className="mt-4 rounded-2xl bg-amber-50/70 p-4">
+            <div className="mt-4 rounded-2xl bg-amber-50/70 p-4 dark:bg-amber-500/10">
               {alertContextLoading ? (
-                <div className="flex items-center gap-2 text-sm text-amber-700">
+                <div className="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-200">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Đang tải chi tiết cảnh báo...
                 </div>
@@ -678,8 +680,8 @@ const ChatPage = () => {
                     <span
                       className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${
                         alertContext.severity === "high"
-                          ? "bg-red-100 text-red-700"
-                          : "bg-amber-100 text-amber-700"
+                          ? "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300"
+                          : "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-200"
                       }`}
                     >
                       {alertContext.severity === "high" ? (
@@ -692,13 +694,13 @@ const ChatPage = () => {
                     <span
                       className={`rounded-full px-3 py-1 text-xs font-medium ${
                         alertContext.status === "ack"
-                          ? "bg-green-100 text-green-700"
-                          : "bg-slate-200 text-slate-700"
+                          ? "bg-green-100 text-green-700 dark:bg-emerald-500/15 dark:text-emerald-300"
+                          : "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200"
                       }`}
                     >
                       {alertContext.status === "ack" ? "Đã xác nhận" : "Chờ xử lý"}
                     </span>
-                    <span className="text-xs text-slate-500">
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
                       Đo lúc {formatDateTime(alertContext.createdAt)}
                     </span>
                   </div>
@@ -707,15 +709,15 @@ const ChatPage = () => {
                     {alertContext.violations.map((violation, index) => (
                       <div
                         key={`${alertContext.id}-${index}`}
-                        className="rounded-2xl border border-white/80 bg-white px-4 py-3"
+                        className="rounded-2xl border border-white/80 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-950/70"
                       >
-                        <div className="text-sm font-medium text-slate-800">
+                        <div className="text-sm font-medium text-slate-800 dark:text-slate-200">
                           {getViolationLabel(violation.type)}
                         </div>
-                        <div className="mt-1 text-lg font-semibold text-red-600">
+                        <div className="mt-1 text-lg font-semibold text-red-600 dark:text-red-300">
                           {violation.observed}
                         </div>
-                        <div className="text-xs text-slate-500">
+                        <div className="text-xs text-slate-500 dark:text-slate-400">
                           Ngưỡng tham chiếu: {violation.threshold}
                         </div>
                       </div>
@@ -723,7 +725,7 @@ const ChatPage = () => {
                   </div>
                 </div>
               ) : (
-                <div className="text-sm text-amber-700">
+                <div className="text-sm text-amber-700 dark:text-amber-200">
                   {alertContextError || "Không có dữ liệu chi tiết cho cảnh báo này."}
                 </div>
               )}
@@ -733,7 +735,7 @@ const ChatPage = () => {
 
         {messageItems.length === 0 ? (
           <div className="flex h-full items-center justify-center">
-            <div className="max-w-sm rounded-3xl border border-dashed border-gray-300 bg-white px-6 py-8 text-center text-sm text-gray-500">
+            <div className="max-w-sm rounded-3xl border border-dashed border-gray-300 bg-white px-6 py-8 text-center text-sm text-gray-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
               Cuộc trò chuyện này chưa có tin nhắn nào. Bạn có thể gửi lời nhắn đầu tiên
               cho bệnh nhân ở khung bên dưới.
             </div>
@@ -744,7 +746,7 @@ const ChatPage = () => {
               if (item.type === "day") {
                 return (
                   <div key={item.key} className="flex justify-center">
-                    <span className="rounded-full bg-gray-200 px-3 py-1 text-[11px] font-medium uppercase tracking-wide text-gray-500">
+                    <span className="rounded-full bg-gray-200 px-3 py-1 text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:bg-slate-800 dark:text-slate-400">
                       {item.label}
                     </span>
                   </div>
@@ -779,16 +781,16 @@ const ChatPage = () => {
                   <div
                     className={`max-w-[78%] rounded-3xl px-4 py-3 text-sm shadow-sm ${
                       isMe
-                        ? "rounded-tr-md bg-blue-600 text-white"
-                        : "rounded-tl-md border border-gray-100 bg-white text-gray-800"
-                    } ${isActiveAlertMessage ? "ring-2 ring-amber-300 ring-offset-2" : ""}`}
+                        ? "rounded-tr-md bg-blue-600 text-white dark:bg-blue-500"
+                        : "rounded-tl-md border border-gray-100 bg-white text-gray-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                    } ${isActiveAlertMessage ? "ring-2 ring-amber-300 ring-offset-2 dark:ring-amber-400/70 dark:ring-offset-slate-950" : ""}`}
                   >
                     {hasAlertTag ? (
                       <div
                         className={`mb-3 inline-flex rounded-full px-2.5 py-1 text-[11px] font-medium ${
                           isMe
-                            ? "bg-white/15 text-blue-50"
-                            : "bg-amber-100 text-amber-700"
+                            ? "bg-white/15 text-blue-50 dark:bg-white/10 dark:text-blue-100"
+                            : "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-200"
                         }`}
                       >
                         {isActiveAlertMessage ? "Đang xem từ cảnh báo này" : "Tin nhắn có gắn cảnh báo"}
@@ -801,12 +803,12 @@ const ChatPage = () => {
                           className={`rounded-2xl border px-3 py-3 ${
                             isMe
                               ? "border-white/15 bg-white/10 text-blue-50"
-                              : "border-amber-200 bg-amber-50 text-amber-950"
+                              : "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-100"
                           }`}
                         >
                           <div
                             className={`mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] ${
-                              isMe ? "text-blue-100" : "text-amber-700"
+                              isMe ? "text-blue-100" : "text-amber-700 dark:text-amber-300"
                             }`}
                           >
                             <AlertTriangle size={14} />
@@ -818,7 +820,7 @@ const ChatPage = () => {
                           </p>
                           <div
                             className={`mt-3 text-[11px] ${
-                              isMe ? "text-blue-100/90" : "text-amber-700/80"
+                              isMe ? "text-blue-100/90" : "text-amber-700/80 dark:text-amber-300/80"
                             }`}
                           >
                             Alert #{alertMessage.shortAlertId}
@@ -830,12 +832,12 @@ const ChatPage = () => {
                             className={`rounded-2xl px-3 py-3 ${
                               isMe
                                 ? "bg-white/12 text-white"
-                                : "border border-slate-200 bg-slate-50 text-slate-700"
+                                : "border border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-200"
                             }`}
                           >
                             <div
                               className={`mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] ${
-                                isMe ? "text-blue-100" : "text-slate-500"
+                                isMe ? "text-blue-100" : "text-slate-500 dark:text-slate-400"
                               }`}
                             >
                               Lời nhắn bác sĩ
@@ -853,12 +855,12 @@ const ChatPage = () => {
                             className={`mb-3 rounded-2xl border-l-4 px-3 py-2 ${
                               isMe
                                 ? "border-white/55 bg-white/12 text-blue-50"
-                                : "border-blue-300 bg-slate-50 text-slate-600"
+                                : "border-blue-300 bg-slate-50 text-slate-600 dark:border-blue-500/60 dark:bg-slate-900 dark:text-slate-300"
                             }`}
                           >
                             <div
                               className={`text-[11px] font-semibold ${
-                                isMe ? "text-blue-100" : "text-blue-700"
+                                isMe ? "text-blue-100" : "text-blue-700 dark:text-blue-300"
                               }`}
                             >
                               {repliedSenderLabel}
@@ -879,7 +881,7 @@ const ChatPage = () => {
                         className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
                           isMe
                             ? "bg-white/12 text-blue-50 hover:bg-white/18"
-                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                            : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
                         }`}
                       >
                         <CornerUpLeft size={12} />
@@ -888,7 +890,7 @@ const ChatPage = () => {
 
                       <div
                         className={`text-right text-[11px] ${
-                          isMe ? "text-blue-100" : "text-gray-400"
+                          isMe ? "text-blue-100" : "text-gray-400 dark:text-slate-500"
                         }`}
                       >
                         {formatTime(item.message.createdAt)}
@@ -903,12 +905,12 @@ const ChatPage = () => {
         )}
       </main>
 
-      <footer className="border-t border-gray-200 bg-white">
-        <div className="flex gap-2 overflow-x-auto border-b border-gray-100 bg-gray-50 px-4 py-2">
+      <footer className="border-t border-gray-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex gap-2 overflow-x-auto border-b border-gray-100 bg-gray-50 px-4 py-2 dark:border-slate-800 dark:bg-slate-950/70">
           {QUICK_TEMPLATES.map((template) => (
             <button
               key={template}
-              className="shrink-0 rounded-full border border-blue-200 bg-white px-3 py-1.5 text-xs font-medium text-blue-700 transition hover:bg-blue-50"
+              className="shrink-0 rounded-full border border-blue-200 bg-white px-3 py-1.5 text-xs font-medium text-blue-700 transition hover:bg-blue-50 dark:border-blue-500/20 dark:bg-slate-900 dark:text-blue-200 dark:hover:bg-blue-500/10"
               onClick={() => setDraft(template)}
             >
               {template}
@@ -917,24 +919,24 @@ const ChatPage = () => {
         </div>
 
         <div className="flex items-end gap-3 p-3">
-          <div className="flex-1 rounded-3xl bg-gray-100 px-4 py-3 transition focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-500">
+          <div className="flex-1 rounded-3xl bg-gray-100 px-4 py-3 transition focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-500 dark:bg-slate-800 dark:focus-within:bg-slate-800 dark:focus-within:ring-blue-500/40">
             {replyTarget ? (
-              <div className="mb-3 flex items-start justify-between gap-3 rounded-2xl border border-blue-100 bg-white px-3 py-2">
+              <div className="mb-3 flex items-start justify-between gap-3 rounded-2xl border border-blue-100 bg-white px-3 py-2 dark:border-blue-500/20 dark:bg-slate-900">
                 <div className="min-w-0">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-blue-700">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-blue-700 dark:text-blue-300">
                     Đang trả lời
                   </div>
-                  <div className="mt-1 text-xs font-medium text-slate-700">
+                  <div className="mt-1 text-xs font-medium text-slate-700 dark:text-slate-200">
                     {replyTarget.senderId === user?.id ? "Bạn" : patient?.name || "Bệnh nhân"}
                   </div>
-                  <div className="mt-1 truncate text-sm text-slate-500">
+                  <div className="mt-1 truncate text-sm text-slate-500 dark:text-slate-400">
                     {getReplyPreviewContent(replyTarget)}
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setReplyTarget(null)}
-                  className="rounded-full p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                  className="rounded-full p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
                 >
                   <X size={14} />
                 </button>
@@ -955,12 +957,12 @@ const ChatPage = () => {
                   handleSend();
                 }
               }}
-              className="max-h-32 min-h-[24px] w-full resize-none border-none bg-transparent py-1 text-sm text-gray-800 outline-none placeholder:text-gray-400"
+              className="max-h-32 min-h-[24px] w-full resize-none border-none bg-transparent py-1 text-sm text-gray-800 outline-none placeholder:text-gray-400 dark:text-slate-100 dark:placeholder:text-slate-500"
             />
           </div>
 
           <button
-            className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-600 text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+            className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-600 text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-300 dark:bg-blue-500 dark:hover:bg-blue-400 dark:disabled:bg-slate-700"
             disabled={!draft.trim()}
             onClick={() => handleSend()}
           >
