@@ -7,6 +7,7 @@ import Toast from "../components/ui/Toast";
 import AvatarUploader from "../components/ui/AvatarUploader";
 import type { doctor } from "../types";
 import { mapGenderToDisplay, mapGenderToApi } from "../utils/genderConverter";
+import { adminPrimaryButtonClass, adminSecondaryButtonClass } from "../styles/buttonStyles";
 
 const DoctorManagement: React.FC = () => {
   const [doctors, setDoctors] = useState<doctor[]>([]);
@@ -149,7 +150,7 @@ const DoctorManagement: React.FC = () => {
         </div>
         <button
           onClick={handleAdd}
-          className="flex items-center bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+          className={adminPrimaryButtonClass}
         >
           <FaPlus className="mr-2" />
           Thêm bác sĩ
@@ -405,13 +406,13 @@ const DoctorManagement: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
+                  className={adminSecondaryButtonClass}
                 >
                   Hủy
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  className={adminPrimaryButtonClass}
                 >
                   {editingDoctor ? "Cập nhật" : "Thêm mới"}
                 </button>

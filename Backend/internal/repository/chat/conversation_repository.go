@@ -80,8 +80,10 @@ func (r *conversationRepository) FindByParticipants(ctx context.Context, partici
 		"participants": bson.M{"$size": len(participantIDs)},
 	}
 
+	opts := options.FindOne().SetSort(bson.D{{Key: "updatedAt", Value: -1}, {Key: "_id", Value: -1}})
+
 	var conversation chatDomain.Conversation
-	err := r.col.FindOne(ctx, filter).Decode(&conversation)
+	err := r.col.FindOne(ctx, filter, opts).Decode(&conversation)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return nil, nil

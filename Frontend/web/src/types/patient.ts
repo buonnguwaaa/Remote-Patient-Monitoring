@@ -1,6 +1,7 @@
 export interface AssignmentResponse {
   id: string;
   patientId: string;
+  patientPublicId?: string;
   patientName?: string;
   patientCode?: string;
   doctorId?: string;

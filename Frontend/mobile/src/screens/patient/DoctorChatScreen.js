@@ -1,436 +1,1138 @@
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
+  ActivityIndicator,
+  Dimensions,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  SafeAreaView,
   ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
   TouchableOpacity,
+  View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons, FontAwesome5, MaterialIcons } from "@expo/vector-icons";
-import { useState } from "react";
+import { Ionicons, FontAwesome5 } from "@expo/vector-icons";
+import { useIsFocused } from "@react-navigation/native";
 
-const currentPatient = {
-  _id: "u_patient_1",
-  role: "patient",
-  name: "Nguyễn Văn A",
-  emailLower: "a@example.com",
-};
-
-const doctorUser = {
-  _id: "u_doctor_1",
-  role: "doctor",
-  name: "BS. Trần Văn B",
-  emailLower: "bsb@example.com",
-  specialty: "Tim mạch",
-};
-
-const measurementsById = {
-  m_bp_1: {
-    _id: "m_bp_1",
-    patientId: "u_patient_1",
-    type: "bp",
-    systolic: 150,
-    diastolic: 92,
-    pulse: 88,
-    timing: "pre",
-    device: "BP_MONITOR_01",
-    recordedBy: "u_nurse_1",
-    note: "Đo lúc bệnh nhân ngồi, chưa nghỉ ngơi đầy đủ",
-    createdAt: "2025-11-24T08:30:00Z",
-  },
-  m_glu_1: {
-    _id: "m_glu_1",
-    patientId: "u_patient_1",
-    type: "glucose",
-    glucose: 145,
-    timing: "post",
-    device: "GLUCOSE_METER_01",
-    recordedBy: "u_nurse_1",
-    note: "Đo sau ăn 2 giờ",
-    createdAt: "2025-11-24T07:10:00Z",
-  },
-  m_spo2_1: {
-    _id: "m_spo2_1",
-    patientId: "u_patient_1",
-    type: "spo2",
-    spo2: 96,
-    device: "SPO2_FINGER_01",
-    recordedBy: "u_nurse_1",
-    createdAt: "2025-11-24T09:00:00Z",
-  },
-};
-
-const chat = {
-  _id: "chat_1",
-  doctorId: doctorUser._id,
-  patientId: currentPatient._id,
-  updatedAt: "2025-11-24T09:20:00Z",
-};
-
-const initialMessages = [
-  {
-    _id: "msg1",
-    chatId: chat._id,
-    senderId: doctorUser._id,
-    message:
-      "Chào anh, huyết áp sáng nay hơi cao. Anh chú ý nghỉ ngơi, hạn chế muối và đo lại sau 30 phút.",
-    measurementId: "m_bp_1",
-    createdAt: "2025-11-24T08:40:00Z",
-  },
-  {
-    _id: "msg2",
-    chatId: chat._id,
-    senderId: currentPatient._id,
-    message: "Dạ vâng, tôi đã hiểu.",
-    measurementId: null,
-    createdAt: "2025-11-24T08:42:00Z",
-  },
-  {
-    _id: "msg3",
-    chatId: chat._id,
-    senderId: doctorUser._id,
-    message:
-      "Kết quả đường huyết sau ăn của anh đang ở mức cao nhẹ. Anh cố gắng giảm đồ ngọt, tinh bột tinh chế.",
-    measurementId: "m_glu_1",
-    createdAt: "2025-11-24T08:55:00Z",
-  },
-  {
-    _id: "msg4",
-    chatId: chat._id,
-    senderId: doctorUser._id,
-    message:
-      "SpO₂ của anh vẫn trong giới hạn an toàn. Anh cứ tiếp tục vận động nhẹ nhàng, tránh nằm lâu một chỗ.",
-    measurementId: "m_spo2_1",
-    createdAt: "2025-11-24T09:05:00Z",
-  },
-];
+import { useAuth } from "../../hooks/useAuth";
+import {
+  buildConversationSocketUrl,
+  getConversationMessages,
+  getConversations,
+} from "../../api/chatApi";
 
 const QUICK_REPLIES = [
-  "Đã xem",
-  "Đã hiểu",
-  "Cảm ơn bác sĩ",
-  "Tôi sẽ thực hiện theo hướng dẫn",
+  "Dạ tôi đã xem.",
+  "Tôi sẽ đo lại và cập nhật thêm.",
+  "Cảm ơn bác sĩ, tôi sẽ làm theo.",
 ];
 
+const MESSAGE_MENU_WIDTH = 188;
+const MESSAGE_MENU_HEIGHT = 116;
+
+function normalizeConversation(conversation) {
+  const participantsSource = Array.isArray(conversation?.participants)
+    ? conversation.participants
+    : Array.isArray(conversation?.participantIds)
+      ? conversation.participantIds.map((userId) => ({ userId }))
+      : [];
+
+  const participants = participantsSource
+    .map((participant) => ({
+      userId: String(participant?.userId || participant?.id || "").trim(),
+      lastReadMessageId: participant?.lastReadMessageId || null,
+      lastDeliveredMessageId: participant?.lastDeliveredMessageId || null,
+    }))
+    .filter((participant) => participant.userId);
+
+  return {
+    id: conversation?.id || conversation?._id,
+    participants,
+    participantIds: participants.map((participant) => participant.userId),
+    createdAt: conversation?.createdAt,
+    updatedAt: conversation?.updatedAt || conversation?.createdAt,
+  };
+}
+
+function sortMessages(messages) {
+  return [...messages].sort((a, b) => {
+    const timeDiff = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    if (timeDiff !== 0) {
+      return timeDiff;
+    }
+
+    return String(a.id || "").localeCompare(String(b.id || ""));
+  });
+}
+
+function mergeMessages(current, incoming) {
+  const next = [...current];
+
+  incoming.forEach((message) => {
+    const existingIndex = next.findIndex((item) => item.id === message.id);
+    if (existingIndex >= 0) {
+      next[existingIndex] = message;
+      return;
+    }
+
+    next.push(message);
+  });
+
+  return sortMessages(next);
+}
+
+function normalizeMessage(message) {
+  return {
+    id: message.id || message._id,
+    conversationId: message.conversationId || message.chatId,
+    senderId: message.senderId,
+    content: message.content || message.message || "",
+    replyToMessageId: message.replyToMessageId || null,
+    relatedAlertId: message.relatedAlertId || null,
+    createdAt: message.createdAt,
+    updatedAt: message.updatedAt || message.createdAt,
+  };
+}
+
 function formatTime(iso) {
-  const d = new Date(iso);
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mm = String(d.getMinutes()).padStart(2, "0");
-  return `${hh}:${mm}`;
+  const date = new Date(iso);
+  return date.toLocaleTimeString("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
-function formatRelativeDay(iso) {
-  return "Hôm nay";
+function formatDayLabel(iso) {
+  const date = new Date(iso);
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+
+  if (date.toDateString() === today.toDateString()) {
+    return "Hôm nay";
+  }
+
+  if (date.toDateString() === yesterday.toDateString()) {
+    return "Hôm qua";
+  }
+
+  return date.toLocaleDateString("vi-VN");
 }
 
-function renderMeasurementSummary(measurement) {
-  if (!measurement) return null;
-  const type = measurement.type;
+function parseSocketPayload(raw) {
+  return String(raw || "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      try {
+        return JSON.parse(line);
+      } catch {
+        return null;
+      }
+    })
+    .filter(Boolean);
+}
 
-  if (type === "bp") {
-    return {
-      label: "Huyết áp",
-      main: `${measurement.systolic}/${measurement.diastolic} mmHg`,
-      sub: `${measurement.pulse} bpm · ${
-        measurement.timing === "pre" ? "Trước ăn" : "Sau ăn"
-      }`,
-      icon: (
-        <Ionicons
-          name="heart-outline"
-          size={18}
-          color="#EF4444"
-          style={{ marginRight: 8 }}
-        />
-      ),
-      accentColor: "#F97316",
-    };
+function isSocketErrorPayload(payload) {
+  return payload?.type === "error";
+}
+
+function isMessageEnvelope(payload) {
+  return payload?.type === "NEW_MESSAGE" && payload?.data;
+}
+
+function isDirectMessagePayload(payload) {
+  return Boolean(
+    payload &&
+      typeof payload === "object" &&
+      (payload.id || payload._id) &&
+      (payload.content !== undefined || payload.message !== undefined)
+  );
+}
+
+function createSendMessagePayload(message) {
+  return {
+    type: "SEND_MESSAGE",
+    data: message,
+  };
+}
+
+function isDeliveredEnvelope(payload) {
+  return payload?.type === "DELIVERED" && payload?.data?.userId && payload?.data?.messageId;
+}
+
+function isReadEnvelope(payload) {
+  return payload?.type === "READ" && payload?.data?.userId && payload?.data?.lastReadMessageId;
+}
+
+function createDeliveredPayload(messageId) {
+  return {
+    type: "DELIVERED",
+    data: {
+      messageId,
+    },
+  };
+}
+
+function createReadPayload(lastReadMessageId) {
+  return {
+    type: "READ",
+    data: {
+      lastReadMessageId,
+    },
+  };
+}
+
+function updateConversationParticipantState(conversation, userId, nextState) {
+  if (!conversation) {
+    return conversation;
   }
 
-  if (type === "glucose") {
-    return {
-      label: "Đường huyết",
-      main: `${measurement.glucose} mg/dL`,
-      sub:
-        measurement.timing === "pre"
-          ? "Đo trước ăn"
-          : measurement.timing === "post"
-          ? "Đo sau ăn"
-          : "Đo đường huyết",
-      icon: (
-        <Ionicons
-          name="water-outline"
-          size={18}
-          color="#2563EB"
-          style={{ marginRight: 8 }}
-        />
-      ),
-      accentColor: "#2563EB",
-    };
+  return {
+    ...conversation,
+    participants: conversation.participants.map((participant) =>
+      participant.userId === userId
+        ? {
+            ...participant,
+            ...(nextState.lastDeliveredMessageId !== undefined
+              ? { lastDeliveredMessageId: nextState.lastDeliveredMessageId }
+              : {}),
+            ...(nextState.lastReadMessageId !== undefined
+              ? { lastReadMessageId: nextState.lastReadMessageId }
+              : {}),
+          }
+        : participant
+    ),
+  };
+}
+
+function hasParticipantReachedMessage(messageId, checkpointMessageId, messageOrder) {
+  if (!checkpointMessageId) {
+    return false;
   }
 
-  if (type === "spo2") {
-    return {
-      label: "SpO₂",
-      main: `${measurement.spo2}%`,
-      sub: "Độ bão hòa oxy máu ngoại vi",
-      icon: (
-        <Ionicons
-          name="pulse-outline"
-          size={18}
-          color="#10B981"
-          style={{ marginRight: 8 }}
-        />
-      ),
-      accentColor: "#10B981",
-    };
+  const messageIndex = messageOrder.get(messageId);
+  const checkpointIndex = messageOrder.get(checkpointMessageId);
+  if (messageIndex === undefined || checkpointIndex === undefined) {
+    return false;
   }
 
-  if (type === "temp") {
-    return {
-      label: "Nhiệt độ",
-      main: `${measurement.temperature} °C`,
-      sub: "Nhiệt độ cơ thể",
-      icon: (
-        <MaterialIcons
-          name="device-thermostat"
-          size={18}
-          color="#F97316"
-          style={{ marginRight: 8 }}
-        />
-      ),
-      accentColor: "#F97316",
-    };
+  return checkpointIndex >= messageIndex;
+}
+
+function findLatestIncomingMessage(messages, currentUserId) {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    if (messages[index].senderId !== currentUserId) {
+      return messages[index];
+    }
   }
 
   return null;
 }
 
-// ===== SCREEN =====
+function parseAlertLinkedMessage(content, relatedAlertId) {
+  if (!relatedAlertId) {
+    return null;
+  }
+
+  const segments = String(content || "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  if (segments.length === 0) {
+    return {
+      hasStructuredAlertSummary: false,
+      alertSummary: "",
+      note: "",
+      shortAlertId: String(relatedAlertId).slice(-8),
+    };
+  }
+
+  const alertPrefix = "Cảnh báo chỉ số:";
+  const firstLine = segments[0];
+
+  if (firstLine.startsWith(alertPrefix)) {
+    return {
+      hasStructuredAlertSummary: true,
+      alertSummary: firstLine.slice(alertPrefix.length).trim(),
+      note: segments.slice(1).join("\n").trim(),
+      shortAlertId: String(relatedAlertId).slice(-8),
+    };
+  }
+
+  return {
+    hasStructuredAlertSummary: false,
+    alertSummary: "",
+    note: segments.join("\n").trim(),
+    shortAlertId: String(relatedAlertId).slice(-8),
+  };
+}
+
+function getReplyPreviewContent(message) {
+  const alertMessage = parseAlertLinkedMessage(message?.content, message?.relatedAlertId);
+  if (alertMessage?.hasStructuredAlertSummary && alertMessage.alertSummary) {
+    return `Cảnh báo chỉ số: ${alertMessage.alertSummary}`;
+  }
+
+  const normalized = String(message?.content || "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!normalized) {
+    return "Tin nhắn không có nội dung";
+  }
+
+  return normalized.length > 100 ? `${normalized.slice(0, 97)}...` : normalized;
+}
 
 export default function DoctorChatScreen() {
-  const [messages, setMessages] = useState(initialMessages);
+  const { user } = useAuth();
+  const currentUserId = user?.id || user?._id;
+  const isFocused = useIsFocused();
 
-  const handleQuickReply = (text) => {
-    const newMsg = {
-      _id: `local_${Date.now()}`,
-      chatId: chat._id,
-      senderId: currentPatient._id,
-      message: text,
-      measurementId: null,
-      createdAt: new Date().toISOString(),
+  const [conversation, setConversation] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [draft, setDraft] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [socketState, setSocketState] = useState("idle");
+  const [replyTarget, setReplyTarget] = useState(null);
+  const [messageMenu, setMessageMenu] = useState(null);
+
+  const socketRef = useRef(null);
+  const scrollViewRef = useRef(null);
+  const lastDeliveredSentRef = useRef(null);
+  const lastReadSentRef = useRef(null);
+  async function fetchConversationMessages(conversationId, limit = 100) {
+    const messagesResponse = await getConversationMessages(conversationId, limit);
+    if (!messagesResponse.ok) {
+      throw new Error(
+        messagesResponse.body?.error || messagesResponse.error || "Không thể tải tin nhắn."
+      );
+    }
+
+    return (messagesResponse.body?.data?.messages || []).map(normalizeMessage);
+  }
+
+  async function resolveConversation(conversations) {
+    const availableConversations = Array.isArray(conversations)
+      ? conversations.map(normalizeConversation).filter((item) => item?.id)
+      : [];
+
+    const latestConversation = availableConversations[0] || null;
+    if (!latestConversation) {
+      return { conversation: null, messages: [] };
+    }
+
+    const latestMessages = await fetchConversationMessages(latestConversation.id, 100);
+    if (latestMessages.length > 0 || availableConversations.length === 1) {
+      return {
+        conversation: latestConversation,
+        messages: latestMessages,
+      };
+    }
+
+    for (const candidate of availableConversations.slice(1)) {
+      const previewMessages = await fetchConversationMessages(candidate.id, 1);
+      if (previewMessages.length === 0) {
+        continue;
+      }
+
+      return {
+        conversation: candidate,
+        messages: await fetchConversationMessages(candidate.id, 100),
+      };
+    }
+
+    return {
+      conversation: latestConversation,
+      messages: latestMessages,
+    };
+  }
+
+  async function loadChat({ silent = false } = {}) {
+    if (!currentUserId) {
+      setLoading(false);
+      setError("Không xác định được người dùng hiện tại.");
+      return;
+    }
+
+    if (!silent) {
+      setLoading(true);
+    }
+
+    setError(null);
+
+    try {
+      const conversationsResponse = await getConversations(20);
+      if (!conversationsResponse.ok) {
+        throw new Error(
+          conversationsResponse.body?.error ||
+            conversationsResponse.error ||
+            "Không thể tải danh sách cuộc trò chuyện."
+        );
+      }
+
+      const conversations = conversationsResponse.body?.data?.conversations || [];
+      const resolvedChat = await resolveConversation(conversations);
+
+      setConversation(resolvedChat.conversation);
+      setMessages(sortMessages(resolvedChat.messages));
+    } catch (loadError) {
+      setError(loadError?.message || "Không thể mở màn hình chat.");
+    } finally {
+      if (!silent) {
+        setLoading(false);
+      }
+    }
+  }
+
+  useEffect(() => {
+    scrollViewRef.current?.scrollToEnd({ animated: true });
+  }, [messages]);
+
+  useEffect(() => {
+    if (!isFocused) {
+      return;
+    }
+
+    loadChat();
+  }, [currentUserId, isFocused]);
+
+  useEffect(() => {
+    if (!isFocused || conversation?.id) {
+      return undefined;
+    }
+
+    const timer = setInterval(() => {
+      loadChat({ silent: true });
+    }, 5000);
+
+    return () => clearInterval(timer);
+  }, [conversation?.id, isFocused, currentUserId]);
+
+  useEffect(() => {
+    if (!conversation?.id) {
+      return undefined;
+    }
+
+    setSocketState("connecting");
+
+    const socket = new WebSocket(buildConversationSocketUrl(conversation.id));
+    socketRef.current = socket;
+
+    socket.onopen = () => {
+      setSocketState("open");
+      setError(null);
     };
 
-    setMessages((prev) => [...prev, newMsg]);
-  };
+    socket.onmessage = (event) => {
+      const payloads = parseSocketPayload(event.data);
 
-  const renderMessageBubble = (msg) => {
-    const isDoctor = msg.senderId === doctorUser._id;
-    const measurement =
-      msg.measurementId && measurementsById[msg.measurementId]
-        ? measurementsById[msg.measurementId]
-        : null;
+      payloads.forEach((payload) => {
+        if (isSocketErrorPayload(payload)) {
+          setError(payload.error || "Không thể gửi tin nhắn.");
+          return;
+        }
 
-    const summary = measurement ? renderMeasurementSummary(measurement) : null;
+        if (isMessageEnvelope(payload)) {
+          setMessages((current) => mergeMessages(current, [normalizeMessage(payload.data)]));
+          return;
+        }
+
+        if (isDeliveredEnvelope(payload)) {
+          setConversation((current) =>
+            updateConversationParticipantState(current, payload.data.userId, {
+              lastDeliveredMessageId: payload.data.messageId,
+            })
+          );
+          return;
+        }
+
+        if (isReadEnvelope(payload)) {
+          setConversation((current) =>
+            updateConversationParticipantState(current, payload.data.userId, {
+              lastDeliveredMessageId: payload.data.lastReadMessageId,
+              lastReadMessageId: payload.data.lastReadMessageId,
+            })
+          );
+          return;
+        }
+
+        if (isDirectMessagePayload(payload)) {
+          setMessages((current) => mergeMessages(current, [normalizeMessage(payload)]));
+        }
+      });
+    };
+
+    socket.onerror = () => {
+      setError("Kết nối chat đang gặp lỗi. Bạn thử mở lại màn hình này nhé.");
+    };
+
+    socket.onclose = () => {
+      setSocketState("closed");
+    };
+
+    return () => {
+      socket.close();
+      socketRef.current = null;
+    };
+  }, [conversation?.id]);
+
+  const otherParticipantId = useMemo(() => {
+    if (!conversation?.participantIds || !currentUserId) {
+      return null;
+    }
+
+    return conversation.participantIds.find((id) => id !== currentUserId) || null;
+  }, [conversation?.participantIds, currentUserId]);
+
+  const otherParticipantState = useMemo(() => {
+    if (!conversation?.participants || !currentUserId) {
+      return null;
+    }
 
     return (
-      <View
-        key={msg._id}
-        style={[
-          styles.messageWrapper,
-          isDoctor ? { alignItems: "flex-start" } : { alignItems: "flex-end" },
-        ]}
-      >
-        <View
-          style={[
-            styles.messageRow,
-            isDoctor && { flexDirection: "row" },
-            !isDoctor && { flexDirection: "row-reverse" },
-          ]}
-        >
-          {/* Avatar */}
-          <View
-            style={[
-              styles.avatarSmall,
-              isDoctor ? styles.avatarDoctor : styles.avatarPatient,
-            ]}
-          >
-            {isDoctor ? (
-              <FontAwesome5 name="user-md" size={14} color="#FFFFFF" />
-            ) : (
-              <Ionicons name="person-outline" size={16} color="#2563EB" />
-            )}
-          </View>
-
-          {/* Bubble */}
-          <View
-            style={[
-              styles.bubble,
-              isDoctor ? styles.bubbleDoctor : styles.bubblePatient,
-            ]}
-          >
-            {isDoctor && (
-              <View style={styles.senderRow}>
-                <Text style={styles.senderNameSmall}>{doctorUser.name}</Text>
-                <View style={styles.senderRoleBadge}>
-                  <Text style={styles.senderRoleText}>Bác sĩ</Text>
-                </View>
-              </View>
-            )}
-
-            <Text
-              style={[
-                styles.messageText,
-                !isDoctor && styles.messageTextPatient,
-              ]}
-            >
-              {msg.message}
-            </Text>
-
-            {summary && (
-              <View style={styles.measureCard}>
-                <View style={styles.measureHeader}>
-                  {summary.icon}
-                  <View>
-                    <Text style={styles.measureLabel}>{summary.label}</Text>
-                    <Text
-                      style={[
-                        styles.measureChip,
-                        { borderColor: summary.accentColor },
-                      ]}
-                    >
-                      ID đo: {measurement._id}
-                    </Text>
-                  </View>
-                </View>
-                <Text style={styles.measureMain}>{summary.main}</Text>
-                <Text style={styles.measureSub}>{summary.sub}</Text>
-
-                <View style={styles.measureMetaRow}>
-                  <Ionicons
-                    name="time-outline"
-                    size={12}
-                    color="#9CA3AF"
-                    style={{ marginRight: 4 }}
-                  />
-                  <Text style={styles.measureMeta}>
-                    {formatTime(measurement.createdAt)}
-                  </Text>
-                </View>
-              </View>
-            )}
-
-            <Text
-              style={[
-                styles.timeText,
-                isDoctor ? styles.timeTextDoctor : styles.timeTextPatient,
-              ]}
-            >
-              {formatTime(msg.createdAt)}
-            </Text>
-          </View>
-        </View>
-      </View>
+      conversation.participants.find((participant) => participant.userId !== currentUserId) ||
+      null
     );
+  }, [conversation?.participants, currentUserId]);
+
+  const handleSelectQuickReply = (text) =>{
+    setDraft(text);
+    setError(null);
+  }
+  const messageItems = useMemo(() => {
+    const items = [];
+    let lastLabel = "";
+
+    messages.forEach((message) => {
+      const label = formatDayLabel(message.createdAt);
+      if (label !== lastLabel) {
+        items.push({ type: "day", key: `day-${message.id}`, label });
+        lastLabel = label;
+      }
+
+      items.push({ type: "message", key: message.id, message });
+    });
+
+    return items;
+  }, [messages]);
+
+  const messageLookup = useMemo(() => {
+    return new Map(messages.map((message) => [message.id, message]));
+  }, [messages]);
+
+  const messageOrder = useMemo(() => {
+    return new Map(messages.map((message, index) => [message.id, index]));
+  }, [messages]);
+
+  useEffect(() => {
+    if (!replyTarget) {
+      return;
+    }
+
+    if (!messageLookup.has(replyTarget.id)) {
+      setReplyTarget(null);
+    }
+  }, [messageLookup, replyTarget]);
+
+  useEffect(() => {
+    setReplyTarget(null);
+  }, [conversation?.id]);
+
+  useEffect(() => {
+    lastDeliveredSentRef.current = null;
+    lastReadSentRef.current = null;
+  }, [conversation?.id]);
+
+  useEffect(() => {
+    setMessageMenu(null);
+  }, [conversation?.id]);
+
+  useEffect(() => {
+    if (
+      !isFocused ||
+      !conversation?.id ||
+      socketState !== "open" ||
+      !socketRef.current ||
+      socketRef.current.readyState !== WebSocket.OPEN
+    ) {
+      return;
+    }
+
+    const latestIncomingMessage = findLatestIncomingMessage(messages, currentUserId);
+    if (!latestIncomingMessage?.id) {
+      return;
+    }
+
+    if (lastDeliveredSentRef.current !== latestIncomingMessage.id) {
+      socketRef.current.send(JSON.stringify(createDeliveredPayload(latestIncomingMessage.id)));
+      lastDeliveredSentRef.current = latestIncomingMessage.id;
+    }
+
+    if (lastReadSentRef.current !== latestIncomingMessage.id) {
+      socketRef.current.send(JSON.stringify(createReadPayload(latestIncomingMessage.id)));
+      lastReadSentRef.current = latestIncomingMessage.id;
+    }
+  }, [conversation?.id, currentUserId, isFocused, messages, socketState]);
+
+  const handleSend = (nextContent = draft) => {
+    const content = String(nextContent || "").trim();
+    if (!content) {
+      return;
+    }
+
+    if (!socketRef.current || socketRef.current.readyState !== WebSocket.OPEN) {
+      setError("Chat realtime chưa sẵn sàng để gửi tin nhắn.");
+      return;
+    }
+
+    const payload = { content };
+    if (replyTarget?.id) {
+      payload.replyToMessageId = replyTarget.id;
+    }
+
+    socketRef.current.send(JSON.stringify(createSendMessagePayload(payload)));
+    setDraft("");
+    setReplyTarget(null);
+    setError(null);
   };
 
+  const handleReplyFromMessage = (message) => {
+    setReplyTarget(message);
+    setMessageMenu(null);
+  };
+
+  const handleOpenMessageMenu = (event, message, isDoctor) => {
+    const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
+    const { pageX, pageY, locationX, locationY } = event.nativeEvent;
+    const bubbleLeft = pageX - locationX;
+    const bubbleRight = pageX + (locationX || 0);
+
+    const left = isDoctor
+      ? Math.max(12, Math.min(bubbleLeft, screenWidth - MESSAGE_MENU_WIDTH - 12))
+      : Math.max(
+          12,
+          Math.min(bubbleRight - MESSAGE_MENU_WIDTH, screenWidth - MESSAGE_MENU_WIDTH - 12)
+        );
+
+    const top = Math.max(
+      12,
+      Math.min(pageY + 42, screenHeight - MESSAGE_MENU_HEIGHT - 24)
+    );
+
+    setMessageMenu({
+      message,
+      left,
+      top,
+    });
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.loadingRoot}>
+        <ActivityIndicator size="large" color="#2563EB" />
+        <Text style={styles.loadingText}>Đang tải cuộc trò chuyện…</Text>
+      </SafeAreaView>
+    );
+  }
+
+  if (!conversation) {
+    return (
+      <SafeAreaView style={styles.loadingRoot}>
+        <View style={styles.emptyCard}>
+          <Text style={styles.emptyTitle}>Chưa có cuộc trò chuyện nào</Text>
+          <Text style={styles.emptyText}>
+            Hiện tại tài khoản của bạn chưa có phòng chat đang hoạt động với bác sĩ.
+          </Text>
+          {error ? <Text style={styles.emptyError}>{error}</Text> : null}
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#0F172A" }}>
-      <View style={styles.root}>
-        {/* HEADER */}
+    <SafeAreaView style={styles.safe}>
+      <KeyboardAvoidingView
+        style={styles.root}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
         <View style={styles.headerRow}>
-          <View style={styles.headerCenter}>
-            <View style={styles.headerNameRow}>
-              <Text style={styles.headerTitle}>{doctorUser.name}</Text>
-              <View style={styles.headerBadge}>
-                <Text style={styles.headerBadgeText}>Bác sĩ</Text>
-              </View>
-            </View>
-            <Text style={styles.headerSub}>Chuyên khoa {doctorUser.specialty}</Text>
+          <View style={styles.headerAvatar}>
+            <FontAwesome5 name="user-md" size={18} color="#FFFFFF" />
           </View>
 
-          <View style={styles.headerStatus}>
-            <View style={styles.headerDot} />
-            <Text style={styles.headerStatusText}>Trực tuyến</Text>
+          <View style={styles.headerCenter}>
+            <View style={styles.headerNameRow}>
+              <Text style={styles.headerTitle}>Bác sĩ phụ trách</Text>
+              <View style={styles.headerBadge}>
+                <Text style={styles.headerBadgeText}>Chat trực tiếp</Text>
+              </View>
+            </View>
+            <Text style={styles.headerSub}>
+              {otherParticipantId
+                ? `Người tham gia: ${otherParticipantId.slice(-8)}`
+                : "Cuộc trò chuyện dành cho bệnh nhân"}
+            </Text>
+          </View>
+
+          <View
+            style={[
+              styles.headerStatus,
+              socketState === "open" ? styles.headerStatusOnline : styles.headerStatusSyncing,
+            ]}
+          >
+            <View
+              style={[
+                styles.headerDot,
+                socketState === "open" ? styles.headerDotOnline : styles.headerDotSyncing,
+              ]}
+            />
+            <Text style={styles.headerStatusText}>
+              {socketState === "open" ? "Đã kết nối" : "Đang đồng bộ"}
+            </Text>
           </View>
         </View>
 
         <View style={styles.chatCard}>
-          <View style={styles.dayBadgeWrapper}>
-            <View style={styles.dayBadge}>
-              <Text style={styles.dayBadgeText}>
-                {formatRelativeDay(chat.updatedAt)}
-              </Text>
+          {error ? (
+            <View style={styles.errorBanner}>
+              <Text style={styles.errorBannerText}>{error}</Text>
             </View>
-          </View>
+          ) : null}
 
           <ScrollView
+            ref={scrollViewRef}
             style={styles.chatContainer}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 90 }}
+            contentContainerStyle={styles.chatContent}
+            onScrollBeginDrag={() => setMessageMenu(null)}
           >
-            {messages.map(renderMessageBubble)}
+            {messageItems.length === 0 ? (
+              <View style={styles.emptyConversation}>
+                <Text style={styles.emptyConversationText}>
+                  Cuộc trò chuyện này chưa có tin nhắn nào. Bạn có thể nhắn cho bác sĩ ở
+                  khung bên dưới.
+                </Text>
+              </View>
+            ) : (
+              messageItems.map((item) => {
+                if (item.type === "day") {
+                  return (
+                    <View key={item.key} style={styles.dayBadgeWrapper}>
+                      <View style={styles.dayBadge}>
+                        <Text style={styles.dayBadgeText}>{item.label}</Text>
+                      </View>
+                    </View>
+                  );
+                }
+
+                const isMine = item.message.senderId === currentUserId;
+                const isDoctor = !isMine;
+                const alertMessage = parseAlertLinkedMessage(
+                  item.message.content,
+                  item.message.relatedAlertId
+                );
+                const hasAlertTag = Boolean(item.message.relatedAlertId);
+                const repliedMessage = item.message.replyToMessageId
+                  ? messageLookup.get(item.message.replyToMessageId)
+                  : null;
+                const repliedSenderLabel = repliedMessage
+                  ? repliedMessage.senderId === currentUserId
+                    ? "Bạn"
+                    : "Bác sĩ"
+                  : "";
+                const isReadByOtherParticipant =
+                  isMine &&
+                  hasParticipantReachedMessage(
+                    item.message.id,
+                    otherParticipantState?.lastReadMessageId,
+                    messageOrder
+                  );
+
+                return (
+                  <View
+                    key={item.key}
+                    style={[
+                      styles.messageWrapper,
+                      isDoctor ? styles.messageWrapperLeft : styles.messageWrapperRight,
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.messageRow,
+                        isDoctor ? styles.messageRowLeft : styles.messageRowRight,
+                      ]}
+                    >
+                      <View
+                        style={[
+                          styles.avatarSmall,
+                          isDoctor ? styles.avatarDoctor : styles.avatarPatient,
+                        ]}
+                      >
+                        {isDoctor ? (
+                          <FontAwesome5 name="user-md" size={12} color="#FFFFFF" />
+                        ) : (
+                          <Ionicons name="person-outline" size={16} color="#2563EB" />
+                        )}
+                      </View>
+
+                      <Pressable
+                        onLongPress={(event) =>
+                          handleOpenMessageMenu(event, item.message, isDoctor)
+                        }
+                        delayLongPress={220}
+                        onPress={() => {
+                          if (messageMenu) {
+                            setMessageMenu(null);
+                          }
+                        }}
+                      >
+                        <View
+                          style={[
+                            styles.bubble,
+                            isDoctor ? styles.bubbleDoctor : styles.bubblePatient,
+                          ]}
+                        >
+                          {isDoctor ? (
+                            <Text style={styles.senderNameSmall}>Bác sĩ</Text>
+                          ) : null}
+
+                          {hasAlertTag && alertMessage?.hasStructuredAlertSummary ? (
+                            <View style={styles.alertContentBlock}>
+                              <View
+                                style={[
+                                  styles.alertSummaryCard,
+                                  isDoctor
+                                    ? styles.alertSummaryCardDoctor
+                                    : styles.alertSummaryCardPatient,
+                                ]}
+                              >
+                                <View style={styles.alertSummaryHeader}>
+                                  <Ionicons
+                                    name="warning-outline"
+                                    size={14}
+                                    color={isDoctor ? "#B45309" : "#DBEAFE"}
+                                  />
+                                  <Text
+                                    style={[
+                                      styles.alertSummaryLabel,
+                                      isDoctor
+                                        ? styles.alertSummaryLabelDoctor
+                                        : styles.alertSummaryLabelPatient,
+                                    ]}
+                                  >
+                                    Thông tin cảnh báo
+                                  </Text>
+                                </View>
+                                <Text
+                                  style={[
+                                    styles.alertSummaryText,
+                                    isDoctor
+                                      ? styles.alertSummaryTextDoctor
+                                      : styles.alertSummaryTextPatient,
+                                  ]}
+                                >
+                                  {alertMessage.alertSummary ||
+                                    "Tin nhắn này được gửi trong ngữ cảnh một cảnh báo theo dõi sức khỏe."}
+                                </Text>
+                                <Text
+                                  style={[
+                                    styles.alertSummaryMeta,
+                                    isDoctor
+                                      ? styles.alertSummaryMetaDoctor
+                                      : styles.alertSummaryMetaPatient,
+                                  ]}
+                                >
+                                  Alert #{alertMessage.shortAlertId}
+                                </Text>
+                              </View>
+
+                              {alertMessage.note ? (
+                                <View
+                                  style={[
+                                    styles.alertNoteCard,
+                                    isDoctor
+                                      ? styles.alertNoteCardDoctor
+                                      : styles.alertNoteCardPatient,
+                                  ]}
+                                >
+                                  <Text
+                                    style={[
+                                      styles.alertNoteLabel,
+                                      isDoctor
+                                        ? styles.alertNoteLabelDoctor
+                                        : styles.alertNoteLabelPatient,
+                                    ]}
+                                  >
+                                    Lời nhắn bác sĩ
+                                  </Text>
+                                  <Text
+                                    style={[
+                                      styles.messageText,
+                                      !isDoctor && styles.messageTextPatient,
+                                      isDoctor
+                                        ? styles.alertNoteTextDoctor
+                                        : styles.alertNoteTextPatient,
+                                    ]}
+                                  >
+                                    {alertMessage.note}
+                                  </Text>
+                                </View>
+                              ) : null}
+                            </View>
+                          ) : (
+                            <>
+                              {repliedMessage ? (
+                                <View
+                                  style={[
+                                    styles.replyPreviewCard,
+                                    isDoctor
+                                      ? styles.replyPreviewCardDoctor
+                                      : styles.replyPreviewCardPatient,
+                                  ]}
+                                >
+                                  <Text
+                                    style={[
+                                      styles.replyPreviewSender,
+                                      isDoctor
+                                        ? styles.replyPreviewSenderDoctor
+                                        : styles.replyPreviewSenderPatient,
+                                    ]}
+                                  >
+                                    {repliedSenderLabel}
+                                  </Text>
+                                  <Text
+                                    style={[
+                                      styles.replyPreviewText,
+                                      isDoctor
+                                        ? styles.replyPreviewTextDoctor
+                                        : styles.replyPreviewTextPatient,
+                                    ]}
+                                    numberOfLines={2}
+                                  >
+                                    {getReplyPreviewContent(repliedMessage)}
+                                  </Text>
+                                </View>
+                              ) : null}
+                              <Text
+                                style={[
+                                  styles.messageText,
+                                  !isDoctor && styles.messageTextPatient,
+                                ]}
+                              >
+                                {item.message.content}
+                              </Text>
+                            </>
+                          )}
+
+                          <View style={styles.messageFooterRow}>
+                            <Text
+                              style={[
+                                styles.timeText,
+                                isDoctor ? styles.timeTextDoctor : styles.timeTextPatient,
+                              ]}
+                            >
+                              {formatTime(item.message.createdAt)}
+                            </Text>
+                            {isMine ? (
+                              <Ionicons
+                                name={isReadByOtherParticipant ? "checkmark-done" : "checkmark"}
+                                size={14}
+                                color={isReadByOtherParticipant ? "#BAE6FD" : "#E0E7FF"}
+                                style={styles.messageStatusIcon}
+                              />
+                            ) : null}
+                          </View>
+                        </View>
+                      </Pressable>
+                    </View>
+                  </View>
+                );
+              })
+            )}
           </ScrollView>
         </View>
 
-        <View style={styles.quickBarWrapper}>
-          <View style={styles.quickBarHeader}>
-            <Ionicons
-              name="information-circle-outline"
-              size={16}
-              color="#6B7280"
-              style={{ marginRight: 4 }}
-            />
-            <Text style={styles.quickBarTitle}>
-              Phản hồi nhanh của bệnh nhân
-            </Text>
+        <Modal
+          transparent
+          visible={Boolean(messageMenu)}
+          animationType="fade"
+          onRequestClose={() => setMessageMenu(null)}
+        >
+          <View style={styles.messageMenuBackdrop}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={() => setMessageMenu(null)} />
+            {messageMenu ? (
+              <View
+                style={[
+                  styles.messageMenuPopover,
+                  {
+                    top: messageMenu.top,
+                    left: messageMenu.left,
+                  },
+                ]}
+              >
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  style={styles.messageMenuItem}
+                  onPress={() => handleReplyFromMessage(messageMenu.message)}
+                >
+                  <Text style={styles.messageMenuText}>Trả lời</Text>
+                  <Ionicons name="arrow-undo-outline" size={18} color="#E5E7EB" />
+                </TouchableOpacity>
+                <View style={styles.messageMenuDivider} />
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  style={styles.messageMenuItem}
+                  onPress={() => setMessageMenu(null)}
+                >
+                  <Text style={styles.messageMenuTextMuted}>Đóng</Text>
+                  <Ionicons name="close-outline" size={20} color="#9CA3AF" />
+                </TouchableOpacity>
+              </View>
+            ) : null}
           </View>
+        </Modal>
 
+        <View style={styles.quickBarWrapper}>
+          <Text style={styles.quickBarTitle}>Phản hồi nhanh</Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 4 }}
+            contentContainerStyle={styles.quickScrollContent}
           >
             {QUICK_REPLIES.map((text) => (
               <TouchableOpacity
                 key={text}
                 style={styles.quickChip}
-                onPress={() => handleQuickReply(text)}
-                activeOpacity={0.8}
+                onPress={() => handleSelectQuickReply(text)}
+                activeOpacity={0.85}
               >
                 <Text style={styles.quickChipText}>{text}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
         </View>
-      </View>
+
+        <View style={styles.composerWrapper}>
+          <View style={styles.composerInputWrap}>
+            {replyTarget ? (
+              <View style={styles.replyComposerCard}>
+                <View style={styles.replyComposerBody}>
+                  <Text style={styles.replyComposerLabel}>Đang trả lời</Text>
+                  <Text style={styles.replyComposerSender}>
+                    {replyTarget.senderId === currentUserId ? "Bạn" : "Bác sĩ"}
+                  </Text>
+                  <Text style={styles.replyComposerText} numberOfLines={2}>
+                    {getReplyPreviewContent(replyTarget)}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setReplyTarget(null)}
+                  activeOpacity={0.85}
+                  style={styles.replyComposerClose}
+                >
+                  <Ionicons name="close" size={16} color="#6B7280" />
+                </TouchableOpacity>
+              </View>
+            ) : null}
+            <TextInput
+              value={draft}
+              onChangeText={setDraft}
+              placeholder="Nhập tin nhắn cho bác sĩ..."
+              placeholderTextColor="#9CA3AF"
+              multiline
+              style={styles.composerInput}
+            />
+          </View>
+
+          <TouchableOpacity
+            style={[
+              styles.sendButton,
+              !draft.trim() && styles.sendButtonDisabled,
+            ]}
+            onPress={() => handleSend()}
+            activeOpacity={0.85}
+            disabled={!draft.trim()}
+          >
+            <Ionicons name="send" size={18} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: "#0F172A",
+  },
   root: {
     flex: 1,
     backgroundColor: "#0F172A",
   },
-
-  // Header
+  loadingRoot: {
+    flex: 1,
+    backgroundColor: "#F8FAFC",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 13,
+    color: "#4B5563",
+  },
+  emptyCard: {
+    width: "100%",
+    maxWidth: 360,
+    borderRadius: 24,
+    backgroundColor: "#FFFFFF",
+    padding: 20,
+    shadowColor: "#0F172A",
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#111827",
+    marginBottom: 8,
+  },
+  emptyText: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: "#4B5563",
+  },
+  emptyError: {
+    marginTop: 10,
+    fontSize: 13,
+    color: "#DC2626",
+  },
   headerRow: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    paddingTop: 6,
+    paddingVertical: 12,
   },
-  backBtn: {
-    width: 36,
-    height: 36,
+  headerAvatar: {
+    width: 44,
+    height: 44,
     borderRadius: 999,
-    backgroundColor: "rgba(15,23,42,0.6)",
-    borderWidth: 1,
-    borderColor: "rgba(148,163,184,0.6)",
-    justifyContent: "center",
     alignItems: "center",
-    marginRight: 10,
+    justifyContent: "center",
+    backgroundColor: "#2563EB",
+    borderWidth: 1,
+    borderColor: "#93C5FD",
+    marginRight: 12,
   },
   headerCenter: {
     flex: 1,
@@ -438,20 +1140,21 @@ const styles = StyleSheet.create({
   headerNameRow: {
     flexDirection: "row",
     alignItems: "center",
+    flexWrap: "wrap",
   },
   headerTitle: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#F9FAFB",
+    color: "#F8FAFC",
     marginRight: 8,
   },
   headerBadge: {
     borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 3,
+    backgroundColor: "rgba(56,189,248,0.16)",
     borderWidth: 1,
-    borderColor: "#38BDF8",
-    backgroundColor: "rgba(56,189,248,0.12)",
+    borderColor: "rgba(56,189,248,0.45)",
   },
   headerBadgeText: {
     fontSize: 11,
@@ -459,84 +1162,128 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   headerSub: {
-    fontSize: 12,
-    color: "#9CA3AF",
     marginTop: 2,
+    fontSize: 12,
+    color: "#94A3B8",
   },
   headerStatus: {
     flexDirection: "row",
     alignItems: "center",
+    borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 999,
-    backgroundColor: "rgba(22,163,74,0.15)",
+    marginLeft: 8,
     borderWidth: 1,
-    borderColor: "rgba(52,211,153,0.5)",
-    marginLeft: 6,
+  },
+  headerStatusOnline: {
+    backgroundColor: "rgba(22,163,74,0.16)",
+    borderColor: "rgba(74,222,128,0.4)",
+  },
+  headerStatusSyncing: {
+    backgroundColor: "rgba(245,158,11,0.14)",
+    borderColor: "rgba(251,191,36,0.4)",
   },
   headerDot: {
     width: 7,
     height: 7,
     borderRadius: 999,
-    backgroundColor: "#22C55E",
     marginRight: 4,
+  },
+  headerDotOnline: {
+    backgroundColor: "#22C55E",
+  },
+  headerDotSyncing: {
+    backgroundColor: "#F59E0B",
   },
   headerStatusText: {
     fontSize: 11,
-    color: "#BBF7D0",
     fontWeight: "600",
+    color: "#F8FAFC",
   },
-
-  // Chat card
   chatCard: {
     flex: 1,
-    backgroundColor: "#F3F4FF",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingTop: 8,
-    paddingHorizontal: 0,
-    marginTop: 10,
+    marginTop: 8,
+    backgroundColor: "#EEF2FF",
+    borderTopLeftRadius: 26,
+    borderTopRightRadius: 26,
+    overflow: "hidden",
   },
-
+  errorBanner: {
+    marginHorizontal: 16,
+    marginTop: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 16,
+    backgroundColor: "#FEF2F2",
+    borderWidth: 1,
+    borderColor: "#FECACA",
+  },
+  errorBannerText: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: "#DC2626",
+  },
   chatContainer: {
     flex: 1,
+  },
+  chatContent: {
+    paddingHorizontal: 14,
+    paddingTop: 10,
+    paddingBottom: 18,
+  },
+  emptyConversation: {
+    marginTop: 24,
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: 16,
   },
-
-  // Day badge
+  emptyConversationText: {
+    textAlign: "center",
+    fontSize: 14,
+    lineHeight: 20,
+    color: "#6B7280",
+  },
   dayBadgeWrapper: {
     alignItems: "center",
-    marginTop: 6,
-    marginBottom: 4,
+    marginVertical: 8,
   },
   dayBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
     borderRadius: 999,
     backgroundColor: "#E5E7EB",
+    paddingHorizontal: 12,
+    paddingVertical: 4,
   },
   dayBadgeText: {
     fontSize: 11,
     color: "#4B5563",
-    fontWeight: "500",
+    fontWeight: "600",
   },
-
-  // Message
   messageWrapper: {
     marginVertical: 4,
-    paddingHorizontal: 10,
+  },
+  messageWrapperLeft: {
+    alignItems: "flex-start",
+  },
+  messageWrapperRight: {
+    alignItems: "flex-end",
   },
   messageRow: {
+    maxWidth: "86%",
     alignItems: "flex-end",
-    flexShrink: 1,
   },
-
+  messageRowLeft: {
+    flexDirection: "row",
+  },
+  messageRowRight: {
+    flexDirection: "row-reverse",
+  },
   avatarSmall: {
     width: 30,
     height: 30,
     borderRadius: 999,
-    justifyContent: "center",
     alignItems: "center",
+    justifyContent: "center",
+    marginHorizontal: 6,
   },
   avatarDoctor: {
     backgroundColor: "#2563EB",
@@ -548,149 +1295,315 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#BFDBFE",
   },
-
   bubble: {
-    maxWidth: "78%",
     borderRadius: 18,
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginHorizontal: 8,
+    paddingVertical: 9,
   },
   bubbleDoctor: {
     backgroundColor: "#FFFFFF",
     borderTopLeftRadius: 4,
-    shadowColor: "#000",
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
   },
   bubblePatient: {
     backgroundColor: "#2563EB",
     borderTopRightRadius: 4,
   },
-
-  senderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 2,
-  },
   senderNameSmall: {
     fontSize: 11,
     color: "#4B5563",
     fontWeight: "600",
-    marginRight: 6,
+    marginBottom: 3,
   },
-  senderRoleBadge: {
-    borderRadius: 999,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    backgroundColor: "#EFF6FF",
+  alertContentBlock: {
+    gap: 8,
   },
-  senderRoleText: {
+  alertSummaryCard: {
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+  },
+  alertSummaryCardDoctor: {
+    backgroundColor: "#FFFBEB",
+    borderColor: "#FCD34D",
+  },
+  alertSummaryCardPatient: {
+    backgroundColor: "rgba(255,255,255,0.12)",
+    borderColor: "rgba(191,219,254,0.26)",
+  },
+  alertSummaryHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  alertSummaryLabel: {
+    marginLeft: 6,
     fontSize: 10,
-    color: "#2563EB",
-    fontWeight: "600",
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
-
-  messageText: {
+  alertSummaryLabelDoctor: {
+    color: "#B45309",
+  },
+  alertSummaryLabelPatient: {
+    color: "#DBEAFE",
+  },
+  alertSummaryText: {
     fontSize: 13,
-    color: "#111827",
-    lineHeight: 18,
+    lineHeight: 19,
   },
-  messageTextPatient: {
-    color: "#EEF2FF",
+  alertSummaryTextDoctor: {
+    color: "#78350F",
   },
-
-  timeText: {
-    fontSize: 11,
-    marginTop: 4,
+  alertSummaryTextPatient: {
+    color: "#EFF6FF",
   },
-  timeTextDoctor: {
-    color: "#9CA3AF",
-    alignSelf: "flex-end",
-  },
-  timeTextPatient: {
-    color: "rgba(226,232,240,0.9)",
-    alignSelf: "flex-end",
-  },
-
-  // Measurement card
-  measureCard: {
+  alertSummaryMeta: {
     marginTop: 8,
-    padding: 10,
-    borderRadius: 12,
-    backgroundColor: "#F9FAFB",
+    fontSize: 11,
+  },
+  alertSummaryMetaDoctor: {
+    color: "#B45309",
+  },
+  alertSummaryMetaPatient: {
+    color: "rgba(219,234,254,0.92)",
+  },
+  alertNoteCard: {
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  alertNoteCardDoctor: {
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
     borderColor: "#E5E7EB",
   },
-  measureHeader: {
-    flexDirection: "row",
-    alignItems: "center",
+  alertNoteCardPatient: {
+    backgroundColor: "rgba(255,255,255,0.12)",
   },
-  measureLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#0F172A",
-  },
-  measureChip: {
-    marginTop: 2,
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+  alertNoteLabel: {
+    marginBottom: 6,
     fontSize: 10,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  alertNoteLabelDoctor: {
     color: "#6B7280",
   },
-  measureMain: {
-    fontSize: 14,
-    fontWeight: "700",
+  alertNoteLabelPatient: {
+    color: "#DBEAFE",
+  },
+  alertNoteTextDoctor: {
     color: "#111827",
-    marginTop: 6,
   },
-  measureSub: {
-    fontSize: 12,
-    color: "#4B5563",
-    marginTop: 2,
+  alertNoteTextPatient: {
+    color: "#EFF6FF",
   },
-  measureMetaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 6,
+  replyPreviewCard: {
+    marginBottom: 8,
+    borderLeftWidth: 3,
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
   },
-  measureMeta: {
+  replyPreviewCardDoctor: {
+    backgroundColor: "#F8FAFC",
+    borderLeftColor: "#93C5FD",
+  },
+  replyPreviewCardPatient: {
+    backgroundColor: "rgba(255,255,255,0.12)",
+    borderLeftColor: "#BFDBFE",
+  },
+  replyPreviewSender: {
     fontSize: 11,
+    fontWeight: "700",
+    marginBottom: 3,
+  },
+  replyPreviewSenderDoctor: {
+    color: "#2563EB",
+  },
+  replyPreviewSenderPatient: {
+    color: "#DBEAFE",
+  },
+  replyPreviewText: {
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  replyPreviewTextDoctor: {
+    color: "#4B5563",
+  },
+  replyPreviewTextPatient: {
+    color: "rgba(239,246,255,0.92)",
+  },
+  messageText: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: "#111827",
+  },
+  messageTextPatient: {
+    color: "#EFF6FF",
+  },
+  timeText: {
+    marginTop: 4,
+    fontSize: 11,
+    alignSelf: "flex-end",
+  },
+  timeTextDoctor: {
     color: "#9CA3AF",
   },
-
-  // Quick reply bar
-  quickBarWrapper: {
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    backgroundColor: "#FFFFFF",
-    borderTopWidth: 1,
-    borderTopColor: "#E5E7EB",
+  timeTextPatient: {
+    color: "rgba(224,231,255,0.95)",
   },
-  quickBarHeader: {
+  messageFooterRow: {
+    marginTop: 6,
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 4,
+    justifyContent: "flex-end",
+  },
+  messageStatusIcon: {
+    marginTop: 4,
+    marginLeft: 4,
+  },
+  messageMenuBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(15, 23, 42, 0.12)",
+  },
+  messageMenuPopover: {
+    position: "absolute",
+    width: MESSAGE_MENU_WIDTH,
+    borderRadius: 18,
+    backgroundColor: "#1F1F1F",
+    overflow: "hidden",
+    shadowColor: "#000000",
+    shadowOpacity: 0.24,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 14,
+  },
+  messageMenuItem: {
+    minHeight: 56,
+    paddingHorizontal: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  messageMenuDivider: {
+    height: 1,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    marginHorizontal: 12,
+  },
+  messageMenuText: {
+    fontSize: 15,
+    fontWeight: "500",
+    color: "#F8FAFC",
+  },
+  messageMenuTextMuted: {
+    fontSize: 15,
+    fontWeight: "500",
+    color: "#D1D5DB",
+  },
+  quickBarWrapper: {
+    borderTopWidth: 1,
+    borderTopColor: "#E5E7EB",
+    backgroundColor: "#FFFFFF",
+    paddingTop: 8,
+    paddingBottom: 6,
   },
   quickBarTitle: {
-    fontSize: 11,
+    paddingHorizontal: 16,
+    fontSize: 12,
     color: "#6B7280",
+    fontWeight: "600",
+    marginBottom: 6,
+  },
+  quickScrollContent: {
+    paddingHorizontal: 12,
   },
   quickChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    backgroundColor: "#EFF6FF",
+    marginHorizontal: 4,
     borderRadius: 999,
-    marginRight: 8,
     borderWidth: 1,
     borderColor: "#BFDBFE",
+    backgroundColor: "#EFF6FF",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
   quickChipText: {
     fontSize: 12,
     color: "#2563EB",
     fontWeight: "600",
+  },
+  composerWrapper: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    paddingHorizontal: 14,
+    paddingTop: 10,
+    paddingBottom: Platform.OS === "ios" ? 18 : 14,
+    backgroundColor: "#FFFFFF",
+  },
+  composerInputWrap: {
+    flex: 1,
+    borderRadius: 22,
+    backgroundColor: "#F3F4F6",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  replyComposerCard: {
+    marginBottom: 10,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    borderRadius: 16,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#DBEAFE",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  replyComposerBody: {
+    flex: 1,
+  },
+  replyComposerLabel: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#2563EB",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  replyComposerSender: {
+    marginTop: 3,
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#111827",
+  },
+  replyComposerText: {
+    marginTop: 3,
+    fontSize: 12,
+    lineHeight: 17,
+    color: "#6B7280",
+  },
+  replyComposerClose: {
+    marginLeft: 8,
+    padding: 2,
+  },
+  composerInput: {
+    minHeight: 24,
+    maxHeight: 110,
+    fontSize: 14,
+    color: "#111827",
+    textAlignVertical: "top",
+  },
+  sendButton: {
+    width: 46,
+    height: 46,
+    borderRadius: 999,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#2563EB",
+    marginLeft: 10,
+  },
+  sendButtonDisabled: {
+    backgroundColor: "#9CA3AF",
   },
 });

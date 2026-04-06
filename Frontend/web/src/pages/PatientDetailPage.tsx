@@ -8,6 +8,7 @@ import {
   MdPerson,
   MdPhoneInTalk,
   MdContactEmergency,
+  MdNotificationsActive,
   MdShowChart,
   MdDateRange,
 } from "react-icons/md";
@@ -49,9 +50,9 @@ const normalizeMeasurements = (data: MeasurementResponse[]): ChartRow[] =>
   data.map((m) => ({
     systolic: m.bloodPressure?.systolic ?? m.systolic ?? 0,
     diastolic: m.bloodPressure?.diastolic ?? m.diastolic ?? 0,
-    pulse: m.heartRate,
+    pulse: m.heartRate ?? 0,
     glucose: m.glucose ?? 0,
-    spo2: m.spo2,
+    spo2: m.spo2 ?? 0,
     updateAt: m.createdAt,
   }));
 
@@ -135,6 +136,10 @@ const PatientDetailPage = () => {
   const [threshold, setThreshold] = useState<ThresholdRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [measurementsLoading, setMeasurementsLoading] = useState(true);
+  const [measurementsError, setMeasurementsError] = useState<string | null>(null);
+  const [thresholdLoading, setThresholdLoading] = useState(true);
+  const [thresholdError, setThresholdError] = useState<string | null>(null);
 
   const [chartType, setChartType] = useState<"bp" | "glucose">("bp");
 
@@ -148,27 +153,72 @@ const PatientDetailPage = () => {
   useEffect(() => {
     if (!patientId) return;
 
+    let cancelled = false;
+
     const load = async () => {
       setLoading(true);
       setError(null);
-      try {
-        const [patientData, rawMeasurements, thresholds] = await Promise.all([
-          getPatientById(patientId),
-          getMeasurements({ patientId }),
-          getThresholds({ patientId, latest: true }),
-        ]);
+      setMeasurementsLoading(true);
+      setMeasurementsError(null);
+      setThresholdLoading(true);
+      setThresholdError(null);
 
+      const measurementsPromise = getMeasurements({ patientId })
+        .then((rawMeasurements) => {
+          if (cancelled) return;
+          setMeasurements(normalizeMeasurements(rawMeasurements));
+        })
+        .catch((err: any) => {
+          if (cancelled) return;
+          setMeasurements([]);
+          setMeasurementsError(
+            err?.response?.data?.error ?? err?.message ?? "Không thể tải dữ liệu đo"
+          );
+        })
+        .finally(() => {
+          if (cancelled) return;
+          setMeasurementsLoading(false);
+        });
+
+      const thresholdsPromise = getThresholds({ patientId, latest: true })
+        .then((thresholds) => {
+          if (cancelled) return;
+          setThreshold(thresholds.length > 0 ? thresholds[0] : null);
+        })
+        .catch((err: any) => {
+          if (cancelled) return;
+          setThreshold(null);
+          setThresholdError(
+            err?.response?.data?.error ?? err?.message ?? "Không thể tải ngưỡng an toàn"
+          );
+        })
+        .finally(() => {
+          if (cancelled) return;
+          setThresholdLoading(false);
+        });
+
+      try {
+        const patientData = await getPatientById(patientId);
+        if (cancelled) return;
         setPatient(patientData);
-        setMeasurements(normalizeMeasurements(rawMeasurements));
-        setThreshold(thresholds.length > 0 ? thresholds[0] : null);
       } catch (err: any) {
+        if (cancelled) return;
         setError(err?.response?.data?.error ?? err?.message ?? "Lỗi tải dữ liệu");
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
+
+      void measurementsPromise;
+      void thresholdsPromise;
     };
 
-    load();
+    void load();
+
+    return () => {
+      cancelled = true;
+    };
   }, [patientId]);
 
   const filteredMeasurements = useMemo(() => {
@@ -288,7 +338,14 @@ const PatientDetailPage = () => {
                   {mapStatusLabel(patient.status)}
                 </span>
               </div>
-              <div className="mt-4 flex justify-center sm:justify-start">
+              <div className="mt-4 flex flex-wrap justify-center sm:justify-start gap-3">
+                <button
+                  onClick={() => navigate(`/reminders?patientId=${patientId}`)}
+                  className="inline-flex items-center rounded-xl border border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/30 px-4 py-2 text-sm font-medium text-blue-700 dark:text-blue-300 transition hover:bg-blue-100 dark:hover:bg-blue-900/50"
+                >
+                  <MdNotificationsActive className="mr-2" size={18} />
+                  Quản lý nhắc nhở
+                </button>
                 <button
                   onClick={() => navigate(`/patient/chat/${patientId}`)}
                   className="relative group p-1"
@@ -353,7 +410,21 @@ const PatientDetailPage = () => {
                 <GiHeartBeats className="mr-2 text-red-500" size={24} />
                 Ngưỡng chỉ số an toàn
               </h3>
-              {threshold ? (
+              {thresholdLoading ? (
+                <div className="flex h-48 items-center justify-center text-sm text-gray-400 dark:text-slate-500">
+                  Đang tải ngưỡng an toàn...
+                </div>
+              ) : thresholdError ? (
+                <div className="flex h-48 flex-col items-center justify-center gap-3 text-center text-sm text-red-500 dark:text-red-300">
+                  <p>{thresholdError}</p>
+                  <button
+                    onClick={() => navigate(`/threshold-settings`)}
+                    className="rounded-lg bg-primary px-4 py-2 text-white transition hover:bg-primary-dark"
+                  >
+                    Mở cài đặt ngưỡng
+                  </button>
+                </div>
+              ) : threshold ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <ThresholdCard icon={FaTemperatureHigh} label="Nhiệt độ" data={{ min: threshold.temperatureMin, max: threshold.temperatureMax }} unit="°C" colorClass="border-orange-400 text-orange-500" />
                   <ThresholdCard icon={GiHeartBeats} label="Nhịp tim" data={{ min: threshold.heartRateMin, max: threshold.heartRateMax }} unit="bpm" colorClass="border-red-400 text-red-500" />
@@ -444,37 +515,47 @@ const PatientDetailPage = () => {
           </div>
 
           <div className="h-80 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart
-                data={filteredMeasurements}
-                margin={{ top: 5, right: 30, left: 0, bottom: 5 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" />
-                <XAxis dataKey="updateAt" tickFormatter={formatXAxis} stroke="#64748b" tick={{ fontSize: 12 }} />
-                <YAxis stroke="#64748b" tick={{ fontSize: 12 }} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "var(--color-surface, #1e293b)",
-                    borderRadius: "8px",
-                    border: "1px solid #334155",
-                    boxShadow: "0 2px 5px rgba(0,0,0,0.3)",
-                    color: "#f1f5f9",
-                  }}
-                  itemStyle={{ fontSize: "13px", fontWeight: 500 }}
-                  labelStyle={{ marginBottom: "5px", color: "#94a3b8" }}
-                />
-                <Legend wrapperStyle={{ paddingTop: "10px" }} />
+            {measurementsLoading ? (
+              <div className="flex h-full items-center justify-center text-sm text-gray-400 dark:text-slate-500">
+                Đang tải dữ liệu đo...
+              </div>
+            ) : measurementsError ? (
+              <div className="flex h-full items-center justify-center text-center text-sm text-red-500 dark:text-red-300">
+                {measurementsError}
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={filteredMeasurements}
+                  margin={{ top: 5, right: 30, left: 0, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#334155" />
+                  <XAxis dataKey="updateAt" tickFormatter={formatXAxis} stroke="#64748b" tick={{ fontSize: 12 }} />
+                  <YAxis stroke="#64748b" tick={{ fontSize: 12 }} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "var(--color-surface, #1e293b)",
+                      borderRadius: "8px",
+                      border: "1px solid #334155",
+                      boxShadow: "0 2px 5px rgba(0,0,0,0.3)",
+                      color: "#f1f5f9",
+                    }}
+                    itemStyle={{ fontSize: "13px", fontWeight: 500 }}
+                    labelStyle={{ marginBottom: "5px", color: "#94a3b8" }}
+                  />
+                  <Legend wrapperStyle={{ paddingTop: "10px" }} />
 
-                {chartType === "bp" ? (
-                  <>
-                    <Line name="Tâm thu (Systolic)" type="monotone" dataKey="systolic" stroke="#8884d8" strokeWidth={3} activeDot={{ r: 6 }} />
-                    <Line name="Tâm trương (Diastolic)" type="monotone" dataKey="diastolic" stroke="#82ca9d" strokeWidth={3} activeDot={{ r: 6 }} />
-                  </>
-                ) : (
-                  <Line name="Đường huyết (Glucose)" type="monotone" dataKey="glucose" stroke="#3b82f6" strokeWidth={3} activeDot={{ r: 6 }} />
-                )}
-              </LineChart>
-            </ResponsiveContainer>
+                  {chartType === "bp" ? (
+                    <>
+                      <Line name="Tâm thu (Systolic)" type="monotone" dataKey="systolic" stroke="#8884d8" strokeWidth={3} activeDot={{ r: 6 }} />
+                      <Line name="Tâm trương (Diastolic)" type="monotone" dataKey="diastolic" stroke="#82ca9d" strokeWidth={3} activeDot={{ r: 6 }} />
+                    </>
+                  ) : (
+                    <Line name="Đường huyết (Glucose)" type="monotone" dataKey="glucose" stroke="#3b82f6" strokeWidth={3} activeDot={{ r: 6 }} />
+                  )}
+                </LineChart>
+              </ResponsiveContainer>
+            )}
           </div>
           <p className="text-xs text-gray-400 dark:text-slate-500 mt-2 text-center italic">
             * Dữ liệu hiển thị theo{" "}
@@ -490,11 +571,21 @@ const PatientDetailPage = () => {
             </h3>
           </div>
 
-          <Table<ChartRow>
-            data={tableData}
-            columns={columns}
-            className="rounded-none shadow-none"
-          />
+          {measurementsLoading ? (
+            <div className="p-5 text-sm text-gray-400 dark:text-slate-500">
+              Đang tải lịch sử đo...
+            </div>
+          ) : measurementsError ? (
+            <div className="p-5 text-sm text-red-500 dark:text-red-300">
+              {measurementsError}
+            </div>
+          ) : (
+            <Table<ChartRow>
+              data={tableData}
+              columns={columns}
+              className="rounded-none shadow-none"
+            />
+          )}
         </section>
       </div>
     </div>

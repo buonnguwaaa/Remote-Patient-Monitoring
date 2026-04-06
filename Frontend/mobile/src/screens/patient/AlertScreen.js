@@ -1,77 +1,35 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  ActivityIndicator,
+  Modal,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-import { useState } from "react";
 
-const alerts = [
-  {
-    id: "a1",
-    patientId: "p1",
-    doctorId: "d1",
-    measurementId: "m1",
-    type: "bp",
-    rule: "SYS > 150",
-    observed: 165,
-    thresholdAtTime: 150,
-    severity: "high",
-    status: "open",
-    acknowledgedBy: null,
-    acknowledgedAt: null,
-    createdAt: "2025-11-24T14:30:00Z",
-    updatedAt: "2025-11-24T14:31:00Z",
-  },
-  {
-    id: "a2",
-    patientId: "p1",
-    doctorId: "d1",
-    measurementId: "m2",
-    type: "glucose",
-    rule: "GLUCOSE > 130",
-    observed: 145,
-    thresholdAtTime: 130,
-    severity: "high",
-    status: "open",
-    acknowledgedBy: null,
-    acknowledgedAt: null,
-    createdAt: "2025-11-24T08:15:00Z",
-    updatedAt: "2025-11-24T08:16:00Z",
-  },
-  {
-    id: "a3",
-    patientId: "p1",
-    doctorId: "d1",
-    measurementId: "m3",
-    type: "bp",
-    rule: "SYS between 90-140",
-    observed: 118,
-    thresholdAtTime: 140,
-    severity: "info",
-    status: "ack",
-    acknowledgedBy: "d1",
-    acknowledgedAt: "2025-11-24T07:20:00Z",
-    createdAt: "2025-11-24T07:10:00Z",
-    updatedAt: "2025-11-24T07:20:00Z",
-  },
-  {
-    id: "a4",
-    patientId: "p1",
-    doctorId: "d1",
-    measurementId: "m4",
-    type: "glucose",
-    rule: "GLUCOSE > 130",
-    observed: 132,
-    thresholdAtTime: 130,
-    severity: "info",
-    status: "ack",
-    acknowledgedBy: "d1",
-    acknowledgedAt: "2025-11-23T15:30:00Z",
-    createdAt: "2025-11-23T15:20:00Z",
-    updatedAt: "2025-11-23T15:30:00Z",
-  },
-];
+import { getMyAlerts } from "../../api/alertApi";
+
+function extractData(response) {
+  if (!response?.ok) return null;
+  return response.body?.data || response.body || null;
+}
+
+function extractList(response) {
+  const data = extractData(response);
+  return Array.isArray(data) ? data : [];
+}
 
 function formatDateTime(iso) {
+  if (!iso) return "Chưa có thời gian";
   const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "Chưa có thời gian";
   const dd = String(d.getDate()).padStart(2, "0");
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const yyyy = d.getFullYear();
@@ -80,374 +38,566 @@ function formatDateTime(iso) {
   return `${dd}/${mm}/${yyyy} • ${hh}:${mi}`;
 }
 
-export default function AlertScreen() {
-  const [tab, setTab] = useState("all");
+function formatClockTime(iso) {
+  if (!iso) return "--:--";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "--:--";
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
 
-  const openCount = alerts.filter((a) => a.status === "open").length;
+function formatNumber(value) {
+  if (typeof value !== "number" || Number.isNaN(value)) return "--";
+  return Number.isInteger(value) ? `${value}` : value.toFixed(1);
+}
 
-  const filteredAlerts = alerts.filter((a) => {
-    if (tab === "all") return true;
-    return a.status === tab;
+function getViolationLabel(type) {
+  const labels = {
+    temperature: "Nhiệt độ",
+    heart_rate: "Nhịp tim",
+    respiratory_rate: "Nhịp thở",
+    spo2: "SpO2",
+    blood_pressure_systolic: "Huyết áp tâm thu",
+    blood_pressure_diastolic: "Huyết áp tâm trương",
+    glucose: "Đường huyết",
+  };
+  return labels[type] || type || "Chỉ số";
+}
+
+function getViolationIcon(type) {
+  switch (type) {
+    case "temperature":
+      return "thermometer-outline";
+    case "heart_rate":
+      return "heart-outline";
+    case "respiratory_rate":
+      return "pulse-outline";
+    case "spo2":
+      return "water-outline";
+    case "blood_pressure_systolic":
+    case "blood_pressure_diastolic":
+      return "fitness-outline";
+    case "glucose":
+      return "flask-outline";
+    default:
+      return "alert-circle-outline";
+  }
+}
+
+function getViolationUnit(type) {
+  switch (type) {
+    case "temperature":
+      return "°C";
+    case "heart_rate":
+      return "bpm";
+    case "respiratory_rate":
+      return "lần/phút";
+    case "spo2":
+      return "%";
+    case "blood_pressure_systolic":
+    case "blood_pressure_diastolic":
+      return "mmHg";
+    case "glucose":
+      return "mg/dL";
+    default:
+      return "";
+  }
+}
+
+function getViolations(alert) {
+  return Array.isArray(alert?.violations) ? alert.violations : [];
+}
+
+function formatViolationReading(violation, field) {
+  const value = formatNumber(violation?.[field]);
+  const unit = getViolationUnit(violation?.type);
+  return unit ? `${value} ${unit}` : value;
+}
+
+function buildAlertSummary(alert) {
+  const violations = getViolations(alert);
+  const labels = [...new Set(violations.map((item) => getViolationLabel(item?.type)).filter(Boolean))];
+  if (labels.length === 0) {
+    return {
+      title: "Cảnh báo sinh hiệu",
+      iconName: "alert-circle-outline",
+      summary: "Không có chi tiết vi phạm.",
+      labels: [],
+    };
+  }
+  if (labels.length === 1) {
+    return {
+      title: labels[0],
+      iconName: getViolationIcon(violations[0]?.type),
+      summary: violations[0]?.rule || "Chỉ số đã vượt ngưỡng cấu hình.",
+      labels,
+    };
+  }
+  return {
+    title: `${labels.length} chỉ số vượt ngưỡng`,
+    iconName: "alert-circle-outline",
+    summary: `Gồm: ${labels.join(", ")}`,
+    labels,
+  };
+}
+
+function getStatusMeta(alert) {
+  const isOpen = alert?.status === "open";
+  return {
+    isOpen,
+    label: isOpen ? "Chờ bác sĩ xác nhận" : "Đã xác nhận",
+    helper: isOpen
+      ? "Bác sĩ sẽ xem và phản hồi sớm."
+      : `${alert?.acknowledgedByName || alert?.acknowledgedBy || "Bác sĩ phụ trách"} • ${formatDateTime(alert?.acknowledgedAt)}`,
+  };
+}
+
+function buildDayMeta(iso) {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) {
+    return { key: "unknown", title: "Không rõ ngày", subtitle: "Thiếu thời gian tạo cảnh báo" };
+  }
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const target = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const diffDays = Math.round((today.getTime() - target.getTime()) / 86400000);
+  const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  const subtitle = date.toLocaleDateString("vi-VN", {
+    weekday: "long",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
   });
+  if (diffDays === 0) return { key, title: "Hôm nay", subtitle };
+  if (diffDays === 1) return { key, title: "Hôm qua", subtitle };
+  return {
+    key,
+    title: date.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" }),
+    subtitle,
+  };
+}
+
+function groupAlertsByDay(alerts) {
+  const groups = [];
+  alerts.forEach((alert) => {
+    const meta = buildDayMeta(alert?.createdAt);
+    const last = groups[groups.length - 1];
+    if (!last || last.key !== meta.key) {
+      groups.push({ ...meta, items: [alert] });
+      return;
+    }
+    last.items.push(alert);
+  });
+  return groups;
+}
+
+export default function AlertScreen() {
+  const navigation = useNavigation();
+  const route = useRoute();
+  const [alerts, setAlerts] = useState([]);
+  const [tab, setTab] = useState("all");
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState("");
+  const [selectedAlert, setSelectedAlert] = useState(null);
+
+  const loadAlerts = useCallback(async (isRefresh = false) => {
+    try {
+      setError("");
+      if (isRefresh) setRefreshing(true);
+      else setLoading(true);
+
+      const response = await getMyAlerts();
+      const nextAlerts = extractList(response);
+
+      if (!response?.ok) {
+        throw new Error(
+          response?.body?.error || response?.error || "Không thể tải dữ liệu cảnh báo."
+        );
+      }
+
+      nextAlerts.sort(
+        (left, right) =>
+          new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
+      );
+      setAlerts(nextAlerts);
+    } catch (loadError) {
+      console.error("Failed to load patient alerts", loadError);
+      setError(loadError?.message || "Không thể tải dữ liệu cảnh báo.");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadAlerts(false);
+    }, [loadAlerts])
+  );
+
+  const openCount = useMemo(
+    () => alerts.filter((item) => item.status === "open").length,
+    [alerts]
+  );
+
+  const filteredAlerts = useMemo(
+    () => alerts.filter((item) => (tab === "all" ? true : item.status === tab)),
+    [alerts, tab]
+  );
+
+  const groupedAlerts = useMemo(() => groupAlertsByDay(filteredAlerts), [filteredAlerts]);
+  const selectedSummary = selectedAlert ? buildAlertSummary(selectedAlert) : null;
+  const selectedStatus = selectedAlert ? getStatusMeta(selectedAlert) : null;
+
+  useEffect(() => {
+    const selectedAlertId = route?.params?.selectedAlertId;
+    if (!selectedAlertId || alerts.length === 0) return;
+
+    const matchedAlert = alerts.find((item) => item.id === selectedAlertId);
+    if (matchedAlert) {
+      setTab("all");
+      setSelectedAlert(matchedAlert);
+    }
+
+    navigation.setParams({ selectedAlertId: undefined });
+  }, [alerts, navigation, route?.params?.selectedAlertId]);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#F2F6FF" }}>
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        {/* HEADER */}
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={() => void loadAlerts(true)} />
+        }
+      >
         <View style={styles.headerRow}>
           <Text style={styles.headerTitle}>Cảnh báo</Text>
-
-          <View style={styles.badgeNew}>
-            <Text style={styles.badgeText}>{openCount} chưa xác nhận</Text>
+          <View style={[styles.badge, openCount === 0 && styles.badgeNeutral]}>
+            <Text style={styles.badgeText}>
+              {openCount > 0 ? `${openCount} chưa xác nhận` : "Không có cảnh báo mới"}
+            </Text>
           </View>
         </View>
 
-        {/* TABS (all / open / ack) */}
+        <Text style={styles.subtitle}>
+          Cảnh báo được nhóm theo từng ngày. Chạm vào từng item để xem chi tiết rõ
+          hơn về lần vượt ngưỡng đó.
+        </Text>
+
         <View style={styles.tabs}>
-          <TouchableOpacity
-            style={[styles.tabItem, tab === "all" && styles.tabActive]}
-            onPress={() => setTab("all")}
-          >
-            <Text style={[styles.tabText, tab === "all" && styles.tabTextActive]}>
-              Tất cả
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.tabItem, tab === "open" && styles.tabActive]}
-            onPress={() => setTab("open")}
-          >
-            <Text style={[styles.tabText, tab === "open" && styles.tabTextActive]}>
-              Chưa xác nhận
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.tabItem, tab === "ack" && styles.tabActive]}
-            onPress={() => setTab("ack")}
-          >
-            <Text style={[styles.tabText, tab === "ack" && styles.tabTextActive]}>
-              Đã xác nhận
-            </Text>
-          </TouchableOpacity>
+          {[
+            ["all", "Tất cả"],
+            ["open", "Chưa xác nhận"],
+            ["ack", "Đã xác nhận"],
+          ].map(([key, label]) => (
+            <TouchableOpacity
+              key={key}
+              style={[styles.tabItem, tab === key && styles.tabActive]}
+              onPress={() => setTab(key)}
+            >
+              <Text style={[styles.tabText, tab === key && styles.tabTextActive]}>{label}</Text>
+            </TouchableOpacity>
+          ))}
         </View>
 
-        {/* ALERT LIST */}
-        <View style={styles.list}>
-          {filteredAlerts.map((alert) => {
-            const isHigh = alert.severity === "high";
-            const isOpen = alert.status === "open";
-
-            const typeLabel =
-              alert.type === "bp"
-                ? "Huyết áp"
-                : alert.type === "glucose"
-                  ? "Đường huyết"
-                  : "Sinh hiệu";
-
-            const iconName =
-              alert.type === "bp"
-                ? "fitness"
-                : alert.type === "glucose"
-                  ? "water"
-                  : "pulse";
-
-            return (
-              <View
-                key={alert.id}
-                style={[
-                  styles.alertCard,
-                  isHigh ? styles.alertCardHigh : styles.alertCardInfo,
-                  !isOpen && styles.alertCardAck,
-                ]}
-              >
-                {/* Header: icon + type + severity */}
-                <View style={styles.alertHeaderRow}>
-                  <View style={styles.alertTitleWrapper}>
-                    <Ionicons
-                      name={iconName}
-                      size={20}
-                      color={isHigh ? "#DC2626" : "#1D4ED8"}
-                    />
-                    <Text style={styles.alertTypeText}>{typeLabel}</Text>
-                  </View>
-
-                  <View
-                    style={
-                      isHigh
-                        ? styles.alertSeverityPillHigh
-                        : styles.alertSeverityPillInfo
-                    }
-                  >
-                    <Text
-                      style={
-                        isHigh
-                          ? styles.alertSeverityTextHigh
-                          : styles.alertSeverityTextInfo
-                      }
-                    >
-                      {isHigh ? "Nguy hiểm" : "Thông tin"}
-                    </Text>
+        {loading ? (
+          <View style={styles.stateCard}>
+            <ActivityIndicator size="small" color="#2563EB" />
+            <Text style={styles.stateText}>Đang tải dữ liệu cảnh báo thật...</Text>
+          </View>
+        ) : error ? (
+          <View style={styles.stateCard}>
+            <Ionicons name="cloud-offline-outline" size={22} color="#DC2626" />
+            <Text style={styles.stateText}>{error}</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={() => void loadAlerts(false)}>
+              <Text style={styles.retryButtonText}>Thử lại</Text>
+            </TouchableOpacity>
+          </View>
+        ) : groupedAlerts.length === 0 ? (
+          <View style={styles.stateCard}>
+            <Ionicons name="checkmark-circle-outline" size={22} color="#15803D" />
+            <Text style={styles.stateText}>
+              {alerts.length === 0
+                ? "Hiện chưa có cảnh báo nào từ hệ thống."
+                : "Không có cảnh báo nào trong bộ lọc hiện tại."}
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.groupList}>
+            {groupedAlerts.map((group) => (
+              <View key={group.key} style={styles.dayGroup}>
+                <View style={styles.dayHeader}>
+                  <View style={styles.dayAccent} />
+                  <View style={styles.dayTextWrap}>
+                    <Text style={styles.dayTitle}>{group.title}</Text>
+                    <Text style={styles.daySubtitle}>{group.subtitle}</Text>
                   </View>
                 </View>
 
-                {/* Observed + threshold + rule */}
-                <Text style={styles.alertMainValue}>
-                  Giá trị đo:{" "}
-                  <Text style={styles.alertMainValueNumber}>{alert.observed}</Text>
-                </Text>
+                <View style={styles.list}>
+                  {group.items.map((alert) => {
+                    const summary = buildAlertSummary(alert);
+                    const statusMeta = getStatusMeta(alert);
+                    const isHigh = alert.severity === "high";
 
-                <Text style={styles.alertThresholdText}>
-                  Ngưỡng tại lúc đo:{" "}
-                  <Text style={styles.alertThresholdNumber}>
-                    {alert.thresholdAtTime}
-                  </Text>{" "}
-                  · Quy tắc: {alert.rule}
-                </Text>
+                    return (
+                      <TouchableOpacity
+                        key={alert.id}
+                        activeOpacity={0.92}
+                        style={[
+                          styles.alertCard,
+                          isHigh ? styles.alertCardHigh : styles.alertCardInfo,
+                          !statusMeta.isOpen && styles.alertCardAck,
+                        ]}
+                        onPress={() => setSelectedAlert(alert)}
+                      >
+                        <View style={styles.alertHeader}>
+                          <View style={styles.alertTitleWrap}>
+                            <View
+                              style={[
+                                styles.iconBadge,
+                                isHigh ? styles.iconBadgeHigh : styles.iconBadgeInfo,
+                              ]}
+                            >
+                              <Ionicons
+                                name={summary.iconName}
+                                size={18}
+                                color={isHigh ? "#DC2626" : "#1D4ED8"}
+                              />
+                            </View>
+                            <View style={styles.alertTextWrap}>
+                              <Text style={styles.alertTitle}>{summary.title}</Text>
+                              <Text style={styles.alertDesc}>{summary.summary}</Text>
+                            </View>
+                          </View>
 
-                <View style={styles.alertMetaRow}>
-                  <View style={styles.alertMetaLeft}>
-                    <Ionicons
-                      name="time-outline"
-                      size={14}
-                      color="#9CA3AF"
-                      style={{ marginRight: 4 }}
-                    />
-                    <Text style={styles.alertMetaText}>
-                      Tạo lúc {formatDateTime(alert.createdAt)}
-                    </Text>
-                  </View>
+                          <View style={styles.alertRight}>
+                            <Text style={styles.timePill}>{formatClockTime(alert.createdAt)}</Text>
+                            <View
+                              style={isHigh ? styles.levelPillHigh : styles.levelPillInfo}
+                            >
+                              <Text style={isHigh ? styles.levelTextHigh : styles.levelTextInfo}>
+                                {isHigh ? "Nguy hiểm" : "Thông tin"}
+                              </Text>
+                            </View>
+                          </View>
+                        </View>
 
-                  {alert.status === "ack" && alert.acknowledgedAt && (
-                    <Text style={styles.alertMetaText}>
-                      Đã xác nhận: {formatDateTime(alert.acknowledgedAt)}
-                    </Text>
-                  )}
-                </View>
+                        {summary.labels.length > 0 ? (
+                          <View style={styles.fieldWrap}>
+                            {summary.labels.map((label) => (
+                              <View key={`${alert.id}-${label}`} style={styles.fieldChip}>
+                                <Text style={styles.fieldChipText}>{label}</Text>
+                              </View>
+                            ))}
+                          </View>
+                        ) : null}
 
-                {/* Status + action */}
-                <View style={styles.alertMetaRow}>
-                  <View
-                    style={
-                      isOpen
-                        ? styles.alertStatusPillOpen
-                        : styles.alertStatusPillAck
-                    }
-                  >
-                    <Text
-                      style={
-                        isOpen
-                          ? styles.alertStatusTextOpen
-                          : styles.alertStatusTextAck
-                      }
-                    >
-                      {isOpen ? "Chưa xác nhận" : "Đã xác nhận"}
-                    </Text>
-                  </View>
+                        <View style={styles.violationList}>
+                          {getViolations(alert).map((violation, index) => (
+                            <View key={`${alert.id}-${violation.type}-${index}`} style={styles.violationRow}>
+                              <View style={styles.violationInfo}>
+                                <Text style={styles.violationLabel}>{getViolationLabel(violation.type)}</Text>
+                                <Text style={styles.violationRule}>
+                                  Quy tắc: {violation.rule || "Vượt ngưỡng đã cấu hình"}
+                                </Text>
+                              </View>
+                              <View style={styles.violationSide}>
+                                <Text style={styles.violationValue}>
+                                  {formatViolationReading(violation, "observed")}
+                                </Text>
+                                <Text style={styles.violationThreshold}>
+                                  Ngưỡng {formatViolationReading(violation, "threshold")}
+                                </Text>
+                              </View>
+                            </View>
+                          ))}
+                        </View>
 
-                  {isOpen && (
-                    <TouchableOpacity style={styles.actionBtnPrimary}>
-                      <Text style={styles.actionBtnText}>Đánh dấu đã xác nhận</Text>
-                    </TouchableOpacity>
-                  )}
+                        <View style={styles.cardFooter}>
+                          <View style={statusMeta.isOpen ? styles.statusPillOpen : styles.statusPillAck}>
+                            <Text style={statusMeta.isOpen ? styles.statusTextOpen : styles.statusTextAck}>
+                              {statusMeta.label}
+                            </Text>
+                          </View>
+                          <View style={styles.detailHint}>
+                            <Text style={styles.detailHintText}>Xem chi tiết</Text>
+                            <Ionicons name="chevron-forward-outline" size={14} color="#6B7280" />
+                          </View>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
               </View>
-            );
-          })}
-        </View>
+            ))}
+          </View>
+        )}
       </ScrollView>
+
+      <Modal visible={Boolean(selectedAlert)} transparent animationType="slide" onRequestClose={() => setSelectedAlert(null)}>
+        <View style={styles.modalOverlay}>
+          <Pressable style={styles.modalBackdrop} onPress={() => setSelectedAlert(null)} />
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHandle} />
+            <View style={styles.modalHeader}>
+              <View style={styles.modalHeaderText}>
+                <Text style={styles.modalTitle}>{selectedSummary?.title || "Chi tiết cảnh báo"}</Text>
+                <Text style={styles.modalDesc}>{selectedSummary?.summary || "Không có chi tiết vi phạm."}</Text>
+              </View>
+              <TouchableOpacity style={styles.closeButton} onPress={() => setSelectedAlert(null)}>
+                <Ionicons name="close-outline" size={22} color="#111827" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalScroll} contentContainerStyle={styles.modalScrollContent} showsVerticalScrollIndicator={false}>
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Thông tin cảnh báo</Text>
+                <View style={styles.metaCard}>
+                  <View style={styles.metaRow}>
+                    <Text style={styles.metaLabel}>Thời điểm tạo</Text>
+                    <Text style={styles.metaValue}>{formatDateTime(selectedAlert?.createdAt)}</Text>
+                  </View>
+                  <View style={styles.metaRow}>
+                    <Text style={styles.metaLabel}>Mức độ</Text>
+                    <Text style={[styles.metaValue, selectedAlert?.severity === "high" ? styles.metaHigh : styles.metaInfo]}>
+                      {selectedAlert?.severity === "high" ? "Nguy hiểm" : "Thông tin"}
+                    </Text>
+                  </View>
+                  <View style={styles.metaRow}>
+                    <Text style={styles.metaLabel}>Trạng thái</Text>
+                    <Text style={styles.metaValue}>{selectedStatus?.label || "Chưa xác định"}</Text>
+                  </View>
+                  <View style={styles.metaRow}>
+                    <Text style={styles.metaLabel}>Theo dõi</Text>
+                    <Text style={styles.metaValue}>{selectedStatus?.helper || "Chưa có cập nhật mới."}</Text>
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Các chỉ số vi phạm</Text>
+                <View style={styles.modalViolationList}>
+                  {getViolations(selectedAlert).map((violation, index) => (
+                    <View key={`${selectedAlert?.id}-${violation.type}-${index}`} style={styles.modalViolationCard}>
+                      <View style={styles.modalViolationTop}>
+                        <View style={styles.modalViolationTitleWrap}>
+                          <Ionicons name={getViolationIcon(violation.type)} size={16} color="#DC2626" />
+                          <Text style={styles.modalViolationTitle}>{getViolationLabel(violation.type)}</Text>
+                        </View>
+                        <Text style={styles.modalObserved}>{formatViolationReading(violation, "observed")}</Text>
+                      </View>
+                      <Text style={styles.modalRule}>Quy tắc: {violation.rule || "Vượt ngưỡng đã cấu hình"}</Text>
+                      <View style={styles.modalViolationBottom}>
+                        <Text style={styles.modalThreshold}>Ngưỡng tham chiếu: {formatViolationReading(violation, "threshold")}</Text>
+                        <Text style={[styles.modalSeverity, violation.severity === "high" ? styles.metaHigh : styles.metaInfo]}>
+                          {violation.severity === "high" ? "Mức cao" : "Thông tin"}
+                        </Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 20 },
-
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  backBtn: {
-    width: 40,
-    height: 40,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 10,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 10,
-    shadowColor: "#000",
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-  },
-  headerTitle: { fontSize: 18, fontWeight: "700", flex: 1, color: "#111827" },
-  badgeNew: {
-    backgroundColor: "#DC2626",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-  },
+  safeArea: { flex: 1, backgroundColor: "#F2F6FF" },
+  container: { flex: 1, paddingHorizontal: 20 },
+  contentContainer: { paddingTop: 20, paddingBottom: 32 },
+  headerRow: { flexDirection: "row", alignItems: "center", marginBottom: 8, gap: 12 },
+  headerTitle: { flex: 1, fontSize: 20, fontWeight: "700", color: "#111827" },
+  subtitle: { marginBottom: 16, fontSize: 13, lineHeight: 19, color: "#6B7280" },
+  badge: { backgroundColor: "#DC2626", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
+  badgeNeutral: { backgroundColor: "#1D4ED8" },
   badgeText: { color: "#FFFFFF", fontWeight: "700", fontSize: 12 },
-
-  tabs: {
-    flexDirection: "row",
-    backgroundColor: "#E5EDFF",
-    padding: 4,
-    borderRadius: 999,
-    marginBottom: 20,
-  },
-  tabItem: {
-    flex: 1,
-    paddingVertical: 8,
-    borderRadius: 999,
-    alignItems: "center",
-  },
-  tabActive: {
-    backgroundColor: "#FFFFFF",
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-  },
+  tabs: { flexDirection: "row", backgroundColor: "#E5EDFF", padding: 4, borderRadius: 999, marginBottom: 20 },
+  tabItem: { flex: 1, paddingVertical: 8, borderRadius: 999, alignItems: "center" },
+  tabActive: { backgroundColor: "#FFFFFF", shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
   tabText: { color: "#6B7280", fontWeight: "600", fontSize: 13 },
   tabTextActive: { color: "#2563EB" },
-
-  list: { gap: 14 },
-
-  alertCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    shadowColor: "#000",
-    shadowOpacity: 0.02,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-  },
-  alertCardHigh: {
-    borderColor: "#FCA5A5",
-    backgroundColor: "#FFF5F5",
-  },
-  alertCardInfo: {
-    borderColor: "#BFDBFE",
-    backgroundColor: "#F3F4FF",
-  },
-  alertCardAck: {
-    opacity: 0.9,
-  },
-
-  alertHeaderRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  alertTitleWrapper: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    flex: 1,
-  },
-  alertTypeText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#111827",
-  },
-
-  alertSeverityPillHigh: {
-    backgroundColor: "#FEE2E2",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 999,
-  },
-  alertSeverityPillInfo: {
-    backgroundColor: "#DBEAFE",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 999,
-  },
-  alertSeverityTextHigh: {
-    color: "#B91C1C",
-    fontWeight: "700",
-    fontSize: 11,
-  },
-  alertSeverityTextInfo: {
-    color: "#1D4ED8",
-    fontWeight: "700",
-    fontSize: 11,
-  },
-
-  alertMainValue: {
-    marginTop: 4,
-    fontSize: 13,
-    color: "#374151",
-  },
-  alertMainValueNumber: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#111827",
-  },
-
-  alertThresholdText: {
-    marginTop: 4,
-    fontSize: 12,
-    color: "#6B7280",
-  },
-  alertThresholdNumber: {
-    fontWeight: "600",
-    color: "#111827",
-  },
-
-  alertMetaRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: 8,
-  },
-  alertMetaLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  alertMetaText: {
-    fontSize: 11,
-    color: "#9CA3AF",
-  },
-
-  alertStatusPillOpen: {
-    backgroundColor: "#FEF3C7",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-  },
-  alertStatusPillAck: {
-    backgroundColor: "#DCFCE7",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-  },
-  alertStatusTextOpen: {
-    color: "#B45309",
-    fontWeight: "700",
-    fontSize: 11,
-  },
-  alertStatusTextAck: {
-    color: "#15803D",
-    fontWeight: "700",
-    fontSize: 11,
-  },
-
-  actionBtnPrimary: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: "#2563EB",
-  },
-  actionBtnText: {
-    color: "#FFFFFF",
-    fontSize: 11,
-    fontWeight: "700",
-  },
+  stateCard: { backgroundColor: "#FFFFFF", borderRadius: 16, padding: 18, borderWidth: 1, borderColor: "#E5E7EB", alignItems: "center", justifyContent: "center", gap: 10 },
+  stateText: { color: "#4B5563", fontSize: 13, lineHeight: 19, textAlign: "center" },
+  retryButton: { marginTop: 4, backgroundColor: "#2563EB", borderRadius: 999, paddingHorizontal: 14, paddingVertical: 8 },
+  retryButtonText: { color: "#FFFFFF", fontSize: 12, fontWeight: "700" },
+  groupList: { gap: 18 },
+  dayGroup: { gap: 12 },
+  dayHeader: { flexDirection: "row", gap: 10 },
+  dayAccent: { width: 4, borderRadius: 999, backgroundColor: "#2563EB" },
+  dayTextWrap: { flex: 1 },
+  dayTitle: { fontSize: 18, fontWeight: "700", color: "#111827" },
+  daySubtitle: { marginTop: 2, fontSize: 12, color: "#6B7280", textTransform: "capitalize" },
+  list: { gap: 12 },
+  alertCard: { backgroundColor: "#FFFFFF", borderRadius: 18, padding: 14, borderWidth: 1, borderColor: "#E5E7EB", shadowColor: "#000", shadowOpacity: 0.03, shadowRadius: 8, shadowOffset: { width: 0, height: 3 } },
+  alertCardHigh: { borderColor: "#FECACA", backgroundColor: "#FFF6F6" },
+  alertCardInfo: { borderColor: "#BFDBFE", backgroundColor: "#F8FAFF" },
+  alertCardAck: { opacity: 0.94 },
+  alertHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12 },
+  alertTitleWrap: { flexDirection: "row", gap: 10, flex: 1 },
+  iconBadge: { width: 36, height: 36, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  iconBadgeHigh: { backgroundColor: "#FEE2E2" },
+  iconBadgeInfo: { backgroundColor: "#DBEAFE" },
+  alertTextWrap: { flex: 1 },
+  alertTitle: { fontSize: 15, fontWeight: "700", color: "#111827" },
+  alertDesc: { marginTop: 3, fontSize: 12, lineHeight: 18, color: "#6B7280" },
+  alertRight: { alignItems: "flex-end", gap: 8 },
+  timePill: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999, backgroundColor: "rgba(255,255,255,0.88)", fontSize: 12, fontWeight: "700", color: "#111827" },
+  levelPillHigh: { backgroundColor: "#FEE2E2", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
+  levelPillInfo: { backgroundColor: "#DBEAFE", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
+  levelTextHigh: { color: "#B91C1C", fontWeight: "700", fontSize: 11 },
+  levelTextInfo: { color: "#1D4ED8", fontWeight: "700", fontSize: 11 },
+  fieldWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 12 },
+  fieldChip: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6, backgroundColor: "rgba(255,255,255,0.92)", borderWidth: 1, borderColor: "rgba(148,163,184,0.18)" },
+  fieldChipText: { fontSize: 11, fontWeight: "700", color: "#374151" },
+  violationList: { gap: 8, marginTop: 12 },
+  violationRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12, borderRadius: 14, backgroundColor: "rgba(255,255,255,0.82)", paddingHorizontal: 12, paddingVertical: 10 },
+  violationInfo: { flex: 1 },
+  violationLabel: { fontSize: 12, fontWeight: "700", color: "#374151" },
+  violationRule: { marginTop: 3, fontSize: 11, color: "#6B7280" },
+  violationSide: { alignItems: "flex-end" },
+  violationValue: { fontSize: 12, fontWeight: "700", color: "#111827" },
+  violationThreshold: { marginTop: 2, fontSize: 11, color: "#6B7280" },
+  cardFooter: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10, marginTop: 12 },
+  statusPillOpen: { backgroundColor: "#FEF3C7", paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999 },
+  statusPillAck: { backgroundColor: "#DCFCE7", paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999 },
+  statusTextOpen: { color: "#B45309", fontWeight: "700", fontSize: 11 },
+  statusTextAck: { color: "#15803D", fontWeight: "700", fontSize: 11 },
+  detailHint: { flexDirection: "row", alignItems: "center", gap: 3 },
+  detailHintText: { fontSize: 12, fontWeight: "600", color: "#6B7280" },
+  modalOverlay: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(15,23,42,0.35)" },
+  modalBackdrop: { ...StyleSheet.absoluteFillObject },
+  modalSheet: { backgroundColor: "#FFFFFF", borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: "82%", paddingHorizontal: 18, paddingTop: 10, paddingBottom: 22 },
+  modalHandle: { alignSelf: "center", width: 44, height: 4, borderRadius: 999, backgroundColor: "#D1D5DB", marginBottom: 14 },
+  modalHeader: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
+  modalHeaderText: { flex: 1 },
+  modalTitle: { fontSize: 18, fontWeight: "700", color: "#111827" },
+  modalDesc: { marginTop: 4, fontSize: 13, lineHeight: 19, color: "#6B7280" },
+  closeButton: { width: 34, height: 34, borderRadius: 999, backgroundColor: "#F3F4F6", alignItems: "center", justifyContent: "center" },
+  modalScroll: { marginTop: 16 },
+  modalScrollContent: { paddingBottom: 12, gap: 18 },
+  section: { gap: 10 },
+  sectionTitle: { fontSize: 14, fontWeight: "700", color: "#111827" },
+  metaCard: { backgroundColor: "#F8FAFC", borderRadius: 16, padding: 14, gap: 12, borderWidth: 1, borderColor: "#E5E7EB" },
+  metaRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12 },
+  metaLabel: { flex: 1, fontSize: 12, fontWeight: "600", color: "#6B7280" },
+  metaValue: { flex: 1.4, fontSize: 12, lineHeight: 18, fontWeight: "600", color: "#111827", textAlign: "right" },
+  metaHigh: { color: "#B91C1C" },
+  metaInfo: { color: "#1D4ED8" },
+  modalViolationList: { gap: 10 },
+  modalViolationCard: { backgroundColor: "#FFF7F7", borderRadius: 16, padding: 14, borderWidth: 1, borderColor: "#FECACA", gap: 8 },
+  modalViolationTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10 },
+  modalViolationTitleWrap: { flexDirection: "row", alignItems: "center", gap: 8, flex: 1 },
+  modalViolationTitle: { fontSize: 13, fontWeight: "700", color: "#111827" },
+  modalObserved: { fontSize: 13, fontWeight: "700", color: "#B91C1C" },
+  modalRule: { fontSize: 12, lineHeight: 18, color: "#6B7280" },
+  modalViolationBottom: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10 },
+  modalThreshold: { flex: 1, fontSize: 12, color: "#374151" },
+  modalSeverity: { fontSize: 11, fontWeight: "700" },
 });

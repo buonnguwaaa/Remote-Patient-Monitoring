@@ -58,7 +58,7 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
 
       <div
         className={`
-          h-screen bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col transition-all duration-300
+          h-screen bg-slate-50 dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800 flex flex-col transition-all duration-300
           
           /* --- LOGIC QUAN TRỌNG Ở ĐÂY --- */
           /* Mobile: Luôn Fixed đè lên content, Z-index cao hơn backdrop */
@@ -75,11 +75,11 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
             }`}
         >
           {!isCollapsed && (
-            <h2 className="font-bold text-2xl text-primary-text dark:text-white">RPM</h2>
+            <h2 className="font-bold text-2xl text-slate-900 dark:text-slate-100">RPM</h2>
           )}
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="text-primary-text dark:text-gray-200"
+            className="text-slate-700 dark:text-slate-300"
           >
             {isCollapsed ? (
               <TbLayoutSidebarRightCollapseFilled size={32} />
@@ -101,11 +101,11 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
                       if (window.innerWidth < 768) setIsCollapsed(true);
                     }}
                     className={`
-                      flex items-center py-2.5 rounded-lg transition-all duration-200
+                      relative flex items-center py-2.5 rounded-xl transition-all duration-200
                       ${isCollapsed ? "justify-center px-0" : "px-4 gap-3"}
                       ${isActive
-                        ? "bg-btn-clicked text-white shadow-md shadow-blue-200 dark:shadow-blue-900 scale-[1.02]"
-                        : "text-gray-500 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-gray-700 hover:text-btn-clicked dark:hover:text-white"
+                        ? "bg-blue-100 text-slate-900 shadow-md shadow-blue-200/70 dark:bg-blue-500 dark:text-white dark:shadow-blue-950/60"
+                        : "text-slate-600 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-slate-900 hover:text-blue-700 dark:hover:text-blue-300"
                       }
                     `}
                     title={isCollapsed ? item.label : ""}
@@ -121,7 +121,7 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
                       </span>
                     )}
                     {isCollapsed && isActive && (
-                      <span className="absolute left-1 w-1 h-8 bg-btn-clicked rounded-r-full" />
+                      <span className="absolute left-1 w-1 h-8 bg-blue-600 dark:bg-blue-400 rounded-r-full" />
                     )}
                   </Link>
                 </li>
@@ -150,7 +150,7 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
             </div>
             {!isCollapsed && (
               <div className="flex-1 min-w-0">
-                <p className="font-bold text-xl text-primary-text dark:text-white truncate">
+                <p className="font-bold text-xl text-slate-900 dark:text-slate-100 truncate">
                   {user?.username || "Admin"}
                 </p>
               </div>
@@ -162,9 +162,9 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
             title={theme === "dark" ? "Chuyển sang Light Mode" : "Chuyển sang Dark Mode"}
             className={`
               flex w-full items-center py-2 rounded-lg mt-1
-              text-gray-500 dark:text-gray-300
-              hover:bg-blue-50 dark:hover:bg-gray-700
-              hover:text-btn-clicked dark:hover:text-yellow-300
+              text-slate-600 dark:text-slate-300
+              hover:bg-blue-50 dark:hover:bg-slate-900
+              hover:text-blue-700 dark:hover:text-blue-300
               transition-all duration-200
               ${isCollapsed ? "justify-center px-0" : "px-4 gap-3"}
             `}
@@ -182,7 +182,7 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
           <button
             onClick={handleLogout}
             className="flex w-full items-center justify-center py-2 rounded-md text-xl 
-            text-gray-500 hover:bg-rose-400 hover:text-gray-800 transition duration-400 mt-1"
+            text-slate-600 dark:text-slate-300 hover:bg-rose-100 dark:hover:bg-rose-950/60 hover:text-rose-700 dark:hover:text-rose-300 transition duration-400 mt-1"
           >
             <FiLogOut className="mr-1" />
             {!isCollapsed && <span>Đăng xuất</span>}

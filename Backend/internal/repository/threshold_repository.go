@@ -19,6 +19,7 @@ type thresholdRepository struct {
 type ThresholdRepository interface {
 	Create(ctx context.Context, t *domain.Threshold) (*domain.Threshold, error)
 	FindWithFilter(ctx context.Context, filter ThresholdFilter) ([]domain.Threshold, error)
+	FindByID(ctx context.Context, id primitive.ObjectID) (*domain.Threshold, error)
 	Update(ctx context.Context, t *domain.Threshold) (*domain.Threshold, error)
 }
 
@@ -141,6 +142,15 @@ func (r *thresholdRepository) FindWithFilter(ctx context.Context, filter Thresho
 	return results, nil
 }
 
+func (r *thresholdRepository) FindByID(ctx context.Context, id primitive.ObjectID) (*domain.Threshold, error) {
+	var threshold domain.Threshold
+	if err := r.col.FindOne(ctx, bson.M{"_id": id}).Decode(&threshold); err != nil {
+		return nil, err
+	}
+
+	return &threshold, nil
+}
+
 func (r *thresholdRepository) Update(ctx context.Context, t *domain.Threshold) (*domain.Threshold, error) {
 	update := bson.M{
 		"$set": bson.M{
@@ -175,3 +185,4 @@ func (r *thresholdRepository) Update(ctx context.Context, t *domain.Threshold) (
 
 	return &updated, nil
 }
+

@@ -26,8 +26,8 @@ function hasValue(value) {
   return String(value ?? "").trim().length > 0;
 }
 
-function toNumberOrZero(value) {
-  return hasValue(value) ? Number(value) : 0;
+function toOptionalNumber(value) {
+  return hasValue(value) ? Number(value) : null;
 }
 
 function toOptionalText(value) {
@@ -41,13 +41,13 @@ function buildPayload({ patientId, systolic, diastolic, heartRate, glucose, spo2
   return {
     patientId,
     type: hasBp || !hasGlucose ? "bp" : "glucose",
-    temperature: toNumberOrZero(temperature),
-    heartRate: toNumberOrZero(heartRate),
-    respiratoryRate: toNumberOrZero(respiratoryRate),
-    spo2: toNumberOrZero(spo2),
+    temperature: toOptionalNumber(temperature),
+    heartRate: toOptionalNumber(heartRate),
+    respiratoryRate: toOptionalNumber(respiratoryRate),
+    spo2: toOptionalNumber(spo2),
     bloodPressure: {
-      systolic: toNumberOrZero(systolic),
-      diastolic: toNumberOrZero(diastolic),
+      systolic: toOptionalNumber(systolic),
+      diastolic: toOptionalNumber(diastolic),
     },
     glucose: hasGlucose ? Number(glucose) : null,
     timing: hasGlucose ? timing : null,
@@ -234,11 +234,17 @@ export default function InputMeasurementPatientScreen() {
 
   const submitMeasurement = async () => {
     if (!ensurePatient()) return;
-    const savedKeys = SECTIONS.filter((item) => savedSections[item.key]).map((item) => item.key);
-    if (savedKeys.length === 0) {
-      Alert.alert("Chưa có dữ liệu", "Bạn cần lưu ít nhất một phần thông tin trước khi gửi bản đo.");
+    const missingSections = SECTIONS.filter((item) => !savedSections[item.key]);
+    if (missingSections.length > 0) {
+      Alert.alert(
+        "Thiếu chỉ số",
+        `Bạn cần nhập và lưu đủ tất cả chỉ số trước khi gửi. Còn thiếu: ${missingSections
+          .map((item) => item.label)
+          .join(", ")}.`
+      );
       return;
     }
+    const savedKeys = SECTIONS.map((item) => item.key);
     const unsavedKeys = SECTIONS.filter((item) => hasSectionValue(item.key) && !savedSections[item.key]);
     if (unsavedKeys.length > 0) {
       Alert.alert("Chưa lưu hết dữ liệu", `Bạn còn ${unsavedKeys.length} phần đang nhập nhưng chưa bấm "Lưu thông tin".`);
@@ -362,6 +368,7 @@ export default function InputMeasurementPatientScreen() {
 
   const savedCount = SECTIONS.filter((item) => savedSections[item.key]).length;
   const savedLabels = SECTIONS.filter((item) => savedSections[item.key]).map((item) => item.label);
+  const allSectionsSaved = savedCount === SECTIONS.length;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#F2F6FF" }}>
@@ -420,8 +427,8 @@ export default function InputMeasurementPatientScreen() {
           <View style={styles.card}>
             <Text style={styles.progressTitle}>Đã lưu {savedCount}/6 nhóm chỉ số</Text>
             <Text style={styles.progressSub}>
-              Khi các nhóm cần thiết đã được lưu, bạn có thể xem nhanh danh sách
-              bên dưới rồi gửi bản đo một lần.
+              Cần lưu đủ 6/6 nhóm chỉ số trước khi gửi bản đo. Sau khi hoàn tất,
+              bạn có thể kiểm tra nhanh danh sách bên dưới rồi gửi một lần.
             </Text>
             <View style={styles.savedChipWrap}>
               {SECTIONS.map((item) => (
@@ -435,6 +442,11 @@ export default function InputMeasurementPatientScreen() {
                 ? `Hiện đã có: ${savedLabels.join(", ")}.`
                 : "Hiện chưa có nhóm chỉ số nào được lưu."}
             </Text>
+            {!allSectionsSaved ? (
+              <Text style={styles.progressWarning}>
+                Bạn cần hoàn tất và lưu đủ tất cả nhóm chỉ số trước khi bấm gửi.
+              </Text>
+            ) : null}
           </View>
           <TouchableOpacity disabled={submitting} style={[styles.saveBtn, submitting && styles.saveBtnDisabled]} onPress={submitMeasurement}>
             <Ionicons name="send-outline" size={18} color="#FFFFFF" style={{ marginRight: 6 }} />
@@ -500,6 +512,7 @@ const styles = StyleSheet.create({
   savedChipTextActive: { color: "#15803D" },
   savedChipTextInactive: { color: "#6B7280" },
   progressFootnote: { marginTop: 12, fontSize: 12, color: "#374151" },
+  progressWarning: { marginTop: 10, fontSize: 12, color: "#B45309", fontWeight: "600" },
   saveBtn: { backgroundColor: "#2563EB", paddingVertical: 12, borderRadius: 12, alignItems: "center", flexDirection: "row", justifyContent: "center", marginTop: 4, marginBottom: 8 },
   saveBtnDisabled: { opacity: 0.7 },
   saveText: { color: "#FFFFFF", fontWeight: "700", fontSize: 14 },

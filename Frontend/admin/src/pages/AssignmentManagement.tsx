@@ -3,6 +3,11 @@ import { FaEdit, FaExchangeAlt, FaSave, FaTrash, FaUserMd, FaUserNurse } from "r
 
 import api from "../services/api";
 import type { Assignment, Nurse, Patient, doctor } from "../types";
+import {
+  adminPrimaryButtonClass,
+  adminPrimaryButtonDisabledClass,
+  adminSecondaryButtonClass,
+} from "../styles/buttonStyles";
 
 const AssignmentManagement: React.FC = () => {
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -180,7 +185,7 @@ const AssignmentManagement: React.FC = () => {
   return (
     <div className="mx-auto max-w-7xl p-6">
       <h1 className="mb-8 flex items-center text-3xl font-bold text-gray-800 dark:text-white">
-        <FaExchangeAlt className="mr-3 text-purple-600" />
+        <FaExchangeAlt className="mr-3 text-slate-700 dark:text-slate-200" />
         Phân công Bệnh nhân
       </h1>
 
@@ -206,7 +211,7 @@ const AssignmentManagement: React.FC = () => {
               <button
                 type="button"
                 onClick={resetForm}
-                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                className={adminSecondaryButtonClass}
               >
                 Hủy chỉnh sửa
               </button>
@@ -214,7 +219,7 @@ const AssignmentManagement: React.FC = () => {
           </div>
 
           <select
-            className="w-full rounded-lg border border-gray-300 p-3 text-lg focus:border-purple-500 focus:ring-2 focus:ring-purple-500 disabled:cursor-not-allowed disabled:opacity-70 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+            className="w-full rounded-lg border border-gray-300 p-3 text-lg focus:border-slate-400 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-70 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-slate-500 dark:focus:ring-slate-700"
             value={selectedPatient}
             onChange={(event) => setSelectedPatient(event.target.value)}
             disabled={Boolean(editingAssignmentId)}
@@ -235,13 +240,13 @@ const AssignmentManagement: React.FC = () => {
           </p>
 
           <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-            <div className="rounded-xl border border-blue-100 bg-blue-50 p-6 dark:border-blue-800 dark:bg-blue-900/20">
-              <label className="mb-3 flex items-center text-lg font-medium text-blue-800 dark:text-blue-300">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-6 dark:border-slate-700 dark:bg-slate-900/60">
+              <label className="mb-3 flex items-center text-lg font-medium text-slate-800 dark:text-slate-200">
                 <FaUserMd className="mr-2" />
                 2. Chọn Bác sĩ phụ trách
               </label>
               <select
-                className="w-full rounded-lg border border-blue-200 p-3 focus:ring-2 focus:ring-blue-500 dark:border-blue-700 dark:bg-gray-800 dark:text-white"
+                className="w-full rounded-lg border border-slate-300 bg-white p-3 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 dark:border-slate-600 dark:bg-gray-800 dark:text-white dark:focus:border-slate-500 dark:focus:ring-slate-700"
                 value={selectedDoctor}
                 onChange={(event) => setSelectedDoctor(event.target.value)}
               >
@@ -252,18 +257,18 @@ const AssignmentManagement: React.FC = () => {
                   </option>
                 ))}
               </select>
-              <p className="mt-2 text-sm text-blue-600 dark:text-blue-400">
+              <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
                 Bác sĩ chịu trách nhiệm chính về chuyên môn.
               </p>
             </div>
 
-            <div className="rounded-xl border border-green-100 bg-green-50 p-6 dark:border-green-800 dark:bg-green-900/20">
-              <label className="mb-3 flex items-center text-lg font-medium text-green-800 dark:text-green-300">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-6 dark:border-slate-700 dark:bg-slate-900/60">
+              <label className="mb-3 flex items-center text-lg font-medium text-slate-800 dark:text-slate-200">
                 <FaUserNurse className="mr-2" />
                 3. Chọn Y tá theo dõi
               </label>
               <select
-                className="w-full rounded-lg border border-green-200 p-3 focus:ring-2 focus:ring-green-500 dark:border-green-700 dark:bg-gray-800 dark:text-white"
+                className="w-full rounded-lg border border-slate-300 bg-white p-3 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 dark:border-slate-600 dark:bg-gray-800 dark:text-white dark:focus:border-slate-500 dark:focus:ring-slate-700"
                 value={selectedNurse}
                 onChange={(event) => setSelectedNurse(event.target.value)}
               >
@@ -274,7 +279,7 @@ const AssignmentManagement: React.FC = () => {
                   </option>
                 ))}
               </select>
-              <p className="mt-2 text-sm text-green-600 dark:text-green-400">
+              <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
                 Y tá theo dõi chỉ số hằng ngày.
               </p>
             </div>
@@ -284,10 +289,10 @@ const AssignmentManagement: React.FC = () => {
             <button
               type="submit"
               disabled={loading}
-              className={`flex transform items-center rounded-lg px-8 py-3 text-lg font-bold text-white shadow-lg transition-all duration-200 hover:scale-105 ${
+              className={`${adminPrimaryButtonClass} px-8 py-3 text-lg hover:scale-105 ${
                 loading
-                  ? "cursor-not-allowed bg-gray-400"
-                  : "bg-purple-600 hover:bg-purple-700"
+                  ? adminPrimaryButtonDisabledClass
+                  : ""
               }`}
             >
               {loading ? (
@@ -317,7 +322,7 @@ const AssignmentManagement: React.FC = () => {
             value={searchTerm}
             onChange={(event) => setSearchTerm(event.target.value)}
             placeholder="Tìm theo bệnh nhân, mã hồ sơ, bác sĩ, y tá..."
-            className="w-full rounded-lg border border-gray-300 px-4 py-2.5 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500 md:max-w-md dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+            className="w-full rounded-lg border border-gray-300 px-4 py-2.5 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200 md:max-w-md dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-slate-500 dark:focus:ring-slate-700"
           />
         </div>
 
@@ -359,7 +364,7 @@ const AssignmentManagement: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => handleEditAssignment(assignment)}
-                        className="inline-flex items-center rounded-lg border border-blue-200 px-3 py-2 text-sm font-medium text-blue-700 transition hover:bg-blue-50 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-900/20"
+                        className="inline-flex items-center rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700/60"
                       >
                         <FaEdit className="mr-2" />
                         Sửa

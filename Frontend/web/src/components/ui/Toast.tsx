@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { FaCheckCircle, FaExclamationCircle, FaInfoCircle, FaTimes } from "react-icons/fa";
 
 import type { ToastState } from "../../hooks/useToast";
@@ -30,12 +31,12 @@ const toastStyles = {
 } as const;
 
 const Toast = ({ toast, onClose }: ToastProps) => {
-  const [remainingTime, setRemainingTime] = useState(0);
+  const [remainingTime, setRemainingTime] = useState<number | null>(null);
   const [isPaused, setIsPaused] = useState(false);
 
   useEffect(() => {
     if (!toast) {
-      setRemainingTime(0);
+      setRemainingTime(null);
       setIsPaused(false);
       return;
     }
@@ -45,15 +46,14 @@ const Toast = ({ toast, onClose }: ToastProps) => {
   }, [toast]);
 
   useEffect(() => {
-    if (!toast || isPaused) return;
+    if (!toast || isPaused || remainingTime == null) return;
 
     const step = 40;
     const timer = window.setInterval(() => {
       setRemainingTime((current) => {
+        if (current == null) return null;
         const nextValue = current - step;
         if (nextValue <= 0) {
-          window.clearInterval(timer);
-          onClose();
           return 0;
         }
         return nextValue;
@@ -61,15 +61,20 @@ const Toast = ({ toast, onClose }: ToastProps) => {
     }, step);
 
     return () => window.clearInterval(timer);
-  }, [toast, isPaused, onClose]);
+  }, [toast, isPaused, remainingTime]);
+
+  useEffect(() => {
+    if (!toast || remainingTime == null || remainingTime > 0) return;
+    onClose();
+  }, [toast, remainingTime, onClose]);
 
   if (!toast) return null;
 
   const variant = toastStyles[toast.type];
-  const progressWidth = `${Math.max(0, (remainingTime / toast.duration) * 100)}%`;
+  const progressWidth = `${Math.max(0, ((remainingTime ?? toast.duration) / toast.duration) * 100)}%`;
   const StatusIcon = variant.Icon;
 
-  return (
+  const content = (
     <div className="pointer-events-none fixed right-6 top-6 z-[300]">
       <div
         className={`pointer-events-auto w-[360px] max-w-[calc(100vw-3rem)] overflow-hidden rounded-2xl border backdrop-blur-xl shadow-2xl transition-all duration-300 ${variant.wrapper}`}
@@ -107,6 +112,12 @@ const Toast = ({ toast, onClose }: ToastProps) => {
       </div>
     </div>
   );
+
+  if (typeof document === "undefined") {
+    return content;
+  }
+
+  return createPortal(content, document.body);
 };
 
 export default Toast;

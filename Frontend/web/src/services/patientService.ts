@@ -10,6 +10,7 @@ export interface PatientDetailResponse {
   gender: string;
   phone?: string;
   status: string; // 'active' | 'inactive'
+  userPublicId?: string;
   patientCode?: string;
   emergencyContactName?: string;
   emergencyContactPhone?: string;
@@ -19,15 +20,18 @@ export interface PatientDetailResponse {
 export interface MeasurementResponse {
   id: string;
   patientId: string;
-  temperature: number;
-  heartRate: number;
-  respiratoryRate: number;
-  spo2: number;
-  bloodPressure: { systolic: number; diastolic: number };
+  temperature?: number | null;
+  heartRate?: number | null;
+  respiratoryRate?: number | null;
+  spo2?: number | null;
+  bloodPressure?: {
+    systolic?: number | null;
+    diastolic?: number | null;
+  } | null;
   type: string;
-  systolic?: number;
-  diastolic?: number;
-  glucose?: number;
+  systolic?: number | null;
+  diastolic?: number | null;
+  glucose?: number | null;
   timing?: string;
   device?: string;
   note?: string;
@@ -35,19 +39,29 @@ export interface MeasurementResponse {
   updatedAt: string;
 }
 
+interface AssignmentApiResponse extends Omit<AssignmentResponse, "patientCode"> {
+  patientCode?: string;
+  patientPublicId?: string;
+}
+
 export const getMyPatients = async (): Promise<AssignmentResponse[]> => {
-  const response = await api.get<{ data: AssignmentResponse[] | null }>("/assignments/me");
-  return response.data.data || [];
+  const response = await api.get<{ data: AssignmentApiResponse[] | null }>("/assignments/me");
+
+  return (response.data.data || []).map((assignment) => ({
+    ...assignment,
+    patientCode: assignment.patientCode || assignment.patientPublicId,
+  }));
 };
 
 export const getLatestAlertForPatient = async (
   patientId: string
 ): Promise<AlertResponse | null> => {
-  const response = await api.get<{ data: AlertResponse[] | null }>("/alerts", {
-    params: { patientId, isLatest: "true" },
-  });
-  const alerts = response.data.data || [];
-  return alerts && alerts.length > 0 ? alerts[0] : null;
+  const alerts = await getAlerts();
+  const latestAlert = [...alerts]
+    .filter((alert) => alert.patientId === patientId)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+
+  return latestAlert || null;
 };
 
 export const getAlerts = async (params?: {
@@ -55,21 +69,28 @@ export const getAlerts = async (params?: {
   status?: "open" | "ack";
   severity?: "high" | "info";
   isLatest?: boolean;
+  limit?: number;
+  page?: number;
+  sortOrder?: "asc" | "desc";
 }): Promise<AlertResponse[]> => {
-  const response = await api.get<{ data: AlertResponse[] | null }>("/alerts", {
+  const response = await api.get<{ data: AlertResponse[] | null }>("/alerts/doctors/me", {
     params: {
       patientId: params?.patientId,
       status: params?.status,
       severity: params?.severity,
       isLatest: params?.isLatest ? "true" : undefined,
+      limit: params?.limit,
+      page: params?.page,
+      sortOrder: params?.sortOrder,
     },
   });
 
   return response.data.data || [];
 };
 
+
 export const acknowledgeAlert = async (alertId: string): Promise<AlertResponse> => {
-  const response = await api.patch<{ data: AlertResponse }>(`/alerts/${alertId}`);
+  const response = await api.patch<{ data: AlertResponse }>(`/alerts/ack/${alertId}`);
   return response.data.data;
 };
 
@@ -79,7 +100,11 @@ export const getPatientById = async (
   const response = await api.get<{ data: PatientDetailResponse }>(
     `/users/patients/${id}`
   );
-  return response.data.data;
+
+  return {
+    ...response.data.data,
+    patientCode: response.data.data.patientCode || response.data.data.userPublicId,
+  };
 };
 
 export const getMeasurements = async (params: {
