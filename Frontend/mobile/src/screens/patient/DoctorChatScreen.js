@@ -503,6 +503,10 @@ export default function DoctorChatScreen() {
     );
   }, [conversation?.participants, currentUserId]);
 
+  const handleSelectQuickReply = (text) =>{
+    setDraft(text);
+    setError(null);
+  }
   const messageItems = useMemo(() => {
     const items = [];
     let lastLabel = "";
@@ -1007,7 +1011,7 @@ export default function DoctorChatScreen() {
               <TouchableOpacity
                 key={text}
                 style={styles.quickChip}
-                onPress={() => handleSend(text)}
+                onPress={() => handleSelectQuickReply(text)}
                 activeOpacity={0.85}
               >
                 <Text style={styles.quickChipText}>{text}</Text>

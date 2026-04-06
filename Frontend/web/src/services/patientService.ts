@@ -69,6 +69,9 @@ export const getAlerts = async (params?: {
   status?: "open" | "ack";
   severity?: "high" | "info";
   isLatest?: boolean;
+  limit?: number;
+  page?: number;
+  sortOrder?: "asc" | "desc";
 }): Promise<AlertResponse[]> => {
   const response = await api.get<{ data: AlertResponse[] | null }>("/alerts/doctors/me", {
     params: {
@@ -76,11 +79,15 @@ export const getAlerts = async (params?: {
       status: params?.status,
       severity: params?.severity,
       isLatest: params?.isLatest ? "true" : undefined,
+      limit: params?.limit,
+      page: params?.page,
+      sortOrder: params?.sortOrder,
     },
   });
 
   return response.data.data || [];
 };
+
 
 export const acknowledgeAlert = async (alertId: string): Promise<AlertResponse> => {
   const response = await api.patch<{ data: AlertResponse }>(`/alerts/ack/${alertId}`);
