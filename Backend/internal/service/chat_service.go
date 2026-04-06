@@ -13,7 +13,6 @@ import (
 	chatRepository "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository/chat"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecase"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
 var (
@@ -84,15 +83,6 @@ func (s *chatService) CreateConversation(ctx context.Context, input *usecase.Cre
 
 	inserted, err := s.conversationRepo.Create(ctx, conversation)
 	if err != nil {
-		if mongo.IsDuplicateKeyError(err) {
-			existing, findErr := s.conversationRepo.FindByParticipants(ctx, uniqueParticipants)
-			if findErr != nil {
-				return nil, findErr
-			}
-			if existing != nil {
-				return mapConversationToDTO(existing), nil
-			}
-		}
 		return nil, err
 	}
 

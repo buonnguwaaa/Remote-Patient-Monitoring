@@ -3,6 +3,8 @@ import { useLocation, useNavigate, useParams, useSearchParams } from "react-rout
 import {
   AlertTriangle,
   ArrowLeft,
+  Check,
+  CheckCheck,
   CornerUpLeft,
   Info,
   Loader2,
@@ -31,6 +33,27 @@ interface WsErrorPayload {
   error: string;
 }
 
+interface WsMessageEnvelope {
+  type: "NEW_MESSAGE";
+  data: MessageResponse;
+}
+
+interface WsDeliveredEnvelope {
+  type: "DELIVERED";
+  data: {
+    userId: string;
+    messageId: string;
+  };
+}
+
+interface WsReadEnvelope {
+  type: "READ";
+  data: {
+    userId: string;
+    lastReadMessageId: string;
+  };
+}
+
 interface ChatLocationState {
   alertSnapshot?: AlertResponse | null;
   prefilledMessage?: string;
@@ -45,6 +68,75 @@ function isWsErrorPayload(payload: unknown): payload is WsErrorPayload {
       "error" in payload &&
       (payload as WsErrorPayload).type === "error"
   );
+}
+
+function isWsMessageEnvelope(payload: unknown): payload is WsMessageEnvelope {
+  return Boolean(
+    payload &&
+      typeof payload === "object" &&
+      "type" in payload &&
+      "data" in payload &&
+      (payload as WsMessageEnvelope).type === "NEW_MESSAGE"
+  );
+}
+
+function isDirectMessagePayload(payload: unknown): payload is MessageResponse {
+  return Boolean(
+    payload &&
+      typeof payload === "object" &&
+      "id" in payload &&
+      "content" in payload &&
+      "senderId" in payload
+  );
+}
+
+function isWsDeliveredEnvelope(payload: unknown): payload is WsDeliveredEnvelope {
+  return Boolean(
+    payload &&
+      typeof payload === "object" &&
+      "type" in payload &&
+      "data" in payload &&
+      (payload as WsDeliveredEnvelope).type === "DELIVERED"
+  );
+}
+
+function isWsReadEnvelope(payload: unknown): payload is WsReadEnvelope {
+  return Boolean(
+    payload &&
+      typeof payload === "object" &&
+      "type" in payload &&
+      "data" in payload &&
+      (payload as WsReadEnvelope).type === "READ"
+  );
+}
+
+function createSendMessagePayload(data: {
+  content: string;
+  relatedAlertId?: string;
+  replyToMessageId?: string;
+}) {
+  return {
+    type: "SEND_MESSAGE" as const,
+    data,
+  };
+}
+
+function createDeliveredPayload(messageId: string) {
+  return {
+    type: "DELIVERED" as const,
+    data: {
+      messageId,
+    },
+  };
+}
+
+function createReadPayload(lastReadMessageId: string) {
+  return {
+    type: "READ" as const,
+    data: {
+      lastReadMessageId,
+    },
+  };
 }
 
 function sortMessages(messages: MessageResponse[]) {
@@ -88,6 +180,67 @@ function parseSocketMessages(rawData: string) {
       }
     })
     .filter(Boolean);
+}
+
+function updateConversationParticipantState(
+  conversation: ConversationResponse | null,
+  userId: string,
+  nextState: {
+    lastDeliveredMessageId?: string | null;
+    lastReadMessageId?: string | null;
+  }
+) {
+  if (!conversation) {
+    return conversation;
+  }
+
+  return {
+    ...conversation,
+    participants: conversation.participants.map((participant) =>
+      participant.userId === userId
+        ? {
+            ...participant,
+            ...(nextState.lastDeliveredMessageId !== undefined
+              ? { lastDeliveredMessageId: nextState.lastDeliveredMessageId }
+              : {}),
+            ...(nextState.lastReadMessageId !== undefined
+              ? { lastReadMessageId: nextState.lastReadMessageId }
+              : {}),
+          }
+        : participant
+    ),
+  };
+}
+
+function hasParticipantReachedMessage(
+  messageId: string,
+  checkpointMessageId: string | null | undefined,
+  messageOrder: Map<string, number>
+) {
+  if (!checkpointMessageId) {
+    return false;
+  }
+
+  const messageIndex = messageOrder.get(messageId);
+  const checkpointIndex = messageOrder.get(checkpointMessageId);
+  if (messageIndex === undefined || checkpointIndex === undefined) {
+    return false;
+  }
+
+  return checkpointIndex >= messageIndex;
+}
+
+function getLatestIncomingMessage(
+  messages: MessageResponse[],
+  currentUserId: string | null | undefined
+) {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    if (messages[index].senderId !== currentUserId) {
+      return messages[index];
+    }
+  }
+
+  return null;
 }
 
 function findLatestAlertMessage(
@@ -251,6 +404,8 @@ const ChatPage = () => {
   const socketRef = useRef<WebSocket | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const messageRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const lastDeliveredSentRef = useRef<string | null>(null);
+  const lastReadSentRef = useRef<string | null>(null);
 
   const [patient, setPatient] = useState<PatientDetailResponse | null>(null);
   const [conversation, setConversation] = useState<ConversationResponse | null>(null);
@@ -270,6 +425,8 @@ const ChatPage = () => {
   const [alertContextLoading, setAlertContextLoading] = useState(Boolean(activeAlertId));
   const [socketState, setSocketState] = useState<SocketState>("idle");
   const [replyTarget, setReplyTarget] = useState<MessageResponse | null>(null);
+  const [openMessageMenuId, setOpenMessageMenuId] = useState<string | null>(null);
+  const currentUserId = user?.id || null;
 
   useEffect(() => {
     if (location.state) {
@@ -422,7 +579,33 @@ const ChatPage = () => {
           return;
         }
 
-        setMessages((current) => mergeMessages(current, [payload as MessageResponse]));
+        if (isWsMessageEnvelope(payload)) {
+          setMessages((current) => mergeMessages(current, [payload.data]));
+          return;
+        }
+
+        if (isWsDeliveredEnvelope(payload)) {
+          setConversation((current) =>
+            updateConversationParticipantState(current, payload.data.userId, {
+              lastDeliveredMessageId: payload.data.messageId,
+            })
+          );
+          return;
+        }
+
+        if (isWsReadEnvelope(payload)) {
+          setConversation((current) =>
+            updateConversationParticipantState(current, payload.data.userId, {
+              lastDeliveredMessageId: payload.data.lastReadMessageId,
+              lastReadMessageId: payload.data.lastReadMessageId,
+            })
+          );
+          return;
+        }
+
+        if (isDirectMessagePayload(payload)) {
+          setMessages((current) => mergeMessages(current, [payload]));
+        }
       });
     };
 
@@ -456,7 +639,7 @@ const ChatPage = () => {
       payload.relatedAlertId = activeAlertId;
     }
 
-    socketRef.current.send(JSON.stringify(payload));
+    socketRef.current.send(JSON.stringify(createSendMessagePayload(payload)));
     autoSendHandledRef.current = true;
     setPendingAutoMessage("");
     setError(null);
@@ -475,6 +658,30 @@ const ChatPage = () => {
   useEffect(() => {
     setReplyTarget(null);
   }, [conversation?.id]);
+
+  useEffect(() => {
+    lastDeliveredSentRef.current = null;
+    lastReadSentRef.current = null;
+  }, [conversation?.id]);
+
+  useEffect(() => {
+    setOpenMessageMenuId(null);
+  }, [conversation?.id]);
+
+  useEffect(() => {
+    if (!openMessageMenuId) {
+      return undefined;
+    }
+
+    const handleDocumentClick = () => {
+      setOpenMessageMenuId(null);
+    };
+
+    document.addEventListener("click", handleDocumentClick);
+    return () => {
+      document.removeEventListener("click", handleDocumentClick);
+    };
+  }, [openMessageMenuId]);
 
   const messageItems = useMemo(() => {
     const items: Array<
@@ -508,6 +715,21 @@ const ChatPage = () => {
     return new Map(messages.map((message) => [message.id, message]));
   }, [messages]);
 
+  const messageOrder = useMemo(() => {
+    return new Map(messages.map((message, index) => [message.id, index]));
+  }, [messages]);
+
+  const otherParticipantState = useMemo(() => {
+    if (!conversation?.participants || !currentUserId) {
+      return null;
+    }
+
+    return (
+      conversation.participants.find((participant) => participant.userId !== currentUserId) ||
+      null
+    );
+  }, [conversation?.participants, currentUserId]);
+
   useEffect(() => {
     if (!replyTarget) {
       return;
@@ -517,6 +739,36 @@ const ChatPage = () => {
       setReplyTarget(null);
     }
   }, [messageLookup, replyTarget]);
+
+  useEffect(() => {
+    if (
+      !conversation?.id ||
+      socketState !== "open" ||
+      !socketRef.current ||
+      socketRef.current.readyState !== WebSocket.OPEN
+    ) {
+      return;
+    }
+
+    const latestIncomingMessage = getLatestIncomingMessage(messages, currentUserId);
+    if (!latestIncomingMessage?.id) {
+      return;
+    }
+
+    if (lastDeliveredSentRef.current !== latestIncomingMessage.id) {
+      socketRef.current.send(JSON.stringify(createDeliveredPayload(latestIncomingMessage.id)));
+      lastDeliveredSentRef.current = latestIncomingMessage.id;
+    }
+
+    if (
+      typeof document !== "undefined" &&
+      document.visibilityState === "visible" &&
+      lastReadSentRef.current !== latestIncomingMessage.id
+    ) {
+      socketRef.current.send(JSON.stringify(createReadPayload(latestIncomingMessage.id)));
+      lastReadSentRef.current = latestIncomingMessage.id;
+    }
+  }, [conversation?.id, currentUserId, messages, socketState]);
 
   const sendMessage = (rawContent: string) => {
     const content = rawContent.trim();
@@ -541,7 +793,7 @@ const ChatPage = () => {
       payload.replyToMessageId = replyTarget.id;
     }
 
-    socketRef.current.send(JSON.stringify(payload));
+    socketRef.current.send(JSON.stringify(createSendMessagePayload(payload)));
     setError(null);
     return true;
   };
@@ -565,6 +817,20 @@ const ChatPage = () => {
     setAlertContextError(null);
     setAlertContextLoading(false);
     setPendingAutoMessage("");
+  };
+
+  const handleReplyFromMessage = (message: MessageResponse) => {
+    setReplyTarget(message);
+    setOpenMessageMenuId(null);
+  };
+
+  const handleCopyMessage = async (content: string) => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setOpenMessageMenuId(null);
+    } catch {
+      setError("Không thể sao chép nội dung tin nhắn.");
+    }
   };
 
   if (loading) {
@@ -753,7 +1019,7 @@ const ChatPage = () => {
                 );
               }
 
-              const isMe = item.message.senderId === user?.id;
+              const isMe = item.message.senderId === currentUserId;
               const isActiveAlertMessage =
                 Boolean(activeAlertId) && item.message.relatedAlertId === activeAlertId;
               const hasAlertTag = Boolean(item.message.relatedAlertId);
@@ -765,10 +1031,17 @@ const ChatPage = () => {
                 ? messageLookup.get(item.message.replyToMessageId)
                 : null;
               const repliedSenderLabel = repliedMessage
-                ? repliedMessage.senderId === user?.id
+                ? repliedMessage.senderId === currentUserId
                   ? "Bạn"
                   : patient?.name || "Bệnh nhân"
                 : "";
+              const isReadByOtherParticipant =
+                isMe &&
+                hasParticipantReachedMessage(
+                  item.message.id,
+                  otherParticipantState?.lastReadMessageId,
+                  messageOrder
+                );
 
               return (
                 <div
@@ -776,124 +1049,168 @@ const ChatPage = () => {
                   ref={(node) => {
                     messageRefs.current[item.message.id] = node;
                   }}
-                  className={`flex ${isMe ? "justify-end" : "justify-start"}`}
+                  className={`group flex ${isMe ? "justify-end" : "justify-start"}`}
                 >
                   <div
-                    className={`max-w-[78%] rounded-3xl px-4 py-3 text-sm shadow-sm ${
-                      isMe
-                        ? "rounded-tr-md bg-blue-600 text-white dark:bg-blue-500"
-                        : "rounded-tl-md border border-gray-100 bg-white text-gray-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-                    } ${isActiveAlertMessage ? "ring-2 ring-amber-300 ring-offset-2 dark:ring-amber-400/70 dark:ring-offset-slate-950" : ""}`}
+                    className={`relative flex items-center gap-2 ${isMe ? "flex-row" : "flex-row-reverse"}`}
                   >
-                    {hasAlertTag ? (
-                      <div
-                        className={`mb-3 inline-flex rounded-full px-2.5 py-1 text-[11px] font-medium ${
-                          isMe
-                            ? "bg-white/15 text-blue-50 dark:bg-white/10 dark:text-blue-100"
-                            : "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-200"
-                        }`}
-                      >
-                        {isActiveAlertMessage ? "Đang xem từ cảnh báo này" : "Tin nhắn có gắn cảnh báo"}
-                      </div>
-                    ) : null}
-
-                    {hasAlertTag && alertMessage?.hasStructuredAlertSummary ? (
-                      <div className="space-y-3">
-                        <div
-                          className={`rounded-2xl border px-3 py-3 ${
-                            isMe
-                              ? "border-white/15 bg-white/10 text-blue-50"
-                              : "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-100"
-                          }`}
-                        >
-                          <div
-                            className={`mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] ${
-                              isMe ? "text-blue-100" : "text-amber-700 dark:text-amber-300"
-                            }`}
-                          >
-                            <AlertTriangle size={14} />
-                            Thông tin cảnh báo
-                          </div>
-                          <p className="whitespace-pre-wrap leading-relaxed">
-                            {alertMessage.alertSummary ||
-                              "Tin nhắn này được gửi trong ngữ cảnh một cảnh báo theo dõi sức khỏe."}
-                          </p>
-                          <div
-                            className={`mt-3 text-[11px] ${
-                              isMe ? "text-blue-100/90" : "text-amber-700/80 dark:text-amber-300/80"
-                            }`}
-                          >
-                            Alert #{alertMessage.shortAlertId}
-                          </div>
-                        </div>
-
-                        {alertMessage.note ? (
-                          <div
-                            className={`rounded-2xl px-3 py-3 ${
-                              isMe
-                                ? "bg-white/12 text-white"
-                                : "border border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-200"
-                            }`}
-                          >
-                            <div
-                              className={`mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] ${
-                                isMe ? "text-blue-100" : "text-slate-500 dark:text-slate-400"
-                              }`}
-                            >
-                              Lời nhắn bác sĩ
-                            </div>
-                            <p className="whitespace-pre-wrap leading-relaxed">
-                              {alertMessage.note}
-                            </p>
-                          </div>
-                        ) : null}
-                      </div>
-                    ) : (
-                      <>
-                        {repliedMessage ? (
-                          <div
-                            className={`mb-3 rounded-2xl border-l-4 px-3 py-2 ${
-                              isMe
-                                ? "border-white/55 bg-white/12 text-blue-50"
-                                : "border-blue-300 bg-slate-50 text-slate-600 dark:border-blue-500/60 dark:bg-slate-900 dark:text-slate-300"
-                            }`}
-                          >
-                            <div
-                              className={`text-[11px] font-semibold ${
-                                isMe ? "text-blue-100" : "text-blue-700 dark:text-blue-300"
-                              }`}
-                            >
-                              {repliedSenderLabel}
-                            </div>
-                            <div className="mt-1 text-[13px] leading-5 opacity-90">
-                              {getReplyPreviewContent(repliedMessage)}
-                            </div>
-                          </div>
-                        ) : null}
-                        <p className="whitespace-pre-wrap leading-relaxed">{item.message.content}</p>
-                      </>
-                    )}
-
-                    <div className="mt-3 flex items-center justify-between gap-3">
+                    <div
+                      className={`pointer-events-none flex items-center gap-1 opacity-0 transition duration-150 group-hover:pointer-events-auto group-hover:opacity-100 ${
+                        openMessageMenuId === item.message.id ? "pointer-events-auto opacity-100" : ""
+                      }`}
+                    >
                       <button
                         type="button"
-                        onClick={() => setReplyTarget(item.message)}
-                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
-                          isMe
-                            ? "bg-white/12 text-blue-50 hover:bg-white/18"
-                            : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
-                        }`}
+                        onClick={() => handleReplyFromMessage(item.message)}
+                        className="rounded-full p-2 text-slate-500 transition hover:bg-slate-200 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
                       >
-                        <CornerUpLeft size={12} />
-                        Trả lời
+                        <CornerUpLeft size={16} />
                       </button>
 
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setOpenMessageMenuId((current) =>
+                              current === item.message.id ? null : item.message.id
+                            );
+                          }}
+                          className="rounded-full p-2 text-slate-500 transition hover:bg-slate-200 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                        >
+                          <MoreVertical size={16} />
+                        </button>
+
+                        {openMessageMenuId === item.message.id ? (
+                          <div
+                            className={`absolute top-full z-20 mt-2 min-w-[170px] rounded-2xl border border-slate-200 bg-white p-2 text-slate-700 shadow-xl dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 ${
+                              isMe ? "left-0" : "right-0"
+                            }`}
+                          >
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                void handleCopyMessage(item.message.content);
+                              }}
+                              className="block w-full rounded-xl px-3 py-2 text-left text-sm font-medium transition hover:bg-slate-100 dark:hover:bg-slate-800"
+                            >
+                              Sao chép nội dung
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    <div
+                      className={`max-w-[78%] rounded-3xl px-4 py-3 text-sm shadow-sm ${
+                        isMe
+                          ? "rounded-tr-md bg-blue-600 text-white dark:bg-blue-500"
+                          : "rounded-tl-md border border-gray-100 bg-white text-gray-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                      } ${isActiveAlertMessage ? "ring-2 ring-amber-300 ring-offset-2 dark:ring-amber-400/70 dark:ring-offset-slate-950" : ""}`}
+                    >
+                      {hasAlertTag ? (
+                        <div
+                          className={`mb-3 inline-flex rounded-full px-2.5 py-1 text-[11px] font-medium ${
+                            isMe
+                              ? "bg-white/15 text-blue-50 dark:bg-white/10 dark:text-blue-100"
+                              : "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-200"
+                          }`}
+                        >
+                          {isActiveAlertMessage ? "Đang xem từ cảnh báo này" : "Tin nhắn có gắn cảnh báo"}
+                        </div>
+                      ) : null}
+
+                      {hasAlertTag && alertMessage?.hasStructuredAlertSummary ? (
+                        <div className="space-y-3">
+                          <div
+                            className={`rounded-2xl border px-3 py-3 ${
+                              isMe
+                                ? "border-white/15 bg-white/10 text-blue-50"
+                                : "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-100"
+                            }`}
+                          >
+                            <div
+                              className={`mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] ${
+                                isMe ? "text-blue-100" : "text-amber-700 dark:text-amber-300"
+                              }`}
+                            >
+                              <AlertTriangle size={14} />
+                              Thông tin cảnh báo
+                            </div>
+                            <p className="whitespace-pre-wrap leading-relaxed">
+                              {alertMessage.alertSummary ||
+                                "Tin nhắn này được gửi trong ngữ cảnh một cảnh báo theo dõi sức khỏe."}
+                            </p>
+                            <div
+                              className={`mt-3 text-[11px] ${
+                                isMe ? "text-blue-100/90" : "text-amber-700/80 dark:text-amber-300/80"
+                              }`}
+                            >
+                              Alert #{alertMessage.shortAlertId}
+                            </div>
+                          </div>
+
+                          {alertMessage.note ? (
+                            <div
+                              className={`rounded-2xl px-3 py-3 ${
+                                isMe
+                                  ? "bg-white/12 text-white"
+                                  : "border border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-200"
+                              }`}
+                            >
+                              <div
+                                className={`mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] ${
+                                  isMe ? "text-blue-100" : "text-slate-500 dark:text-slate-400"
+                                }`}
+                              >
+                                Lời nhắn bác sĩ
+                              </div>
+                              <p className="whitespace-pre-wrap leading-relaxed">
+                                {alertMessage.note}
+                              </p>
+                            </div>
+                          ) : null}
+                        </div>
+                      ) : (
+                        <>
+                          {repliedMessage ? (
+                            <div
+                              className={`mb-3 rounded-2xl border-l-4 px-3 py-2 ${
+                                isMe
+                                  ? "border-white/55 bg-white/12 text-blue-50"
+                                  : "border-blue-300 bg-slate-50 text-slate-600 dark:border-blue-500/60 dark:bg-slate-900 dark:text-slate-300"
+                              }`}
+                            >
+                              <div
+                                className={`text-[11px] font-semibold ${
+                                  isMe ? "text-blue-100" : "text-blue-700 dark:text-blue-300"
+                                }`}
+                              >
+                                {repliedSenderLabel}
+                              </div>
+                              <div className="mt-1 text-[13px] leading-5 opacity-90">
+                                {getReplyPreviewContent(repliedMessage)}
+                              </div>
+                            </div>
+                          ) : null}
+                          <p className="whitespace-pre-wrap leading-relaxed">{item.message.content}</p>
+                        </>
+                      )}
+
                       <div
-                        className={`text-right text-[11px] ${
+                        className={`mt-3 flex items-center justify-end gap-1 text-[11px] ${
                           isMe ? "text-blue-100" : "text-gray-400 dark:text-slate-500"
                         }`}
                       >
-                        {formatTime(item.message.createdAt)}
+                        <span>{formatTime(item.message.createdAt)}</span>
+                        {isMe ? (
+                          isReadByOtherParticipant ? (
+                            <CheckCheck size={14} className="text-cyan-200" />
+                          ) : (
+                            <Check size={14} className="text-blue-100" />
+                          )
+                        ) : null}
                       </div>
                     </div>
                   </div>
@@ -927,7 +1244,7 @@ const ChatPage = () => {
                     Đang trả lời
                   </div>
                   <div className="mt-1 text-xs font-medium text-slate-700 dark:text-slate-200">
-                    {replyTarget.senderId === user?.id ? "Bạn" : patient?.name || "Bệnh nhân"}
+                    {replyTarget.senderId === currentUserId ? "Bạn" : patient?.name || "Bệnh nhân"}
                   </div>
                   <div className="mt-1 truncate text-sm text-slate-500 dark:text-slate-400">
                     {getReplyPreviewContent(replyTarget)}

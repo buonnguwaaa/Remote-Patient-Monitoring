@@ -15,7 +15,6 @@ type Participant struct {
 type Conversation struct {
 	ID           primitive.ObjectID `bson:"_id,omitempty"`
 	Participants []Participant      `bson:"participants"`
-	ParticipantKey string           `bson:"participantKey,omitempty"`
 	CreatedAt    time.Time          `bson:"createdAt"`
 	UpdatedAt    time.Time          `bson:"updatedAt"`
 }

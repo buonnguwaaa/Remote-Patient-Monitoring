@@ -1,8 +1,14 @@
 import api from "./api";
 
+export interface ConversationParticipantResponse {
+  userId: string;
+  lastReadMessageId?: string | null;
+  lastDeliveredMessageId?: string | null;
+}
+
 export interface ConversationResponse {
   id: string;
-  participantIds: string[];
+  participants: ConversationParticipantResponse[];
   createdAt: string;
   updatedAt: string;
 }
@@ -22,6 +28,32 @@ interface MessagesApiPayload {
   messages?: MessageResponse[] | null;
 }
 
+interface ConversationApiResponse {
+  id: string;
+  participants?: Array<{
+    userId: string;
+    lastReadMessageId?: string | null;
+    lastDeliveredMessageId?: string | null;
+  }> | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+function normalizeConversationResponse(
+  conversation: ConversationApiResponse
+): ConversationResponse {
+  return {
+    id: conversation.id,
+    participants: (conversation.participants || []).map((participant) => ({
+      userId: participant.userId,
+      lastReadMessageId: participant.lastReadMessageId || null,
+      lastDeliveredMessageId: participant.lastDeliveredMessageId || null,
+    })),
+    createdAt: conversation.createdAt,
+    updatedAt: conversation.updatedAt,
+  };
+}
+
 function getWebSocketBaseUrl() {
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   return `${protocol}//${window.location.host}/api`;
@@ -30,14 +62,14 @@ function getWebSocketBaseUrl() {
 export async function ensureConversation(
   participantId: string
 ): Promise<ConversationResponse> {
-  const response = await api.post<{ data: ConversationResponse }>(
+  const response = await api.post<{ data: ConversationApiResponse }>(
     "/chat/conversations",
     {
       participantIds: [participantId],
     }
   );
 
-  return response.data.data;
+  return normalizeConversationResponse(response.data.data);
 }
 
 export async function getConversationMessages(
