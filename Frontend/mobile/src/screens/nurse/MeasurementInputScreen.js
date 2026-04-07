@@ -6,994 +6,663 @@ import {
   TouchableOpacity,
   TextInput,
   Alert,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons, FontAwesome5 } from "@expo/vector-icons";
-import { useState } from "react";
+import { useCallback, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
+import { CameraView, useCameraPermissions } from "expo-camera";
 
-const currentNurseUser = {
-  _id: "u_nurse_1",
-  name: "Điều dưỡng Trần Thị B",
-};
+import MeasurementDraftForm from "../../components/MeasurementDraftForm";
+import { useAuth } from "../../hooks/useAuth";
+import { createMeasurement } from "../../api/measurementApi";
+import { getMyAssignments } from "../../api/assignmentApi";
+import { getPatientById } from "../../api/patientApi";
+import {
+  buildMeasurementPayload,
+  createSavedMeasurementState,
+  getMeasurementSectionLabel,
+  getMeasurementValidationError,
+  hasMeasurementSectionValue,
+  hasMeasurementValue,
+  MEASUREMENT_SECTIONS,
+} from "../../utils/measurementForm";
 
-const mockedPatientFromQr = {
-  user: {
-    _id: "u_patient_1",
-    role: "patient",
-    name: "Nguyễn Văn A",
-    emailLower: "a@example.com",
-  },
-  patientInfo: {
-    _id: "pi_1",
-    userId: "u_patient_1",
-    insuranceNumber: "BA123456789",
-    CCCD: "012345678901",
-    emergencyContactName: "Nguyễn Văn B",
-    emergencyContactPhone: "+84 987 654 321",
-  },
-};
-
-function buildMeasurementPayload({
-  patientUserId,
-  type,
-  systolic,
-  diastolic,
-  pulse,
-  glucose,
-  spo2,
-  temperature,
-  heartRate,
-  respiratoryRate,
-  timing,
-  device,
-  note,
-  nurseUserId,
-}) {
-  const base = {
-    patientId: patientUserId,
-    type,
-    timing: timing || null,
-    device: device || null,
-    recordedBy: nurseUserId,
-    note: note || null,
-  };
-
-  if (type === "bp") {
-    return {
-      ...base,
-      systolic: systolic ? Number(systolic) : null,
-      diastolic: diastolic ? Number(diastolic) : null,
-      pulse: pulse ? Number(pulse) : null,
-    };
-  }
-
-  if (type === "glucose") {
-    return {
-      ...base,
-      glucose: glucose ? Number(glucose) : null,
-    };
-  }
-
-  if (type === "spo2") {
-    return {
-      ...base,
-      spo2: spo2 ? Number(spo2) : null,
-    };
-  }
-
-  if (type === "temp") {
-    return {
-      ...base,
-      temperature: temperature ? Number(temperature) : null,
-    };
-  }
-
-  if (type === "heartRate") {
-    return {
-      ...base,
-      heartRate: heartRate ? Number(heartRate) : null,
-    };
-  }
-
-  if (type === "respiratoryRate") {
-    return {
-      ...base,
-      respiratoryRate: respiratoryRate ? Number(respiratoryRate) : null,
-    };
-  }
-
-  return base;
+function getErrorMessage(response) {
+  if (!response) return "Không thể kết nối tới máy chủ.";
+  if (typeof response.error === "string" && response.error) return response.error;
+  if (typeof response.body === "string" && response.body) return response.body;
+  if (response.body?.error) return response.body.error;
+  return "Đã xảy ra lỗi không xác định.";
 }
 
-function TypeTile({ active, onPress, iconName, label, description }) {
+function normalizeAssignmentPatient(item = {}) {
+  return {
+    assignmentId: item.id || "",
+    patientId: item.patientId || "",
+    patientCode: item.patientPublicId || item.patientCode || "",
+    name: item.patientName || "Chưa rõ bệnh nhân",
+  };
+}
+
+function normalizePatientProfile(profile = {}, fallback = {}) {
+  return {
+    patientId: profile.id || fallback.patientId || "",
+    patientCode: profile.userPublicId || profile.patientCode || fallback.patientCode || "",
+    name: profile.name || fallback.name || "Chưa rõ bệnh nhân",
+    insuranceNumber: profile.insuranceNumber || "",
+    cccd: profile.cccd || "",
+    emergencyContactName: profile.emergencyContactName || "",
+    emergencyContactPhone: profile.emergencyContactPhone || "",
+  };
+}
+
+function getPatientInitials(name) {
   return (
-    <TouchableOpacity
-      onPress={onPress}
-      style={[styles.typeTile, active && styles.typeTileActive]}
-    >
-      <View style={styles.typeTileIconWrapper}>
-        <Ionicons
-          name={iconName}
-          size={18}
-          color={active ? "#2563EB" : "#6B7280"}
-        />
-      </View>
-      <Text
-        style={[styles.typeTileLabel, active && styles.typeTileLabelActive]}
-        numberOfLines={1}
-      >
-        {label}
-      </Text>
-      {description ? (
-        <Text style={styles.typeTileDesc} numberOfLines={1}>
-          {description}
-        </Text>
-      ) : null}
-    </TouchableOpacity>
+    String(name || "")
+      .split(" ")
+      .filter(Boolean)
+      .slice(-2)
+      .map((part) => part[0])
+      .join("")
+      .toUpperCase() || "BN"
   );
 }
 
-export default function MeasurementInputScreen() {
-  const [selectedPatient, setSelectedPatient] = useState(null);
+function getPatientSuccessLabel(patient = {}) {
+  const name = String(patient.name || "").trim();
+  const patientCode = String(patient.patientCode || "").trim();
 
+  if (name && patientCode) {
+    return `${name} (${patientCode})`;
+  }
+
+  return name || patientCode || "bệnh nhân đã chọn";
+}
+
+export default function MeasurementInputScreen() {
+  const { user } = useAuth() || {};
+  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
+  const [assignedPatients, setAssignedPatients] = useState([]);
+  const [assignmentsLoading, setAssignmentsLoading] = useState(true);
+  const [assignmentsError, setAssignmentsError] = useState("");
+  const [selectedPatient, setSelectedPatient] = useState(null);
+  const [patientSearchCode, setPatientSearchCode] = useState("");
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupError, setLookupError] = useState("");
+  const [scannerVisible, setScannerVisible] = useState(false);
+  const [scannerLocked, setScannerLocked] = useState(false);
   const [type, setType] = useState("bp");
   const [timing, setTiming] = useState("pre");
   const [device, setDevice] = useState("");
   const [note, setNote] = useState("");
-
   const [systolic, setSystolic] = useState("");
   const [diastolic, setDiastolic] = useState("");
-  const [pulse, setPulse] = useState("");
   const [glucose, setGlucose] = useState("");
   const [spo2, setSpo2] = useState("");
   const [temperature, setTemperature] = useState("");
   const [heartRate, setHeartRate] = useState("");
   const [respiratoryRate, setRespiratoryRate] = useState("");
+  const [savedSections, setSavedSections] = useState(createSavedMeasurementState);
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleScanQr = () => {
-    setSelectedPatient(mockedPatientFromQr);
-    Alert.alert("Quét QR", "Đã nhận dạng bệnh nhân Nguyễn Văn A (mock).");
+  const currentNurseUser = user || { id: "", _id: "", name: "Điều dưỡng" };
+  const measurementValues = {
+    systolic,
+    diastolic,
+    glucose,
+    spo2,
+    temperature,
+    heartRate,
+    respiratoryRate,
+    timing,
+    device,
+    note,
   };
 
-  const validateForm = () => {
-    if (!selectedPatient) {
-      Alert.alert("Thiếu thông tin", "Hãy quét QR để chọn bệnh nhân trước.");
-      return false;
-    }
-
-    if (type === "bp") {
-      if (!systolic || !diastolic || !pulse) {
-        Alert.alert(
-          "Thiếu chỉ số",
-          "Huyết áp yêu cầu đủ: Tâm thu, Tâm trương, Mạch."
-        );
-        return false;
-      }
-      const sysNum = Number(systolic);
-      const diaNum = Number(diastolic);
-      const pulseNum = Number(pulse);
-
-      if (
-        isNaN(sysNum) ||
-        isNaN(diaNum) ||
-        isNaN(pulseNum) ||
-        sysNum < 70 ||
-        sysNum > 250 ||
-        diaNum < 40 ||
-        diaNum > 150 ||
-        pulseNum < 30 ||
-        pulseNum > 220
-      ) {
-        Alert.alert(
-          "Giá trị không hợp lệ",
-          "Hãy kiểm tra lại khoảng giá trị hợp lý cho huyết áp."
-        );
-        return false;
-      }
-    }
-
-    if (type === "glucose") {
-      if (!glucose) {
-        Alert.alert("Thiếu chỉ số", "Hãy nhập giá trị đường huyết.");
-        return false;
-      }
-      const g = Number(glucose);
-      if (isNaN(g) || g < 40 || g > 600) {
-        Alert.alert(
-          "Giá trị không hợp lệ",
-          "Đường huyết nên nằm trong khoảng 40–600 mg/dL."
-        );
-        return false;
-      }
-    }
-
-    if (type === "spo2") {
-      if (!spo2) {
-        Alert.alert("Thiếu chỉ số", "Hãy nhập giá trị SpO₂.");
-        return false;
-      }
-      const s = Number(spo2);
-      if (isNaN(s) || s < 50 || s > 100) {
-        Alert.alert(
-          "Giá trị không hợp lệ",
-          "SpO₂ thông thường nằm trong khoảng 50–100%."
-        );
-        return false;
-      }
-    }
-
-    if (type === "temp") {
-      if (!temperature) {
-        Alert.alert("Thiếu chỉ số", "Hãy nhập giá trị nhiệt độ cơ thể.");
-        return false;
-      }
-      const t = Number(temperature);
-      if (isNaN(t) || t < 30 || t > 45) {
-        Alert.alert(
-          "Giá trị không hợp lệ",
-          "Nhiệt độ cơ thể nên nằm trong khoảng 30–45°C."
-        );
-        return false;
-      }
-    }
-
-    if (type === "heartRate") {
-      if (!heartRate) {
-        Alert.alert("Thiếu chỉ số", "Hãy nhập giá trị nhịp tim.");
-        return false;
-      }
-      const hr = Number(heartRate);
-      if (isNaN(hr) || hr < 30 || hr > 220) {
-        Alert.alert(
-          "Giá trị không hợp lệ",
-          "Nhịp tim nên nằm trong khoảng 30–220 lần/phút."
-        );
-        return false;
-      }
-    }
-
-    if (type === "respiratoryRate") {
-      if (!respiratoryRate) {
-        Alert.alert("Thiếu chỉ số", "Hãy nhập giá trị nhịp thở.");
-        return false;
-      }
-      const rr = Number(respiratoryRate);
-      if (isNaN(rr) || rr < 5 || rr > 60) {
-        Alert.alert(
-          "Giá trị không hợp lệ",
-          "Nhịp thở nên nằm trong khoảng 5–60 lần/phút."
-        );
-        return false;
-      }
-    }
-
-    return true;
-  };
-
-  const handleSubmit = () => {
-    if (!validateForm()) return;
-
-    const payload = buildMeasurementPayload({
-      patientUserId: selectedPatient.user._id,
-      type,
-      systolic,
-      diastolic,
-      pulse,
-      glucose,
-      spo2,
-      temperature,
-      heartRate,
-      respiratoryRate,
-      timing,
-      device,
-      note,
-      nurseUserId: currentNurseUser._id,
-    });
-
-    // TODO: gửi payload lên API backend
-    console.log("Measurement payload:", payload);
-
-    Alert.alert("Thành công", "Đã lưu bản đo (mock).");
-
+  const resetMeasurementDraft = () => {
+    setType("bp");
+    setTiming("pre");
+    setDevice("");
+    setNote("");
     setSystolic("");
     setDiastolic("");
-    setPulse("");
     setGlucose("");
     setSpo2("");
     setTemperature("");
     setHeartRate("");
     setRespiratoryRate("");
-    setNote("");
+    setSavedSections(createSavedMeasurementState());
+  };
+
+  const loadAssignments = useCallback(async () => {
+    setAssignmentsLoading(true);
+    setAssignmentsError("");
+    try {
+      const response = await getMyAssignments();
+      if (!response.ok) throw new Error(getErrorMessage(response));
+      const nextAssignments = Array.isArray(response.body?.data)
+        ? response.body.data.map(normalizeAssignmentPatient)
+        : [];
+      setAssignedPatients(nextAssignments);
+      return nextAssignments;
+    } catch (error) {
+      setAssignedPatients([]);
+      setAssignmentsError(error.message || "Không tải được danh sách bệnh nhân được phân công.");
+      return [];
+    } finally {
+      setAssignmentsLoading(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadAssignments();
+    }, [loadAssignments])
+  );
+
+  const markEditing = (sectionKey) => {
+    setSavedSections((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      if (prev[sectionKey]) {
+        next[sectionKey] = false;
+        changed = true;
+      }
+      if (
+        sectionKey === "heartRate" &&
+        (hasMeasurementValue(systolic) || hasMeasurementValue(diastolic)) &&
+        prev.bp
+      ) {
+        next.bp = false;
+        changed = true;
+      }
+      return changed ? next : prev;
+    });
+  };
+
+  const handleMeasurementFieldChange = (field, value, sectionKey) => {
+    if (field === "systolic") setSystolic(value);
+    if (field === "diastolic") setDiastolic(value);
+    if (field === "glucose") setGlucose(value);
+    if (field === "spo2") setSpo2(value);
+    if (field === "temperature") setTemperature(value);
+    if (field === "heartRate") setHeartRate(value);
+    if (field === "respiratoryRate") setRespiratoryRate(value);
+    if (field === "device") setDevice(value);
+    if (field === "note") setNote(value);
+
+    if (sectionKey) {
+      markEditing(sectionKey);
+    }
+  };
+
+  const ensureSelectedPatient = () => {
+    if (!selectedPatient?.patientId) {
+      Alert.alert("Thiếu thông tin", "Hãy quét QR hoặc nhập mã hồ sơ để chọn bệnh nhân trước.");
+      return false;
+    }
+    return true;
+  };
+
+  const validateSection = (sectionKey) => {
+    if (!ensureSelectedPatient()) return false;
+    const validationError = getMeasurementValidationError(sectionKey, measurementValues);
+    if (validationError) {
+      Alert.alert(validationError.title, validationError.message);
+      return false;
+    }
+    return true;
+  };
+
+  const resolvePatientSelection = async (assignment) => {
+    const fallbackPatient = normalizeAssignmentPatient(assignment);
+    setLookupLoading(true);
+    setLookupError("");
+    try {
+      const response = await getPatientById(fallbackPatient.patientId);
+      if (!response.ok) throw new Error(getErrorMessage(response));
+      const profile = normalizePatientProfile(response.body?.data || {}, fallbackPatient);
+      setSelectedPatient(profile);
+      setPatientSearchCode(profile.patientCode || fallbackPatient.patientCode);
+      resetMeasurementDraft();
+      return profile;
+    } catch (error) {
+      const partialPatient = normalizePatientProfile({}, fallbackPatient);
+      setSelectedPatient(partialPatient);
+      setPatientSearchCode(partialPatient.patientCode);
+      setLookupError(error.message || "Không tải được hồ sơ chi tiết của bệnh nhân.");
+      resetMeasurementDraft();
+      Alert.alert("Đã chọn bệnh nhân", "Đã nhận diện được bệnh nhân theo mã hồ sơ nhưng chưa tải đủ hồ sơ chi tiết.");
+      return partialPatient;
+    } finally {
+      setLookupLoading(false);
+      setScannerVisible(false);
+    }
+  };
+
+  const lookupPatientByCode = async (rawCode) => {
+    const normalizedCode = String(rawCode || "").trim();
+    if (!normalizedCode) {
+      Alert.alert("Thiếu mã hồ sơ", "Hãy nhập hoặc quét mã hồ sơ bệnh nhân.");
+      return;
+    }
+    const sourcePatients = assignedPatients.length > 0 ? assignedPatients : await loadAssignments();
+    const matchedPatient = sourcePatients.find(
+      (item) => item.patientCode.toLowerCase() === normalizedCode.toLowerCase()
+    );
+    if (!matchedPatient) {
+      setScannerVisible(false);
+      setLookupError("Không tìm thấy bệnh nhân phù hợp trong danh sách được phân công.");
+      Alert.alert("Không tìm thấy bệnh nhân", "Mã hồ sơ không thuộc danh sách bệnh nhân đang được phân công cho điều dưỡng này.");
+      return;
+    }
+    setPatientSearchCode(matchedPatient.patientCode);
+    await resolvePatientSelection(matchedPatient);
+  };
+
+  const openScanner = async () => {
+    if (Platform.OS === "web") {
+      Alert.alert("Chưa hỗ trợ", "Quét QR chỉ khả dụng trên thiết bị có camera.");
+      return;
+    }
+    let granted = cameraPermission?.granted;
+    if (!granted) {
+      const permission = await requestCameraPermission();
+      granted = permission.granted;
+    }
+    if (!granted) {
+      Alert.alert("Không có quyền camera", "Vui lòng cho phép ứng dụng sử dụng camera để quét QR.");
+      return;
+    }
+    setScannerLocked(false);
+    setScannerVisible(true);
+  };
+
+  const handleBarcodeScanned = async ({ data }) => {
+    if (scannerLocked || lookupLoading) return;
+    setScannerLocked(true);
+    await lookupPatientByCode(data);
+  };
+
+  const handleManualLookup = async () => {
+    await lookupPatientByCode(patientSearchCode);
+  };
+
+  const selectSuggestedPatient = async (item) => {
+    await resolvePatientSelection(item);
+  };
+
+  const handleTimingChange = (nextTiming) => {
+    setTiming(nextTiming);
+    markEditing("glucose");
+  };
+
+  const saveCurrentSection = () => {
+    if (!validateSection(type)) return;
+    setSavedSections((prev) => ({ ...prev, [type]: true }));
+    const label = getMeasurementSectionLabel(type);
+    Alert.alert("Đã lưu tạm", `${label} đã được lưu. Bạn có thể nhập tiếp nhóm chỉ số khác.`);
+  };
+
+  const submitMeasurement = async () => {
+    if (!ensureSelectedPatient()) return;
+    const missingSections = MEASUREMENT_SECTIONS.filter((item) => !savedSections[item.key]);
+    if (missingSections.length > 0) {
+      Alert.alert("Thiếu chỉ số", `Bạn cần nhập và lưu đủ tất cả chỉ số trước khi gửi. Còn thiếu: ${missingSections.map((item) => item.label).join(", ")}.`);
+      return;
+    }
+    const unsavedSections = MEASUREMENT_SECTIONS.filter(
+      (item) => hasMeasurementSectionValue(item.key, measurementValues) && !savedSections[item.key]
+    );
+    if (unsavedSections.length > 0) {
+      Alert.alert("Chưa lưu hết dữ liệu", `Bạn còn ${unsavedSections.length} nhóm chỉ số đang nhập nhưng chưa bấm "Lưu thông tin".`);
+      return;
+    }
+    for (const section of MEASUREMENT_SECTIONS) {
+      if (!validateSection(section.key)) return;
+    }
+    const payload = buildMeasurementPayload({
+      patientId: selectedPatient.patientId,
+      values: measurementValues,
+      emptyNumberValue: 0,
+    });
+    try {
+      setSubmitting(true);
+      const response = await createMeasurement(payload);
+      if (!response.ok) throw new Error(getErrorMessage(response));
+      Alert.alert(
+        "Thành công",
+        `Đã gửi bản đo lên hệ thống cho ${getPatientSuccessLabel(selectedPatient)}.`
+      );
+      resetMeasurementDraft();
+    } catch (error) {
+      Alert.alert("Gửi dữ liệu thất bại", error.message || "Vui lòng thử lại.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const renderPatientCard = () => {
-    if (!selectedPatient) {
+    if (lookupLoading) {
       return (
         <View style={styles.patientEmptyCard}>
-          <Ionicons
-            name="qr-code-outline"
-            size={26}
-            color="#9CA3AF"
-            style={{ marginBottom: 6 }}
-          />
-          <Text style={styles.patientEmptyText}>
-            Chưa có bệnh nhân được chọn
-          </Text>
-          <Text style={styles.patientEmptySub}>
-            Quét mã QR trên vòng tay / phiếu bệnh án để tải thông tin bệnh nhân.
-          </Text>
+          <ActivityIndicator size="small" color="#2563EB" />
+          <Text style={styles.patientEmptyText}>Đang tải thông tin bệnh nhân...</Text>
+          <Text style={styles.patientEmptySub}>Hệ thống đang lấy dữ liệu hồ sơ thật từ máy chủ.</Text>
         </View>
       );
     }
-
-    const { user, patientInfo } = selectedPatient;
+    if (!selectedPatient) {
+      return (
+        <View style={styles.patientEmptyCard}>
+          <Ionicons name="qr-code-outline" size={26} color="#9CA3AF" style={styles.emptyIcon} />
+          <Text style={styles.patientEmptyText}>Chưa có bệnh nhân được chọn</Text>
+          <Text style={styles.patientEmptySub}>Quét mã QR hoặc nhập mã hồ sơ để tải thông tin bệnh nhân trước khi nhập liệu.</Text>
+        </View>
+      );
+    }
     return (
       <View style={styles.patientCard}>
         <View style={styles.patientRow}>
           <View style={styles.patientAvatar}>
-            <Text style={styles.patientAvatarText}>
-              {user.name
-                .split(" ")
-                .filter((p) => p.length > 0)
-                .slice(-2)
-                .map((p) => p[0])
-                .join("")
-                .toUpperCase()}
-            </Text>
+            <Text style={styles.patientAvatarText}>{getPatientInitials(selectedPatient.name)}</Text>
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.patientName}>{user.name}</Text>
-            <Text style={styles.patientMeta}>
-              BHYT: {patientInfo.insuranceNumber}
-            </Text>
-            <Text style={styles.patientMetaSm}>
-              CCCD: {patientInfo.CCCD} • ID: {user._id}
-            </Text>
+          <View style={styles.patientContent}>
+            <View style={styles.patientNameRow}>
+              <Text style={styles.patientName}>{selectedPatient.name}</Text>
+              <View style={styles.selectedBadge}>
+                <Text style={styles.selectedBadgeText}>Đã chọn</Text>
+              </View>
+            </View>
+            <Text style={styles.patientMeta}>Mã hồ sơ: {selectedPatient.patientCode || "Chưa có mã"}</Text>
+            <Text style={styles.patientMeta}>BHYT: {selectedPatient.insuranceNumber || "Chưa cập nhật"}</Text>
+            <Text style={styles.patientMetaSm}>CCCD: {selectedPatient.cccd || "Chưa cập nhật"} • ID: {selectedPatient.patientId}</Text>
           </View>
         </View>
-
         <View style={styles.patientInfoRow}>
-          <Ionicons name="call-outline" size={14} color="#6B7280" />
+          <View style={styles.patientInfoIconWrap}>
+            <Ionicons name="call-outline" size={14} color="#6B7280" />
+          </View>
           <Text style={styles.patientMetaSm}>
-            Người liên hệ khẩn cấp: {patientInfo.emergencyContactName} ·{" "}
-            {patientInfo.emergencyContactPhone}
+            Liên hệ khẩn cấp: {selectedPatient.emergencyContactName || "Chưa cập nhật"} · {selectedPatient.emergencyContactPhone || "Chưa cập nhật"}
           </Text>
         </View>
       </View>
     );
   };
 
-  const renderTypeFields = () => {
-    if (type === "bp") {
-      return (
-        <>
-          <Text style={styles.fieldGroupTitle}>Chỉ số huyết áp</Text>
-          <View style={styles.row}>
-            <View style={styles.fieldColumn}>
-              <Text style={styles.fieldLabel}>Tâm thu (SYS)</Text>
-              <TextInput
-                style={styles.input}
-                value={systolic}
-                onChangeText={setSystolic}
-                keyboardType="numeric"
-                placeholder="vd: 120"
-              />
-              <Text style={styles.fieldHint}>mmHg · 70–250</Text>
-            </View>
-
-            <View style={styles.fieldColumn}>
-              <Text style={styles.fieldLabel}>Tâm trương (DIA)</Text>
-              <TextInput
-                style={styles.input}
-                value={diastolic}
-                onChangeText={setDiastolic}
-                keyboardType="numeric"
-                placeholder="vd: 80"
-              />
-              <Text style={styles.fieldHint}>mmHg · 40–150</Text>
-            </View>
-          </View>
-
-          <View style={[styles.fieldColumn, { marginTop: 10 }]}>
-            <Text style={styles.fieldLabel}>Mạch (PULSE)</Text>
-            <TextInput
-              style={styles.input}
-              value={pulse}
-              onChangeText={setPulse}
-              keyboardType="numeric"
-              placeholder="vd: 72"
-            />
-            <Text style={styles.fieldHint}>lần/phút · 30–220</Text>
-          </View>
-        </>
-      );
-    }
-
-    if (type === "glucose") {
-      return (
-        <>
-          <Text style={styles.fieldGroupTitle}>Chỉ số đường huyết</Text>
-          <View style={styles.fieldColumn}>
-            <Text style={styles.fieldLabel}>Đường huyết</Text>
-            <TextInput
-              style={styles.input}
-              value={glucose}
-              onChangeText={setGlucose}
-              keyboardType="numeric"
-              placeholder="vd: 110"
-            />
-            <Text style={styles.fieldHint}>mg/dL · 40–600</Text>
-          </View>
-
-          <Text style={[styles.fieldLabel, { marginTop: 12 }]}>
-            Thời điểm đo so với bữa ăn
-          </Text>
-          <View style={styles.chipRow}>
-            <TouchableOpacity
-              style={[
-                styles.chipChoice,
-                timing === "pre" && styles.chipChoiceActive,
-              ]}
-              onPress={() => setTiming("pre")}
-            >
-              <Text
-                style={[
-                  styles.chipChoiceText,
-                  timing === "pre" && styles.chipChoiceTextActive,
-                ]}
-              >
-                Trước ăn (pre)
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.chipChoice,
-                timing === "post" && styles.chipChoiceActive,
-              ]}
-              onPress={() => setTiming("post")}
-            >
-              <Text
-                style={[
-                  styles.chipChoiceText,
-                  timing === "post" && styles.chipChoiceTextActive,
-                ]}
-              >
-                Sau ăn (post)
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </>
-      );
-    }
-
-    if (type === "spo2") {
-      return (
-        <>
-          <Text style={styles.fieldGroupTitle}>Chỉ số SpO₂</Text>
-          <View style={styles.fieldColumn}>
-            <Text style={styles.fieldLabel}>SpO₂</Text>
-            <TextInput
-              style={styles.input}
-              value={spo2}
-              onChangeText={setSpo2}
-              keyboardType="numeric"
-              placeholder="vd: 98"
-            />
-            <Text style={styles.fieldHint}>% · 50–100</Text>
-          </View>
-        </>
-      );
-    }
-
-    if (type === "temp") {
-      return (
-        <>
-          <Text style={styles.fieldGroupTitle}>Nhiệt độ cơ thể</Text>
-          <View style={styles.fieldColumn}>
-            <Text style={styles.fieldLabel}>Nhiệt độ</Text>
-            <TextInput
-              style={styles.input}
-              value={temperature}
-              onChangeText={setTemperature}
-              keyboardType="numeric"
-              placeholder="vd: 36.8"
-            />
-            <Text style={styles.fieldHint}>°C · 30–45</Text>
-          </View>
-        </>
-      );
-    }
-
-    if (type === "heartRate") {
-      return (
-        <>
-          <Text style={styles.fieldGroupTitle}>Nhịp tim</Text>
-          <View style={styles.fieldColumn}>
-            <Text style={styles.fieldLabel}>Nhịp tim</Text>
-            <TextInput
-              style={styles.input}
-              value={heartRate}
-              onChangeText={setHeartRate}
-              keyboardType="numeric"
-              placeholder="vd: 78"
-            />
-            <Text style={styles.fieldHint}>lần/phút · 30–220</Text>
-          </View>
-        </>
-      );
-    }
-
-    if (type === "respiratoryRate") {
-      return (
-        <>
-          <Text style={styles.fieldGroupTitle}>Nhịp thở</Text>
-          <View style={styles.fieldColumn}>
-            <Text style={styles.fieldLabel}>Nhịp thở</Text>
-            <TextInput
-              style={styles.input}
-              value={respiratoryRate}
-              onChangeText={setRespiratoryRate}
-              keyboardType="numeric"
-              placeholder="vd: 18"
-            />
-            <Text style={styles.fieldHint}>lần/phút · 5–60</Text>
-          </View>
-        </>
-      );
-    }
-
-    return null;
-  };
+  const normalizedSearch = patientSearchCode.trim().toLowerCase();
+  const suggestedPatients = assignedPatients
+    .filter((item) => !normalizedSearch || item.patientCode.toLowerCase().includes(normalizedSearch) || item.name.toLowerCase().includes(normalizedSearch))
+    .slice(0, normalizedSearch ? 5 : 3);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#F2F6FF" }}>
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        <View style={styles.headerRow}>
-          <Text style={styles.headerTitle}>Nhập bản đo sinh hiệu</Text>
-          <View style={{ width: 40 }} />
-        </View>
-        <View style={styles.nurseBar}>
-          <View style={styles.nurseLeft}>
-            <View style={styles.nurseAvatar}>
-              <FontAwesome5 name="user-nurse" size={16} color="#FFFFFF" />
+    <SafeAreaView style={styles.safeArea}>
+      <Modal visible={scannerVisible} transparent animationType="slide" onRequestClose={() => setScannerVisible(false)}>
+        <View style={styles.scannerOverlay}>
+          <View style={styles.scannerCard}>
+            <View style={styles.scannerHeader}>
+              <View style={styles.scannerHeaderContent}>
+                <Text style={styles.scannerTitle}>Quét mã QR bệnh nhân</Text>
+                <Text style={styles.scannerSubtitle}>Đưa camera vào mã QR trên hồ sơ hoặc vòng tay bệnh nhân.</Text>
+              </View>
+              <TouchableOpacity style={styles.scannerCloseButton} onPress={() => setScannerVisible(false)}>
+                <Ionicons name="close" size={20} color="#111827" />
+              </TouchableOpacity>
             </View>
-            <View>
-              <Text style={styles.nurseLabel}>Điều dưỡng</Text>
-              <Text style={styles.nurseName}>{currentNurseUser.name}</Text>
+            <View style={styles.cameraFrame}>
+              <CameraView style={styles.camera} facing="back" barcodeScannerSettings={{ barcodeTypes: ["qr"] }} onBarcodeScanned={handleBarcodeScanned} />
             </View>
-          </View>
-          <View style={styles.nurseTag}>
-            <View style={styles.nurseDot} />
-            <Text style={styles.nurseTagText}>Đang nhập liệu</Text>
+            <Text style={styles.scannerFootnote}>
+              {scannerLocked ? "Đã nhận mã, đang đối chiếu với dữ liệu bệnh nhân..." : "Chỉ quét bệnh nhân nằm trong danh sách được phân công."}
+            </Text>
           </View>
         </View>
+      </Modal>
 
-        <Text style={styles.sectionTitle}>Thông tin bệnh nhân</Text>
-        <View style={styles.card}>
-          <View style={styles.qrRow}>
-            <View style={styles.qrLeft}>
-              <Ionicons
-                name="qr-code-outline"
-                size={22}
-                color="#2563EB"
-                style={{ marginRight: 8 }}
-              />
+      <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}>
+        <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}>
+          <View style={styles.headerRow}>
+            <Text style={styles.headerTitle}>Nhập bản đo sinh hiệu</Text>
+            <View style={styles.headerSpacer} />
+          </View>
+
+          <View style={styles.nurseBar}>
+            <View style={styles.nurseLeft}>
+              <View style={styles.nurseAvatar}>
+                <FontAwesome5 name="user-nurse" size={16} color="#FFFFFF" />
+              </View>
               <View>
-                <Text style={styles.qrTitle}>Quét mã QR bệnh nhân</Text>
-                <Text style={styles.qrSub}>
-                  Sử dụng vòng tay / mã QR trên hồ sơ để auto điền.
-                </Text>
+                <Text style={styles.nurseLabel}>Điều dưỡng</Text>
+                <Text style={styles.nurseName}>{currentNurseUser.name || "Điều dưỡng"}</Text>
               </View>
             </View>
-            <TouchableOpacity style={styles.qrButton} onPress={handleScanQr}>
-              <Text style={styles.qrButtonText}>Quét QR</Text>
-            </TouchableOpacity>
+            <View style={styles.nurseTag}>
+              <View style={styles.nurseDot} />
+              <Text style={styles.nurseTagText}>Nhập liệu thật</Text>
+            </View>
           </View>
 
-          <View style={{ marginTop: 14 }}>{renderPatientCard()}</View>
-        </View>
+          <Text style={styles.sectionTitle}>Thông tin bệnh nhân</Text>
+          <View style={styles.card}>
+            <View style={styles.lookupHero}>
+              <View style={styles.lookupHeroLeft}>
+                <View style={styles.lookupHeroIcon}>
+                  <Ionicons name="qr-code-outline" size={20} color="#2563EB" />
+                </View>
+                <View style={styles.lookupHeroText}>
+                  <Text style={styles.lookupHeroTitle}>Chọn bệnh nhân bằng QR hoặc mã hồ sơ</Text>
+                  <Text style={styles.lookupHeroSub}>Quét trực tiếp mã QR hoặc nhập tay mã hồ sơ nếu không tiện dùng camera.</Text>
+                </View>
+              </View>
+              <TouchableOpacity style={styles.qrButton} onPress={openScanner}>
+                <Ionicons name="scan-outline" size={16} color="#FFFFFF" style={styles.qrButtonIcon} />
+                <Text style={styles.qrButtonText}>Quét QR</Text>
+              </TouchableOpacity>
+            </View>
 
-        <Text style={styles.sectionTitle}>Loại chỉ số cần nhập</Text>
-        <View style={styles.card}>
-          <View style={styles.typeGridRow}>
-            <TypeTile
-              active={type === "bp"}
-              onPress={() => setType("bp")}
-              iconName="heart-outline"
-              label="Huyết áp"
-              description="SYS / DIA / PULSE"
-            />
-            <TypeTile
-              active={type === "glucose"}
-              onPress={() => setType("glucose")}
-              iconName="water-outline"
-              label="Đường huyết"
-              description="mg/dL"
-            />
-            <TypeTile
-              active={type === "spo2"}
-              onPress={() => setType("spo2")}
-              iconName="pulse-outline"
-              label="SpO₂"
-              description="% bão hòa O₂"
-            />
+            <View style={styles.searchRow}>
+              <View style={styles.searchInputWrap}>
+                <Ionicons name="search-outline" size={18} color="#6B7280" style={styles.searchIcon} />
+                <TextInput style={styles.searchInput} value={patientSearchCode} onChangeText={setPatientSearchCode} placeholder="Nhập mã hồ sơ, ví dụ PAT-001" autoCapitalize="characters" autoCorrect={false} returnKeyType="search" onSubmitEditing={handleManualLookup} />
+              </View>
+              <TouchableOpacity style={[styles.searchButton, lookupLoading && styles.buttonDisabled]} onPress={handleManualLookup} disabled={lookupLoading}>
+                {lookupLoading ? <ActivityIndicator size="small" color="#2563EB" /> : <Text style={styles.searchButtonText}>Tìm mã</Text>}
+              </TouchableOpacity>
+            </View>
+
+            {assignmentsError ? (
+              <View style={styles.inlineErrorCard}>
+                <Ionicons name="warning-outline" size={16} color="#B91C1C" />
+                <Text style={styles.inlineErrorText}>{assignmentsError}</Text>
+              </View>
+            ) : null}
+
+            {lookupError ? (
+              <View style={styles.inlineWarningCard}>
+                <Ionicons name="information-circle-outline" size={16} color="#B45309" />
+                <Text style={styles.inlineWarningText}>{lookupError}</Text>
+              </View>
+            ) : null}
+
+            <View style={styles.quickListHeader}>
+              <Text style={styles.quickListTitle}>Bệnh nhân được phân công</Text>
+              <Text style={styles.quickListCount}>{assignmentsLoading ? "Đang tải..." : `${assignedPatients.length} bệnh nhân`}</Text>
+            </View>
+
+            {assignmentsLoading ? (
+              <View style={styles.assignmentLoadingRow}>
+                <ActivityIndicator size="small" color="#2563EB" />
+                <Text style={styles.assignmentLoadingText}>Đang tải danh sách phân công...</Text>
+              </View>
+            ) : suggestedPatients.length > 0 ? (
+              <View style={styles.assignmentChipWrap}>
+                {suggestedPatients.map((item) => (
+                  <TouchableOpacity key={item.assignmentId || item.patientId} style={[styles.assignmentChip, selectedPatient?.patientId === item.patientId && styles.assignmentChipActive]} onPress={() => selectSuggestedPatient(item)}>
+                    <Text style={[styles.assignmentChipCode, selectedPatient?.patientId === item.patientId && styles.assignmentChipCodeActive]}>{item.patientCode || "Chưa có mã"}</Text>
+                    <Text style={[styles.assignmentChipName, selectedPatient?.patientId === item.patientId && styles.assignmentChipNameActive]} numberOfLines={1}>{item.name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ) : (
+              <Text style={styles.assignmentEmptyText}>Không có bệnh nhân phù hợp với mã hoặc tên bạn đang tìm.</Text>
+            )}
+
+            <View style={styles.patientCardWrap}>{renderPatientCard()}</View>
           </View>
 
-          <View style={styles.typeGridRow}>
-            <TypeTile
-              active={type === "temp"}
-              onPress={() => setType("temp")}
-              iconName="thermometer-outline"
-              label="Nhiệt độ"
-              description="°C"
-            />
-            <TypeTile
-              active={type === "heartRate"}
-              onPress={() => setType("heartRate")}
-              iconName="fitness-outline"
-              label="Nhịp tim"
-              description="lần/phút"
-            />
-            <TypeTile
-              active={type === "respiratoryRate"}
-              onPress={() => setType("respiratoryRate")}
-              iconName="cloud-outline"
-              label="Nhịp thở"
-              description="lần/phút"
-            />
-          </View>
-        </View>
-
-        <Text style={styles.sectionTitle}>Chi tiết bản đo</Text>
-        <View style={styles.card}>
-          {renderTypeFields()}
-          <Text style={[styles.fieldLabel, { marginTop: 16 }]}>Thiết bị đo</Text>
-          <TextInput
-            style={styles.input}
-            value={device}
-            onChangeText={setDevice}
-            placeholder="vd: BP_MONITOR_01, GLUCOSE_METER_02..."
+          <MeasurementDraftForm
+            type={type}
+            timing={timing}
+            values={measurementValues}
+            savedSections={savedSections}
+            submitting={submitting}
+            onSelectType={setType}
+            onFieldChange={handleMeasurementFieldChange}
+            onTimingChange={handleTimingChange}
+            onSaveSection={saveCurrentSection}
+            onSubmit={submitMeasurement}
           />
 
-          <Text style={[styles.fieldLabel, { marginTop: 12 }]}>Ghi chú</Text>
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            value={note}
-            onChangeText={setNote}
-            placeholder="Ghi chú thêm (tư thế bệnh nhân, tình trạng, đã dùng thuốc...)"
-            multiline
-          />
-        </View>
-
-        <TouchableOpacity style={styles.saveBtn} onPress={handleSubmit}>
-          <Ionicons
-            name="save-outline"
-            size={18}
-            color="#FFFFFF"
-            style={{ marginRight: 6 }}
-          />
-          <Text style={styles.saveText}>Lưu bản đo</Text>
-        </TouchableOpacity>
-
-        <View style={{ height: 16 }} />
-      </ScrollView>
+          <View style={styles.bottomSpacer} />
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: "#F2F6FF" },
+  screen: { flex: 1 },
   container: { padding: 20 },
-
-  headerRow: {
-    flexDirection: "row",
+  contentContainer: { paddingBottom: 32 },
+  headerRow: { flexDirection: "row", alignItems: "center", marginBottom: 16 },
+  headerTitle: { flex: 1, fontSize: 18, fontWeight: "700", color: "#111827" },
+  headerSpacer: { width: 40 },
+  nurseBar: { backgroundColor: "#EFF6FF", borderRadius: 16, padding: 12, flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 },
+  nurseLeft: { flexDirection: "row", alignItems: "center", flex: 1 },
+  nurseAvatar: { width: 32, height: 32, borderRadius: 999, backgroundColor: "#2563EB", alignItems: "center", justifyContent: "center", marginRight: 10 },
+  nurseLabel: { fontSize: 11, color: "#6B7280" },
+  nurseName: { fontSize: 13, fontWeight: "600", color: "#111827" },
+  nurseTag: { flexDirection: "row", alignItems: "center", backgroundColor: "#DCFCE7", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, marginLeft: 12 },
+  nurseDot: { width: 7, height: 7, borderRadius: 999, backgroundColor: "#22C55E", marginRight: 6 },
+  nurseTagText: { fontSize: 11, color: "#15803D", fontWeight: "600" },
+  sectionTitle: { fontSize: 15, fontWeight: "700", marginTop: 4, marginBottom: 8, color: "#111827" },
+  card: { backgroundColor: "#FFFFFF", borderRadius: 18, padding: 14, marginBottom: 16, shadowColor: "#000", shadowOpacity: 0.02, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
+  lookupHero: { borderRadius: 16, backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: "#E2E8F0", padding: 12 },
+  lookupHeroLeft: { flexDirection: "row", alignItems: "flex-start" },
+  lookupHeroIcon: { width: 36, height: 36, borderRadius: 12, backgroundColor: "#DBEAFE", justifyContent: "center", alignItems: "center", marginRight: 10 },
+  lookupHeroText: { flex: 1 },
+  lookupHeroTitle: { fontSize: 14, fontWeight: "700", color: "#111827" },
+  lookupHeroSub: { marginTop: 4, fontSize: 12, lineHeight: 18, color: "#6B7280" },
+  qrButton: { marginTop: 12, alignSelf: "flex-start", flexDirection: "row", alignItems: "center", backgroundColor: "#2563EB", paddingHorizontal: 12, paddingVertical: 9, borderRadius: 999 },
+  qrButtonIcon: { marginRight: 6 },
+  qrButtonText: { color: "#FFFFFF", fontSize: 12, fontWeight: "700" },
+  searchRow: { flexDirection: "row", alignItems: "center", marginTop: 14 },
+  searchInputWrap: { flex: 1, minHeight: 46, flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: "#D1D5DB", borderRadius: 12, backgroundColor: "#FFFFFF", paddingHorizontal: 12 },
+  searchIcon: { marginRight: 8 },
+  searchInput: { flex: 1, fontSize: 13, color: "#111827", paddingVertical: 10 },
+  searchButton: { minWidth: 82, marginLeft: 10, minHeight: 46, borderRadius: 12, borderWidth: 1, borderColor: "#BFDBFE", backgroundColor: "#EFF6FF", justifyContent: "center", alignItems: "center", paddingHorizontal: 12 },
+  searchButtonText: { color: "#2563EB", fontSize: 13, fontWeight: "700" },
+  buttonDisabled: { opacity: 0.7 },
+  inlineErrorCard: { marginTop: 12, flexDirection: "row", alignItems: "center", backgroundColor: "#FEF2F2", borderRadius: 12, padding: 10 },
+  inlineErrorText: { flex: 1, marginLeft: 8, color: "#B91C1C", fontSize: 12, lineHeight: 18 },
+  inlineWarningCard: { marginTop: 12, flexDirection: "row", alignItems: "center", backgroundColor: "#FFFBEB", borderRadius: 12, padding: 10 },
+  inlineWarningText: { flex: 1, marginLeft: 8, color: "#B45309", fontSize: 12, lineHeight: 18 },
+  quickListHeader: { marginTop: 14, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  quickListTitle: { fontSize: 13, fontWeight: "700", color: "#111827" },
+  quickListCount: { fontSize: 12, color: "#6B7280" },
+  assignmentLoadingRow: { marginTop: 12, flexDirection: "row", alignItems: "center" },
+  assignmentLoadingText: { marginLeft: 8, fontSize: 12, color: "#6B7280" },
+  assignmentChipWrap: { marginTop: 12, gap: 8 },
+  assignmentChip: { borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 14, paddingHorizontal: 12, paddingVertical: 10, backgroundColor: "#F8FAFC" },
+  assignmentChipActive: { borderColor: "#93C5FD", backgroundColor: "#EFF6FF" },
+  assignmentChipCode: { fontSize: 12, fontWeight: "700", color: "#1F2937" },
+  assignmentChipCodeActive: { color: "#1D4ED8" },
+  assignmentChipName: { marginTop: 3, fontSize: 12, color: "#6B7280" },
+  assignmentChipNameActive: { color: "#2563EB" },
+  assignmentEmptyText: { marginTop: 12, fontSize: 12, color: "#6B7280" },
+  patientCardWrap: { marginTop: 14 },
+  patientEmptyCard: { borderRadius: 14, borderWidth: 1, borderColor: "#E5E7EB", padding: 14, alignItems: "center" },
+  emptyIcon: { marginBottom: 6 },
+  patientEmptyText: { fontSize: 13, fontWeight: "600", color: "#111827", marginTop: 6, marginBottom: 2, textAlign: "center" },
+  patientEmptySub: { fontSize: 12, color: "#6B7280", textAlign: "center", lineHeight: 18 },
+  patientCard: { borderRadius: 14, borderWidth: 1, borderColor: "#E5E7EB", padding: 12, backgroundColor: "#F9FAFB" },
+  patientRow: { flexDirection: "row", alignItems: "center" },
+  patientAvatar: { width: 44, height: 44, borderRadius: 16, backgroundColor: "#2563EB", alignItems: "center", justifyContent: "center", marginRight: 10 },
+  patientAvatarText: { color: "#FFFFFF", fontSize: 18, fontWeight: "700" },
+  patientContent: { flex: 1 },
+  patientNameRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap" },
+  patientName: { fontSize: 14, fontWeight: "700", color: "#111827", marginRight: 8 },
+  selectedBadge: { backgroundColor: "#DCFCE7", borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3 },
+  selectedBadgeText: { fontSize: 10, fontWeight: "700", color: "#15803D" },
+  patientMeta: { fontSize: 12, color: "#4B5563", marginTop: 2 },
+  patientMetaSm: { flex: 1, fontSize: 11, color: "#6B7280", marginTop: 1, lineHeight: 18 },
+  patientInfoRow: { flexDirection: "row", alignItems: "flex-start", marginTop: 10 },
+  patientInfoIconWrap: {
+    width: 20,
     alignItems: "center",
-    marginBottom: 16,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#111827",
-    flex: 1,
-  },
-
-  nurseBar: {
-    backgroundColor: "#EFF6FF",
-    borderRadius: 16,
-    padding: 12,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  nurseLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  nurseAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 999,
-    backgroundColor: "#2563EB",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 10,
-  },
-  nurseLabel: {
-    fontSize: 11,
-    color: "#6B7280",
-  },
-  nurseName: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#111827",
-  },
-  nurseTag: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#DCFCE7",
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  nurseDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 999,
-    backgroundColor: "#22C55E",
     marginRight: 6,
+    paddingTop: 2,
   },
-  nurseTagText: {
-    fontSize: 11,
-    color: "#15803D",
-    fontWeight: "600",
-  },
-
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: "700",
-    marginTop: 4,
-    marginBottom: 8,
-    color: "#111827",
-  },
-
-  card: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 18,
-    padding: 14,
-    marginBottom: 16,
-    shadowColor: "#000",
-    shadowOpacity: 0.02,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-  },
-
-  qrRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  qrLeft: {
-    flexDirection: "row",
-    flex: 1,
-    marginRight: 10,
-  },
-  qrTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#111827",
-  },
-  qrSub: {
-    fontSize: 12,
-    color: "#6B7280",
-    marginTop: 2,
-  },
-  qrButton: {
-    backgroundColor: "#2563EB",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-  },
-  qrButtonText: {
-    color: "#FFFFFF",
-    fontSize: 12,
-    fontWeight: "600",
-  },
-
-  patientEmptyCard: {
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    padding: 12,
-    marginTop: 6,
-    alignItems: "center",
-  },
-  patientEmptyText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#111827",
-    marginBottom: 2,
-  },
-  patientEmptySub: {
-    fontSize: 12,
-    color: "#6B7280",
-    textAlign: "center",
-  },
-
-  patientCard: {
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    padding: 12,
-    marginTop: 6,
-    backgroundColor: "#F9FAFB",
-  },
-  patientRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  patientAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 16,
-    backgroundColor: "#2563EB",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 10,
-  },
-  patientAvatarText: {
-    color: "#FFFFFF",
-    fontSize: 18,
-    fontWeight: "700",
-  },
-  patientName: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#111827",
-  },
-  patientMeta: {
-    fontSize: 12,
-    color: "#4B5563",
-    marginTop: 2,
-  },
-  patientMetaSm: {
-    fontSize: 11,
-    color: "#6B7280",
-    marginTop: 1,
-  },
-  patientInfoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 8,
-    gap: 4,
-  },
-
-  typeGridRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 8,
-  },
-  typeTile: {
-    width: "32%",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    backgroundColor: "#F9FAFB",
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    alignItems: "flex-start",
-    justifyContent: "flex-start",
-  },
-  typeTileActive: {
-    backgroundColor: "#EFF6FF",
-    borderColor: "#2563EB",
-    shadowColor: "#000",
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-  },
-  typeTileIconWrapper: {
-    width: 26,
-    height: 26,
-    borderRadius: 999,
-    backgroundColor: "#E5E7EB",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 6,
-  },
-  typeTileLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#111827",
-  },
-  typeTileLabelActive: {
-    color: "#2563EB",
-  },
-  typeTileDesc: {
-    fontSize: 11,
-    color: "#6B7280",
-    marginTop: 2,
-  },
-
-  fieldGroupTitle: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#111827",
-    marginBottom: 8,
-  },
-  fieldLabel: {
-    fontSize: 12,
-    color: "#6B7280",
-    marginBottom: 4,
-  },
-  fieldHint: {
-    fontSize: 11,
-    color: "#9CA3AF",
-    marginTop: 2,
-  },
-  row: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    gap: 10,
-  },
-  fieldColumn: {
-    flex: 1,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    fontSize: 13,
-    color: "#111827",
-    backgroundColor: "#F9FAFB",
-  },
-  textArea: {
-    minHeight: 72,
-    textAlignVertical: "top",
-  },
-
-  chipRow: {
-    flexDirection: "row",
-    gap: 8,
-    marginTop: 6,
-  },
-  chipChoice: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    backgroundColor: "#FFFFFF",
-  },
-  chipChoiceActive: {
-    borderColor: "#2563EB",
-    backgroundColor: "#EFF6FF",
-  },
-  chipChoiceText: {
-    fontSize: 12,
-    color: "#6B7280",
-    fontWeight: "500",
-  },
-  chipChoiceTextActive: {
-    color: "#2563EB",
-    fontWeight: "600",
-  },
-
-
-  saveBtn: {
-    backgroundColor: "#2563EB",
-    paddingVertical: 12,
-    borderRadius: 12,
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "center",
-    marginTop: 4,
-    marginBottom: 8,
-  },
-  saveText: {
-    color: "#FFFFFF",
-    fontWeight: "700",
-    fontSize: 14,
-  },
+  helperText: { fontSize: 12, lineHeight: 18, color: "#6B7280", marginBottom: 12 },
+  typeGridRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 8 },
+  typeTile: { width: "32%", minHeight: 96, borderRadius: 12, borderWidth: 1, borderColor: "#E5E7EB", backgroundColor: "#F9FAFB", paddingVertical: 10, paddingHorizontal: 8 },
+  typeTileActive: { backgroundColor: "#EFF6FF", borderColor: "#2563EB", shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 4, shadowOffset: { width: 0, height: 2 } },
+  typeTileTopRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 },
+  typeTileIconWrapper: { width: 26, height: 26, borderRadius: 999, backgroundColor: "#E5E7EB", alignItems: "center", justifyContent: "center" },
+  tileSavedBadge: { borderRadius: 999, backgroundColor: "#DCFCE7", paddingHorizontal: 6, paddingVertical: 2 },
+  tileSavedBadgeText: { fontSize: 10, fontWeight: "700", color: "#15803D" },
+  tileDraftBadge: { borderRadius: 999, backgroundColor: "#FEF3C7", paddingHorizontal: 6, paddingVertical: 2 },
+  tileDraftBadgeText: { fontSize: 10, fontWeight: "700", color: "#B45309" },
+  typeTileLabel: { fontSize: 12, fontWeight: "600", color: "#111827" },
+  typeTileLabelActive: { color: "#2563EB" },
+  typeTileDesc: { fontSize: 11, color: "#6B7280", marginTop: 2 },
+  fieldGroupTitle: { fontSize: 14, fontWeight: "700", color: "#111827", marginBottom: 8 },
+  fieldLabel: { fontSize: 12, color: "#6B7280", marginBottom: 4 },
+  fieldHint: { fontSize: 11, color: "#9CA3AF", marginTop: 2 },
+  row: { flexDirection: "row", justifyContent: "space-between", gap: 10 },
+  fieldColumn: { flex: 1 },
+  input: { borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, fontSize: 13, color: "#111827", backgroundColor: "#F9FAFB" },
+  textArea: { minHeight: 72, textAlignVertical: "top" },
+  marginTopMedium: { marginTop: 12 },
+  chipRow: { flexDirection: "row", gap: 8, marginTop: 6 },
+  chipChoice: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, borderWidth: 1, borderColor: "#E5E7EB", backgroundColor: "#FFFFFF" },
+  chipChoiceActive: { borderColor: "#2563EB", backgroundColor: "#EFF6FF" },
+  chipChoiceText: { fontSize: 12, color: "#6B7280", fontWeight: "500" },
+  chipChoiceTextActive: { color: "#2563EB", fontWeight: "600" },
+  secondaryBtn: { marginTop: 16, borderRadius: 12, borderWidth: 1, borderColor: "#BFDBFE", backgroundColor: "#EFF6FF", paddingVertical: 12, flexDirection: "row", justifyContent: "center", alignItems: "center" },
+  secondaryBtnIcon: { marginRight: 6 },
+  secondaryBtnText: { color: "#2563EB", fontWeight: "700", fontSize: 14 },
+  progressTitle: { fontSize: 14, fontWeight: "700", color: "#111827" },
+  progressSub: { marginTop: 6, fontSize: 12, lineHeight: 18, color: "#6B7280" },
+  savedChipWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 12 },
+  savedChip: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1 },
+  savedChipActive: { backgroundColor: "#DCFCE7", borderColor: "#86EFAC" },
+  savedChipInactive: { backgroundColor: "#F9FAFB", borderColor: "#E5E7EB" },
+  savedChipText: { fontSize: 12, fontWeight: "600" },
+  savedChipTextActive: { color: "#15803D" },
+  savedChipTextInactive: { color: "#6B7280" },
+  progressFootnote: { marginTop: 12, fontSize: 12, color: "#374151" },
+  progressWarning: { marginTop: 10, fontSize: 12, color: "#B45309", fontWeight: "600" },
+  saveBtn: { backgroundColor: "#2563EB", paddingVertical: 12, borderRadius: 12, alignItems: "center", flexDirection: "row", justifyContent: "center", marginTop: 4, marginBottom: 8 },
+  saveBtnDisabled: { opacity: 0.7 },
+  saveIcon: { marginRight: 6 },
+  saveText: { color: "#FFFFFF", fontWeight: "700", fontSize: 14 },
+  bottomSpacer: { height: 16 },
+  scannerOverlay: { flex: 1, backgroundColor: "rgba(15, 23, 42, 0.86)", justifyContent: "center", paddingHorizontal: 20 },
+  scannerCard: { backgroundColor: "#FFFFFF", borderRadius: 24, padding: 18 },
+  scannerHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 },
+  scannerHeaderContent: { flex: 1, marginRight: 12 },
+  scannerTitle: { fontSize: 18, fontWeight: "700", color: "#111827" },
+  scannerSubtitle: { marginTop: 6, fontSize: 12, lineHeight: 18, color: "#6B7280" },
+  scannerCloseButton: { width: 34, height: 34, borderRadius: 17, backgroundColor: "#F3F4F6", justifyContent: "center", alignItems: "center" },
+  cameraFrame: { width: "100%", aspectRatio: 1, borderRadius: 20, overflow: "hidden", backgroundColor: "#111827" },
+  camera: { flex: 1 },
+  scannerFootnote: { marginTop: 14, fontSize: 12, lineHeight: 18, textAlign: "center", color: "#6B7280" },
 });

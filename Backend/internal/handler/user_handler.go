@@ -687,6 +687,35 @@ func (h *UserHandler) GetNurses(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": nurses, "message": "list of nurses retrieved successfully"})
 }
 
+// GetMyNurseProfile retrieves the authenticated nurse's profile
+// @Summary Get my nurse profile
+// @Description Retrieve the full profile of the authenticated nurse
+// @Tags nurses
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]interface{} "Nurse profile retrieved successfully"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 404 {object} map[string]string "Nurse not found"
+// @Router /users/nurses/me [get]
+func (h *UserHandler) GetMyNurseProfile(c *gin.Context) {
+	userID, exists := c.Get("userId")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	nurse, err := h.service.GetNurseByID(ctx, &usecase.GetUserByIDInput{ID: userID.(string)})
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": nurse, "message": "Nurse profile retrieved successfully"})
+}
+
 // GetNurseByID retrieves a nurse by ID
 // @Summary Get nurse by ID
 // @Description Retrieve a nurse's information by their ID
@@ -750,7 +779,8 @@ func (h *UserHandler) UpdateNurseByID(c *gin.Context) {
 			Workplace:     req.Workplace,
 		},
 		NurseFieldsInput: usecase.NurseFieldsInput{
-			Ward: req.Ward,
+			Ward:              req.Ward,
+			YearsOfExperience: req.YearsOfExperience,
 		},
 	}
 

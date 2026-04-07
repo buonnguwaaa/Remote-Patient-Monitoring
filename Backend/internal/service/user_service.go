@@ -404,6 +404,9 @@ func buildNurseUpdateData(input *usecase.NurseFieldsInput) map[string]interface{
 	if value := strings.TrimSpace(input.Ward); value != "" {
 		updateData["ward"] = value
 	}
+	if input.YearsOfExperience > 0 {
+		updateData["yearsOfExperience"] = input.YearsOfExperience
+	}
 
 	return updateData
 }
@@ -446,7 +449,8 @@ func mapNurse(user *domain.Nurse) *dto.NurseInfoResponse {
 			Workplace:            user.Workplace,
 			LicenseNumber:        user.LicenseNumber,
 		},
-		Ward: user.Ward,
+		Ward:              user.Ward,
+		YearsOfExperience: user.YearsOfExperience,
 	}
 }
 

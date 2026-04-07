@@ -44,7 +44,8 @@ type DoctorInfoResponse struct {
 
 type NurseInfoResponse struct {
 	StaffInfoResponse
-	Ward string `json:"ward,omitempty"`
+	Ward              string `json:"ward,omitempty"`
+	YearsOfExperience int    `json:"yearsOfExperience,omitempty"`
 }
 
 type UpdateBaseUserRequest struct {
@@ -99,5 +100,6 @@ type UpdateDoctorRequest struct {
 
 type UpdateNurseRequest struct {
 	UpdateMedicalStaffRequest
-	Ward string `json:"ward"`
+	Ward              string `json:"ward"`
+	YearsOfExperience int    `json:"yearsOfExperience"`
 }

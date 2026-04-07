@@ -5,9 +5,38 @@ import { uploadAvatar } from "../services/uploadService";
 import { useToast } from "../hooks/useToast";
 import Toast from "../components/ui/Toast";
 import AvatarUploader from "../components/ui/AvatarUploader";
-import type { doctor } from "../types";
+import type { Department, doctor } from "../types";
 import { mapGenderToDisplay, mapGenderToApi } from "../utils/genderConverter";
 import { adminPrimaryButtonClass, adminSecondaryButtonClass } from "../styles/buttonStyles";
+
+function normalizeObjectId(value: unknown): string {
+  if (!value) {
+    return "";
+  }
+
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (typeof value === "object" && value !== null && "$oid" in value) {
+    return String((value as { $oid?: string }).$oid || "");
+  }
+
+  return String(value);
+}
+
+function resolveDepartmentName(departments: Department[], departmentId: unknown): string {
+  const normalizedDepartmentId = normalizeObjectId(departmentId);
+  if (!normalizedDepartmentId) {
+    return "";
+  }
+
+  const matchedDepartment = departments.find((department) => {
+    return normalizeObjectId(department.id) === normalizedDepartmentId;
+  });
+
+  return matchedDepartment?.name || "";
+}
 
 const DoctorManagement: React.FC = () => {
   const [doctors, setDoctors] = useState<doctor[]>([]);
@@ -18,11 +47,16 @@ const DoctorManagement: React.FC = () => {
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const { toast, showToast, hideToast } = useToast();
 
-  const fetchDoctors = async () => {
+  const fetchPageData = async () => {
     try {
-      const response = await api.get("/users/doctors");
-      if (response.data && response.data.data) {
-        const apiDoctors = response.data.data.map((u: any) => ({
+      const [doctorResponse, departmentResponse] = await Promise.all([
+        api.get("/users/doctors"),
+        api.get("/departments").catch(() => ({ data: { data: [] } })),
+      ]);
+
+      const availableDepartments = departmentResponse.data?.data || [];
+      if (doctorResponse.data?.data) {
+        const apiDoctors = doctorResponse.data.data.map((u: any) => ({
           id: u.id,
           name: u.name,
           email: u.email,
@@ -31,6 +65,8 @@ const DoctorManagement: React.FC = () => {
           phone: u.phone || "",
           specialization: u.specialization || "",
           licenseNumber: u.licenseNumber || "",
+          departmentId: normalizeObjectId(u.departmentId),
+          department: resolveDepartmentName(availableDepartments, u.departmentId),
           workplace: u.workplace || "",
           yearsOfExperience: u.yearsOfExperience || 0,
           status: u.status === "inactive" ? "inactive" : "active",
@@ -44,7 +80,7 @@ const DoctorManagement: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchDoctors();
+    fetchPageData();
   }, []);
 
   const handleDelete = async (id: string) => {
@@ -73,7 +109,9 @@ const DoctorManagement: React.FC = () => {
 
   const filteredDoctors = doctors.filter((doctor) =>
     doctor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    doctor.specialization.toLowerCase().includes(searchTerm.toLowerCase())
+    doctor.specialization.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    doctor.department?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    doctor.workplace.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -95,9 +133,9 @@ const DoctorManagement: React.FC = () => {
       let savedUserId = editingDoctor?.id;
 
       if (editingDoctor?.id) {
-        await api.patch(`/users/${editingDoctor.id}`, {
+        await api.patch(`/users/doctors/${editingDoctor.id}`, {
           name, email, gender: apiGender, phone, specialization,
-          licenseNumber, workplace, yearsOfExperience, roles: ["user.doctor"],
+          licenseNumber, workplace, yearsOfExperience,
         });
         await api.patch(`/users/${editingDoctor.id}/status`, { status });
       } else {
@@ -114,7 +152,7 @@ const DoctorManagement: React.FC = () => {
         const newUser = resp.data?.data?.[0];
         savedUserId = newUser?.id;
         if (savedUserId) {
-          await api.patch(`/users/${savedUserId}`, {
+          await api.patch(`/users/doctors/${savedUserId}`, {
             phone, specialization, licenseNumber, workplace, yearsOfExperience,
           });
           await api.patch(`/users/${savedUserId}/status`, { status });
@@ -125,7 +163,7 @@ const DoctorManagement: React.FC = () => {
         await uploadAvatar(savedUserId, avatarFile);
       }
 
-      fetchDoctors();
+      fetchPageData();
       setShowModal(false);
       setAvatarFile(null);
       showToast(editingDoctor?.id ? "Cập nhật bác sĩ thành công!" : "Thêm bác sĩ thành công!");
@@ -162,7 +200,7 @@ const DoctorManagement: React.FC = () => {
           <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
           <input
             type="text"
-            placeholder="Tìm kiếm theo tên hoặc chuyên khoa..."
+            placeholder="Tìm kiếm theo tên, chuyên khoa, khoa/phòng..."
             className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -171,20 +209,24 @@ const DoctorManagement: React.FC = () => {
       </div>
 
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-        <table className="w-full">
+        <div className="overflow-x-auto thin-scrollbar">
+        <table className="w-full min-w-[1400px]">
           <thead className="bg-gray-50 dark:bg-gray-700 border-b dark:border-gray-600">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Bác sĩ
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                Khoa/phòng
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Chuyên khoa
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Số giấy phép
+                Nơi làm việc
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Nơi làm việc
+                Số giấy phép
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Kinh nghiệm
@@ -223,13 +265,16 @@ const DoctorManagement: React.FC = () => {
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                  {doctor.department || "Chưa gán"}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                   {doctor.specialization}
+                </td>
+                <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
+                  {doctor.workplace || "Chưa cập nhật"}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                   {doctor.licenseNumber}
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
-                  {doctor.workplace}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                   {doctor.yearsOfExperience} năm
@@ -261,6 +306,7 @@ const DoctorManagement: React.FC = () => {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
 
       {showModal && (
@@ -286,6 +332,19 @@ const DoctorManagement: React.FC = () => {
                     required
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     defaultValue={editingDoctor?.name}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Khoa/phòng
+                  </label>
+                  <input
+                    type="text"
+                    disabled
+                    value={editingDoctor?.department || ""}
+                    placeholder="Gán tại Quản lý Khoa / Phòng"
+                    className="w-full px-3 py-2 border border-gray-200 bg-gray-100 text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 rounded-lg cursor-not-allowed"
+                    readOnly
                   />
                 </div>
                 <div>
@@ -375,7 +434,7 @@ const DoctorManagement: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Tráº¡ng thÃ¡i
+                    Trạng thái
                   </label>
                   <select
                     name="status"

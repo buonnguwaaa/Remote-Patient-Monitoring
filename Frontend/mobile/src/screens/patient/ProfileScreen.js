@@ -11,11 +11,13 @@ import {
   RefreshControl,
   KeyboardAvoidingView,
   Platform,
+  Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons, MaterialIcons, FontAwesome5 } from "@expo/vector-icons";
 import { useCallback, useState } from "react";
 import { useFocusEffect } from "@react-navigation/native";
+import QRCode from "react-native-qrcode-svg";
 
 import { useAuth } from "../../hooks/useAuth";
 import {
@@ -26,6 +28,7 @@ import {
   getFirstValidationMessage,
   validatePatientProfileForm,
 } from "../../utils/profileValidation";
+import { buildPatientQrValue } from "../../utils/patientQrUtils";
 
 const EMPTY_USER_FORM = {
   id: "",
@@ -183,6 +186,7 @@ export default function ProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [qrPreviewVisible, setQrPreviewVisible] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
 
@@ -332,6 +336,19 @@ export default function ProfileScreen() {
 
   const avatarInitial = getAvatarInitial(userForm.name);
   const hasProfileData = Boolean(userForm.id || snapshot.user.id);
+  const patientQrValue = buildPatientQrValue(patientForm.patientCode);
+
+  const handleOpenQrPreview = () => {
+    if (!patientQrValue) {
+      return;
+    }
+
+    setQrPreviewVisible(true);
+  };
+
+  const handleCloseQrPreview = () => {
+    setQrPreviewVisible(false);
+  };
 
   if (loading && !hasProfileData) {
     return (
@@ -364,6 +381,55 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <Modal
+        visible={qrPreviewVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={handleCloseQrPreview}
+      >
+        <TouchableOpacity
+          style={styles.qrModalOverlay}
+          activeOpacity={1}
+          onPress={handleCloseQrPreview}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={() => {}}
+            style={styles.qrModalCard}
+          >
+            <View style={styles.qrModalHeader}>
+              <View>
+                <Text style={styles.qrModalTitle}>Mã QR bệnh nhân</Text>
+                <Text style={styles.qrModalSubtitle}>
+                  Đưa mã này cho điều dưỡng hoặc thiết bị khác quét trực tiếp.
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                style={styles.qrModalCloseButton}
+                onPress={handleCloseQrPreview}
+              >
+                <Ionicons name="close" size={20} color="#111827" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.qrModalCodeBox}>
+              <QRCode
+                value={patientQrValue}
+                size={220}
+                backgroundColor="#FFFFFF"
+                color="#111827"
+              />
+            </View>
+
+            <Text style={styles.qrModalCodeLabel}>Mã hồ sơ</Text>
+            <Text style={styles.qrModalCodeValue}>
+              {patientForm.patientCode || "Đang cấp mã"}
+            </Text>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -699,7 +765,64 @@ export default function ProfileScreen() {
             )}
           </View>
 
-        
+          <Text style={styles.sectionTitle}>Mã QR hồ sơ</Text>
+          <View style={styles.qrCard}>
+            <View style={styles.qrHeaderRow}>
+              <View style={styles.qrTitleRow}>
+                <Ionicons
+                  name="qr-code-outline"
+                  size={18}
+                  color="#111827"
+                  style={styles.qrTitleIcon}
+                />
+                <Text style={styles.qrTitle}>QR bệnh nhân</Text>
+              </View>
+              <Text style={styles.qrSubtitle}>Tạo tự động từ mã hồ sơ hiện tại</Text>
+            </View>
+
+            <View style={styles.qrContentRow}>
+              <TouchableOpacity
+                style={styles.qrImageWrapper}
+                activeOpacity={patientQrValue ? 0.85 : 1}
+                onPress={handleOpenQrPreview}
+                disabled={!patientQrValue}
+              >
+                {patientQrValue ? (
+                  <QRCode
+                    value={patientQrValue}
+                    size={112}
+                    backgroundColor="#FFFFFF"
+                    color="#111827"
+                  />
+                ) : (
+                  <View style={styles.qrPlaceholder}>
+                    <Ionicons name="qr-code-outline" size={40} color="#9CA3AF" />
+                    <Text style={styles.qrPlaceholderText}>Chưa có mã hồ sơ</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+
+              <View style={styles.qrDescription}>
+                <Text style={styles.qrDescText}>
+                  Điều dưỡng có thể quét mã này để nhận diện đúng bệnh nhân khi nhập
+                  liệu sinh hiệu.
+                </Text>
+
+                {patientQrValue ? (
+                  <Text style={styles.qrHintText}>
+                    Chạm vào mã QR để phóng to và quét dễ hơn.
+                  </Text>
+                ) : null}
+
+                <View style={styles.qrCodeBox}>
+                  <Text style={styles.qrCodeLabel}>Mã hồ sơ dùng để tạo QR</Text>
+                  <Text style={styles.qrCodeValue}>
+                    {patientForm.patientCode || "Đang cấp mã"}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </View>
 
           <Text style={styles.sectionTitle}>Tài khoản & cài đặt</Text>
           <View style={styles.settingsCard}>
@@ -1174,6 +1297,160 @@ const styles = StyleSheet.create({
     alignSelf: "flex-end",
     fontSize: 11,
     color: "#6B7280",
+  },
+  qrCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 18,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  qrHeaderRow: {
+    marginBottom: 10,
+  },
+  qrTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  qrTitleIcon: {
+    marginRight: 6,
+  },
+  qrTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#111827",
+  },
+  qrSubtitle: {
+    marginTop: 4,
+    fontSize: 12,
+    color: "#6B7280",
+  },
+  qrContentRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  qrImageWrapper: {
+    width: 132,
+    height: 132,
+    borderRadius: 16,
+    backgroundColor: "#F3F4F6",
+    justifyContent: "center",
+    alignItems: "center",
+    overflow: "hidden",
+    marginRight: 14,
+  },
+  qrPlaceholder: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 12,
+  },
+  qrPlaceholderText: {
+    marginTop: 6,
+    fontSize: 12,
+    color: "#9CA3AF",
+    textAlign: "center",
+  },
+  qrDescription: {
+    flex: 1,
+  },
+  qrDescText: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: "#4B5563",
+  },
+  qrCodeBox: {
+    marginTop: 12,
+    borderRadius: 14,
+    backgroundColor: "#EFF6FF",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  qrCodeLabel: {
+    fontSize: 11,
+    color: "#6B7280",
+  },
+  qrCodeValue: {
+    marginTop: 4,
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1D4ED8",
+    letterSpacing: 0.5,
+  },
+  qrHintText: {
+    marginTop: 8,
+    fontSize: 12,
+    lineHeight: 18,
+    color: "#2563EB",
+  },
+  qrModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(15, 23, 42, 0.76)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 24,
+  },
+  qrModalCard: {
+    width: "100%",
+    maxWidth: 360,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 24,
+    padding: 20,
+    alignItems: "center",
+  },
+  qrModalHeader: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    marginBottom: 18,
+  },
+  qrModalTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#111827",
+  },
+  qrModalSubtitle: {
+    marginTop: 6,
+    fontSize: 12,
+    lineHeight: 18,
+    color: "#6B7280",
+    maxWidth: 240,
+  },
+  qrModalCloseButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "#F3F4F6",
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: 12,
+  },
+  qrModalCodeBox: {
+    width: 260,
+    height: 260,
+    borderRadius: 24,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  qrModalCodeLabel: {
+    marginTop: 18,
+    fontSize: 12,
+    color: "#6B7280",
+  },
+  qrModalCodeValue: {
+    marginTop: 6,
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#1D4ED8",
+    letterSpacing: 0.6,
+    textAlign: "center",
   },
   referenceCard: {
     backgroundColor: "#FFFFFF",

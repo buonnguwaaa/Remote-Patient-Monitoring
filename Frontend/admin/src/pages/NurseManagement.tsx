@@ -5,9 +5,38 @@ import { uploadAvatar } from "../services/uploadService";
 import { useToast } from "../hooks/useToast";
 import Toast from "../components/ui/Toast";
 import AvatarUploader from "../components/ui/AvatarUploader";
-import type { Nurse } from "../types";
+import type { Department, Nurse } from "../types";
 import { mapGenderToDisplay, mapGenderToApi } from "../utils/genderConverter";
 import { adminPrimaryButtonClass, adminSecondaryButtonClass } from "../styles/buttonStyles";
+
+function normalizeObjectId(value: unknown): string {
+  if (!value) {
+    return "";
+  }
+
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (typeof value === "object" && value !== null && "$oid" in value) {
+    return String((value as { $oid?: string }).$oid || "");
+  }
+
+  return String(value);
+}
+
+function resolveDepartmentName(departments: Department[], departmentId: unknown): string {
+  const normalizedDepartmentId = normalizeObjectId(departmentId);
+  if (!normalizedDepartmentId) {
+    return "";
+  }
+
+  const matchedDepartment = departments.find((department) => {
+    return normalizeObjectId(department.id) === normalizedDepartmentId;
+  });
+
+  return matchedDepartment?.name || "";
+}
 
 const NurseManagement: React.FC = () => {
   const [nurses, setNurses] = useState<Nurse[]>([]);
@@ -18,20 +47,28 @@ const NurseManagement: React.FC = () => {
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const { toast, showToast, hideToast } = useToast();
 
-  const fetchNurses = async () => {
+  const fetchPageData = async () => {
     try {
-      const response = await api.get("/users/nurses");
-      if (response.data?.data) {
-        const apiNurses = response.data.data.map((u: any) => ({
+      const [nurseResponse, departmentResponse] = await Promise.all([
+        api.get("/users/nurses"),
+        api.get("/departments").catch(() => ({ data: { data: [] } })),
+      ]);
+
+      const availableDepartments = departmentResponse.data?.data || [];
+
+      if (nurseResponse.data?.data) {
+        const apiNurses = nurseResponse.data.data.map((u: any) => ({
           id: u.id,
           name: u.name,
           email: u.email,
           gender: mapGenderToDisplay(u.gender),
           dateOfBirth: u.dob,
           phone: u.phone || "",
+          workplace: u.workplace || "",
           licenseNumber: u.licenseNumber || "",
-          department: u.workplace || u.ward || u.departmentId || "",
-          yearsOfExperience: 0,
+          departmentId: normalizeObjectId(u.departmentId),
+          department: resolveDepartmentName(availableDepartments, u.departmentId),
+          yearsOfExperience: u.yearsOfExperience || 0,
           status: u.status === "inactive" ? "inactive" : "active",
           profileImageUrl: u.avatarUrl || "/avartar.jpg",
         }));
@@ -43,7 +80,7 @@ const NurseManagement: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchNurses();
+    fetchPageData();
   }, []);
 
   const handleEdit = (nurse: Nurse) => {
@@ -73,7 +110,8 @@ const NurseManagement: React.FC = () => {
 
   const filteredNurses = nurses.filter((nurse) =>
     nurse.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    nurse.department?.toLowerCase().includes(searchTerm.toLowerCase())
+    nurse.department?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    nurse.workplace.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -85,7 +123,7 @@ const NurseManagement: React.FC = () => {
     const gender = formData.get("gender") as "Nam" | "Nữ";
     const phone = formData.get("phone") as string;
     const licenseNumber = formData.get("licenseNumber") as string;
-    const department = formData.get("department") as string;
+    const workplace = formData.get("workplace") as string;
     const yearsOfExperience = parseInt(formData.get("yearsOfExperience") as string) || 0;
     const status = formData.get("status") as "active" | "inactive";
 
@@ -94,12 +132,14 @@ const NurseManagement: React.FC = () => {
       let savedUserId = editingNurse?.id;
 
       if (editingNurse?.id) {
-        await api.patch(`/users/${editingNurse.id}`, {
-          name, email, gender: apiGender, phone,
-          nurseLicenseNumber: licenseNumber,
-          department,
-          nurseYearsOfExperience: yearsOfExperience,
-          roles: ["user.nurse"],
+        await api.patch(`/users/nurses/${editingNurse.id}`, {
+          name,
+          email,
+          gender: apiGender,
+          phone,
+          licenseNumber,
+          workplace,
+          yearsOfExperience,
         });
         await api.patch(`/users/${editingNurse.id}/status`, { status });
       } else {
@@ -116,11 +156,11 @@ const NurseManagement: React.FC = () => {
         const newUser = resp.data?.data?.[0];
         savedUserId = newUser?.id;
         if (savedUserId) {
-          await api.patch(`/users/${savedUserId}`, {
+          await api.patch(`/users/nurses/${savedUserId}`, {
             phone,
-            nurseLicenseNumber: licenseNumber,
-            department,
-            nurseYearsOfExperience: yearsOfExperience,
+            licenseNumber,
+            workplace,
+            yearsOfExperience,
           });
           await api.patch(`/users/${savedUserId}/status`, { status });
         }
@@ -130,7 +170,7 @@ const NurseManagement: React.FC = () => {
         await uploadAvatar(savedUserId, avatarFile);
       }
 
-      fetchNurses();
+      fetchPageData();
       setShowModal(false);
       setAvatarFile(null);
       showToast(editingNurse?.id ? "Cập nhật y tá thành công!" : "Thêm y tá thành công!");
@@ -162,7 +202,7 @@ const NurseManagement: React.FC = () => {
           <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
           <input
             type="text"
-            placeholder="Tìm kiếm theo tên hoặc khoa..."
+            placeholder="Tìm kiếm theo tên, khoa/phòng, nơi làm việc..."
             className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -171,11 +211,13 @@ const NurseManagement: React.FC = () => {
       </div>
 
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-        <table className="w-full">
+        <div className="overflow-x-auto thin-scrollbar">
+        <table className="w-full min-w-[1350px]">
           <thead className="bg-gray-50 dark:bg-gray-700 border-b dark:border-gray-600">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Y tá</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Khoa</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Khoa/phòng</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nơi làm việc</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Số giấy phép</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Kinh nghiệm</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Trạng thái</th>
@@ -201,7 +243,8 @@ const NurseManagement: React.FC = () => {
                     </div>
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{nurse.department}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{nurse.department || "Chưa gán"}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{nurse.workplace || "Chưa cập nhật"}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{nurse.licenseNumber}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{nurse.yearsOfExperience} năm</td>
                 <td className="px-6 py-4 whitespace-nowrap">
@@ -221,6 +264,7 @@ const NurseManagement: React.FC = () => {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
 
       {showModal && (
@@ -238,12 +282,23 @@ const NurseManagement: React.FC = () => {
                   <input name="name" type="text" required className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" defaultValue={editingNurse?.name} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Khoa</label>
-                  <input name="department" type="text" required className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" defaultValue={editingNurse?.department} />
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Khoa/phòng</label>
+                  <input
+                    type="text"
+                    disabled
+                    value={editingNurse?.department || ""}
+                    placeholder="Gán tại Quản lý Khoa / Phòng"
+                    className="w-full px-3 py-2 border border-gray-200 bg-gray-100 text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 rounded-lg cursor-not-allowed"
+                    readOnly
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Số giấy phép</label>
                   <input name="licenseNumber" type="text" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" defaultValue={editingNurse?.licenseNumber} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nơi làm việc</label>
+                  <input name="workplace" type="text" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" defaultValue={editingNurse?.workplace} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Kinh nghiệm (năm)</label>
