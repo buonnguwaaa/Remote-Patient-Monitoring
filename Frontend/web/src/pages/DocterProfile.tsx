@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { type Doctor } from "../types";
+import { type Doctor, type Department } from "../types";
 import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
 import {
@@ -7,6 +7,7 @@ import {
   Mail,
   Phone,
   Briefcase,
+  Building2,
   Stethoscope,
   MapPin,
   Calendar,
@@ -39,9 +40,58 @@ const InfoItem = ({
   </div>
 );
 
+function normalizeObjectId(value: unknown): string {
+  if (!value) {
+    return "";
+  }
+
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (typeof value === "object" && value !== null && "$oid" in value) {
+    return String((value as { $oid?: string }).$oid || "");
+  }
+
+  if (typeof value === "object" && value !== null && "id" in value) {
+    return String((value as { id?: string }).id || "");
+  }
+
+  if (typeof value === "object" && value !== null && "_id" in value) {
+    return String((value as { _id?: string })._id || "");
+  }
+
+  return String(value);
+}
+
+function resolveDepartmentName(profile: Doctor, departments: Department[]): string {
+  const directDepartmentName = (profile as any)?.departmentName
+    || (profile as any)?.department?.name
+    || (typeof (profile as any)?.department === "string" ? (profile as any).department : "");
+
+  if (directDepartmentName) {
+    return String(directDepartmentName);
+  }
+
+  const departmentId = normalizeObjectId(
+    profile.departmentId || (profile as any)?.department?.id || (profile as any)?.department?._id
+  );
+
+  if (!departmentId) {
+    return "";
+  }
+
+  const matchedDepartment = departments.find((department) => {
+    return normalizeObjectId(department.id) === departmentId;
+  });
+
+  return matchedDepartment?.name || "";
+}
+
 const DoctorProfile = () => {
   const { user } = useAuth();
   const [doctor, setDoctor] = useState<Doctor | null>(null);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,8 +100,13 @@ const DoctorProfile = () => {
       if (!user?.id) return;
       try {
         setLoading(true);
-        const res = await api.get(`/users/doctors/${user.id}`);
-        setDoctor(res.data.data);
+        const [doctorResponse, departmentResponse] = await Promise.all([
+          api.get(`/users/doctors/${user.id}`),
+          api.get("/departments").catch(() => ({ data: { data: [] } })),
+        ]);
+
+        setDoctor(doctorResponse.data?.data || null);
+        setDepartments(departmentResponse.data?.data || []);
       } catch (err: any) {
         setError(err?.response?.data?.error || "Không thể tải thông tin bác sĩ");
       } finally {
@@ -149,6 +204,7 @@ const DoctorProfile = () => {
             </h2>
             <div className="divide-y divide-gray-100 dark:divide-slate-700">
               <InfoItem icon={Stethoscope} label="Chuyên khoa" value={doctor.specialization || ""} />
+              <InfoItem icon={Building2} label="Khoa/Phòng" value={resolveDepartmentName(doctor, departments)} />
               <InfoItem icon={MapPin} label="Nơi làm việc" value={doctor.workplace || ""} />
               <InfoItem icon={FileBadge} label="Số giấy phép" value={doctor.licenseNumber || ""} />
               <InfoItem

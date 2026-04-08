@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { FaBuilding, FaPlus, FaSearch, FaUserMd, FaUserNurse, FaArrowLeft } from "react-icons/fa";
 import api from "../services/api";
-import type { Department, doctor, Nurse } from "../types";
+import type { Department } from "../types";
 import { adminPrimaryButtonClass, adminSecondaryButtonClass } from "../styles/buttonStyles";
 
 interface Member {
@@ -11,6 +11,44 @@ interface Member {
     role: string;
     avatar: string;
     createdAt: string;
+}
+
+interface CandidateMember {
+    id: string;
+    name: string;
+    email?: string;
+    role?: string;
+    departmentId?: string;
+    currentDepartmentName?: string;
+}
+
+function normalizeObjectId(value: unknown): string {
+    if (!value) {
+        return "";
+    }
+
+    if (typeof value === "string") {
+        return value;
+    }
+
+    if (typeof value === "object" && value !== null && "$oid" in value) {
+        return String((value as { $oid?: string }).$oid || "");
+    }
+
+    return String(value);
+}
+
+function resolveDepartmentNameById(departments: Department[], departmentId: unknown): string {
+    const normalizedDepartmentId = normalizeObjectId(departmentId);
+    if (!normalizedDepartmentId) {
+        return "";
+    }
+
+    const matchedDepartment = departments.find((department) => {
+        return normalizeObjectId(department.id) === normalizedDepartmentId;
+    });
+
+    return matchedDepartment?.name || "";
 }
 
 const DepartmentManagement: React.FC = () => {
@@ -23,7 +61,7 @@ const DepartmentManagement: React.FC = () => {
     const [deptMembers, setDeptMembers] = useState<Member[]>([]);
     const [loadingMembers, setLoadingMembers] = useState(false);
     const [showAddMemberModal, setShowAddMemberModal] = useState(false);
-    const [candidates, setCandidates] = useState<(doctor | Nurse)[]>([]);
+    const [candidates, setCandidates] = useState<CandidateMember[]>([]);
 
     useEffect(() => {
         fetchDepartments();
@@ -89,9 +127,15 @@ const DepartmentManagement: React.FC = () => {
                 api.get("/users/nurses?limit=100")
             ]);
             const extract = (res: any) => res.data?.data || [];
-            const all = [...extract(resDoctors), ...extract(resNurses)];
+            const all = [...extract(resDoctors), ...extract(resNurses)].map((candidate: any) => {
+                const currentDepartmentName = resolveDepartmentNameById(departments, candidate.departmentId);
+                return {
+                    ...candidate,
+                    currentDepartmentName,
+                } as CandidateMember;
+            });
             const existingIds = new Set(deptMembers.map(m => m.id));
-            setCandidates(all.filter((c: any) => !existingIds.has(c.id)));
+            setCandidates(all.filter((c: CandidateMember) => !existingIds.has(c.id)));
         } catch (error) {
             console.error("Failed to fetch candidates");
         }
@@ -99,6 +143,18 @@ const DepartmentManagement: React.FC = () => {
 
     const handleAddMember = async (userId: string) => {
         if (!viewingDept) return;
+
+        const selectedCandidate = candidates.find((candidate) => candidate.id === userId);
+        const fromDepartment = selectedCandidate?.currentDepartmentName || "Chưa thuộc khoa/phòng nào";
+        const toDepartment = viewingDept.name;
+        const shouldTransfer = window.confirm(
+            `Xác nhận chuyển thành viên này?\n\nTừ: ${fromDepartment}\nSang: ${toDepartment}`
+        );
+
+        if (!shouldTransfer) {
+            return;
+        }
+
         try {
             await api.post(`/departments/${viewingDept.id}/members`, { userId });
             setShowAddMemberModal(false);
@@ -116,7 +172,7 @@ const DepartmentManagement: React.FC = () => {
 
     if (viewingDept) {
         return (
-            <div className="p-6">
+            <div className="p-4 md:p-6">
                 <button
                     onClick={handleBack}
                     className="mb-6 flex items-center text-gray-600 transition hover:text-slate-900 dark:text-gray-400 dark:hover:text-slate-100"
@@ -124,17 +180,17 @@ const DepartmentManagement: React.FC = () => {
                     <FaArrowLeft className="mr-2" /> Quay lại danh sách
                 </button>
 
-                <div className="flex justify-between items-start mb-8">
+                <div className="mb-6 flex flex-col gap-4 md:mb-8 md:flex-row md:items-start md:justify-between">
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-800 dark:text-white flex items-center">
+                        <h1 className="flex items-center text-2xl font-bold leading-tight text-gray-800 dark:text-white md:text-3xl">
                             <FaBuilding className="mr-3 text-slate-700 dark:text-blue-400" />
                             {viewingDept.name}
                         </h1>
-                        <p className="text-gray-600 dark:text-gray-400 mt-2 text-lg">{viewingDept.description}</p>
+                        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 md:text-lg">{viewingDept.description}</p>
                     </div>
                     <button
                         onClick={openAddMemberModal}
-                        className={adminPrimaryButtonClass}
+                        className={`${adminPrimaryButtonClass} w-full md:w-auto`}
                     >
                         <FaPlus className="mr-2" />
                         Thêm Thành Viên
@@ -142,8 +198,8 @@ const DepartmentManagement: React.FC = () => {
                 </div>
 
                 <div className="overflow-hidden rounded-xl bg-white shadow-md dark:bg-slate-900 dark:ring-1 dark:ring-slate-800">
-                    <div className="p-6 border-b border-gray-100 dark:border-gray-700">
-                        <h3 className="text-xl font-bold text-gray-800 dark:text-white">Danh sách nhân sự ({deptMembers.length})</h3>
+                    <div className="border-b border-gray-100 p-4 dark:border-gray-700 md:p-6">
+                        <h3 className="text-lg font-bold text-gray-800 dark:text-white md:text-xl">Danh sách nhân sự ({deptMembers.length})</h3>
                     </div>
 
                     {loadingMembers ? (
@@ -185,17 +241,20 @@ const DepartmentManagement: React.FC = () => {
                                 </button>
                             </div>
                             <div className="space-y-2">
-                                {candidates.map((c: any) => (
+                                {candidates.map((c) => (
                                     <div key={c.id} className="flex items-center justify-between rounded-lg border p-3 hover:bg-gray-50 dark:border-slate-700 dark:hover:bg-slate-800">
                                         <div>
                                             <p className="font-medium dark:text-gray-100">{c.name}</p>
                                             <p className="text-sm text-gray-500 dark:text-gray-400">{c.role === 'user.doctor' ? 'Bác sĩ' : 'Y tá'} - {c.email}</p>
+                                            <p className="text-xs text-amber-600 dark:text-amber-300">
+                                                Hiện tại: {c.currentDepartmentName || "Chưa thuộc khoa/phòng nào"}
+                                            </p>
                                         </div>
                                         <button
                                             onClick={() => handleAddMember(c.id)}
                                             className="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white px-3 py-1 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                                         >
-                                            Thêm
+                                            Chuyển
                                         </button>
                                     </div>
                                 ))}
@@ -211,10 +270,10 @@ const DepartmentManagement: React.FC = () => {
     }
 
     return (
-        <div className="p-6">
-            <div className="flex justify-between items-center mb-6">
+            <div className="p-4 md:p-6">
+            <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-800 dark:text-white flex items-center">
+                    <h1 className="flex items-center text-2xl font-bold leading-tight text-gray-800 dark:text-white md:text-3xl">
                         <FaBuilding className="mr-3 text-slate-700 dark:text-blue-400" />
                         Quản lý Khoa / Phòng
                     </h1>
@@ -224,14 +283,14 @@ const DepartmentManagement: React.FC = () => {
                 </div>
                 <button
                     onClick={() => setShowCreateModal(true)}
-                    className={adminPrimaryButtonClass}
+                    className={`${adminPrimaryButtonClass} w-full md:w-auto`}
                 >
                     <FaPlus className="mr-2" />
                     Thêm Khoa
                 </button>
             </div>
 
-            <div className="mb-6 rounded-lg bg-white p-4 shadow-md dark:bg-slate-900 dark:ring-1 dark:ring-slate-800">
+            <div className="mb-6 rounded-lg bg-white p-3 shadow-md dark:bg-slate-900 dark:ring-1 dark:ring-slate-800 md:p-4">
                 <div className="relative">
                     <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                     <input
@@ -244,17 +303,17 @@ const DepartmentManagement: React.FC = () => {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 lg:grid-cols-3">
                 {filtered.map((dept) => (
                     <div
                         key={dept.id}
                         onClick={() => handleViewDept(dept)}
                         className="group cursor-pointer overflow-hidden rounded-xl border border-gray-100 bg-white shadow-md transition duration-300 hover:shadow-lg dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700"
                     >
-                        <div className="p-6">
+                        <div className="p-4 md:p-6">
                             <div className="flex justify-between items-start">
                                 <div>
-                                    <h3 className="mb-2 text-xl font-bold text-gray-800 transition group-hover:text-slate-900 dark:text-white dark:group-hover:text-blue-300">
+                                    <h3 className="mb-2 text-lg font-bold text-gray-800 transition group-hover:text-slate-900 dark:text-white dark:group-hover:text-blue-300 md:text-xl">
                                         {dept.name}
                                     </h3>
                                     <p className="text-gray-500 dark:text-gray-400 text-sm mb-4 line-clamp-2">

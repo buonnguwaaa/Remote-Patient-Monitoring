@@ -227,15 +227,133 @@ const ThresholdAlert = () => {
 
   const getPrimaryViolations = (alert: AlertResponse) => alert.violations.slice(0, 2);
 
+  const renderAlertCard = (alert: AlertResponse) => {
+    const primaryViolations = getPrimaryViolations(alert);
+
+    return (
+      <div
+        key={alert.id}
+        className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md dark:border-slate-800 dark:bg-slate-900 dark:shadow-none"
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-start gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-blue-100 text-sm font-semibold text-blue-700 dark:bg-blue-500/15 dark:text-blue-200">
+              {alert.patientAvatarUrl ? (
+                <img
+                  src={alert.patientAvatarUrl}
+                  alt={alert.patientName || alert.patientId}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                (alert.patientName || "P").slice(0, 1).toUpperCase()
+              )}
+            </div>
+
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="truncate text-base font-semibold text-gray-900 dark:text-slate-100">
+                  {alert.patientName || alert.patientId}
+                </h3>
+                <span className="whitespace-nowrap rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600 dark:bg-slate-700/80 dark:text-slate-200">
+                  ID: {alert.patientId}
+                </span>
+              </div>
+
+              <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                {formatDate(alert.createdAt)}
+              </div>
+
+              {alert.acknowledgedAt ? (
+                <div className="mt-1 text-xs text-green-600 dark:text-emerald-300">
+                  Đã xác nhận lúc: {formatDate(alert.acknowledgedAt)}
+                </div>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="shrink-0">{renderStatusBadge(alert)}</div>
+        </div>
+
+        <div className="mt-4 flex items-center justify-between gap-3">
+          <span
+            className={`inline-flex whitespace-nowrap items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${
+              alert.severity === "high"
+                ? "bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300 dark:ring-1 dark:ring-red-500/25"
+                : "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-200 dark:ring-1 dark:ring-amber-500/25"
+            }`}
+          >
+            {alert.severity === "high" ? <FaExclamationTriangle /> : <FaInfoCircle />}
+            {alert.severity === "high" ? "Nghiêm trọng" : "Thông tin"}
+          </span>
+
+          <span className="text-xs text-slate-500 dark:text-slate-400">
+            {alert.status === "ack" ? "Đã xử lý" : "Chờ xử lý"}
+          </span>
+        </div>
+
+        <div className="mt-4 space-y-2 rounded-2xl bg-slate-50 p-3 dark:bg-slate-950/70">
+          {primaryViolations.map((violation, index) => (
+            <div key={`${alert.id}-mobile-${index}`} className="text-sm leading-6 text-gray-700 dark:text-slate-300">
+              <span className="font-medium text-gray-800 dark:text-slate-100">
+                {getViolationLabel(violation.type)}:
+              </span>{" "}
+              <span className="font-semibold text-red-600 dark:text-red-300">{violation.observed}</span>
+              <span className="ml-1 text-xs text-gray-500 dark:text-slate-400">
+                (Ngưỡng: {violation.threshold})
+              </span>
+            </div>
+          ))}
+
+          {alert.violations.length > 2 ? (
+            <div className="text-xs text-slate-500 dark:text-slate-400">
+              Còn {alert.violations.length - 2} chỉ số khác đang vượt ngưỡng.
+            </div>
+          ) : null}
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          {alert.status === "open" ? (
+            <button
+              type="button"
+              onClick={() => handleOpenResolveModal(alert)}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+            >
+              <FaCheckCircle />
+              Xử lý
+            </button>
+          ) : (
+            <button
+              type="button"
+              disabled
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-200 px-4 py-2.5 text-sm font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+            >
+              <FaCheckCircle />
+              Đã xử lý
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={() => navigateToChat(alert)}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 dark:border-slate-600 dark:bg-slate-700/70 dark:text-slate-100 dark:hover:border-blue-400/40 dark:hover:bg-slate-700 dark:hover:text-blue-200"
+          >
+            <FaCommentDots />
+            Tin nhắn
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   const renderStatusBadge = (alert: AlertResponse) => {
     if (alert.status === "ack") {
       return (
-        <div>
-          <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-800 dark:bg-emerald-500/15 dark:text-emerald-300 dark:ring-1 dark:ring-emerald-500/25">
+        <div className="inline-flex min-w-[140px] flex-col items-center">
+          <span className="inline-flex whitespace-nowrap items-center gap-1 rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-800 dark:bg-emerald-500/15 dark:text-emerald-300 dark:ring-1 dark:ring-emerald-500/25">
             <FaCheckCircle />
             Đã xác nhận
           </span>
-          <div className="mt-1 text-xs text-gray-500 dark:text-slate-400">
+          <div className="mt-1 whitespace-nowrap text-xs text-gray-500 dark:text-slate-400">
             {alert.acknowledgedByName || alert.acknowledgedBy || "Đã xử lý"}
           </div>
         </div>
@@ -243,7 +361,7 @@ const ThresholdAlert = () => {
     }
 
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-800 dark:bg-slate-700/80 dark:text-slate-200 dark:ring-1 dark:ring-slate-600">
+      <span className="inline-flex whitespace-nowrap items-center gap-1 rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-800 dark:bg-slate-700/80 dark:text-slate-200 dark:ring-1 dark:ring-slate-600">
         <FaRegClock />
         Chờ xử lý
       </span>
@@ -252,11 +370,11 @@ const ThresholdAlert = () => {
 
   return (
     <>
-      <div className="min-h-screen bg-gray-50 p-6 dark:bg-slate-950">
+      <div className="min-h-screen bg-gray-50 p-4 dark:bg-slate-950 sm:p-6">
         <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-800 dark:text-slate-100">Quản Lý Cảnh Báo</h1>
-            <p className="mt-2 max-w-3xl text-gray-600 dark:text-slate-400">
+            <h1 className="text-2xl font-bold text-gray-800 dark:text-slate-100 sm:text-3xl">Quản Lý Cảnh Báo</h1>
+            <p className="mt-2 max-w-3xl text-sm text-gray-600 dark:text-slate-400 sm:text-base">
               Theo dõi alert thật được sinh ra từ measurement vượt ngưỡng, lọc theo mức độ, và
               chuyển thẳng sang chat bệnh nhân khi cần trao đổi theo từng cảnh báo.
             </p>
@@ -298,169 +416,190 @@ const ThresholdAlert = () => {
           </div>
         </div>
 
-        <div className="mb-6 flex flex-wrap gap-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-700 dark:text-slate-300">Trạng thái:</label>
-            <select
-              value={filterStatus}
-              onChange={(event) => setFilterStatus(event.target.value as FilterStatus)}
-              className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200"
-            >
-              <option value="all">Tất cả</option>
-              <option value="open">Chưa xử lý</option>
-              <option value="ack">Đã xác nhận</option>
-            </select>
+        <div className="mb-6 flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none lg:flex-row lg:items-center lg:justify-between">
+          <div className="grid grid-cols-2 gap-3 lg:flex lg:items-center lg:gap-4">
+            <div className="flex min-w-0 items-center gap-2">
+              <label className="whitespace-nowrap text-[11px] font-medium leading-none text-gray-700 dark:text-slate-300 sm:text-sm">
+                Trạng thái:
+              </label>
+              <select
+                value={filterStatus}
+                onChange={(event) => setFilterStatus(event.target.value as FilterStatus)}
+                className="min-w-0 flex-1 rounded-xl border border-gray-300 bg-white px-2 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 sm:w-auto sm:flex-none sm:px-3 sm:text-base"
+              >
+                <option value="all">Tất cả</option>
+                <option value="open">Chưa xử lý</option>
+                <option value="ack">Đã xác nhận</option>
+              </select>
+            </div>
+
+            <div className="flex min-w-0 items-center gap-2">
+              <label className="whitespace-nowrap text-[11px] font-medium leading-none text-gray-700 dark:text-slate-300 sm:text-sm">
+                Mức độ:
+              </label>
+              <select
+                value={filterSeverity}
+                onChange={(event) => setFilterSeverity(event.target.value as FilterSeverity)}
+                className="min-w-0 flex-1 rounded-xl border border-gray-300 bg-white px-2 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 sm:w-auto sm:flex-none sm:px-3 sm:text-base"
+              >
+                <option value="all">Tất cả</option>
+                <option value="high">Nghiêm trọng</option>
+                <option value="info">Thông tin</option>
+              </select>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-700 dark:text-slate-300">Mức độ:</label>
-            <select
-              value={filterSeverity}
-              onChange={(event) => setFilterSeverity(event.target.value as FilterSeverity)}
-              className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200"
-            >
-              <option value="all">Tất cả</option>
-              <option value="high">Nghiêm trọng</option>
-              <option value="info">Thông tin</option>
-            </select>
-          </div>
-
-          <div className="ml-auto flex items-center text-sm text-gray-500 dark:text-slate-400">
-            Bệnh nhân quản lý:{" "}
-            <span className="ml-1 font-semibold text-gray-800 dark:text-slate-200">{patientIds.length}</span>
+          <div className="flex items-center justify-between text-sm text-gray-500 dark:text-slate-400 lg:ml-auto">
+            Bệnh nhân quản lý: <span className="ml-1 font-semibold text-gray-800 dark:text-slate-200">{patientIds.length}</span>
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
-              <thead className="bg-gray-50 dark:bg-slate-800">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-300">
-                    Bệnh nhân
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-300">
-                    Vi phạm
-                  </th>
-                  <th className="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-300">
-                    Mức độ
-                  </th>
-                  <th className="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-300">
-                    Trạng thái
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-300">
-                    Thời gian
-                  </th>
-                  <th className="px-6 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-300">
-                    Hành động
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 bg-white dark:divide-slate-800 dark:bg-slate-900">
-                {loading ? (
+        <div className="space-y-3 md:hidden">
+          {loading ? (
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 text-center text-gray-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
+              Đang tải cảnh báo thật từ hệ thống...
+            </div>
+          ) : filteredAlerts.length === 0 ? (
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 text-center text-gray-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
+              Không có cảnh báo nào trong scope hiện tại.
+            </div>
+          ) : (
+            filteredAlerts.map((alert) => renderAlertCard(alert))
+          )}
+        </div>
+
+        <div className="hidden md:block">
+          <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
+            <div className="overflow-x-scroll">
+              <table className="w-full min-w-[1450px] divide-y divide-gray-200 dark:divide-slate-700">
+                <thead className="bg-gray-50 dark:bg-slate-800">
                   <tr>
-                    <td colSpan={6} className="px-6 py-10 text-center text-gray-500 dark:text-slate-400">
-                      Đang tải cảnh báo thật từ hệ thống...
-                    </td>
+                    <th className="whitespace-nowrap px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-300">
+                      Bệnh nhân
+                    </th>
+                    <th className="whitespace-nowrap px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-300">
+                      Vi phạm
+                    </th>
+                    <th className="min-w-[150px] whitespace-nowrap px-6 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-300">
+                      Mức độ
+                    </th>
+                    <th className="min-w-[170px] whitespace-nowrap px-6 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-300">
+                      Trạng thái
+                    </th>
+                    <th className="min-w-[210px] whitespace-nowrap px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-300">
+                      Thời gian
+                    </th>
+                    <th className="min-w-[220px] whitespace-nowrap px-6 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-300">
+                      Hành động
+                    </th>
                   </tr>
-                ) : filteredAlerts.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="px-6 py-10 text-center text-gray-500 dark:text-slate-400">
-                      Không có cảnh báo nào trong scope hiện tại.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredAlerts.map((alert) => (
-                    <tr key={alert.id} className="transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/70">
-                      <td className="whitespace-nowrap px-6 py-4">
-                        <div className="flex items-center">
-                          <div className="mr-3 flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-blue-100 text-sm font-semibold text-blue-700 dark:bg-blue-500/15 dark:text-blue-200">
-                            {alert.patientAvatarUrl ? (
-                              <img
-                                src={alert.patientAvatarUrl}
-                                alt={alert.patientName || alert.patientId}
-                                className="h-full w-full object-cover"
-                              />
-                            ) : (
-                              (alert.patientName || "P").slice(0, 1).toUpperCase()
-                            )}
-                          </div>
-                          <div>
-                            <div className="text-sm font-medium text-gray-900 dark:text-slate-100">
-                              {alert.patientName || alert.patientId}
-                            </div>
-                            <div className="text-xs text-gray-500 dark:text-slate-400">ID: {alert.patientId}</div>
-                          </div>
-                        </div>
-                      </td>
-
-                      <td className="px-6 py-4">
-                        <div className="space-y-1.5">
-                          {alert.violations.map((violation, index) => (
-                            <div key={`${alert.id}-${index}`} className="text-sm">
-                              <span className="font-medium text-gray-700 dark:text-slate-200">
-                                {getViolationLabel(violation.type)}:
-                              </span>{" "}
-                              <span className="font-semibold text-red-600 dark:text-red-300">{violation.observed}</span>
-                              <span className="ml-1 text-xs text-gray-500 dark:text-slate-400">
-                                (Ngưỡng: {violation.threshold})
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </td>
-
-                      <td className="px-6 py-4 text-center">
-                        {alert.severity === "high" ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-800 dark:bg-red-500/15 dark:text-red-300 dark:ring-1 dark:ring-red-500/25">
-                            <FaExclamationTriangle />
-                            Nghiêm trọng
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800 dark:bg-amber-500/15 dark:text-amber-200 dark:ring-1 dark:ring-amber-500/25">
-                            <FaInfoCircle />
-                            Thông tin
-                          </span>
-                        )}
-                      </td>
-
-                      <td className="px-6 py-4 text-center">{renderStatusBadge(alert)}</td>
-
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600 dark:text-slate-300">
-                        <div>{formatDate(alert.createdAt)}</div>
-                        {alert.acknowledgedAt && (
-                          <div className="mt-1 text-xs text-green-600 dark:text-emerald-300">
-                            Đã xác nhận lúc: {formatDate(alert.acknowledgedAt)}
-                          </div>
-                        )}
-                      </td>
-
-                      <td className="px-6 py-4 text-center">
-                        <div className="flex min-w-[180px] flex-col items-center gap-2">
-                          {alert.status === "open" ? (
-                            <button
-                              type="button"
-                              onClick={() => handleOpenResolveModal(alert)}
-                              className="w-full rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
-                            >
-                              Xử lý
-                            </button>
-                          ) : null}
-                          <button
-                            type="button"
-                            onClick={() => navigateToChat(alert)}
-                            className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 dark:border-slate-600 dark:bg-slate-700/70 dark:text-slate-100 dark:hover:border-blue-400/40 dark:hover:bg-slate-700 dark:hover:text-blue-200"
-                          >
-                            <FaCommentDots />
-                            Tin nhắn
-                          </button>
-                        </div>
+                </thead>
+                <tbody className="divide-y divide-gray-200 bg-white dark:divide-slate-800 dark:bg-slate-900">
+                  {loading ? (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-10 text-center text-gray-500 dark:text-slate-400">
+                        Đang tải cảnh báo thật từ hệ thống...
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : filteredAlerts.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-10 text-center text-gray-500 dark:text-slate-400">
+                        Không có cảnh báo nào trong scope hiện tại.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredAlerts.map((alert) => (
+                      <tr key={alert.id} className="transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/70">
+                        <td className="whitespace-nowrap px-6 py-4">
+                          <div className="flex items-center">
+                            <div className="mr-3 flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-blue-100 text-sm font-semibold text-blue-700 dark:bg-blue-500/15 dark:text-blue-200">
+                              {alert.patientAvatarUrl ? (
+                                <img
+                                  src={alert.patientAvatarUrl}
+                                  alt={alert.patientName || alert.patientId}
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : (
+                                (alert.patientName || "P").slice(0, 1).toUpperCase()
+                              )}
+                            </div>
+                            <div>
+                              <div className="text-sm font-medium text-gray-900 dark:text-slate-100">
+                                {alert.patientName || alert.patientId}
+                              </div>
+                              <div className="text-xs text-gray-500 dark:text-slate-400">ID: {alert.patientId}</div>
+                            </div>
+                          </div>
+                        </td>
+
+                        <td className="px-6 py-4">
+                          <div className="space-y-1.5">
+                            {alert.violations.map((violation, index) => (
+                              <div key={`${alert.id}-${index}`} className="text-sm">
+                                <span className="font-medium text-gray-700 dark:text-slate-200">
+                                  {getViolationLabel(violation.type)}:
+                                </span>{" "}
+                                <span className="font-semibold text-red-600 dark:text-red-300">{violation.observed}</span>
+                                <span className="ml-1 text-xs text-gray-500 dark:text-slate-400">
+                                  (Ngưỡng: {violation.threshold})
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </td>
+
+                        <td className="px-6 py-4 text-center">
+                          {alert.severity === "high" ? (
+                            <span className="inline-flex whitespace-nowrap items-center gap-1 rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-800 dark:bg-red-500/15 dark:text-red-300 dark:ring-1 dark:ring-red-500/25">
+                              <FaExclamationTriangle />
+                              Nghiêm trọng
+                            </span>
+                          ) : (
+                            <span className="inline-flex whitespace-nowrap items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800 dark:bg-amber-500/15 dark:text-amber-200 dark:ring-1 dark:ring-amber-500/25">
+                              <FaInfoCircle />
+                              Thông tin
+                            </span>
+                          )}
+                        </td>
+
+                        <td className="px-6 py-4 text-center">{renderStatusBadge(alert)}</td>
+
+                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600 dark:text-slate-300">
+                          <div>{formatDate(alert.createdAt)}</div>
+                          {alert.acknowledgedAt && (
+                            <div className="mt-1 text-xs text-green-600 dark:text-emerald-300">
+                              Đã xác nhận lúc: {formatDate(alert.acknowledgedAt)}
+                            </div>
+                          )}
+                        </td>
+
+                        <td className="px-6 py-4 text-center">
+                          <div className="flex min-w-[180px] flex-col items-center gap-2">
+                            {alert.status === "open" ? (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenResolveModal(alert)}
+                                className="w-full rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+                              >
+                                Xử lý
+                              </button>
+                            ) : null}
+                            <button
+                              type="button"
+                              onClick={() => navigateToChat(alert)}
+                              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 dark:border-slate-600 dark:bg-slate-700/70 dark:text-slate-100 dark:hover:border-blue-400/40 dark:hover:bg-slate-700 dark:hover:text-blue-200"
+                            >
+                              <FaCommentDots />
+                              Tin nhắn
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
