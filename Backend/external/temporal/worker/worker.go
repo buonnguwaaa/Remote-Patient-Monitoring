@@ -7,6 +7,7 @@ import (
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/fcm"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/activity"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/client"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/helper/measurement_helper"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/workflow"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/container"
 	"go.temporal.io/sdk/worker"
@@ -18,6 +19,15 @@ func Start() error {
 		return err
 	}
 	defer c.Close()
+
+	if err := config.ConnectRedis(); err != nil {
+		return err
+	}
+	defer func() {
+		if err := config.DisconnectRedis(); err != nil {
+			log.Printf("[GIN-error] Error disconnecting from Redis: %v", err)
+		}
+	}()
 
 	if err := config.ConnectMongo(); err != nil {
 		return err
@@ -36,11 +46,16 @@ func Start() error {
 	}
 
 	container := container.NewTemporalWorkerContainer(pushClient)
+	publisher := measurement_helper.NewRedisChatEventPublisher(config.Redis.Client)
 	alertActs := activity.NewProcessingAlertActivity(
 		container.MeasurementRepo,
 		container.ThresholdRepo,
 		container.AlertRepo,
+		container.AssignmentRepo,
+		container.ConversationRepo,
+		container.MessageRepo,
 		container.NotificationService,
+		publisher,
 	)
 	reminderActs := activity.NewReminderActivity(container.ReminderRepo, container.NotificationService)
 
@@ -49,6 +64,8 @@ func Start() error {
 
 	alertWorker.RegisterActivity(alertActs.EvaluateAndCreateAlertActivity)
 	alertWorker.RegisterActivity(alertActs.SendAlertPushActivity)
+	alertWorker.RegisterActivity(alertActs.SendAlertMessageActivity)
+	alertWorker.RegisterActivity(alertActs.PublishChatEventActivity)
 	reminderWorker.RegisterActivity(reminderActs.GetReminderActivity)
 	reminderWorker.RegisterActivity(reminderActs.SendReminderActivity)
 	reminderWorker.RegisterActivity(reminderActs.UpdateReminderStatusActivity)

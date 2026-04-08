@@ -89,7 +89,13 @@ func (r *alertRepository) Create(ctx context.Context, a *domain.Alert) (*domain.
 		}
 		return nil, err
 	}
-	a.ID = result.InsertedID.(primitive.ObjectID)
+
+	insertedID, ok := result.InsertedID.(primitive.ObjectID)
+	if !ok {
+		return nil, mongo.ErrNoDocuments
+	}
+	a.ID = insertedID
+
 	return a, nil
 }
 

@@ -6,6 +6,7 @@ import (
 	"log"
 	"time"
 
+	domain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/chat"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/service"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecase"
 	"github.com/gorilla/websocket"
@@ -110,7 +111,8 @@ func (c *Client) handleSendMessage(data json.RawMessage) {
 
 	saved, err := c.ChatService.SendMessage(context.Background(), &usecase.SendMessageInput{
 		ConversationID:   c.ConversationID,
-		SenderID:         c.UserID,
+		MessageSource:    domain.UserMessage,
+		SenderID:         &c.UserID,
 		Content:          incoming.Content,
 		ReplyToMessageID: incoming.ReplyToMessageID,
 		RelatedAlertID:   incoming.RelatedAlertID,

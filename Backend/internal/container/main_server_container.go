@@ -118,6 +118,13 @@ func NewMainServerContainer() *MainServerContainer {
 
 	c.Hub = ws.NewHub()
 	go c.Hub.Run()
+	if subscriber := ws.NewRedisChatEventSubscriber(config.Redis.Client, c.Hub); subscriber != nil {
+		go func() {
+			if err := subscriber.Start(context.Background()); err != nil {
+				log.Printf("[GIN-error] redis chat subscriber stopped: %v", err)
+			}
+		}()
+	}
 	c.WSChatHandler = ws.NewHandler(c.Hub, c.ChatService)
 
 	if cldClient, err := config.NewCloudinaryClient(); err != nil {

@@ -5,3 +5,11 @@ services:
     ports:
       - "7233:7233"   # gRPC
       - "8233:8233"   # internal dev HTTP/metrics
+
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    environment:
+      - REDIS_PASSWORD=redispassword
+      - REDIS_DB=0
