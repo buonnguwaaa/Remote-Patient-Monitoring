@@ -32,6 +32,7 @@ type AlertRepository interface {
 type AlertFilter struct {
 	PatientID string
 	DoctorID  string
+	NurseID   string
 	Status    domain.Status
 	Severity  domain.Severity
 	IsLatest  bool
@@ -43,6 +44,7 @@ type AlertFilter struct {
 
 type alertQueryOptions struct {
 	DoctorID  *primitive.ObjectID
+	NurseID   *primitive.ObjectID
 	IsLatest  bool
 	Offset    int
 	Limit     int
@@ -160,6 +162,14 @@ func buildAlertBsonFilterAndOptions(filter AlertFilter) (bson.M, alertQueryOptio
 		queryOpts.DoctorID = &doctorID
 	}
 
+	if filter.NurseID != "" {
+		nurseID, err := primitive.ObjectIDFromHex(filter.NurseID)
+		if err != nil {
+			return nil, alertQueryOptions{}, err
+		}
+		queryOpts.NurseID = &nurseID
+	}
+
 	return bsonFilter, queryOpts, nil
 }
 
@@ -239,6 +249,22 @@ func buildAlertJoinPipeline(filter bson.M, queryOpts alertQueryOptions) mongo.Pi
 			bson.D{{Key: "$match", Value: bson.M{
 				"assignment": bson.M{
 					"$elemMatch": bson.M{"doctorId": *queryOpts.DoctorID},
+				},
+			}}},
+		)
+	}
+
+	if queryOpts.NurseID != nil {
+		pipeline = append(pipeline,
+			bson.D{{Key: "$lookup", Value: bson.M{
+				"from":         "assignments",
+				"localField":   "patientId",
+				"foreignField": "patientId",
+				"as":           "assignment",
+			}}},
+			bson.D{{Key: "$match", Value: bson.M{
+				"assignment": bson.M{
+					"$elemMatch": bson.M{"nurseId": *queryOpts.NurseID},
 				},
 			}}},
 		)

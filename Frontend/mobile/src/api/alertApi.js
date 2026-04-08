@@ -17,3 +17,9 @@ export function getMyAlerts(params = {}) {
     method: "GET",
   });
 }
+
+export function getMyNurseAlerts(params = {}) {
+  return request(`/alerts/nurses/me${buildQuery(params)}`, {
+    method: "GET",
+  });
+}
