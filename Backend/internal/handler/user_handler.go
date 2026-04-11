@@ -779,7 +779,6 @@ func (h *UserHandler) UpdateNurseByID(c *gin.Context) {
 			Workplace:     req.Workplace,
 		},
 		NurseFieldsInput: usecase.NurseFieldsInput{
-			Ward:              req.Ward,
 			YearsOfExperience: req.YearsOfExperience,
 		},
 	}
