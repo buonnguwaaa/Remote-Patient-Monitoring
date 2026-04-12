@@ -95,6 +95,7 @@ export interface doctor {
   licenseNumber: string;
   workplace: string;
   department?: string;
+  departmentId?: string;
   yearsOfExperience: number;
   status?: "active" | "inactive";
   profileImageUrl: string;
@@ -108,7 +109,9 @@ export interface Nurse {
   id: string;
   name: string;
   licenseNumber: string;
+  workplace: string;
   department: string;
+  departmentId?: string;
   yearsOfExperience: number;
   status?: "active" | "inactive";
   email?: string;

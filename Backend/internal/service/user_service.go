@@ -401,8 +401,8 @@ func buildDoctorUpdateData(input *usecase.DoctorFieldsInput) map[string]interfac
 func buildNurseUpdateData(input *usecase.NurseFieldsInput) map[string]interface{} {
 	updateData := make(map[string]interface{})
 
-	if value := strings.TrimSpace(input.Ward); value != "" {
-		updateData["ward"] = value
+	if input.YearsOfExperience > 0 {
+		updateData["yearsOfExperience"] = input.YearsOfExperience
 	}
 
 	return updateData
@@ -432,9 +432,9 @@ func mapDoctor(user *domain.Doctor) *dto.DoctorInfoResponse {
 			DepartmentID:         user.DepartmentID.Hex(),
 			Workplace:            user.Workplace,
 			LicenseNumber:        user.LicenseNumber,
+			YearsOfExperience:    user.YearsOfExperience,
 		},
-		Specialization:    user.Specialization,
-		YearsOfExperience: user.YearsOfExperience,
+		Specialization: user.Specialization,
 	}
 }
 
@@ -445,8 +445,8 @@ func mapNurse(user *domain.Nurse) *dto.NurseInfoResponse {
 			DepartmentID:         user.DepartmentID.Hex(),
 			Workplace:            user.Workplace,
 			LicenseNumber:        user.LicenseNumber,
+			YearsOfExperience:    user.YearsOfExperience,
 		},
-		Ward: user.Ward,
 	}
 }
 

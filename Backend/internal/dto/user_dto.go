@@ -34,17 +34,16 @@ type StaffInfoResponse struct {
 	DepartmentID  string `json:"departmentId,omitempty"`
 	Workplace     string `json:"workplace,omitempty"`
 	LicenseNumber string `json:"licenseNumber,omitempty"`
+	YearsOfExperience int    `json:"yearsOfExperience,omitempty"`
 }
 
 type DoctorInfoResponse struct {
 	StaffInfoResponse
 	Specialization    string `json:"specialization,omitempty"`
-	YearsOfExperience int    `json:"yearsOfExperience,omitempty"`
 }
 
 type NurseInfoResponse struct {
 	StaffInfoResponse
-	Ward string `json:"ward,omitempty"`
 }
 
 type UpdateBaseUserRequest struct {
@@ -89,15 +88,14 @@ type UpdateMedicalStaffRequest struct {
 	DepartmentID  string `json:"departmentId"`
 	LicenseNumber string `json:"licenseNumber"`
 	Workplace     string `json:"workplace"`
+	YearsOfExperience int    `json:"yearsOfExperience,omitempty"`
 }
 
 type UpdateDoctorRequest struct {
 	UpdateMedicalStaffRequest
 	Specialization    string `json:"specialization"`
-	YearsOfExperience int    `json:"yearsOfExperience"`
 }
 
 type UpdateNurseRequest struct {
 	UpdateMedicalStaffRequest
-	Ward string `json:"ward"`
 }

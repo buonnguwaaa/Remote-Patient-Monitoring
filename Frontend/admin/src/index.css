@@ -32,3 +32,26 @@ body {
   min-height: 100vh;
   @apply dark:bg-gray-950 dark:text-gray-100;
 }
+
+.thin-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.55) transparent;
+}
+
+.thin-scrollbar::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+
+.thin-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.thin-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.55);
+  border-radius: 999px;
+}
+
+.thin-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.72);
+}

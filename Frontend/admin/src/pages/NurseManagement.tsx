@@ -5,9 +5,38 @@ import { uploadAvatar } from "../services/uploadService";
 import { useToast } from "../hooks/useToast";
 import Toast from "../components/ui/Toast";
 import AvatarUploader from "../components/ui/AvatarUploader";
-import type { Nurse } from "../types";
+import type { Department, Nurse } from "../types";
 import { mapGenderToDisplay, mapGenderToApi } from "../utils/genderConverter";
 import { adminPrimaryButtonClass, adminSecondaryButtonClass } from "../styles/buttonStyles";
+
+function normalizeObjectId(value: unknown): string {
+  if (!value) {
+    return "";
+  }
+
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (typeof value === "object" && value !== null && "$oid" in value) {
+    return String((value as { $oid?: string }).$oid || "");
+  }
+
+  return String(value);
+}
+
+function resolveDepartmentName(departments: Department[], departmentId: unknown): string {
+  const normalizedDepartmentId = normalizeObjectId(departmentId);
+  if (!normalizedDepartmentId) {
+    return "";
+  }
+
+  const matchedDepartment = departments.find((department) => {
+    return normalizeObjectId(department.id) === normalizedDepartmentId;
+  });
+
+  return matchedDepartment?.name || "";
+}
 
 const NurseManagement: React.FC = () => {
   const [nurses, setNurses] = useState<Nurse[]>([]);
@@ -18,20 +47,28 @@ const NurseManagement: React.FC = () => {
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const { toast, showToast, hideToast } = useToast();
 
-  const fetchNurses = async () => {
+  const fetchPageData = async () => {
     try {
-      const response = await api.get("/users/nurses");
-      if (response.data?.data) {
-        const apiNurses = response.data.data.map((u: any) => ({
+      const [nurseResponse, departmentResponse] = await Promise.all([
+        api.get("/users/nurses"),
+        api.get("/departments").catch(() => ({ data: { data: [] } })),
+      ]);
+
+      const availableDepartments = departmentResponse.data?.data || [];
+
+      if (nurseResponse.data?.data) {
+        const apiNurses = nurseResponse.data.data.map((u: any) => ({
           id: u.id,
           name: u.name,
           email: u.email,
           gender: mapGenderToDisplay(u.gender),
           dateOfBirth: u.dob,
           phone: u.phone || "",
+          workplace: u.workplace || "",
           licenseNumber: u.licenseNumber || "",
-          department: u.workplace || u.ward || u.departmentId || "",
-          yearsOfExperience: 0,
+          departmentId: normalizeObjectId(u.departmentId),
+          department: resolveDepartmentName(availableDepartments, u.departmentId),
+          yearsOfExperience: u.yearsOfExperience || 0,
           status: u.status === "inactive" ? "inactive" : "active",
           profileImageUrl: u.avatarUrl || "/avartar.jpg",
         }));
@@ -43,7 +80,7 @@ const NurseManagement: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchNurses();
+    fetchPageData();
   }, []);
 
   const handleEdit = (nurse: Nurse) => {
@@ -73,8 +110,88 @@ const NurseManagement: React.FC = () => {
 
   const filteredNurses = nurses.filter((nurse) =>
     nurse.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    nurse.department?.toLowerCase().includes(searchTerm.toLowerCase())
+    nurse.department?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    nurse.workplace.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const renderNurseCard = (nurse: Nurse) => {
+    return (
+      <div
+        key={nurse.id}
+        className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800"
+      >
+        <div className="flex items-start gap-3">
+          <img
+            className="h-12 w-12 rounded-full object-cover"
+            src={nurse.profileImageUrl || "/avartar.jpg"}
+            onError={(e) => {
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = "/avartar.jpg";
+            }}
+            onClick={() => setPreviewImage(nurse.profileImageUrl || "/avartar.jpg")}
+            title="Nhấn để xem ảnh"
+          />
+
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-base font-semibold text-gray-900 dark:text-gray-100">
+              {nurse.name}
+            </div>
+            <div className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
+              {nurse.gender} - {nurse.dateOfBirth}
+            </div>
+            <div className="mt-1 text-sm text-gray-700 dark:text-gray-300">
+              {nurse.department || "Chưa gán"}
+            </div>
+          </div>
+
+          <span
+            className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${nurse.status === "active"
+              ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+              : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+              }`}
+          >
+            {nurse.status === "active" ? "Hoạt động" : "Không hoạt động"}
+          </span>
+        </div>
+
+        <div className="mt-4 grid grid-cols-1 gap-2 text-sm text-gray-700 dark:text-gray-300 sm:grid-cols-2">
+          <div>
+            <span className="text-gray-500 dark:text-gray-400">Nơi làm việc: </span>
+            <span className="font-medium">{nurse.workplace || "Chưa cập nhật"}</span>
+          </div>
+          <div>
+            <span className="text-gray-500 dark:text-gray-400">Số giấy phép: </span>
+            <span className="font-medium">{nurse.licenseNumber || "Chưa cập nhật"}</span>
+          </div>
+          <div>
+            <span className="text-gray-500 dark:text-gray-400">Kinh nghiệm: </span>
+            <span className="font-medium">{nurse.yearsOfExperience} năm</span>
+          </div>
+          <div className="sm:col-span-2">
+            <span className="text-gray-500 dark:text-gray-400">Liên hệ: </span>
+            <span className="font-medium">{nurse.email}</span>
+          </div>
+        </div>
+
+        <div className="mt-4 flex items-center justify-end gap-2">
+          <button
+            onClick={() => handleEdit(nurse)}
+            className="rounded-lg p-2 text-blue-600 transition hover:bg-blue-50 hover:text-blue-900 dark:hover:bg-blue-900/20"
+            aria-label="Chỉnh sửa y tá"
+          >
+            <FaEdit />
+          </button>
+          <button
+            onClick={() => handleDelete(nurse.id)}
+            className="rounded-lg p-2 text-red-600 transition hover:bg-red-50 hover:text-red-900 dark:hover:bg-red-900/20"
+            aria-label="Xóa y tá"
+          >
+            <FaTrash />
+          </button>
+        </div>
+      </div>
+    );
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -85,7 +202,7 @@ const NurseManagement: React.FC = () => {
     const gender = formData.get("gender") as "Nam" | "Nữ";
     const phone = formData.get("phone") as string;
     const licenseNumber = formData.get("licenseNumber") as string;
-    const department = formData.get("department") as string;
+    const workplace = formData.get("workplace") as string;
     const yearsOfExperience = parseInt(formData.get("yearsOfExperience") as string) || 0;
     const status = formData.get("status") as "active" | "inactive";
 
@@ -94,12 +211,14 @@ const NurseManagement: React.FC = () => {
       let savedUserId = editingNurse?.id;
 
       if (editingNurse?.id) {
-        await api.patch(`/users/${editingNurse.id}`, {
-          name, email, gender: apiGender, phone,
-          nurseLicenseNumber: licenseNumber,
-          department,
-          nurseYearsOfExperience: yearsOfExperience,
-          roles: ["user.nurse"],
+        await api.patch(`/users/nurses/${editingNurse.id}`, {
+          name,
+          email,
+          gender: apiGender,
+          phone,
+          licenseNumber,
+          workplace,
+          yearsOfExperience,
         });
         await api.patch(`/users/${editingNurse.id}/status`, { status });
       } else {
@@ -116,11 +235,11 @@ const NurseManagement: React.FC = () => {
         const newUser = resp.data?.data?.[0];
         savedUserId = newUser?.id;
         if (savedUserId) {
-          await api.patch(`/users/${savedUserId}`, {
+          await api.patch(`/users/nurses/${savedUserId}`, {
             phone,
-            nurseLicenseNumber: licenseNumber,
-            department,
-            nurseYearsOfExperience: yearsOfExperience,
+            licenseNumber,
+            workplace,
+            yearsOfExperience,
           });
           await api.patch(`/users/${savedUserId}/status`, { status });
         }
@@ -130,7 +249,7 @@ const NurseManagement: React.FC = () => {
         await uploadAvatar(savedUserId, avatarFile);
       }
 
-      fetchNurses();
+      fetchPageData();
       setShowModal(false);
       setAvatarFile(null);
       showToast(editingNurse?.id ? "Cập nhật y tá thành công!" : "Thêm y tá thành công!");
@@ -141,41 +260,53 @@ const NurseManagement: React.FC = () => {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-4 md:p-6">
       <Toast toast={toast} onClose={hideToast} />
 
-      <div className="flex justify-between items-center mb-6">
+      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800 dark:text-white flex items-center">
+          <h1 className="flex items-center text-2xl font-bold text-gray-800 dark:text-white md:text-3xl">
             <FaUserNurse className="mr-3 text-purple-600" />
             Quản lý y tá
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-2">Tổng số: {nurses.length} y tá</p>
         </div>
-        <button onClick={handleAdd} className={adminPrimaryButtonClass}>
+        <button onClick={handleAdd} className={`${adminPrimaryButtonClass} w-full md:w-auto`}>
           <FaPlus className="mr-2" />Thêm y tá
         </button>
       </div>
 
-      <div className="mb-6 bg-white dark:bg-gray-800 rounded-lg shadow-md p-4">
+      <div className="mb-6 rounded-lg bg-white p-4 shadow-md dark:bg-gray-800">
         <div className="relative">
           <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
           <input
             type="text"
-            placeholder="Tìm kiếm theo tên hoặc khoa..."
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+            placeholder="Tìm kiếm theo tên, khoa/phòng, nơi làm việc..."
+            className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
-        <table className="w-full">
+      <div className="space-y-4 md:hidden">
+        {filteredNurses.length === 0 ? (
+          <div className="rounded-lg bg-white p-6 text-center text-gray-500 shadow-md dark:bg-gray-800 dark:text-gray-400">
+            Không có dữ liệu hiển thị.
+          </div>
+        ) : (
+          filteredNurses.map((nurse) => renderNurseCard(nurse))
+        )}
+      </div>
+
+      <div className="hidden overflow-hidden rounded-lg bg-white shadow-md md:block dark:bg-gray-800">
+        <div className="overflow-x-auto thin-scrollbar">
+        <table className="w-full min-w-[1350px]">
           <thead className="bg-gray-50 dark:bg-gray-700 border-b dark:border-gray-600">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Y tá</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Khoa</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Khoa/phòng</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nơi làm việc</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Số giấy phép</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Kinh nghiệm</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Trạng thái</th>
@@ -201,7 +332,8 @@ const NurseManagement: React.FC = () => {
                     </div>
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{nurse.department}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{nurse.department || "Chưa gán"}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{nurse.workplace || "Chưa cập nhật"}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{nurse.licenseNumber}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{nurse.yearsOfExperience} năm</td>
                 <td className="px-6 py-4 whitespace-nowrap">
@@ -221,29 +353,41 @@ const NurseManagement: React.FC = () => {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
 
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold mb-4 dark:text-white">{editingNurse ? "Chỉnh sửa y tá" : "Thêm y tá mới"}</h2>
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white p-4 md:p-6 dark:bg-gray-800">
+            <h2 className="mb-4 text-xl font-bold dark:text-white md:text-2xl">{editingNurse ? "Chỉnh sửa y tá" : "Thêm y tá mới"}</h2>
             <form className="space-y-4" onSubmit={handleSubmit}>
               <AvatarUploader
                 currentUrl={editingNurse?.profileImageUrl}
                 onFileSelect={(file) => setAvatarFile(file)}
               />
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Họ tên</label>
                   <input name="name" type="text" required className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" defaultValue={editingNurse?.name} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Khoa</label>
-                  <input name="department" type="text" required className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" defaultValue={editingNurse?.department} />
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Khoa/phòng</label>
+                  <input
+                    type="text"
+                    disabled
+                    value={editingNurse?.department || ""}
+                    placeholder="Gán tại Quản lý Khoa / Phòng"
+                    className="w-full px-3 py-2 border border-gray-200 bg-gray-100 text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 rounded-lg cursor-not-allowed"
+                    readOnly
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Số giấy phép</label>
                   <input name="licenseNumber" type="text" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" defaultValue={editingNurse?.licenseNumber} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nơi làm việc</label>
+                  <input name="workplace" type="text" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" defaultValue={editingNurse?.workplace} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Kinh nghiệm (năm)</label>
@@ -278,9 +422,9 @@ const NurseManagement: React.FC = () => {
                   </div>
                 )}
               </div>
-              <div className="flex justify-end space-x-3 mt-6">
-                <button type="button" onClick={() => setShowModal(false)} className={adminSecondaryButtonClass}>Hủy</button>
-                <button type="submit" className={adminPrimaryButtonClass}>{editingNurse ? "Cập nhật" : "Thêm mới"}</button>
+              <div className="mt-6 flex flex-col-reverse gap-3 md:flex-row md:justify-end md:space-x-3">
+                <button type="button" onClick={() => setShowModal(false)} className={`${adminSecondaryButtonClass} w-full md:w-auto`}>Hủy</button>
+                <button type="submit" className={`${adminPrimaryButtonClass} w-full md:w-auto`}>{editingNurse ? "Cập nhật" : "Thêm mới"}</button>
               </div>
             </form>
           </div>

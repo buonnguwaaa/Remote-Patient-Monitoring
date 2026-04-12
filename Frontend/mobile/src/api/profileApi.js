@@ -4,6 +4,10 @@ export async function getMyPatientProfile() {
   return request("/users/patients/me", { method: "GET" });
 }
 
+export async function getMyNurseProfile() {
+  return request("/users/nurses/me", { method: "GET" });
+}
+
 export async function updateMyPatientProfile(payload) {
   return request("/users/patients/me", {
     method: "PATCH",
@@ -20,6 +24,7 @@ export async function uploadMyPatientAvatar(formData) {
 
 export default {
   getMyPatientProfile,
+  getMyNurseProfile,
   updateMyPatientProfile,
   uploadMyPatientAvatar,
 };

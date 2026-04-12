@@ -23,6 +23,7 @@ var ErrAlertNotFound = errors.New("alert not found")
 // Tôi cần thêm các api cho alert như sau 1 api để doctor lấy danh sách các alert của patients mình quản lý, 1 api để patient lấy danh sách các alert của mình, 1 api để get alert by id
 type AlertService interface {
 	GetDoctorAlerts(ctx context.Context, input *usecase.GetAlertsInput) ([]dto.AlertResponse, error)
+	GetNurseAlerts(ctx context.Context, input *usecase.GetAlertsInput) ([]dto.AlertResponse, error)
 	GetPatientAlerts(ctx context.Context, input *usecase.GetAlertsInput) ([]dto.AlertResponse, error)
 	GetAlertByID(ctx context.Context, input *usecase.GetAlertByIDInput) (*dto.AlertResponse, error)
 	UpdateAlertAcknowledgementByID(ctx context.Context, input *usecase.UpdateAlertAcknowledgementByIDInput) (*dto.AlertResponse, error)
@@ -40,6 +41,57 @@ func (s *alertService) GetDoctorAlerts(ctx context.Context, input *usecase.GetAl
 	filter := repository.AlertFilter{
 		PatientID: input.PatientID,
 		DoctorID:  input.DoctorID,
+		Status:    domain.Status(input.Status),
+		Severity:  domain.Severity(input.Severity),
+		IsLatest:  input.IsLatest,
+		Page:      input.Page,
+		Limit:     input.Limit,
+		Offset:    input.Offset,
+		SortOrder: input.SortOrder,
+	}
+
+	alerts, userDataMap, err := s.alertRepo.FindWithFilter(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	responses := make([]dto.AlertResponse, 0, len(alerts))
+	for _, alert := range alerts {
+		userData := userDataMap[alert.ID]
+		if userData == nil {
+			userData = &repository.AlertUserData{}
+		}
+
+		var acknowledgedByStr *string
+		if alert.AcknowledgedBy != nil {
+			str := alert.AcknowledgedBy.Hex()
+			acknowledgedByStr = &str
+		}
+
+		responses = append(responses, dto.AlertResponse{
+			ID:                 alert.ID.Hex(),
+			PatientID:          alert.PatientID.Hex(),
+			PatientName:        userData.PatientName,
+			PatientAvatarURL:   userData.PatientAvatarURL,
+			MeasurementID:      alert.MeasurementID.Hex(),
+			Violations:         alert.Violations,
+			Status:             alert.Status,
+			Severity:           alert.Severity,
+			AcknowledgedBy:     acknowledgedByStr,
+			AcknowledgedByName: userData.AcknowledgedByName,
+			AcknowledgedAt:     alert.AcknowledgedAt,
+			CreatedAt:          alert.CreatedAt,
+			UpdatedAt:          alert.UpdatedAt,
+		})
+	}
+
+	return responses, nil
+}
+
+func (s *alertService) GetNurseAlerts(ctx context.Context, input *usecase.GetAlertsInput) ([]dto.AlertResponse, error) {
+	filter := repository.AlertFilter{
+		PatientID: input.PatientID,
+		NurseID:   input.NurseID,
 		Status:    domain.Status(input.Status),
 		Severity:  domain.Severity(input.Severity),
 		IsLatest:  input.IsLatest,

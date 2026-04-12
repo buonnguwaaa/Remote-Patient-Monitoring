@@ -30,7 +30,7 @@ type DoctorFieldsInput struct {
 }
 
 type NurseFieldsInput struct {
-	Ward string
+	YearsOfExperience int
 }
 
 type PatientProfileFieldsInput struct {

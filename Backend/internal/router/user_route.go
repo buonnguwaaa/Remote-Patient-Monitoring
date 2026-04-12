@@ -96,6 +96,11 @@ func RegisterUserRoutes(r *gin.Engine, c *container.MainServerContainer) {
 
 		nurseGroup := userGroup.Group("/nurses")
 		{
+			nurseGroup.GET("/me",
+				middleware.JWTAuthMiddleware(c.JWTManager),
+				middleware.RequireRoles(domain.RoleNurse),
+				c.UserHandler.GetMyNurseProfile,
+			)
 			nurseGroup.GET("",
 				middleware.JWTAuthMiddleware(c.JWTManager),
 				middleware.RequireRoles(domain.RoleAdmin, domain.RoleDoctor, domain.RoleNurse),
