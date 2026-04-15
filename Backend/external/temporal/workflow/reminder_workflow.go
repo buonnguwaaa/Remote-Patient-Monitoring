@@ -35,7 +35,6 @@ func ReminderWorkflow(ctx workflow.Context, input ReminderWorkflowInput) error {
 	}
 
 	for {
-		// Check stop states
 		if reminder.Status == domain.StatusCanceled || reminder.Status == domain.StatusExpired {
 			logger.Info("Reminder stopped", "id", reminder.ID.Hex(), "status", reminder.Status)
 			return nil
@@ -43,60 +42,56 @@ func ReminderWorkflow(ctx workflow.Context, input ReminderWorkflowInput) error {
 
 		now := workflow.Now(ctx)
 
-		// Handle paused state
 		if reminder.Status == domain.StatusPaused {
 			if now.After(reminder.EndDate) {
-				_ = workflow.ExecuteActivity(ctx, "UpdateReminderStatusActivity",
-					reminder.ID.Hex(), domain.StatusExpired).Get(ctx, nil)
+				_ = workflow.ExecuteActivity(ctx, "UpdateReminderStatusActivity", reminder.ID.Hex(), domain.StatusExpired).Get(ctx, nil)
 				logger.Info("Reminder expired while paused", "id", reminder.ID.Hex())
 				return nil
 			}
 
 			timer := workflow.NewTimer(ctx, reminder.EndDate.Sub(now))
 			selector := workflow.NewSelector(ctx)
-			selector.AddReceive(signalCh, func(c workflow.ReceiveChannel, more bool) {
-				c.Receive(ctx, nil)
-			})
+			selector.AddReceive(signalCh, func(c workflow.ReceiveChannel, more bool) { c.Receive(ctx, nil) })
 			selector.AddFuture(timer, func(f workflow.Future) {})
 			selector.Select(ctx)
 
-			// Reload after wake up
 			if err := workflow.ExecuteActivity(ctx, "GetReminderActivity", input.ReminderID).Get(ctx, &reminder); err != nil {
 				return err
 			}
 			continue
 		}
 
-		// Handle active state
 		nextTime, ok := reminder_helper.CalculateNextReminderTime(now, &reminder)
 		if !ok {
-			_ = workflow.ExecuteActivity(ctx, "UpdateReminderStatusActivity",
-				reminder.ID.Hex(), domain.StatusExpired).Get(ctx, nil)
+			_ = workflow.ExecuteActivity(ctx, "UpdateReminderStatusActivity", reminder.ID.Hex(), domain.StatusExpired).Get(ctx, nil)
 			logger.Info("Reminder expired", "id", reminder.ID.Hex())
 			return nil
 		}
 
-		// Wait until nextTime or signal
 		timer := workflow.NewTimer(ctx, nextTime.Sub(now))
+		timerFired := false
 		selector := workflow.NewSelector(ctx)
 		selector.AddReceive(signalCh, func(c workflow.ReceiveChannel, more bool) {
 			c.Receive(ctx, nil)
+			timerFired = false
 		})
-		selector.AddFuture(timer, func(f workflow.Future) {})
+		selector.AddFuture(timer, func(f workflow.Future) {
+			timerFired = true
+		})
 		selector.Select(ctx)
 
-		// Reload after wake up
 		if err := workflow.ExecuteActivity(ctx, "GetReminderActivity", input.ReminderID).Get(ctx, &reminder); err != nil {
 			return err
 		}
-
-		// If status changed, continue
+		if !timerFired {
+			continue
+		}
 		if reminder.Status != domain.StatusActive {
 			continue
 		}
 
-		// Send reminder
-		if err := workflow.ExecuteActivity(ctx, "SendReminderActivity", reminder.ID.Hex()).Get(ctx, nil); err != nil {
+		scheduledFor := nextTime.UTC().Format(time.RFC3339)
+		if err := workflow.ExecuteActivity(ctx, "SendReminderActivity", reminder.ID.Hex(), scheduledFor).Get(ctx, nil); err != nil {
 			return err
 		}
 	}

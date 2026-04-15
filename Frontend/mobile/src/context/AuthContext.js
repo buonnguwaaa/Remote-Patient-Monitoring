@@ -1,5 +1,10 @@
 import React, { createContext, useEffect, useState } from "react";
 import * as authApi from "../api/authApi";
+import {
+  attachPushTokenRefreshListener,
+  deactivateCurrentDevicePushToken,
+  registerCurrentDevicePushToken,
+} from "../services/pushNotificationService";
 
 const AuthContext = createContext(null);
 
@@ -33,6 +38,31 @@ export function AuthProvider({ children }) {
     })();
   }, []);
 
+  useEffect(() => {
+    if (!user?.id) {
+      return;
+    }
+
+    let mounted = true;
+    const detachPushTokenRefreshListener = attachPushTokenRefreshListener();
+
+    (async () => {
+      const result = await registerCurrentDevicePushToken();
+      if (!mounted) {
+        return;
+      }
+
+      if (!result?.ok && !result?.skipped) {
+        console.warn("[push] failed to register device token", result?.error);
+      }
+    })();
+
+    return () => {
+      mounted = false;
+      detachPushTokenRefreshListener();
+    };
+  }, [user?.id]);
+
   const login = async (email, password) => {
     const loginResponse = await authApi.login({ email, password });
     if (!loginResponse.ok) {
@@ -65,6 +95,18 @@ export function AuthProvider({ children }) {
   };
 
   const logout = async () => {
+    try {
+      const deactivateResult = await deactivateCurrentDevicePushToken();
+      if (!deactivateResult?.ok && !deactivateResult?.skipped) {
+        console.warn(
+          "[push] failed to deactivate device token before logout",
+          deactivateResult?.error
+        );
+      }
+    } catch (error) {
+      console.warn("[push] unexpected deactivate token error", error);
+    }
+
     try {
       await authApi.logout();
     } catch (error) {

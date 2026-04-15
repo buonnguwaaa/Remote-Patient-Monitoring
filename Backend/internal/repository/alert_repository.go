@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"log"
 	"strings"
 	"time"
 
@@ -26,6 +27,7 @@ type AlertRepository interface {
 	Create(ctx context.Context, a *domain.Alert) (*domain.Alert, error)
 	FindWithFilter(ctx context.Context, filter AlertFilter) ([]*domain.Alert, map[primitive.ObjectID]*AlertUserData, error)
 	FindAlertByID(ctx context.Context, id primitive.ObjectID) (*domain.Alert, *AlertUserData, error)
+	FindByMeasurementID(ctx context.Context, measurementID primitive.ObjectID) (*domain.Alert, error)
 	UpdateAcknowledgementByID(ctx context.Context, id primitive.ObjectID, acknowledgedBy primitive.ObjectID) (*domain.Alert, *AlertUserData, error)
 }
 
@@ -52,9 +54,27 @@ type alertQueryOptions struct {
 }
 
 func NewAlertRepository(db *mongo.Database) AlertRepository {
-	return &alertRepository{
-		col: db.Collection("alerts"),
+	repo := &alertRepository{col: db.Collection("alerts")}
+
+	if err := repo.ensureIndexes(context.Background()); err != nil {
+		log.Printf("[WARN] failed to ensure alert indexes: %v", err)
 	}
+
+	return repo
+}
+
+func (r *alertRepository) ensureIndexes(ctx context.Context) error {
+	models := []mongo.IndexModel{
+		{
+			Keys: bson.D{{Key: "measurementId", Value: 1}},
+			Options: options.Index().
+				SetUnique(true).
+				SetName("ux_alert_measurement_id"),
+		},
+	}
+
+	_, err := r.col.Indexes().CreateMany(ctx, models)
+	return err
 }
 
 func (r *alertRepository) Create(ctx context.Context, a *domain.Alert) (*domain.Alert, error) {
@@ -62,10 +82,14 @@ func (r *alertRepository) Create(ctx context.Context, a *domain.Alert) (*domain.
 	a.CreatedAt = now
 	a.UpdatedAt = now
 
-	_, err := r.col.InsertOne(ctx, a)
+	result, err := r.col.InsertOne(ctx, a)
 	if err != nil {
+		if mongo.IsDuplicateKeyError(err) {
+			return r.FindByMeasurementID(ctx, a.MeasurementID)
+		}
 		return nil, err
 	}
+	a.ID = result.InsertedID.(primitive.ObjectID)
 	return a, nil
 }
 
@@ -88,6 +112,17 @@ func (r *alertRepository) FindAlertByID(ctx context.Context, id primitive.Object
 	}
 
 	return alerts[0], userDataMap[alerts[0].ID], nil
+}
+
+func (r *alertRepository) FindByMeasurementID(ctx context.Context, measurementID primitive.ObjectID) (*domain.Alert, error) {
+	var alert domain.Alert
+	if err := r.col.FindOne(ctx, bson.M{"measurementId": measurementID}).Decode(&alert); err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &alert, nil
 }
 
 func (r *alertRepository) UpdateAcknowledgementByID(

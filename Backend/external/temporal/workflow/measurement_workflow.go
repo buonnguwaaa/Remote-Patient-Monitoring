@@ -24,10 +24,18 @@ func AlertWorkflow(ctx workflow.Context, input MeasurementAlertInput) (string, e
 
 	ctx = workflow.WithActivityOptions(ctx, ao)
 
-	var res string
-	err := workflow.ExecuteActivity(ctx, "EvaluateAndSendAlertActivity", input.MeasurementID, input.PatientID).Get(ctx, &res)
-	if err != nil {
+	var alertID string
+	if err := workflow.ExecuteActivity(ctx, "EvaluateAndCreateAlertActivity", input.MeasurementID, input.PatientID).Get(ctx, &alertID); err != nil {
 		return "", err
 	}
-	return res, nil
+
+	if alertID == "" || alertID == "no-violation" || alertID == "no-threshold" {
+		return alertID, nil
+	}
+
+	if err := workflow.ExecuteActivity(ctx, "SendAlertPushActivity", alertID).Get(ctx, nil); err != nil {
+		return "", err
+	}
+
+	return alertID, nil
 }

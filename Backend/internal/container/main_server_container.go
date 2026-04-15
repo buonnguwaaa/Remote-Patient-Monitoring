@@ -16,64 +16,60 @@ import (
 	ws "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/ws"
 )
 
-// Container holds all the dependencies
 type MainServerContainer struct {
-	// Repositories
-	BaseUserRepo     userRepository.BaseUserRepository
-	PatientRepo      userRepository.PatientRepository
-	DoctorRepo       userRepository.StaffRepository[domain.Doctor]
-	NurseRepo        userRepository.StaffRepository[domain.Nurse]
-	TokenRepo        repository.TokenRepository
-	MeasurementRepo  repository.MeasurementRepository
-	ThresholdRepo    repository.ThresholdRepository
-	AlertRepo        repository.AlertRepository
-	DepartmentRepo   repository.DepartmentRepository
-	AssignmentRepo   repository.AssignmentRepository
-	ReminderRepo     repository.ReminderRepository
-	ConversationRepo chatRepository.ConversationRepository
-	MessageRepo      chatRepository.MessageRepository
+	BaseUserRepo          userRepository.BaseUserRepository
+	PatientRepo           userRepository.PatientRepository
+	DoctorRepo            userRepository.StaffRepository[domain.Doctor]
+	NurseRepo             userRepository.StaffRepository[domain.Nurse]
+	TokenRepo             repository.TokenRepository
+	NotificationTokenRepo repository.NotificationTokenRepository
+	NotificationRepo      repository.UserNotificationRepository
+	MeasurementRepo       repository.MeasurementRepository
+	ThresholdRepo         repository.ThresholdRepository
+	AlertRepo             repository.AlertRepository
+	DepartmentRepo        repository.DepartmentRepository
+	AssignmentRepo        repository.AssignmentRepository
+	ReminderRepo          repository.ReminderRepository
+	ConversationRepo      chatRepository.ConversationRepository
+	MessageRepo           chatRepository.MessageRepository
 
-	// Services
-	AuthService        service.AuthService
-	UserService        service.UserService
-	MeasurementService service.MeasurementService
-	ThresholdService   service.ThresholdService
-	AlertService       service.AlertService
-	DepartmentService  service.DepartmentService
-	AssignmentService  service.AssignmentService
-	ReminderService    service.ReminderService
-	ChatService        service.ChatService
+	AuthService         service.AuthService
+	UserService         service.UserService
+	MeasurementService  service.MeasurementService
+	ThresholdService    service.ThresholdService
+	AlertService        service.AlertService
+	DepartmentService   service.DepartmentService
+	AssignmentService   service.AssignmentService
+	ReminderService     service.ReminderService
+	ChatService         service.ChatService
+	NotificationService service.NotificationService
 
-	// Handlers
-	AuthHandler        *handler.AuthHandler
-	UserHandler        *handler.UserHandler
-	MeasurementHandler *handler.MeasurementHandler
-	ThresholdHandler   *handler.ThresholdHandler
-	AlertHandler       *handler.AlertHandler
-	DepartmentHandler  *handler.DepartmentHandler
-	AssignmentHandler  *handler.AssignmentHandler
-	ReminderHandler    *handler.ReminderHandler
-	ChatHandler        *handler.ChatHandler
+	AuthHandler              *handler.AuthHandler
+	UserHandler              *handler.UserHandler
+	MeasurementHandler       *handler.MeasurementHandler
+	ThresholdHandler         *handler.ThresholdHandler
+	AlertHandler             *handler.AlertHandler
+	DepartmentHandler        *handler.DepartmentHandler
+	AssignmentHandler        *handler.AssignmentHandler
+	ReminderHandler          *handler.ReminderHandler
+	ChatHandler              *handler.ChatHandler
+	NotificationTokenHandler *handler.NotificationTokenHandler
+	NotificationHandler      *handler.NotificationHandler
 
-	// WebSocket
 	WSChatHandler *ws.Handler
 	Hub           *ws.Hub
 
-	// Utils
 	JWTManager *util.JWTManager
 
 	CloudinaryService service.CloudinaryService
 }
 
-// NewMainServerContainer initializes all dependencies once
 func NewMainServerContainer() *MainServerContainer {
 	c := &MainServerContainer{}
 
-	// Initialize utils
 	jwtSecret := os.Getenv("JWT_SECRET")
 	c.JWTManager = util.NewJWTManager(jwtSecret)
 
-	// Initialize repositories
 	db := config.Mongo.Database
 	c.BaseUserRepo = userRepository.NewBaseUserRepository(db)
 	c.PatientRepo = userRepository.NewPatientRepository(db)
@@ -81,6 +77,8 @@ func NewMainServerContainer() *MainServerContainer {
 	c.NurseRepo = userRepository.NewStaffRepository[domain.Nurse](db)
 
 	c.TokenRepo = repository.NewTokenRepository(db)
+	c.NotificationTokenRepo = repository.NewNotificationTokenRepository(db)
+	c.NotificationRepo = repository.NewUserNotificationRepository(db)
 	c.MeasurementRepo = repository.NewMeasurementRepository(db)
 	c.ThresholdRepo = repository.NewThresholdRepository(db)
 	c.AlertRepo = repository.NewAlertRepository(db)
@@ -96,7 +94,6 @@ func NewMainServerContainer() *MainServerContainer {
 		log.Printf("[WARN] failed to ensure message indexes: %v", err)
 	}
 
-	// Initialize services
 	c.AuthService = service.NewAuthService(c.BaseUserRepo, c.PatientRepo, c.DoctorRepo, c.NurseRepo, c.TokenRepo, c.JWTManager)
 	c.UserService = service.NewUserService(c.BaseUserRepo, c.PatientRepo, c.NurseRepo, c.DoctorRepo)
 	c.MeasurementService = service.NewMeasurementService(c.PatientRepo, c.MeasurementRepo)
@@ -106,8 +103,8 @@ func NewMainServerContainer() *MainServerContainer {
 	c.AssignmentService = service.NewAssignmentService(c.AssignmentRepo, c.BaseUserRepo)
 	c.ReminderService = service.NewReminderService(c.PatientRepo, c.ReminderRepo)
 	c.ChatService = service.NewChatService(c.ConversationRepo, c.MessageRepo, c.AssignmentRepo)
+	c.NotificationService = service.NewNotificationService(c.NotificationTokenRepo, c.NotificationRepo, nil)
 
-	// Initialize handlers
 	c.AuthHandler = handler.NewAuthHandler(c.AuthService)
 	c.MeasurementHandler = handler.NewMeasurementHandler(c.MeasurementService)
 	c.ThresholdHandler = handler.NewThresholdHandler(c.ThresholdService)
@@ -116,13 +113,13 @@ func NewMainServerContainer() *MainServerContainer {
 	c.AssignmentHandler = handler.NewAssignmentHandler(c.AssignmentService)
 	c.ReminderHandler = handler.NewReminderHandler(c.ReminderService)
 	c.ChatHandler = handler.NewChatHandler(c.ChatService)
+	c.NotificationTokenHandler = handler.NewNotificationTokenHandler(c.NotificationService)
+	c.NotificationHandler = handler.NewNotificationHandler(c.NotificationService)
 
-	// Initialize WebSocket
 	c.Hub = ws.NewHub()
 	go c.Hub.Run()
 	c.WSChatHandler = ws.NewHandler(c.Hub, c.ChatService)
 
-	// Cloudinary — log warning nếu chưa cấu hình
 	if cldClient, err := config.NewCloudinaryClient(); err != nil {
 		println("[WARN] Cloudinary not configured:", err.Error())
 		c.UserHandler = handler.NewUserHandler(c.UserService, nil)
