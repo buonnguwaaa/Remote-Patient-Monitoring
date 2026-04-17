@@ -5,3 +5,4 @@ debug.log
 .vscode/
 *.exe
 doc__personal/
+firebase-service-account.json
