@@ -34,7 +34,12 @@ module.exports = () => {
     expo: {
       ...expo,
       android: androidConfig,
-      extra: { ...(expo.extra || {}), API_BASE_URL: resolvedApiBaseUrl, BASE_URL: resolvedApiBaseUrl },
+      extra: { 
+        ...(expo.extra || {}), 
+        API_BASE_URL: resolvedApiBaseUrl, 
+        BASE_URL: resolvedApiBaseUrl,
+        EXPO_PUBLIC_BASE_URL: resolvedApiBaseUrl
+      },
       plugins,
     },
   };

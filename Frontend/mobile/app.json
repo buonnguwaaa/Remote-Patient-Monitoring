@@ -4,11 +4,9 @@
     "slug": "Mobile",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": false,
     "splash": {
-      "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -16,17 +14,12 @@
       "supportsTablet": true
     },
     "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      },
+      "package": "com.rpm.mobile",
       "edgeToEdgeEnabled": true
     },
-    "web": {
-      "favicon": "./assets/favicon.png"
-    },
+    "web": {},
     "extra": {
-      "BASE_URL": "http://localhost:8080"
+      "BASE_URL": "http://192.168.1.158:8080"
     },
     "scheme": "rpm",
     "plugins": [
