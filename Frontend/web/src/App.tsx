@@ -7,6 +7,7 @@ import MainLayout from "./components/layout/MainLayout.tsx";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
 
+import SettingPage from "./pages/SettingPage.tsx";
 
 const PageLoader = () => (
   <div className="flex h-screen w-full items-center justify-center">
@@ -23,22 +24,23 @@ const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 const DashBoard = lazy(() => import("./pages/DashBoard.tsx"));
 const PatientPage = lazy(() => import("./pages/PatientPage.tsx"));
 const ThresholdAlert = lazy(() => import("./pages/ThresholdAlert.tsx"));
-const ThresholdSettingsPage = lazy(() => import("./pages/ThresholdSettingsPage.tsx"));
+const ThresholdSettingsPage = lazy(
+  () => import("./pages/ThresholdSettingsPage.tsx"),
+);
 const ReminderPage = lazy(() => import("./pages/ReminderPage.tsx"));
 const PatientDetailPage = lazy(() => import("./pages/PatientDetailPage.tsx"));
 const ChatPage = lazy(() => import("./pages/ChatPage.tsx"));
 const DocterProfile = lazy(() => import("./pages/DocterProfile.tsx"));
 
-
-const ProtectedRoute = ({
-  children,
-}: {
-  children: React.ReactNode;
-}) => {
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
-    return <div className="flex h-screen w-full items-center justify-center">Loading...</div>;
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        Loading...
+      </div>
+    );
   }
 
   if (!isAuthenticated) {
@@ -74,6 +76,7 @@ function App() {
                   path="/threshold-settings"
                   element={<ThresholdSettingsPage />}
                 />
+                <Route path="/settings" element={<SettingPage />} />
               </Route>
 
               <Route path="*" element={<NotFound />} />
@@ -86,5 +89,3 @@ function App() {
 }
 
 export default App;
-
-
