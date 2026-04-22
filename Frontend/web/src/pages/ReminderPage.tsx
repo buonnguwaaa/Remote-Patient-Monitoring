@@ -1,7 +1,13 @@
-import { type ChangeEvent, type FormEvent, useEffect, useMemo, useState } from "react";
+import {
+  type ChangeEvent,
+  type FormEvent,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useSearchParams } from "react-router-dom";
 import {
-  FaBell,
+  FaEdit,
   FaPauseCircle,
   FaPlayCircle,
   FaPlus,
@@ -9,6 +15,7 @@ import {
   FaSave,
   FaStopCircle,
   FaSyncAlt,
+  FaTimes,
   FaUndo,
 } from "react-icons/fa";
 
@@ -53,12 +60,27 @@ const weekdayOptions = [
   { value: 0, label: "CN" },
 ];
 
-const reminderKindOptions: Array<{ value: ReminderKind; label: string; helper: string }> = [
-  { value: "measure", label: "Đo chỉ số", helper: "Nhắc bệnh nhân đo huyết áp, đường huyết, SpO2..." },
-  { value: "medication", label: "Uống thuốc", helper: "Nhắc bệnh nhân dùng thuốc đúng giờ và đều đặn." },
+const reminderKindOptions: Array<{
+  value: ReminderKind;
+  label: string;
+  helper: string;
+}> = [
+  {
+    value: "measure",
+    label: "Đo chỉ số",
+    helper: "Nhắc bệnh nhân đo huyết áp, đường huyết, SpO2...",
+  },
+  {
+    value: "medication",
+    label: "Uống thuốc",
+    helper: "Nhắc bệnh nhân dùng thuốc đúng giờ và đều đặn.",
+  },
 ];
 
-const reminderStatusOptions: Array<{ value: ReminderStatusFilter; label: string }> = [
+const reminderStatusOptions: Array<{
+  value: ReminderStatusFilter;
+  label: string;
+}> = [
   { value: "all", label: "Tất cả trạng thái" },
   { value: "active", label: "Đang chạy" },
   { value: "paused", label: "Tạm dừng" },
@@ -91,8 +113,10 @@ const createDefaultFormData = (patientId = ""): ReminderFormData => {
 };
 
 const toDateInputValue = (value: string) => value.slice(0, 10);
-const toStartOfDayIso = (value: string) => new Date(`${value}T00:00:00`).toISOString();
-const toEndOfDayIso = (value: string) => new Date(`${value}T23:59:59`).toISOString();
+const toStartOfDayIso = (value: string) =>
+  new Date(`${value}T00:00:00`).toISOString();
+const toEndOfDayIso = (value: string) =>
+  new Date(`${value}T23:59:59`).toISOString();
 
 const formatDate = (value: string) =>
   new Date(value).toLocaleDateString("vi-VN", {
@@ -147,7 +171,9 @@ const getStatusClasses = (status: ReminderStatus) => {
 };
 
 const buildWeekdaySummary = (daysOfWeek: number[]) => {
-  const orderedDays = weekdayOptions.filter((option) => daysOfWeek.includes(option.value));
+  const orderedDays = weekdayOptions.filter((option) =>
+    daysOfWeek.includes(option.value),
+  );
   if (orderedDays.length === weekdayOptions.length) {
     return "Mỗi ngày";
   }
@@ -165,12 +191,17 @@ const ReminderPage = () => {
   const [selectedPatientId, setSelectedPatientId] = useState(initialPatientId);
   const [statusFilter, setStatusFilter] = useState<ReminderStatusFilter>("all");
   const [kindFilter, setKindFilter] = useState<ReminderKindFilter>("all");
-  const [formData, setFormData] = useState<ReminderFormData>(createDefaultFormData(initialPatientId));
+  const [formData, setFormData] = useState<ReminderFormData>(
+    createDefaultFormData(initialPatientId),
+  );
   const [reminders, setReminders] = useState<ReminderRecord[]>([]);
   const [loadingPatients, setLoadingPatients] = useState(true);
   const [loadingReminders, setLoadingReminders] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [editingReminderId, setEditingReminderId] = useState<string | null>(null);
+  const [editingReminderId, setEditingReminderId] = useState<string | null>(
+    null,
+  );
+  const [isFormVisible, setIsFormVisible] = useState(false);
 
   const patientOptions = useMemo(() => {
     const patientMap = new Map<string, AssignmentResponse>();
@@ -182,33 +213,31 @@ const ReminderPage = () => {
     });
 
     return Array.from(patientMap.values()).sort((left, right) =>
-      (left.patientName || "").localeCompare(right.patientName || "")
+      (left.patientName || "").localeCompare(right.patientName || ""),
     );
   }, [patients]);
 
   const patientDisplayMap = useMemo(() => {
-    const entries = patientOptions.map((item) => [
-      item.patientId,
-      {
-        name: item.patientName || item.patientId,
-        code: item.patientCode || item.patientPublicId || "Chưa có mã",
-      },
-    ] as const);
+    const entries = patientOptions.map(
+      (item) =>
+        [
+          item.patientId,
+          {
+            name: item.patientName || item.patientId,
+            code: item.patientCode || item.patientPublicId || "Chưa có mã",
+          },
+        ] as const,
+    );
 
     return new Map(entries);
   }, [patientOptions]);
 
-  const selectedPatientInfo = selectedPatientId ? patientDisplayMap.get(selectedPatientId) : null;
-  const modeLabel = editingReminderId ? "Chỉnh sửa nhắc nhở" : "Tạo nhắc nhở mới";
-
-  const reminderStats = useMemo(
-    () => ({
-      active: reminders.filter((item) => item.status === "active").length,
-      paused: reminders.filter((item) => item.status === "paused").length,
-      terminal: reminders.filter((item) => item.status === "expired" || item.status === "canceled").length,
-    }),
-    [reminders]
-  );
+  const selectedPatientInfo = selectedPatientId
+    ? patientDisplayMap.get(selectedPatientId)
+    : null;
+  const modeLabel = editingReminderId
+    ? "Chỉnh sửa nhắc nhở"
+    : "Tạo nhắc nhở mới";
 
   const applyReminderToForm = (reminder: ReminderRecord) => {
     setFormData({
@@ -223,6 +252,7 @@ const ReminderPage = () => {
       status: reminder.status,
     });
     setEditingReminderId(reminder.id);
+    setIsFormVisible(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -231,7 +261,21 @@ const ReminderPage = () => {
     setEditingReminderId(null);
   };
 
-  const buildPayload = (): ReminderBasePayload | UpdateReminderPayload | null => {
+  const handleCloseForm = () => {
+    setIsFormVisible(false);
+    resetForm();
+  };
+
+  const handleOpenCreateForm = () => {
+    resetForm(selectedPatientId);
+    setIsFormVisible(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const buildPayload = ():
+    | ReminderBasePayload
+    | UpdateReminderPayload
+    | null => {
     if (!formData.patientId) {
       showToast("Vui lòng chọn bệnh nhân cho nhắc nhở này.", "error");
       return null;
@@ -292,13 +336,19 @@ const ReminderPage = () => {
       const assignments = await getMyPatients();
       setPatients(assignments);
 
-      if (initialPatientId && !assignments.some((item) => item.patientId === initialPatientId)) {
+      if (
+        initialPatientId &&
+        !assignments.some((item) => item.patientId === initialPatientId)
+      ) {
         setSelectedPatientId("");
         setFormData(createDefaultFormData());
       }
     } catch (error) {
       console.error("Failed to load patients for reminders", error);
-      showToast("Không thể tải danh sách bệnh nhân để cấu hình nhắc nhở.", "error");
+      showToast(
+        "Không thể tải danh sách bệnh nhân để cấu hình nhắc nhở.",
+        "error",
+      );
     } finally {
       setLoadingPatients(false);
     }
@@ -323,13 +373,17 @@ const ReminderPage = () => {
             patientId,
             status: statusFilter === "all" ? undefined : statusFilter,
             kind: kindFilter === "all" ? undefined : kindFilter,
-          })
-        )
+          }),
+        ),
       );
 
       const merged = reminderGroups.flat();
-      const uniqueReminders = Array.from(new Map(merged.map((item) => [item.id, item])).values()).sort(
-        (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
+      const uniqueReminders = Array.from(
+        new Map(merged.map((item) => [item.id, item])).values(),
+      ).sort(
+        (left, right) =>
+          new Date(right.createdAt).getTime() -
+          new Date(left.createdAt).getTime(),
       );
 
       setReminders(uniqueReminders);
@@ -354,10 +408,29 @@ const ReminderPage = () => {
     if (!loadingPatients && patientOptions.length > 0) {
       void loadReminders();
     }
-  }, [loadingPatients, patientOptions, selectedPatientId, statusFilter, kindFilter]);
+  }, [
+    loadingPatients,
+    patientOptions,
+    selectedPatientId,
+    statusFilter,
+    kindFilter,
+  ]);
+
+  useEffect(() => {
+    if (!isFormVisible) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isFormVisible]);
 
   const handleFormChange = (
-    event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+    event: ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >,
   ) => {
     const { name, value } = event.target;
     setFormData((current) => ({
@@ -392,7 +465,10 @@ const ReminderPage = () => {
       setSaving(true);
 
       if (editingReminderId) {
-        await updateReminder(editingReminderId, payload as UpdateReminderPayload);
+        await updateReminder(
+          editingReminderId,
+          payload as UpdateReminderPayload,
+        );
         showToast("Đã cập nhật nhắc nhở thành công.", "success");
       } else {
         await createReminder(payload as ReminderBasePayload);
@@ -401,15 +477,22 @@ const ReminderPage = () => {
 
       await loadReminders();
       resetForm((payload as ReminderBasePayload).patientId);
+      setIsFormVisible(false);
     } catch (error: any) {
       console.error("Failed to save reminder", error);
-      showToast(error?.response?.data?.error || "Không thể lưu nhắc nhở.", "error");
+      showToast(
+        error?.response?.data?.error || "Không thể lưu nhắc nhở.",
+        "error",
+      );
     } finally {
       setSaving(false);
     }
   };
 
-  const handleQuickStatusUpdate = async (reminder: ReminderRecord, nextStatus: ReminderStatus) => {
+  const handleQuickStatusUpdate = async (
+    reminder: ReminderRecord,
+    nextStatus: ReminderStatus,
+  ) => {
     const actionLabel =
       nextStatus === "paused"
         ? "tạm dừng"
@@ -417,7 +500,9 @@ const ReminderPage = () => {
           ? "kích hoạt lại"
           : "hủy";
 
-    const confirmed = window.confirm(`Bạn có muốn ${actionLabel} nhắc nhở này không?`);
+    const confirmed = window.confirm(
+      `Bạn có muốn ${actionLabel} nhắc nhở này không?`,
+    );
     if (!confirmed) return;
 
     try {
@@ -431,27 +516,34 @@ const ReminderPage = () => {
       }
     } catch (error: any) {
       console.error("Failed to update reminder status", error);
-      showToast(error?.response?.data?.error || "Không thể cập nhật trạng thái nhắc nhở.", "error");
+      showToast(
+        error?.response?.data?.error ||
+          "Không thể cập nhật trạng thái nhắc nhở.",
+        "error",
+      );
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <div className="mx-auto max-w-7xl p-6">
+    <div className="mx-auto  p-6">
       <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800 dark:text-slate-100">Nhắc Nhở Bệnh Nhân</h1>
+          <h1 className="text-3xl font-bold text-gray-800 dark:text-slate-100">
+            Nhắc Nhở Bệnh Nhân
+          </h1>
           <p className="mt-2 max-w-3xl text-gray-600 dark:text-slate-400">
-            Quản lý lịch nhắc đo chỉ số và uống thuốc theo từng bệnh nhân, theo dõi trạng thái chạy,
-            và điều chỉnh nhanh khi kế hoạch chăm sóc thay đổi.
+            Quản lý lịch nhắc đo chỉ số và uống thuốc theo từng bệnh nhân, theo
+            dõi trạng thái chạy, và điều chỉnh nhanh khi kế hoạch chăm sóc thay
+            đổi.
           </p>
         </div>
 
         <div className="flex flex-wrap gap-3">
           <button
             type="button"
-            onClick={() => resetForm()}
+            onClick={handleOpenCreateForm}
             className="inline-flex items-center rounded-xl bg-slate-100 dark:bg-slate-700 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-200 dark:hover:bg-slate-600"
           >
             <FaPlus className="mr-2" />
@@ -463,32 +555,15 @@ const ReminderPage = () => {
             disabled={loadingReminders}
             className="inline-flex items-center rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 dark:hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            <FaSyncAlt className={`mr-2 ${loadingReminders ? "animate-spin" : ""}`} />
+            <FaSyncAlt
+              className={`mr-2 ${loadingReminders ? "animate-spin" : ""}`}
+            />
             Làm mới
           </button>
         </div>
       </div>
 
-      <div className="mb-6 grid gap-4 md:grid-cols-4">
-        <div className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">
-          <div className="text-sm text-gray-500 dark:text-slate-400">Bệnh nhân quản lý</div>
-          <div className="mt-2 text-3xl font-bold text-gray-900 dark:text-slate-100">{patientOptions.length}</div>
-        </div>
-        <div className="rounded-2xl border border-emerald-100 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 p-4 shadow-sm">
-          <div className="text-sm text-emerald-700 dark:text-emerald-300">Nhắc nhở đang chạy</div>
-          <div className="mt-2 text-3xl font-bold text-emerald-800 dark:text-emerald-200">{reminderStats.active}</div>
-        </div>
-        <div className="rounded-2xl border border-amber-100 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-4 shadow-sm">
-          <div className="text-sm text-amber-700 dark:text-amber-300">Nhắc nhở tạm dừng</div>
-          <div className="mt-2 text-3xl font-bold text-amber-800 dark:text-amber-200">{reminderStats.paused}</div>
-        </div>
-        <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 p-4 shadow-sm">
-          <div className="text-sm text-slate-500 dark:text-slate-400">Đã kết thúc</div>
-          <div className="mt-2 text-3xl font-bold text-slate-800 dark:text-slate-100">{reminderStats.terminal}</div>
-        </div>
-      </div>
-
-      <div className="mb-6 rounded-3xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-sm">
+      <div className="mb-6 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
           <div className="flex-1">
             <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
@@ -501,11 +576,14 @@ const ReminderPage = () => {
               className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">
-                {loadingPatients ? "-- Đang tải bệnh nhân --" : "-- Tất cả bệnh nhân tôi quản lý --"}
+                {loadingPatients
+                  ? "-- Đang tải bệnh nhân --"
+                  : "-- Tất cả bệnh nhân tôi quản lý --"}
               </option>
               {patientOptions.map((patient) => (
                 <option key={patient.patientId} value={patient.patientId}>
-                  {(patient.patientName || patient.patientId) + (patient.patientCode ? ` • ${patient.patientCode}` : "")}
+                  {(patient.patientName || patient.patientId) +
+                    (patient.patientCode ? ` • ${patient.patientCode}` : "")}
                 </option>
               ))}
             </select>
@@ -517,7 +595,9 @@ const ReminderPage = () => {
             </label>
             <select
               value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value as ReminderStatusFilter)}
+              onChange={(event) =>
+                setStatusFilter(event.target.value as ReminderStatusFilter)
+              }
               className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               {reminderStatusOptions.map((option) => (
@@ -534,7 +614,9 @@ const ReminderPage = () => {
             </label>
             <select
               value={kindFilter}
-              onChange={(event) => setKindFilter(event.target.value as ReminderKindFilter)}
+              onChange={(event) =>
+                setKindFilter(event.target.value as ReminderKindFilter)
+              }
               className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="all">Tất cả loại</option>
@@ -546,365 +628,428 @@ const ReminderPage = () => {
             </select>
           </div>
         </div>
-
-        {selectedPatientInfo && (
-          <div className="mt-4 rounded-2xl border border-blue-100 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 px-4 py-3 text-sm text-blue-800 dark:text-blue-200">
-            Đang ưu tiên hiển thị reminder cho <span className="font-semibold">{selectedPatientInfo.name}</span>
-            {selectedPatientInfo.code ? ` • ${selectedPatientInfo.code}` : ""}.
-          </div>
-        )}
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[0.92fr,1.08fr]">
-        <form
-          onSubmit={handleSubmit}
-          className="rounded-3xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm"
-        >
-          <div className="mb-6 flex items-start justify-between gap-4">
-            <div>
-              <h2 className="text-xl font-semibold text-gray-800 dark:text-slate-100">{modeLabel}</h2>
-              <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
-                Tạo lịch nhắc định kỳ rõ ràng, có thời gian hiệu lực và trạng thái vận hành riêng.
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => resetForm()}
-              className="inline-flex items-center rounded-xl bg-slate-100 dark:bg-slate-700 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-200 dark:hover:bg-slate-600"
-            >
-              <FaUndo className="mr-2" />
-              Đặt lại
-            </button>
+      <div className="rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-800 dark:text-slate-100">
+              Danh sách nhắc nhở
+            </h2>
+            <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
+              Theo dõi lịch đang áp dụng, chỉnh sửa nhanh, và tạm dừng hay hủy
+              khi kế hoạch thay đổi.
+            </p>
           </div>
+          <div className="rounded-full bg-slate-100 dark:bg-slate-700 px-3 py-1 text-xs font-semibold text-slate-600 dark:text-slate-300">
+            {reminders.length} nhắc nhở
+          </div>
+        </div>
 
-          <div className="grid gap-5">
-            <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
-                Bệnh nhân <span className="text-red-500">*</span>
-              </label>
-              <select
-                name="patientId"
-                value={formData.patientId}
-                onChange={handleFormChange}
-                disabled={loadingPatients || Boolean(editingReminderId)}
-                className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-70"
+        <div className="mt-5 space-y-4">
+          {loadingReminders && (
+            <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 px-4 py-6 text-sm text-slate-500 dark:text-slate-400">
+              Đang tải reminder...
+            </div>
+          )}
+
+          {!loadingReminders && reminders.length === 0 && (
+            <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 px-4 py-6 text-sm text-slate-500 dark:text-slate-400">
+              Chưa có reminder nào theo bộ lọc hiện tại.
+            </div>
+          )}
+
+          {reminders.map((reminder) => {
+            const patientInfo = patientDisplayMap.get(reminder.patientId);
+            const canToggle =
+              reminder.status === "active" || reminder.status === "paused";
+            const canEdit =
+              reminder.status === "active" || reminder.status === "paused";
+
+            return (
+              <div
+                key={reminder.id}
+                className=" border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4"
               >
-                <option value="">{loadingPatients ? "-- Đang tải bệnh nhân --" : "-- Chọn bệnh nhân --"}</option>
-                {patientOptions.map((patient) => (
-                  <option key={patient.patientId} value={patient.patientId}>
-                    {(patient.patientName || patient.patientId) + (patient.patientCode ? ` • ${patient.patientCode}` : "")}
-                  </option>
-                ))}
-              </select>
-            </div>
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="inline-flex items-center rounded-full bg-blue-100 dark:bg-blue-900/30 px-3 py-1 text-xs font-semibold text-blue-700 dark:text-blue-300">
+                        {getKindLabel(reminder.kind)}
+                      </span>
+                      <span
+                        className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${getStatusClasses(reminder.status)}`}
+                      >
+                        {getStatusLabel(reminder.status)}
+                      </span>
+                    </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
-                  Loại nhắc nhở
-                </label>
-                <select
-                  name="kind"
-                  value={formData.kind}
-                  onChange={handleFormChange}
-                  className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  {reminderKindOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                <p className="mt-2 text-xs text-gray-500 dark:text-slate-400">
-                  {reminderKindOptions.find((item) => item.value === formData.kind)?.helper}
-                </p>
-              </div>
+                    <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
+                      <span className="font-semibold text-gray-900 dark:text-slate-100">
+                        {patientInfo?.name || reminder.patientId}
+                      </span>
+                      <span className="text-slate-400">•</span>
+                      <span className="text-gray-500 dark:text-slate-400">
+                        {patientInfo?.code || "Chưa có mã"}
+                      </span>
+                    </div>
 
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
-                  Giờ nhắc
-                </label>
-                <input
-                  type="time"
-                  name="time"
-                  value={formData.time}
-                  onChange={handleFormChange}
-                  className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
+                    <p className="mt-3 text-sm leading-6 text-gray-700 dark:text-slate-300">
+                      {reminder.message}
+                    </p>
 
-            <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
-                Nội dung nhắc nhở <span className="text-red-500">*</span>
-              </label>
-              <textarea
-                name="message"
-                rows={4}
-                value={formData.message}
-                onChange={handleFormChange}
-                placeholder={
-                  formData.kind === "medication"
-                    ? "Ví dụ: Uống thuốc huyết áp sau ăn sáng."
-                    : "Ví dụ: Đo huyết áp và SpO2 trước 8h sáng."
-                }
-                className="w-full rounded-2xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-3 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
-                Lặp lại theo ngày
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {weekdayOptions.map((option) => {
-                  const active = formData.daysOfWeek.includes(option.value);
-
-                  return (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => handleToggleWeekday(option.value)}
-                      className={`rounded-full px-3 py-2 text-sm font-medium transition ${
-                        active
-                          ? "bg-blue-600 text-white shadow-sm"
-                          : "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600"
-                      }`}
-                    >
-                      {option.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
-                  Hiệu lực từ ngày
-                </label>
-                <input
-                  type="date"
-                  name="startDate"
-                  value={formData.startDate}
-                  onChange={handleFormChange}
-                  className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
-                  Hiệu lực đến ngày
-                </label>
-                <input
-                  type="date"
-                  name="endDate"
-                  value={formData.endDate}
-                  onChange={handleFormChange}
-                  className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
-                  Múi giờ
-                </label>
-                <select
-                  name="timezone"
-                  value={formData.timezone}
-                  onChange={handleFormChange}
-                  className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  {timezoneOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
-                  Trạng thái
-                </label>
-                <select
-                  name="status"
-                  value={formData.status}
-                  onChange={handleFormChange}
-                  disabled={!editingReminderId}
-                  className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-70"
-                >
-                  <option value="active">Đang chạy</option>
-                  <option value="paused">Tạm dừng</option>
-                  <option value="canceled">Đã hủy</option>
-                  <option value="expired">Hết hạn</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-8 flex justify-end">
-            <button
-              type="submit"
-              disabled={!formData.patientId || saving}
-              className="inline-flex items-center rounded-xl bg-blue-600 px-6 py-2.5 font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-400 dark:disabled:bg-slate-600"
-            >
-              <FaSave className="mr-2" />
-              {saving ? "Đang lưu..." : editingReminderId ? "Cập nhật nhắc nhở" : "Lưu nhắc nhở"}
-            </button>
-          </div>
-        </form>
-
-        <div className="rounded-3xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h2 className="text-xl font-semibold text-gray-800 dark:text-slate-100">Danh sách nhắc nhở</h2>
-              <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
-                Theo dõi lịch đang áp dụng, chỉnh sửa nhanh, và tạm dừng hay hủy khi kế hoạch thay đổi.
-              </p>
-            </div>
-            <div className="rounded-full bg-slate-100 dark:bg-slate-700 px-3 py-1 text-xs font-semibold text-slate-600 dark:text-slate-300">
-              {reminders.length} nhắc nhở
-            </div>
-          </div>
-
-          <div className="mt-5 space-y-4">
-            {loadingReminders && (
-              <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 px-4 py-6 text-sm text-slate-500 dark:text-slate-400">
-                Đang tải reminder...
-              </div>
-            )}
-
-            {!loadingReminders && reminders.length === 0 && (
-              <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 px-4 py-6 text-sm text-slate-500 dark:text-slate-400">
-                Chưa có reminder nào theo bộ lọc hiện tại.
-              </div>
-            )}
-
-            {reminders.map((reminder) => {
-              const patientInfo = patientDisplayMap.get(reminder.patientId);
-              const canToggle = reminder.status === "active" || reminder.status === "paused";
-              const canEdit = reminder.status === "active" || reminder.status === "paused";
-
-              return (
-                <div
-                  key={reminder.id}
-                  className="rounded-3xl border border-slate-200 dark:border-slate-700 bg-gradient-to-br from-white dark:from-slate-800 to-slate-50 dark:to-slate-800 p-5 shadow-sm"
-                >
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="inline-flex items-center rounded-full bg-blue-100 dark:bg-blue-900/30 px-3 py-1 text-xs font-semibold text-blue-700 dark:text-blue-300">
-                          {getKindLabel(reminder.kind)}
-                        </span>
-                        <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${getStatusClasses(reminder.status)}`}>
-                          {getStatusLabel(reminder.status)}
-                        </span>
+                    <div className="mt-4 flex flex-wrap gap-3">
+                      <div className="flex-none rounded-lg bg-slate-50 dark:bg-slate-800 px-4 py-3">
+                        <div className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                          Giờ nhắc
+                        </div>
+                        <div className="mt-1 flex items-center text-sm font-semibold text-gray-800 dark:text-slate-100">
+                          <FaRegClock className="mr-2 text-slate-400" />
+                          {formatTime(reminder.hour, reminder.minute)}
+                        </div>
                       </div>
 
-                      <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
-                        <span className="font-semibold text-gray-900 dark:text-slate-100">
-                          {patientInfo?.name || reminder.patientId}
-                        </span>
-                        <span className="text-slate-400">•</span>
-                        <span className="text-gray-500 dark:text-slate-400">
-                          {patientInfo?.code || "Chưa có mã"}
-                        </span>
+                      <div className="flex-none rounded-lg bg-slate-50 dark:bg-slate-800 px-4 py-3">
+                        <div className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                          Lặp lại
+                        </div>
+                        <div className="mt-1 text-sm font-semibold text-gray-800 dark:text-slate-100">
+                          {buildWeekdaySummary(reminder.daysOfWeek)}
+                        </div>
                       </div>
 
-                      <p className="mt-3 text-sm leading-6 text-gray-700 dark:text-slate-300">
-                        {reminder.message}
-                      </p>
-
-                      <div className="mt-4 flex flex-wrap gap-3">
-                        <div className="flex-none rounded-2xl bg-slate-50 dark:bg-slate-700/40 px-4 py-3">
-                          <div className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">Giờ nhắc</div>
-                          <div className="mt-1 flex items-center text-sm font-semibold text-gray-800 dark:text-slate-100">
-                            <FaRegClock className="mr-2 text-slate-400" />
-                            {formatTime(reminder.hour, reminder.minute)}
-                          </div>
+                      <div className="flex-none rounded-lg bg-slate-50 dark:bg-slate-800 px-4 py-3">
+                        <div className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                          Hiệu lực
                         </div>
-
-                        <div className="flex-none rounded-2xl bg-slate-50 dark:bg-slate-700/40 px-4 py-3">
-                          <div className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">Lặp lại</div>
-                          <div className="mt-1 text-sm font-semibold text-gray-800 dark:text-slate-100">
-                            {buildWeekdaySummary(reminder.daysOfWeek)}
-                          </div>
+                        <div className="mt-1 whitespace-nowrap text-sm font-semibold text-gray-800 dark:text-slate-100">
+                          {formatDate(reminder.startDate)} -{" "}
+                          {formatDate(reminder.endDate)}
                         </div>
+                      </div>
 
-                        <div className="flex-none rounded-2xl bg-slate-50 dark:bg-slate-700/40 px-4 py-3">
-                          <div className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">Hiệu lực</div>
-                          <div className="mt-1 whitespace-nowrap text-sm font-semibold text-gray-800 dark:text-slate-100">
-                            {formatDate(reminder.startDate)} - {formatDate(reminder.endDate)}
-                          </div>
+                      <div className="flex-none rounded-lg bg-slate-50 dark:bg-slate-800 px-4 py-3">
+                        <div className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                          Cập nhật
                         </div>
-
-                        <div className="flex-none rounded-2xl bg-slate-50 dark:bg-slate-700/40 px-4 py-3">
-                          <div className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">Cập nhật</div>
-                          <div className="mt-1 text-sm font-semibold text-gray-800 dark:text-slate-100">
-                            {formatDateTime(reminder.updatedAt)}
-                          </div>
+                        <div className="mt-1 text-sm font-semibold text-gray-800 dark:text-slate-100">
+                          {formatDateTime(reminder.updatedAt)}
                         </div>
                       </div>
                     </div>
+                  </div>
 
-                    <div className="flex flex-wrap gap-2 lg:justify-end">
+                  <div className="flex flex-wrap gap-2 lg:justify-end">
+                    <button
+                      type="button"
+                      onClick={() => applyReminderToForm(reminder)}
+                      disabled={!canEdit || saving}
+                      className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <FaEdit className="mr-2" />
+                      Chỉnh sửa
+                    </button>
+
+                    {reminder.status === "active" && (
                       <button
                         type="button"
-                        onClick={() => applyReminderToForm(reminder)}
-                        disabled={!canEdit || saving}
-                        className="inline-flex items-center rounded-xl border border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/30 px-4 py-2 text-sm font-medium text-blue-700 dark:text-blue-300 transition hover:bg-blue-100 dark:hover:bg-blue-900/50 disabled:cursor-not-allowed disabled:opacity-60"
+                        onClick={() =>
+                          void handleQuickStatusUpdate(reminder, "paused")
+                        }
+                        disabled={saving}
+                        className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                       >
-                        <FaBell className="mr-2" />
-                        Chỉnh sửa
+                        <FaPauseCircle className="mr-2" />
+                        Tạm dừng
                       </button>
+                    )}
 
-                      {reminder.status === "active" && (
-                        <button
-                          type="button"
-                          onClick={() => void handleQuickStatusUpdate(reminder, "paused")}
-                          disabled={saving}
-                          className="inline-flex items-center rounded-xl border border-amber-200 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/30 px-4 py-2 text-sm font-medium text-amber-700 dark:text-amber-300 transition hover:bg-amber-100 dark:hover:bg-amber-900/50 disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          <FaPauseCircle className="mr-2" />
-                          Tạm dừng
-                        </button>
-                      )}
+                    {reminder.status === "paused" && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          void handleQuickStatusUpdate(reminder, "active")
+                        }
+                        disabled={saving}
+                        className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        <FaPlayCircle className="mr-2" />
+                        Tiếp tục
+                      </button>
+                    )}
 
-                      {reminder.status === "paused" && (
-                        <button
-                          type="button"
-                          onClick={() => void handleQuickStatusUpdate(reminder, "active")}
-                          disabled={saving}
-                          className="inline-flex items-center rounded-xl border border-emerald-200 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-900/30 px-4 py-2 text-sm font-medium text-emerald-700 dark:text-emerald-300 transition hover:bg-emerald-100 dark:hover:bg-emerald-900/50 disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          <FaPlayCircle className="mr-2" />
-                          Tiếp tục
-                        </button>
-                      )}
+                    {canToggle && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          void handleQuickStatusUpdate(reminder, "canceled")
+                        }
+                        disabled={saving}
+                        className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 transition hover:bg-slate-50 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        <FaStopCircle className="mr-2" />
+                        Hủy lịch
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
 
-                      {canToggle && (
-                        <button
-                          type="button"
-                          onClick={() => void handleQuickStatusUpdate(reminder, "canceled")}
-                          disabled={saving}
-                          className="inline-flex items-center rounded-xl border border-rose-200 dark:border-rose-700 bg-rose-50 dark:bg-rose-900/30 px-4 py-2 text-sm font-medium text-rose-700 dark:text-rose-300 transition hover:bg-rose-100 dark:hover:bg-rose-900/50 disabled:cursor-not-allowed disabled:opacity-60"
+      {isFormVisible && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={handleCloseForm}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="reminder-form-title"
+            onClick={(event) => event.stopPropagation()}
+            className="w-full max-w-4xl max-h-[92vh] overflow-hidden rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+          >
+            <div className="flex items-center justify-between  px-4 py-3">
+              <h2
+                id="reminder-form-title"
+                className="text-lg font-semibold text-gray-900 dark:text-slate-100"
+              >
+                {modeLabel}
+              </h2>
+              <button
+                type="button"
+                onClick={handleCloseForm}
+                className="p-2 items-center rounded-lg  dark:border-slate-600  text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700"
+              >
+                <FaTimes />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit}>
+              <div className="max-h-[calc(92vh-140px)] overflow-y-auto px-4 py-4">
+                <div className="grid gap-4">
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
+                      Bệnh nhân <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      name="patientId"
+                      value={formData.patientId}
+                      onChange={handleFormChange}
+                      disabled={loadingPatients || Boolean(editingReminderId)}
+                      className="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2.5 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-70"
+                    >
+                      <option value="">
+                        {loadingPatients
+                          ? "-- Đang tải bệnh nhân --"
+                          : "-- Chọn bệnh nhân --"}
+                      </option>
+                      {patientOptions.map((patient) => (
+                        <option
+                          key={patient.patientId}
+                          value={patient.patientId}
                         >
-                          <FaStopCircle className="mr-2" />
-                          Hủy lịch
-                        </button>
-                      )}
+                          {(patient.patientName || patient.patientId) +
+                            (patient.patientCode
+                              ? ` • ${patient.patientCode}`
+                              : "")}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
+                        Loại nhắc nhở
+                      </label>
+                      <select
+                        name="kind"
+                        value={formData.kind}
+                        onChange={handleFormChange}
+                        className="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2.5 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        {reminderKindOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="mt-2 text-xs text-gray-500 dark:text-slate-400">
+                        {
+                          reminderKindOptions.find(
+                            (item) => item.value === formData.kind,
+                          )?.helper
+                        }
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
+                        Giờ nhắc
+                      </label>
+                      <input
+                        type="time"
+                        name="time"
+                        value={formData.time}
+                        onChange={handleFormChange}
+                        className="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2.5 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
+                      Nội dung nhắc nhở <span className="text-red-500">*</span>
+                    </label>
+                    <textarea
+                      name="message"
+                      rows={4}
+                      value={formData.message}
+                      onChange={handleFormChange}
+                      placeholder={
+                        formData.kind === "medication"
+                          ? "Ví dụ: Uống thuốc huyết áp sau ăn sáng."
+                          : "Ví dụ: Đo huyết áp và SpO2 trước 8h sáng."
+                      }
+                      className="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2.5 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
+                      Lặp lại theo ngày
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {weekdayOptions.map((option) => {
+                        const active = formData.daysOfWeek.includes(
+                          option.value,
+                        );
+
+                        return (
+                          <button
+                            key={option.value}
+                            type="button"
+                            onClick={() => handleToggleWeekday(option.value)}
+                            className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
+                              active
+                                ? "bg-slate-700 text-white dark:bg-slate-200 dark:text-slate-900"
+                                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
+                            }`}
+                          >
+                            {option.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
+                        Hiệu lực từ ngày
+                      </label>
+                      <input
+                        type="date"
+                        name="startDate"
+                        value={formData.startDate}
+                        onChange={handleFormChange}
+                        className="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2.5 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
+                        Hiệu lực đến ngày
+                      </label>
+                      <input
+                        type="date"
+                        name="endDate"
+                        value={formData.endDate}
+                        onChange={handleFormChange}
+                        className="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2.5 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
+                        Múi giờ
+                      </label>
+                      <select
+                        name="timezone"
+                        value={formData.timezone}
+                        onChange={handleFormChange}
+                        className="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2.5 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        {timezoneOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
+                        Trạng thái
+                      </label>
+                      <select
+                        name="status"
+                        value={formData.status}
+                        onChange={handleFormChange}
+                        disabled={!editingReminderId}
+                        className="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2.5 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-70"
+                      >
+                        <option value="active">Đang chạy</option>
+                        <option value="paused">Tạm dừng</option>
+                        <option value="canceled">Đã hủy</option>
+                        <option value="expired">Hết hạn</option>
+                      </select>
                     </div>
                   </div>
                 </div>
-              );
-            })}
+              </div>
+
+              <div className="flex items-center justify-between border-t border-gray-200 dark:border-slate-700 px-4 py-3">
+                <button
+                  type="button"
+                  onClick={() => resetForm()}
+                  className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
+                >
+                  <FaUndo className="mr-2" />
+                  Đặt lại
+                </button>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleCloseForm}
+                    className="rounded-lg border border-slate-300 dark:border-slate-600 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={!formData.patientId || saving}
+                    className="inline-flex items-center rounded-lg bg-slate-800 dark:bg-slate-100 px-4 py-2 text-sm font-medium text-white dark:text-slate-900 transition hover:bg-slate-700 dark:hover:bg-slate-200 disabled:cursor-not-allowed disabled:bg-slate-400 dark:disabled:bg-slate-600 dark:disabled:text-slate-100"
+                  >
+                    <FaSave className="mr-2" />
+                    {saving
+                      ? "Đang lưu..."
+                      : editingReminderId
+                        ? "Cập nhật nhắc nhở"
+                        : "Lưu nhắc nhở"}
+                  </button>
+                </div>
+              </div>
+            </form>
           </div>
         </div>
-      </div>
+      )}
 
       <Toast toast={toast} onClose={hideToast} />
     </div>

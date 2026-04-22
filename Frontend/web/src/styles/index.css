@@ -1,5 +1,27 @@
 @import "tailwindcss";
 
+:root {
+  --app-font-family:
+    system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+    Arial, sans-serif;
+  --app-font-size: 16px;
+}
+
+html {
+  font-size: var(--app-font-size);
+}
+
+body {
+  font-family: var(--app-font-family);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
 /* ============================================================
    THEME TOKENS — Light Mode (default)
    ============================================================ */
@@ -38,16 +60,16 @@
 @variant dark (&:where(.dark, .dark *));
 
 .dark {
-  --color-bg: #0f172a;          /* slate-900  — page background     */
-  --color-surface: #1e293b;     /* slate-800  — card / panel bg     */
-  --color-text: #f1f5f9;        /* slate-100  — primary text        */
-  --color-text-muted: #94a3b8;  /* slate-400  — muted / secondary   */
-  --color-border: #334155;      /* slate-700  — borders             */
-  --color-hover: #334155;       /* hover surface                    */
+  --color-bg: #0f172a; /* slate-900  — page background     */
+  --color-surface: #1e293b; /* slate-800  — card / panel bg     */
+  --color-text: #f1f5f9; /* slate-100  — primary text        */
+  --color-text-muted: #94a3b8; /* slate-400  — muted / secondary   */
+  --color-border: #334155; /* slate-700  — borders             */
+  --color-hover: #334155; /* hover surface                    */
 
   /* Keep brand colours; slightly lifted for dark backgrounds */
-  --color-primary: #3b82f6;     /* blue-500   */
-  --color-primary-dark: #2563eb;/* blue-600   */
+  --color-primary: #3b82f6; /* blue-500   */
+  --color-primary-dark: #2563eb; /* blue-600   */
   --color-btn-clicked: #2563eb;
 
   color-scheme: dark;
