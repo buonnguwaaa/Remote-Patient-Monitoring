@@ -16,7 +16,7 @@ import {
   MEASUREMENT_SECTIONS,
 } from "../../utils/measurementForm";
 
-export default function InputMeasurementPatientScreen() {
+export default function InputMeasurementPatientScreen({ isEmbedded }) {
   const { user } = useAuth() || {};
   const currentPatientUser = user || { _id: "u_patient_self_1", id: "p1", name: "Thong tin mau" };
   const [type, setType] = useState("bp");
@@ -172,8 +172,10 @@ export default function InputMeasurementPatientScreen() {
     }
   };
 
+  const Container = isEmbedded ? View : SafeAreaView;
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#F2F6FF" }}>
+    <Container style={{ flex: 1, backgroundColor: "#F2F6FF" }}>
       <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}>
         <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}>
           <View style={styles.headerRow}>
@@ -208,7 +210,7 @@ export default function InputMeasurementPatientScreen() {
           <View style={{ height: 16 }} />
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </Container>
   );
 }
 

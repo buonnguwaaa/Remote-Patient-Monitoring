@@ -72,7 +72,7 @@ function buildNotificationMeta(item) {
   };
 }
 
-export default function NotificationInboxScreen() {
+export default function NotificationInboxScreen({ isEmbedded }) {
   const navigation = useNavigation();
   const route = useRoute();
   const [notifications, setNotifications] = useState([]);
@@ -193,8 +193,10 @@ export default function NotificationInboxScreen() {
     return `Bạn có ${unreadCount} thông báo chưa đọc.`;
   }, [notifications.length, unreadCount]);
 
+  const Container = isEmbedded ? View : SafeAreaView;
+
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <Container style={styles.safeArea}>
       <ScrollView
         contentContainerStyle={styles.contentContainer}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void loadNotifications(true)} />}
@@ -269,7 +271,7 @@ export default function NotificationInboxScreen() {
           ) : null}
         </View>
       </Modal>
-    </SafeAreaView>
+    </Container>
   );
 }
 

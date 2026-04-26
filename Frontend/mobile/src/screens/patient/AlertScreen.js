@@ -190,7 +190,7 @@ function groupAlertsByDay(alerts) {
   return groups;
 }
 
-export default function AlertScreen() {
+export default function AlertScreen({ isEmbedded }) {
   const navigation = useNavigation();
   const route = useRoute();
   const [alerts, setAlerts] = useState([]);
@@ -262,8 +262,10 @@ export default function AlertScreen() {
     navigation.setParams({ selectedAlertId: undefined });
   }, [alerts, navigation, route?.params?.selectedAlertId]);
 
+  const Container = isEmbedded ? View : SafeAreaView;
+
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <Container style={styles.safeArea}>
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.contentContainer}
@@ -504,7 +506,7 @@ export default function AlertScreen() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </Container>
   );
 }
 

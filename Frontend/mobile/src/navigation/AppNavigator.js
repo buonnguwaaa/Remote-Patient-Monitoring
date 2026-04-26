@@ -27,6 +27,8 @@ import ProfileScreen from "../screens/patient/ProfileScreen";
 import DoctorChatScreen from "../screens/patient/DoctorChatScreen";
 import InputMeasurementPatientScreen from "../screens/patient/InputMeasurementPatientScreen";
 import NotificationInboxScreen from "../screens/patient/NotificationInboxScreen";
+import TrackingScreen from "../screens/patient/TrackingScreen";
+import NotificationContainerScreen from "../screens/patient/NotificationContainerScreen";
 
 import NursePatientListScreen from "../screens/nurse/NursePatientListScreen";
 import MeasurementInputScreen from "../screens/nurse/MeasurementInputScreen";
@@ -60,19 +62,13 @@ function PatientTabNavigator() {
           if (route.name === "PatientHome") {
             return <Ionicons name="home-outline" size={size} color={color} />;
           }
-          if (route.name === "PatientHistory") {
-            return <Ionicons name="stats-chart-outline" size={size} color={color} />;
+          if (route.name === "PatientTracking") {
+            return <Ionicons name="pulse-outline" size={size} color={color} />;
           }
           if (route.name === "DoctorChat") {
             return <Ionicons name="chatbubble-ellipses-outline" size={size} color={color} />;
           }
-          if (route.name === "InputMeasurementPatientScreen") {
-            return <Ionicons name="create-outline" size={size} color={color} />;
-          }
-          if (route.name === "PatientAlerts") {
-            return <Ionicons name="alert-circle-outline" size={size} color={color} />;
-          }
-          if (route.name === "PatientNotifications") {
+          if (route.name === "PatientNotifs") {
             return <Ionicons name="notifications-outline" size={size} color={color} />;
           }
           if (route.name === "PatientProfile") {
@@ -83,19 +79,9 @@ function PatientTabNavigator() {
       })}
     >
       <Tab.Screen name="PatientHome" component={HomeScreen} options={{ title: "Trang chủ" }} />
-      <Tab.Screen
-        name="InputMeasurementPatientScreen"
-        component={InputMeasurementPatientScreen}
-        options={{ title: "Nhập liệu" }}
-      />
-      <Tab.Screen name="PatientHistory" component={HistoryScreen} options={{ title: "Lịch sử" }} />
+      <Tab.Screen name="PatientTracking" component={TrackingScreen} options={{ title: "Theo dõi" }} />
       <Tab.Screen name="DoctorChat" component={DoctorChatScreen} options={{ title: "Tin nhắn" }} />
-      <Tab.Screen name="PatientAlerts" component={AlertScreen} options={{ title: "Cảnh báo" }} />
-      <Tab.Screen
-        name="PatientNotifications"
-        component={NotificationInboxScreen}
-        options={{ title: "Thông báo" }}
-      />
+      <Tab.Screen name="PatientNotifs" component={NotificationContainerScreen} options={{ title: "Thông báo" }} />
       <Tab.Screen name="PatientProfile" component={ProfileScreen} options={{ title: "Hồ sơ" }} />
     </Tab.Navigator>
   );
@@ -176,6 +162,14 @@ function RootNavigator() {
         name="MainTabs"
         component={role === "user.nurse" || role === "nurse" ? NurseTabNavigator : PatientTabNavigator}
       />
+      {role !== "user.nurse" && role !== "nurse" && (
+        <>
+          <Stack.Screen name="InputMeasurementPatientScreen" component={InputMeasurementPatientScreen} />
+          <Stack.Screen name="PatientHistory" component={HistoryScreen} />
+          <Stack.Screen name="PatientAlerts" component={AlertScreen} />
+          <Stack.Screen name="PatientNotifications" component={NotificationInboxScreen} />
+        </>
+      )}
     </Stack.Navigator>
   );
 }
