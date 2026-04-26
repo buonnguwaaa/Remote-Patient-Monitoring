@@ -53,7 +53,7 @@ function getAccentStyle(tab, styles) {
   return styles.recordCardTemp;
 }
 
-export default function HistoryScreen({ route }) {
+export default function HistoryScreen({ route, isEmbedded }) {
   const { user } = useAuth() || {};
   const patientId = route?.params?.patientId || user?._id || user?.id || "p1";
 
@@ -163,8 +163,10 @@ export default function HistoryScreen({ route }) {
     )
     .slice(0, showMore ? 5 : 1);
 
+  const Container = isEmbedded ? View : SafeAreaView;
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#F2F6FF" }}>
+    <Container style={{ flex: 1, backgroundColor: "#F2F6FF" }}>
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
         {/* HEADER */}
         <View style={styles.headerRow}>
@@ -447,7 +449,7 @@ export default function HistoryScreen({ route }) {
           </View>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </Container>
   );
 }
 
