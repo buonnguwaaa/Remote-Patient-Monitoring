@@ -19,11 +19,17 @@
     },
     "web": {},
     "extra": {
-      "BASE_URL": "http://192.168.1.158:8080"
+      "BASE_URL": "http://192.168.1.171:8080"
     },
     "scheme": "rpm",
     "plugins": [
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-notifications",
+        {
+          "color": "#ffffff"
+        }
+      ]
     ]
   }
 }
