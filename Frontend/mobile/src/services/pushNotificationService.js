@@ -34,6 +34,7 @@ async function ensureAndroidChannel() {
     vibrationPattern: [0, 250, 250, 250],
     enableVibrate: true,
     lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+    sound: "rpm_notification",
   });
 }
 
