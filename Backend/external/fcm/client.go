@@ -128,7 +128,7 @@ func (c *Client) Send(ctx context.Context, token string, title string, body stri
 			Android: &fcmAndroidSettings{
 				Priority: "HIGH",
 				Notification: &fcmAndroidNotification{
-					ChannelID: "default",
+					ChannelID: "rpm_notification",
 					Sound:     "rpm_notification",
 				},
 			},
