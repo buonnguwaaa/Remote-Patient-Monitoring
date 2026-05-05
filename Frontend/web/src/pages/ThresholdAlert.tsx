@@ -332,14 +332,16 @@ const ThresholdAlert = () => {
             </button>
           )}
 
-          <button
-            type="button"
-            onClick={() => navigateToChat(alert)}
-            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 dark:border-slate-600 dark:bg-slate-700/70 dark:text-slate-100 dark:hover:border-blue-400/40 dark:hover:bg-slate-700 dark:hover:text-blue-200"
-          >
-            <FaCommentDots />
-            Tin nhắn
-          </button>
+          {alert.status !== "pending" && (
+            <button
+              type="button"
+              onClick={() => navigateToChat(alert)}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 dark:border-slate-600 dark:bg-slate-700/70 dark:text-slate-100 dark:hover:border-blue-400/40 dark:hover:bg-slate-700 dark:hover:text-blue-200"
+            >
+              <FaCommentDots />
+              Tin nhắn
+            </button>
+          )}
         </div>
       </div>
     );
@@ -583,15 +585,16 @@ const ThresholdAlert = () => {
                               >
                                 Xử lý
                               </button>
-                            ) : null}
-                            <button
-                              type="button"
-                              onClick={() => navigateToChat(alert)}
-                              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 dark:border-slate-600 dark:bg-slate-700/70 dark:text-slate-100 dark:hover:border-blue-400/40 dark:hover:bg-slate-700 dark:hover:text-blue-200"
-                            >
-                              <FaCommentDots />
-                              Tin nhắn
-                            </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => navigateToChat(alert)}
+                                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 dark:border-slate-600 dark:bg-slate-700/70 dark:text-slate-100 dark:hover:border-blue-400/40 dark:hover:bg-slate-700 dark:hover:text-blue-200"
+                              >
+                                <FaCommentDots />
+                                Tin nhắn
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>

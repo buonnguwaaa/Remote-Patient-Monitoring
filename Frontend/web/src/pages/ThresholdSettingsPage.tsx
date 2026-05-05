@@ -1,5 +1,5 @@
 import { type ChangeEvent, type FormEvent, useEffect, useMemo, useState } from "react";
-import { FaChevronLeft, FaChevronRight, FaEdit, FaPlus, FaSave, FaStopCircle, FaUndo } from "react-icons/fa";
+import { FaChevronLeft, FaChevronRight, FaEdit, FaPlus, FaSave, FaStopCircle, FaTimes, FaUndo, FaSyncAlt } from "react-icons/fa";
 
 import Toast from "../components/ui/Toast";
 import { useAuth } from "../context/AuthContext";
@@ -139,6 +139,7 @@ const ThresholdSettingsPage = () => {
   const [saving, setSaving] = useState(false);
   const [editingThresholdId, setEditingThresholdId] = useState<string | null>(null);
   const [historyPage, setHistoryPage] = useState(1);
+  const [isFormVisible, setIsFormVisible] = useState(false);
 
   const patientOptions = useMemo(() => {
     const patientMap = new Map<string, AssignmentResponse>();
@@ -188,16 +189,30 @@ const ThresholdSettingsPage = () => {
       effectiveTo: mode === "clone" ? "" : toDateInputValue(threshold.effectiveTo),
     });
     setEditingThresholdId(mode === "edit" ? threshold.id : null);
+    setIsFormVisible(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const resetForm = (patientId = formData.patientId) => {
-    if (activeThreshold && patientId === activeThreshold.patientId) {
-      applyThresholdToForm(activeThreshold, "edit");
-      return;
-    }
-
     setFormData(createDefaultFormData(patientId));
     setEditingThresholdId(null);
+  };
+
+  const handleCloseForm = () => {
+    setIsFormVisible(false);
+    resetForm();
+  };
+
+  const handleOpenCreateForm = () => {
+    if (!formData.patientId) {
+      showToast("Vui lòng chọn bệnh nhân trước.", "error");
+      return;
+    }
+    // Force create new - clear editing mode
+    setFormData(createDefaultFormData(formData.patientId));
+    setEditingThresholdId(null);
+    setIsFormVisible(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const buildPayload = (): ThresholdPayload | null => {
@@ -230,20 +245,66 @@ const ThresholdSettingsPage = () => {
       }
     }
 
+    // Validate min/max thresholds
+    const temperatureMin = toNumber(formData.temperatureMin);
+    const temperatureMax = toNumber(formData.temperatureMax);
+    if (temperatureMin >= temperatureMax) {
+      showToast("Nhiệt độ tối thiểu phải nhỏ hơn nhiệt độ tối đa.", "error");
+      return null;
+    }
+
+    const systolicMin = toNumber(formData.systolicMin);
+    const systolicMax = toNumber(formData.systolicMax);
+    if (systolicMin >= systolicMax) {
+      showToast("Huyết áp tâm thu tối thiểu phải nhỏ hơn tối đa.", "error");
+      return null;
+    }
+
+    const diastolicMin = toNumber(formData.diastolicMin);
+    const diastolicMax = toNumber(formData.diastolicMax);
+    if (diastolicMin >= diastolicMax) {
+      showToast("Huyết áp tâm trương tối thiểu phải nhỏ hơn tối đa.", "error");
+      return null;
+    }
+
+    const pulseMin = toNumber(formData.pulseMin);
+    const pulseMax = toNumber(formData.pulseMax);
+    if (pulseMin >= pulseMax) {
+      showToast("Nhịp tim tối thiểu phải nhỏ hơn tối đa.", "error");
+      return null;
+    }
+
+    const respiratoryRateMin = toNumber(formData.respiratoryRateMin);
+    const respiratoryRateMax = toNumber(formData.respiratoryRateMax);
+    if (respiratoryRateMin >= respiratoryRateMax) {
+      showToast("Nhịp thở tối thiểu phải nhỏ hơn tối đa.", "error");
+      return null;
+    }
+
+    // Validate glucose if both values are provided
+    if (formData.glucoseMin && formData.glucoseMax) {
+      const glucoseMin = toNumber(formData.glucoseMin);
+      const glucoseMax = toNumber(formData.glucoseMax);
+      if (glucoseMin >= glucoseMax) {
+        showToast("Đường huyết tối thiểu phải nhỏ hơn tối đa.", "error");
+        return null;
+      }
+    }
+
     return {
       patientId: formData.patientId,
       doctorId: user.id,
-      temperatureMin: toNumber(formData.temperatureMin),
-      temperatureMax: toNumber(formData.temperatureMax),
-      heartRateMin: toNumber(formData.pulseMin),
-      heartRateMax: toNumber(formData.pulseMax),
-      respiratoryRateMin: toNumber(formData.respiratoryRateMin),
-      respiratoryRateMax: toNumber(formData.respiratoryRateMax),
+      temperatureMin,
+      temperatureMax,
+      heartRateMin: pulseMin,
+      heartRateMax: pulseMax,
+      respiratoryRateMin,
+      respiratoryRateMax,
       spo2Min: toNumber(formData.spo2Min),
-      sysMin: toNumber(formData.systolicMin),
-      sysMax: toNumber(formData.systolicMax),
-      diaMin: toNumber(formData.diastolicMin),
-      diaMax: toNumber(formData.diastolicMax),
+      sysMin: systolicMin,
+      sysMax: systolicMax,
+      diaMin: diastolicMin,
+      diaMax: diastolicMax,
       glucoseMin: formData.glucoseMin ? toNumber(formData.glucoseMin) : null,
       glucoseMax: formData.glucoseMax ? toNumber(formData.glucoseMax) : null,
       effectiveFrom: toStartOfDayIso(formData.effectiveFrom),
@@ -272,12 +333,8 @@ const ThresholdSettingsPage = () => {
       setThresholdHistory(history);
       setHistoryPage(1);
 
-      if (latestThreshold) {
-        applyThresholdToForm(latestThreshold, "edit");
-      } else {
-        setFormData(createDefaultFormData(patientId));
-        setEditingThresholdId(null);
-      }
+      // Don't auto-open modal or change form when loading thresholds
+      // User needs to explicitly click "Edit" or "Create" button
     } catch (error) {
       console.error("Failed to load thresholds", error);
       showToast("Không thể tải cấu hình ngưỡng đã lưu.", "error");
@@ -332,6 +389,23 @@ const ThresholdSettingsPage = () => {
   const handlePatientChange = (event: ChangeEvent<HTMLSelectElement>) => {
     const patientId = event.target.value;
     setFormData(createDefaultFormData(patientId));
+  };
+
+  const handlePatientFilterChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    const patientId = event.target.value;
+    setFormData(createDefaultFormData(patientId));
+    // This will trigger useEffect to load thresholds for the new patient
+  };
+
+  const handlePatientChangeInModal = (event: ChangeEvent<HTMLSelectElement>) => {
+    const patientId = event.target.value;
+    // When changing patient in modal, switch to create mode
+    // (can't edit patient A's threshold for patient B)
+    setFormData((current) => ({
+      ...current,
+      patientId: patientId,
+    }));
+    setEditingThresholdId(null); // Switch to create mode
   };
 
   const handleSubmit = async (event: FormEvent) => {
@@ -402,13 +476,37 @@ const ThresholdSettingsPage = () => {
   };
 
   return (
-    <div className="mx-auto max-w-6xl p-6">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-slate-100">Cấu Hình Ngưỡng Cảnh Báo</h1>
-        <p className="mt-2 max-w-3xl text-gray-600 dark:text-slate-400">
-          Cấu hình ngưỡng thật theo từng bệnh nhân, lưu lịch sử thay đổi, và cho phép chỉnh sửa hoặc
-          ngừng hiệu lực ngay trên một màn hình.
-        </p>
+    <div className="mx-auto p-6">
+      <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-800 dark:text-slate-100">Cấu Hình Ngưỡng Cảnh Báo</h1>
+          <p className="mt-2 max-w-3xl text-gray-600 dark:text-slate-400">
+            Cấu hình ngưỡng theo từng bệnh nhân, lưu lịch sử thay đổi, và cho phép chỉnh sửa hoặc
+            ngừng hiệu lực ngay trên một màn hình.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={handleOpenCreateForm}
+            className="inline-flex items-center rounded-xl bg-slate-100 dark:bg-slate-700 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-200 dark:hover:bg-slate-600"
+          >
+            <FaPlus className="mr-2" />
+            Tạo cấu hình
+          </button>
+          <button
+            type="button"
+            onClick={() => formData.patientId && void loadPatientThresholds(formData.patientId)}
+            disabled={loadingThresholds || !formData.patientId}
+            className="inline-flex items-center rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 dark:hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <FaSyncAlt
+              className={`mr-2 ${loadingThresholds ? "animate-spin" : ""}`}
+            />
+            Làm mới
+          </button>
+        </div>
       </div>
 
       <div className="mb-6 grid gap-4 md:grid-cols-3">
@@ -426,345 +524,400 @@ const ThresholdSettingsPage = () => {
         </div>
       </div>
 
-      <div className="mb-6 grid gap-6 lg:grid-cols-[1.15fr,0.85fr]">
-        <div className="rounded-3xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
-          <div className="mb-4">
-            <h2 className="text-lg font-semibold text-gray-800 dark:text-slate-100">Bệnh nhân và cấu hình đang áp dụng</h2>
+      <div className="mb-6 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
+        <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
+          Lọc theo bệnh nhân
+        </label>
+        <select
+          name="patientId"
+          value={formData.patientId}
+          onChange={handlePatientFilterChange}
+          disabled={loadingPatients}
+          className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="">
+            {loadingPatients ? "-- Đang tải bệnh nhân --" : "-- Chọn bệnh nhân --"}
+          </option>
+          {patientOptions.map((patient) => (
+            <option key={patient.patientId} value={patient.patientId}>
+              {patient.patientName || patient.patientId}
+              {patient.patientCode ? ` • ${patient.patientCode}` : ""}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-800 dark:text-slate-100">
+              Danh sách cấu hình ngưỡng
+            </h2>
             <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
-              Chọn bệnh nhân để tải ngưỡng đang áp dụng, xem mốc hiệu lực, và thao tác nhanh.
+              Theo dõi cấu hình đang áp dụng, chỉnh sửa nhanh, và xem lịch sử thay đổi.
             </p>
           </div>
-
-          <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
-            Chọn Bệnh Nhân <span className="text-red-500">*</span>
-          </label>
-          <select
-            name="patientId"
-            value={formData.patientId}
-            onChange={handlePatientChange}
-            disabled={loadingPatients}
-            className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">
-              {loadingPatients ? "-- Đang tải bệnh nhân --" : "-- Chọn bệnh nhân --"}
-            </option>
-            {patientOptions.map((patient) => (
-              <option key={patient.patientId} value={patient.patientId}>
-                {patient.patientName || patient.patientId}
-              </option>
-            ))}
-          </select>
-
-          <div className="mt-5 rounded-3xl border border-dashed border-slate-200 dark:border-slate-600 bg-gradient-to-br from-slate-50 dark:from-slate-800 via-white dark:via-slate-800 to-blue-50 dark:to-slate-800 p-5">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-base font-semibold text-gray-800 dark:text-slate-100">
-                  {selectedPatient?.patientName || "Chưa chọn bệnh nhân"}
-                </p>
-                <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
-                  {loadingThresholds
-                    ? "Đang tải cấu hình..."
-                    : activeThreshold
-                      ? `Đang có 1 cấu hình hiệu lực từ ${formatDateTime(activeThreshold.effectiveFrom)}`
-                      : "Chưa có cấu hình nào đang hiệu lực"}
-                </p>
-              </div>
-
-              {activeThreshold && (
-                <div className="rounded-full bg-emerald-100 dark:bg-emerald-900/50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
-                  Đang hiệu lực
-                </div>
-              )}
-            </div>
-
-            {activeThreshold && (
-              <>
-                <div className="mt-4 grid gap-3 md:grid-cols-3">
-                  <div className="rounded-2xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-3">
-                    <div className="text-xs uppercase tracking-wide text-gray-400 dark:text-slate-400">Bắt đầu</div>
-                    <div className="mt-1 text-sm font-semibold text-gray-800 dark:text-slate-100">
-                      {formatDateTime(activeThreshold.effectiveFrom)}
-                    </div>
-                  </div>
-                  <div className="rounded-2xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-3">
-                    <div className="text-xs uppercase tracking-wide text-gray-400 dark:text-slate-400">Kết thúc</div>
-                    <div className="mt-1 text-sm font-semibold text-gray-800 dark:text-slate-100">
-                      {formatDateTime(activeThreshold.effectiveTo)}
-                    </div>
-                  </div>
-                  <div className="rounded-2xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-3">
-                    <div className="text-xs uppercase tracking-wide text-gray-400 dark:text-slate-400">Cập nhật</div>
-                    <div className="mt-1 text-sm font-semibold text-gray-800 dark:text-slate-100">
-                      {formatDateTime(activeThreshold.updatedAt)}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-4 flex flex-wrap gap-3">
-                  <button
-                    type="button"
-                    onClick={() => applyThresholdToForm(activeThreshold, "edit")}
-                    className="inline-flex items-center rounded-xl border border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/40 px-4 py-2 text-sm font-medium text-blue-700 dark:text-blue-300 transition hover:bg-blue-100 dark:hover:bg-blue-900/60"
-                  >
-                    <FaEdit className="mr-2" />
-                    Chỉnh sửa cấu hình hiện tại
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => applyThresholdToForm(activeThreshold, "clone")}
-                    className="inline-flex items-center rounded-xl border border-indigo-200 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-900/40 px-4 py-2 text-sm font-medium text-indigo-700 dark:text-indigo-300 transition hover:bg-indigo-100 dark:hover:bg-indigo-900/60"
-                  >
-                    <FaPlus className="mr-2" />
-                    Tạo phiên bản mới
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleArchiveActiveThreshold}
-                    disabled={saving}
-                    className="inline-flex items-center rounded-xl border border-red-200 dark:border-red-700 bg-red-50 dark:bg-red-900/40 px-4 py-2 text-sm font-medium text-red-700 dark:text-red-300 transition hover:bg-red-100 dark:hover:bg-red-900/60 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    <FaStopCircle className="mr-2" />
-                    Ngừng hiệu lực
-                  </button>
-                </div>
-              </>
-            )}
+          <div className="rounded-full bg-slate-100 dark:bg-slate-700 px-3 py-1 text-xs font-semibold text-slate-600 dark:text-slate-300">
+            {thresholdHistory.length} cấu hình
           </div>
         </div>
 
-        <div className="rounded-3xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-800 dark:text-slate-100">Lịch sử cấu hình</h2>
-              <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
-                Chọn một bản ghi đã lưu để clone nhanh, đối chiếu thay đổi, hoặc quay lại bản đang áp dụng.
-              </p>
+        <div className="mt-5 space-y-4">
+          {loadingThresholds && (
+            <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 px-4 py-6 text-sm text-slate-500 dark:text-slate-400">
+              Đang tải cấu hình...
             </div>
-            <div className="rounded-full bg-slate-100 dark:bg-slate-700 px-3 py-1 text-xs font-semibold text-slate-600 dark:text-slate-300">
-              {thresholdHistory.length} bản ghi
+          )}
+
+          {!loadingThresholds && !formData.patientId && (
+            <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 px-4 py-6 text-sm text-slate-500 dark:text-slate-400">
+              Vui lòng chọn bệnh nhân để xem cấu hình ngưỡng.
             </div>
-          </div>
+          )}
 
-          <div className="mt-5 space-y-3">
-            {!formData.patientId && (
-              <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 px-4 py-5 text-sm text-gray-500 dark:text-slate-400">
-                Chọn bệnh nhân để xem lịch sử cấu hình.
-              </div>
-            )}
+          {!loadingThresholds && formData.patientId && thresholdHistory.length === 0 && (
+            <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 px-4 py-6 text-sm text-slate-500 dark:text-slate-400">
+              Chưa có cấu hình nào cho bệnh nhân này.
+            </div>
+          )}
 
-            {formData.patientId && thresholdHistory.length === 0 && !loadingThresholds && (
-              <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 px-4 py-5 text-sm text-gray-500 dark:text-slate-400">
-                Chưa có bản ghi cấu hình nào cho bệnh nhân này.
-              </div>
-            )}
+          {paginatedHistory.map((threshold, index) => {
+            const absoluteIndex = (historyPage - 1) * HISTORY_PAGE_SIZE + index;
+            const isActive = threshold.id === activeThreshold?.id;
+            const canEdit = isActive;
 
-            {paginatedHistory.map((item, index) => {
-              const absoluteIndex = (historyPage - 1) * HISTORY_PAGE_SIZE + index;
-
-              return (
-                <div
-                  key={item.id}
-                  className={`group relative overflow-hidden rounded-2xl border px-4 py-4 transition ${
-                    item.id === activeThreshold?.id
-                      ? "border-emerald-200 dark:border-emerald-700 bg-gradient-to-br from-emerald-50 dark:from-emerald-900/30 to-white dark:to-slate-800 shadow-sm"
-                      : "border-slate-200 dark:border-slate-600 bg-gradient-to-br from-slate-50 dark:from-slate-700/50 to-white dark:to-slate-800 hover:border-blue-200 dark:hover:border-blue-600 hover:shadow-sm"
-                  }`}
-                >
-                  <div
-                    className={`absolute inset-y-0 left-0 w-1 ${
-                      item.id === activeThreshold?.id
-                        ? "bg-emerald-400"
-                        : "bg-slate-200 dark:bg-slate-600 group-hover:bg-blue-300 dark:group-hover:bg-blue-500"
-                    }`}
-                  />
-
-                  <button
-                    type="button"
-                    onClick={() => applyThresholdToForm(item, item.id === activeThreshold?.id ? "edit" : "clone")}
-                    className="w-full text-left"
-                  >
-                    <div className="flex items-start justify-between gap-3 pl-2">
-                      <div className="w-full">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="text-sm font-semibold text-gray-800 dark:text-slate-100">
-                            Bản cấu hình #{thresholdHistory.length - absoluteIndex}
-                          </p>
-                          <span className="rounded-full bg-white/90 dark:bg-slate-700 px-2.5 py-1 text-[11px] font-medium text-slate-500 dark:text-slate-300 shadow-sm">
-                            Cập nhật {formatDateTime(item.updatedAt)}
-                          </span>
-                        </div>
-
-                        <div className="mt-3 grid gap-2 text-xs text-slate-500 dark:text-slate-400">
-                          <div>Từ {formatDateTime(item.effectiveFrom)}</div>
-                          <div>Đến {formatDateTime(item.effectiveTo)}</div>
-                        </div>
-
-                        <div className="mt-4 flex flex-wrap gap-2">
-                          {buildHistoryChips(item).map((chip) => (
-                            <span
-                              key={`${item.id}-${chip}`}
-                              className="rounded-full bg-white dark:bg-slate-700 px-2.5 py-1 text-[11px] font-medium text-gray-600 dark:text-slate-300 shadow-sm"
-                            >
-                              {chip}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-
+            return (
+              <div
+                key={threshold.id}
+                className="border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4"
+              >
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span
-                        className={`inline-flex shrink-0 self-start whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold ${
-                          item.id === activeThreshold?.id
-                            ? "bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300"
+                        className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
+                          isActive
+                            ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300"
                             : "bg-slate-200 dark:bg-slate-600 text-slate-600 dark:text-slate-300"
                         }`}
                       >
-                        {item.id === activeThreshold?.id ? "Hiện tại" : "Lịch sử"}
+                        {isActive ? "Đang hiệu lực" : "Lịch sử"}
+                      </span>
+                      <span className="text-sm font-semibold text-gray-800 dark:text-slate-100">
+                        Bản cấu hình #{thresholdHistory.length - absoluteIndex}
                       </span>
                     </div>
-                  </button>
-                </div>
-              );
-            })}
 
-            {thresholdHistory.length > HISTORY_PAGE_SIZE && (
-              <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm dark:border-slate-700 dark:bg-slate-900/60">
-                <div className="text-slate-500 dark:text-slate-400">
-                  Trang {historyPage}/{totalHistoryPages}
+                    <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
+                      <span className="font-semibold text-gray-900 dark:text-slate-100">
+                        {selectedPatient?.patientName || threshold.patientId}
+                      </span>
+                      <span className="text-slate-400">•</span>
+                      <span className="text-gray-500 dark:text-slate-400">
+                        {selectedPatient?.patientCode || "Chưa có mã"}
+                      </span>
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {buildHistoryChips(threshold).map((chip, idx) => (
+                        <span
+                          key={`${threshold.id}-chip-${idx}`}
+                          className="rounded-full bg-slate-100 dark:bg-slate-700 px-3 py-1 text-xs font-medium text-gray-600 dark:text-slate-300"
+                        >
+                          {chip}
+                        </span>
+                      ))}
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap gap-3">
+                      <div className="flex-none rounded-lg bg-slate-50 dark:bg-slate-800 px-4 py-3">
+                        <div className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                          Hiệu lực từ
+                        </div>
+                        <div className="mt-1 text-sm font-semibold text-gray-800 dark:text-slate-100">
+                          {formatDateTime(threshold.effectiveFrom)}
+                        </div>
+                      </div>
+
+                      <div className="flex-none rounded-lg bg-slate-50 dark:bg-slate-800 px-4 py-3">
+                        <div className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                          Hiệu lực đến
+                        </div>
+                        <div className="mt-1 text-sm font-semibold text-gray-800 dark:text-slate-100">
+                          {formatDateTime(threshold.effectiveTo)}
+                        </div>
+                      </div>
+
+                      <div className="flex-none rounded-lg bg-slate-50 dark:bg-slate-800 px-4 py-3">
+                        <div className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                          Cập nhật
+                        </div>
+                        <div className="mt-1 text-sm font-semibold text-gray-800 dark:text-slate-100">
+                          {formatDateTime(threshold.updatedAt)}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 lg:justify-end">
+                    <button
+                      type="button"
+                      onClick={() => applyThresholdToForm(threshold, "edit")}
+                      disabled={!canEdit || saving}
+                      className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <FaEdit className="mr-2" />
+                      Chỉnh sửa
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => applyThresholdToForm(threshold, "clone")}
+                      disabled={saving}
+                      className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <FaPlus className="mr-2" />
+                      Sao chép
+                    </button>
+
+                    {isActive && (
+                      <button
+                        type="button"
+                        onClick={handleArchiveActiveThreshold}
+                        disabled={saving}
+                        className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 transition hover:bg-slate-50 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        <FaStopCircle className="mr-2" />
+                        Ngừng hiệu lực
+                      </button>
+                    )}
+                  </div>
                 </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Pagination Controls */}
+        {totalHistoryPages > 1 && (
+          <div className="mt-6 flex items-center justify-between border-t border-slate-200 dark:border-slate-700 pt-4">
+            <div className="text-sm text-slate-500 dark:text-slate-400">
+              Trang {historyPage}/{totalHistoryPages}
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setHistoryPage((current) => Math.max(1, current - 1))}
+                disabled={historyPage === 1}
+                className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 dark:hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <FaChevronLeft className="mr-1" />
+                Trước
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => setHistoryPage((current) => Math.min(totalHistoryPages, current + 1))}
+                disabled={historyPage === totalHistoryPages}
+                className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 dark:hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Sau
+                <FaChevronRight className="ml-1" />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {isFormVisible && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={handleCloseForm}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="threshold-form-title"
+            onClick={(event) => event.stopPropagation()}
+            className="w-full max-w-4xl max-h-[92vh] overflow-hidden rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+          >
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-slate-700">
+              <h2
+                id="threshold-form-title"
+                className="text-lg font-semibold text-gray-900 dark:text-slate-100"
+              >
+                {modeLabel}
+              </h2>
+              <button
+                type="button"
+                onClick={handleCloseForm}
+                className="p-2 items-center rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700"
+              >
+                <FaTimes />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit}>
+              <div className="max-h-[calc(92vh-140px)] overflow-y-auto px-4 py-4">
+                <div className="grid gap-4">
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
+                      Bệnh nhân <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      name="patientId"
+                      value={formData.patientId}
+                      onChange={handlePatientChangeInModal}
+                      disabled={loadingPatients || Boolean(editingThresholdId)}
+                      className="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2.5 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-70"
+                    >
+                      <option value="">
+                        {loadingPatients
+                          ? "-- Đang tải bệnh nhân --"
+                          : "-- Chọn bệnh nhân --"}
+                      </option>
+                      {patientOptions.map((patient) => (
+                        <option
+                          key={patient.patientId}
+                          value={patient.patientId}
+                        >
+                          {(patient.patientName || patient.patientId) +
+                            (patient.patientCode
+                              ? ` • ${patient.patientCode}`
+                              : "")}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {thresholdSections.map((section) => (
+                    <div key={section.title}>
+                      <h3 className="mb-3 text-base font-semibold text-gray-800 dark:text-slate-100">
+                        {section.title}
+                      </h3>
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <div>
+                          <label className="mb-1 block text-sm text-gray-600 dark:text-slate-300">
+                            Tối thiểu
+                          </label>
+                          <input
+                            type="number"
+                            step={section.step}
+                            name={section.minKey}
+                            value={formData[section.minKey]}
+                            onChange={handleChange}
+                            className="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-sm text-gray-600 dark:text-slate-300">
+                            Tối đa
+                          </label>
+                          <input
+                            type="number"
+                            step={section.step}
+                            name={section.maxKey}
+                            value={formData[section.maxKey]}
+                            onChange={handleChange}
+                            className="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  <div>
+                    <h3 className="mb-3 text-base font-semibold text-gray-800 dark:text-slate-100">
+                      SpO2 (%)
+                    </h3>
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <div>
+                        <label className="mb-1 block text-sm text-gray-600 dark:text-slate-300">
+                          Tối thiểu
+                        </label>
+                        <input
+                          type="number"
+                          name="spo2Min"
+                          value={formData.spo2Min}
+                          onChange={handleChange}
+                          className="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="mb-3 text-base font-semibold text-gray-800 dark:text-slate-100">
+                      Thời gian hiệu lực
+                    </h3>
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <div>
+                        <label className="mb-1 block text-sm text-gray-600 dark:text-slate-300">
+                          Từ ngày <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="date"
+                          name="effectiveFrom"
+                          value={formData.effectiveFrom}
+                          onChange={handleChange}
+                          required
+                          className="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-sm text-gray-600 dark:text-slate-300">
+                          Đến ngày (tùy chọn)
+                        </label>
+                        <input
+                          type="date"
+                          name="effectiveTo"
+                          value={formData.effectiveTo}
+                          onChange={handleChange}
+                          className="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between border-t border-gray-200 dark:border-slate-700 px-4 py-3">
+                <button
+                  type="button"
+                  onClick={() => resetForm()}
+                  className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
+                >
+                  <FaUndo className="mr-2" />
+                  Đặt lại
+                </button>
+
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setHistoryPage((current) => Math.max(1, current - 1))}
-                    disabled={historyPage === 1}
-                    className="inline-flex items-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                    onClick={handleCloseForm}
+                    className="rounded-lg border border-slate-300 dark:border-slate-600 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
                   >
-                    <FaChevronLeft className="mr-2" />
-                    Trước
+                    Hủy
                   </button>
                   <button
-                    type="button"
-                    onClick={() => setHistoryPage((current) => Math.min(totalHistoryPages, current + 1))}
-                    disabled={historyPage === totalHistoryPages}
-                    className="inline-flex items-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                    type="submit"
+                    disabled={!formData.patientId || saving}
+                    className="inline-flex items-center rounded-lg bg-slate-800 dark:bg-slate-100 px-4 py-2 text-sm font-medium text-white dark:text-slate-900 transition hover:bg-slate-700 dark:hover:bg-slate-200 disabled:cursor-not-allowed disabled:bg-slate-400 dark:disabled:bg-slate-600 dark:disabled:text-slate-100"
                   >
-                    Sau
-                    <FaChevronRight className="ml-2" />
+                    <FaSave className="mr-2" />
+                    {saving
+                      ? "Đang lưu..."
+                      : editingThresholdId
+                        ? "Cập nhật cấu hình"
+                        : "Lưu cấu hình mới"}
                   </button>
                 </div>
               </div>
-            )}
+            </form>
           </div>
         </div>
-      </div>
-
-      <form onSubmit={handleSubmit} className="rounded-3xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-6 shadow-sm">
-        <div className="mb-6 flex items-center justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-800 dark:text-slate-100">{modeLabel}</h2>
-            <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
-              {editingThresholdId
-                ? "Bạn đang chỉnh sửa trực tiếp bản cấu hình đang hiệu lực."
-                : "Nếu bệnh nhân đã có cấu hình, thao tác lưu sẽ tạo thêm một phiên bản mới để giữ lịch sử."}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => resetForm()}
-            className="inline-flex items-center rounded-xl bg-gray-100 dark:bg-slate-700 px-4 py-2 text-sm font-medium text-gray-700 dark:text-slate-200 transition hover:bg-gray-200 dark:hover:bg-slate-600"
-          >
-            <FaUndo className="mr-2" />
-            Đặt lại
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          {thresholdSections.map((section) => (
-            <div key={section.title} className="md:col-span-2">
-              <h3 className="mb-3 border-b dark:border-slate-600 pb-2 text-lg font-semibold text-gray-800 dark:text-slate-100">{section.title}</h3>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div>
-                  <label className="mb-1 block text-sm text-gray-600 dark:text-slate-300">Tối thiểu</label>
-                  <input
-                    type="number"
-                    step={section.step}
-                    name={section.minKey}
-                    value={formData[section.minKey]}
-                    onChange={handleChange}
-                    className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-sm text-gray-600 dark:text-slate-300">Tối đa</label>
-                  <input
-                    type="number"
-                    step={section.step}
-                    name={section.maxKey}
-                    value={formData[section.maxKey]}
-                    onChange={handleChange}
-                    className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-            </div>
-          ))}
-
-          <div className="md:col-span-2">
-            <h3 className="mb-3 border-b dark:border-slate-600 pb-2 text-lg font-semibold text-gray-800 dark:text-slate-100">SpO2 (%)</h3>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div>
-                <label className="mb-1 block text-sm text-gray-600 dark:text-slate-300">Tối thiểu</label>
-                <input
-                  type="number"
-                  name="spo2Min"
-                  value={formData.spo2Min}
-                  onChange={handleChange}
-                  className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="md:col-span-2">
-            <h3 className="mb-3 border-b dark:border-slate-600 pb-2 text-lg font-semibold text-gray-800 dark:text-slate-100">Thời gian hiệu lực</h3>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div>
-                <label className="mb-1 block text-sm text-gray-600 dark:text-slate-300">
-                  Từ ngày <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="date"
-                  name="effectiveFrom"
-                  value={formData.effectiveFrom}
-                  onChange={handleChange}
-                  required
-                  className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm text-gray-600 dark:text-slate-300">Đến ngày (tùy chọn)</label>
-                <input
-                  type="date"
-                  name="effectiveTo"
-                  value={formData.effectiveTo}
-                  onChange={handleChange}
-                  className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-8 flex justify-end">
-          <button
-            type="submit"
-            disabled={!formData.patientId || saving}
-            className="inline-flex items-center rounded-xl bg-blue-600 px-6 py-2.5 font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-400 dark:disabled:bg-slate-600"
-          >
-            <FaSave className="mr-2" />
-            {saving ? "Đang lưu..." : editingThresholdId ? "Cập nhật cấu hình" : "Lưu cấu hình mới"}
-          </button>
-        </div>
-      </form>
+      )}
 
       <Toast toast={toast} onClose={hideToast} />
     </div>
