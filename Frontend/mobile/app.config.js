@@ -26,6 +26,12 @@ module.exports = () => {
     permissions: androidPermissions,
     ...(hasGoogleServicesFile ? { googleServicesFile: configuredGoogleServicesPath } : {}),
   };
+  
+  const iosConfig = {
+    ...(expo.ios || {}),
+    bundleIdentifier: "com.rpm.app",
+  };
+  
   const existingPlugins = Array.isArray(expo.plugins) ? [...expo.plugins] : [];
   const plugins = existingPlugins.some((plugin) => Array.isArray(plugin) ? plugin[0] === "expo-notifications" : plugin === "expo-notifications")
     ? existingPlugins
@@ -34,7 +40,13 @@ module.exports = () => {
     expo: {
       ...expo,
       android: androidConfig,
-      extra: { ...(expo.extra || {}), API_BASE_URL: resolvedApiBaseUrl, BASE_URL: resolvedApiBaseUrl },
+      ios: iosConfig,
+      extra: { 
+        ...(expo.extra || {}), 
+        API_BASE_URL: resolvedApiBaseUrl, 
+        BASE_URL: resolvedApiBaseUrl,
+        EXPO_PUBLIC_BASE_URL: resolvedApiBaseUrl
+      },
       plugins,
     },
   };

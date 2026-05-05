@@ -341,7 +341,7 @@ const NurseManagement: React.FC = () => {
                     {nurse.status === "active" ? "Hoạt động" : "Không hoạt động"}
                   </span>
                 </td>
-                <td className="px-6 py-4 text-sm text-gray-900">
+                <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
                   <div>{nurse.email}</div>
                   <div className="text-gray-500 dark:text-gray-400">{nurse.phone}</div>
                 </td>

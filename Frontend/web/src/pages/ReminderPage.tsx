@@ -17,6 +17,8 @@ import {
   FaSyncAlt,
   FaTimes,
   FaUndo,
+  FaChevronLeft,
+  FaChevronRight,
 } from "react-icons/fa";
 
 import Toast from "../components/ui/Toast";
@@ -202,6 +204,8 @@ const ReminderPage = () => {
     null,
   );
   const [isFormVisible, setIsFormVisible] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
 
   const patientOptions = useMemo(() => {
     const patientMap = new Map<string, AssignmentResponse>();
@@ -238,6 +242,17 @@ const ReminderPage = () => {
   const modeLabel = editingReminderId
     ? "Chỉnh sửa nhắc nhở"
     : "Tạo nhắc nhở mới";
+
+  // Pagination calculations
+  const totalPages = Math.ceil(reminders.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentReminders = reminders.slice(startIndex, endIndex);
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedPatientId, statusFilter, kindFilter]);
 
   const applyReminderToForm = (reminder: ReminderRecord) => {
     setFormData({
@@ -641,8 +656,15 @@ const ReminderPage = () => {
               khi kế hoạch thay đổi.
             </p>
           </div>
-          <div className="rounded-full bg-slate-100 dark:bg-slate-700 px-3 py-1 text-xs font-semibold text-slate-600 dark:text-slate-300">
-            {reminders.length} nhắc nhở
+          <div className="flex items-center gap-3">
+            {totalPages > 1 && (
+              <div className="text-xs text-slate-500 dark:text-slate-400">
+                Trang {currentPage} / {totalPages}
+              </div>
+            )}
+            <div className="rounded-full bg-slate-100 dark:bg-slate-700 px-3 py-1 text-xs font-semibold text-slate-600 dark:text-slate-300">
+              {reminders.length} nhắc nhở
+            </div>
           </div>
         </div>
 
@@ -659,7 +681,7 @@ const ReminderPage = () => {
             </div>
           )}
 
-          {reminders.map((reminder) => {
+          {currentReminders.map((reminder) => {
             const patientInfo = patientDisplayMap.get(reminder.patientId);
             const canToggle =
               reminder.status === "active" || reminder.status === "paused";
@@ -797,6 +819,54 @@ const ReminderPage = () => {
             );
           })}
         </div>
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="mt-6 flex items-center justify-between border-t border-slate-200 dark:border-slate-700 pt-4">
+            <div className="text-sm text-slate-500 dark:text-slate-400">
+              Hiển thị {startIndex + 1}-{Math.min(endIndex, reminders.length)} trong tổng số {reminders.length} nhắc nhở
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setCurrentPage(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 dark:hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <FaChevronLeft className="mr-1" />
+                Trước
+              </button>
+              
+              <div className="flex items-center gap-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <button
+                    key={page}
+                    type="button"
+                    onClick={() => setCurrentPage(page)}
+                    className={`inline-flex items-center justify-center w-10 h-10 rounded-lg text-sm font-medium transition ${
+                      page === currentPage
+                        ? "bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900"
+                        : "border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+              </div>
+              
+              <button
+                type="button"
+                onClick={() => setCurrentPage(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 dark:hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Sau
+                <FaChevronRight className="ml-1" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {isFormVisible && (

@@ -11,6 +11,7 @@ import {
   FaUserFriends,
 } from "react-icons/fa";
 import { BsCalendar3 } from "react-icons/bs";
+import * as XLSX from 'xlsx';
 
 import Chart, {
   type ChartDataPoint,
@@ -355,8 +356,27 @@ const DashBoard = () => {
   const [alerts, setAlerts] = useState<AlertResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const now = new Date();
-  const dateRange = `${now.toLocaleDateString("vi-VN", {
+  
+  // Date filter state
+  const [startDate, setStartDate] = useState<string>(() => {
+    const date = new Date();
+    date.setDate(1); // First day of current month
+    return date.toISOString().split('T')[0];
+  });
+  const [endDate, setEndDate] = useState<string>(() => {
+    return new Date().toISOString().split('T')[0];
+  });
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  
+  // Filter state
+  const [showFilterMenu, setShowFilterMenu] = useState(false);
+  const [filterStatus, setFilterStatus] = useState<'all' | 'stable' | 'attention'>('all');
+  const [filterSeverity, setFilterSeverity] = useState<'all' | 'high' | 'medium'>('all');
+  
+  const dateRange = `${new Date(startDate).toLocaleDateString("vi-VN", {
+    day: "2-digit",
+    month: "short",
+  })} - ${new Date(endDate).toLocaleDateString("vi-VN", {
     day: "2-digit",
     month: "short",
   })}`;
@@ -401,8 +421,26 @@ const DashBoard = () => {
   );
 
   const filteredAlerts = useMemo(
-    () => alerts.filter((alert) => assignedPatientIds.has(alert.patientId)),
-    [alerts, assignedPatientIds],
+    () => {
+      let filtered = alerts.filter((alert) => assignedPatientIds.has(alert.patientId));
+      
+      // Filter by date range
+      filtered = filtered.filter((alert) => {
+        const alertDate = new Date(alert.createdAt);
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        return alertDate >= start && alertDate <= end;
+      });
+      
+      // Filter by severity
+      if (filterSeverity !== 'all') {
+        filtered = filtered.filter((alert) => alert.severity === filterSeverity);
+      }
+      
+      return filtered;
+    },
+    [alerts, assignedPatientIds, startDate, endDate, filterSeverity],
   );
 
   const latestAlertsByPatient = useMemo(() => {
@@ -494,6 +532,97 @@ const DashBoard = () => {
     [dashboardStats],
   );
 
+  // Export to Excel function
+  const handleExport = () => {
+    // Prepare data for Excel
+    const excelData = assignments.map((assignment) => {
+      const latestAlert = latestAlertsByPatient.get(assignment.patientId);
+      const status = latestAlert && isAttentionAlert(latestAlert) ? 'Cần chú ý' : 'Ổn định';
+      const alertInfo = latestAlert 
+        ? latestAlert.violations.map(v => `${violationLabel[v.type] ?? v.type}: ${v.observed}`).join('; ')
+        : 'Không có';
+      const severity = latestAlert ? (latestAlert.severity === 'high' ? 'Cao' : 'Trung bình') : '-';
+      const time = latestAlert ? new Date(latestAlert.createdAt).toLocaleString('vi-VN') : '-';
+      
+      return {
+        'Bệnh nhân': assignment.patientName || 'Không rõ',
+        'Mã BN': assignment.patientCode || assignment.patientPublicId || '-',
+        'Trạng thái': status,
+        'Cảnh báo gần nhất': alertInfo,
+        'Mức độ': severity,
+        'Thời gian': time,
+      };
+    });
+
+    // Create workbook and worksheet
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(excelData);
+
+    // Set column widths
+    const colWidths = [
+      { wch: 25 }, // Bệnh nhân
+      { wch: 15 }, // Mã BN
+      { wch: 15 }, // Trạng thái
+      { wch: 50 }, // Cảnh báo gần nhất
+      { wch: 12 }, // Mức độ
+      { wch: 20 }, // Thời gian
+    ];
+    ws['!cols'] = colWidths;
+
+    // Style header row
+    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+    for (let col = range.s.c; col <= range.e.c; col++) {
+      const cellAddress = XLSX.utils.encode_cell({ r: 0, c: col });
+      if (!ws[cellAddress]) continue;
+      
+      ws[cellAddress].s = {
+        font: { bold: true, color: { rgb: "FFFFFF" } },
+        fill: { fgColor: { rgb: "4F46E5" } },
+        alignment: { horizontal: "center", vertical: "center" },
+      };
+    }
+
+    // Add worksheet to workbook
+    XLSX.utils.book_append_sheet(wb, ws, 'Dashboard');
+
+    // Add summary sheet
+    const summaryData = [
+      { 'Chỉ số': 'Tổng bệnh nhân', 'Giá trị': dashboardStats.total || 0 },
+      { 'Chỉ số': 'Đang ổn định', 'Giá trị': dashboardStats.stable || 0 },
+      { 'Chỉ số': 'Cần chú ý', 'Giá trị': dashboardStats.attention || 0 },
+      { 'Chỉ số': '', 'Giá trị': '' },
+      { 'Chỉ số': 'Khoảng thời gian', 'Giá trị': dateRange },
+      { 'Chỉ số': 'Ngày xuất', 'Giá trị': new Date().toLocaleString('vi-VN') },
+    ];
+    
+    const wsSummary = XLSX.utils.json_to_sheet(summaryData);
+    wsSummary['!cols'] = [{ wch: 20 }, { wch: 30 }];
+    XLSX.utils.book_append_sheet(wb, wsSummary, 'Tổng quan');
+
+    // Generate filename
+    const filename = `dashboard_${new Date().toISOString().split('T')[0]}.xlsx`;
+
+    // Write and download file
+    XLSX.writeFile(wb, filename);
+  };
+
+  // Apply date filter
+  const handleApplyDateFilter = () => {
+    setShowDatePicker(false);
+    // Data will be automatically filtered by useMemo
+  };
+
+  // Reset filters
+  const handleResetFilters = () => {
+    const date = new Date();
+    date.setDate(1);
+    setStartDate(date.toISOString().split('T')[0]);
+    setEndDate(new Date().toISOString().split('T')[0]);
+    setFilterStatus('all');
+    setFilterSeverity('all');
+    setShowFilterMenu(false);
+  };
+
   return (
     <div className="min-h-screen bg-[#f5f6fa] font-sans dark:bg-slate-900">
       <div className="mx-auto max-w-screen-2xl space-y-4 px-6 py-6">
@@ -502,15 +631,164 @@ const DashBoard = () => {
             Tổng quan
           </h1>
           <div className="flex items-center gap-2">
-            <button className="inline-flex items-center gap-1.5 rounded-xl border border-gray-100 bg-white px-3 py-2 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700">
-              <BsCalendar3 size={11} />
-              {dateRange}
-            </button>
-            <button className="inline-flex items-center gap-1.5 rounded-xl border border-gray-100 bg-white px-3 py-2 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700">
-              <FaFilter size={10} />
-              Lọc
-            </button>
-            <button className="inline-flex items-center gap-1.5 rounded-xl border border-gray-100 bg-white px-3 py-2 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700">
+            {/* Date Picker Button */}
+            <div className="relative">
+              <button 
+                onClick={() => setShowDatePicker(!showDatePicker)}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-gray-100 bg-white px-3 py-2 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+              >
+                <BsCalendar3 size={11} />
+                {dateRange}
+              </button>
+              
+              {showDatePicker && (
+                <div className="absolute right-0 top-full z-50 mt-2 w-80 rounded-xl border border-gray-100 bg-white p-4 shadow-lg dark:border-slate-700 dark:bg-slate-800">
+                  <div className="mb-3 flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+                      Chọn khoảng thời gian
+                    </h3>
+                    <button
+                      onClick={() => setShowDatePicker(false)}
+                      className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
+                        Từ ngày
+                      </label>
+                      <input
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-white"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
+                        Đến ngày
+                      </label>
+                      <input
+                        type="date"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-white"
+                      />
+                    </div>
+                    
+                    <div className="flex gap-2 pt-2">
+                      <button
+                        onClick={handleApplyDateFilter}
+                        className="flex-1 rounded-lg bg-indigo-500 px-3 py-2 text-xs font-medium text-white hover:bg-indigo-600"
+                      >
+                        Áp dụng
+                      </button>
+                      <button
+                        onClick={() => {
+                          const date = new Date();
+                          date.setDate(1);
+                          setStartDate(date.toISOString().split('T')[0]);
+                          setEndDate(new Date().toISOString().split('T')[0]);
+                        }}
+                        className="rounded-lg border border-gray-200 px-3 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+                      >
+                        Đặt lại
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Filter Button */}
+            <div className="relative">
+              <button 
+                onClick={() => setShowFilterMenu(!showFilterMenu)}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-gray-100 bg-white px-3 py-2 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+              >
+                <FaFilter size={10} />
+                Lọc
+                {(filterStatus !== 'all' || filterSeverity !== 'all') && (
+                  <span className="ml-1 flex h-4 w-4 items-center justify-center rounded-full bg-indigo-500 text-[9px] text-white">
+                    {(filterStatus !== 'all' ? 1 : 0) + (filterSeverity !== 'all' ? 1 : 0)}
+                  </span>
+                )}
+              </button>
+              
+              {showFilterMenu && (
+                <div className="absolute right-0 top-full z-50 mt-2 w-64 rounded-xl border border-gray-100 bg-white p-4 shadow-lg dark:border-slate-700 dark:bg-slate-800">
+                  <div className="mb-3 flex items-center justify-between">
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+                      Bộ lọc
+                    </h3>
+                    <button
+                      onClick={() => setShowFilterMenu(false)}
+                      className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <div>
+                      <label className="mb-2 block text-xs font-medium text-gray-600 dark:text-slate-400">
+                        Mức độ cảnh báo
+                      </label>
+                      <div className="space-y-1">
+                        {[
+                          { value: 'all', label: 'Tất cả' },
+                          { value: 'high', label: 'Cao' },
+                          { value: 'medium', label: 'Trung bình' },
+                        ].map((option) => (
+                          <label
+                            key={option.value}
+                            className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-gray-50 dark:hover:bg-slate-700"
+                          >
+                            <input
+                              type="radio"
+                              name="severity"
+                              value={option.value}
+                              checked={filterSeverity === option.value}
+                              onChange={(e) => setFilterSeverity(e.target.value as any)}
+                              className="h-3 w-3"
+                            />
+                            <span className="text-xs text-gray-700 dark:text-slate-300">
+                              {option.label}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    <div className="flex gap-2 border-t border-gray-100 pt-3 dark:border-slate-700">
+                      <button
+                        onClick={() => setShowFilterMenu(false)}
+                        className="flex-1 rounded-lg bg-indigo-500 px-3 py-2 text-xs font-medium text-white hover:bg-indigo-600"
+                      >
+                        Áp dụng
+                      </button>
+                      <button
+                        onClick={handleResetFilters}
+                        className="rounded-lg border border-gray-200 px-3 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+                      >
+                        Xóa bộ lọc
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Export Button */}
+            <button 
+              onClick={handleExport}
+              disabled={loading || assignments.length === 0}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-gray-100 bg-white px-3 py-2 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+            >
               <FaDownload size={10} />
               Xuất
             </button>
@@ -534,16 +812,6 @@ const DashBoard = () => {
             <SectionHeader
               icon={<span className="text-[13px]">📊</span>}
               title="Tổng quan bệnh nhân"
-              aside={
-                <div className="flex items-center gap-1.5">
-                  <button className="inline-flex items-center gap-1 rounded-lg border border-gray-100 px-2 py-1 text-[11px] text-gray-500 transition-colors hover:bg-gray-50 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-700">
-                    <FaFilter size={9} /> Lọc
-                  </button>
-                  <button className="inline-flex items-center gap-1 rounded-lg border border-gray-100 px-2 py-1 text-[11px] text-gray-500 transition-colors hover:bg-gray-50 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-700">
-                    ↕ Sắp xếp
-                  </button>
-                </div>
-              }
             />
             <Chart
               stats={chartStats}

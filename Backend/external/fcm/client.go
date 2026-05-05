@@ -37,6 +37,7 @@ type fcmMessage struct {
 	Notification fcmNotification     `json:"notification"`
 	Data         map[string]string   `json:"data,omitempty"`
 	Android      *fcmAndroidSettings `json:"android,omitempty"`
+	APNS         *fcmAPNSSettings    `json:"apns,omitempty"`
 }
 
 type fcmNotification struct {
@@ -52,6 +53,18 @@ type fcmAndroidSettings struct {
 type fcmAndroidNotification struct {
 	ChannelID string `json:"channel_id,omitempty"`
 	Sound     string `json:"sound,omitempty"`
+}
+
+type fcmAPNSSettings struct {
+	Payload *fcmAPNSPayload `json:"payload,omitempty"`
+}
+
+type fcmAPNSPayload struct {
+	APS *fcmAPSSettings `json:"aps,omitempty"`
+}
+
+type fcmAPSSettings struct {
+	Sound string `json:"sound,omitempty"`
 }
 
 type fcmErrorResponse struct {
@@ -115,8 +128,15 @@ func (c *Client) Send(ctx context.Context, token string, title string, body stri
 			Android: &fcmAndroidSettings{
 				Priority: "HIGH",
 				Notification: &fcmAndroidNotification{
-					ChannelID: "default",
-					Sound:     "default",
+					ChannelID: "rpm_notification",
+					Sound:     "rpm_notification",
+				},
+			},
+			APNS: &fcmAPNSSettings{
+				Payload: &fcmAPNSPayload{
+					APS: &fcmAPSSettings{
+						Sound: "rpm_notification.wav",
+					},
 				},
 			},
 		},

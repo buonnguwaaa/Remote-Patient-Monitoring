@@ -27,3 +27,6 @@ yarn-error.*
 *.tsbuildinfo
 /ios
 /android
+
+# Firebase config (uncomment if you want to ignore it)
+# google-services.json

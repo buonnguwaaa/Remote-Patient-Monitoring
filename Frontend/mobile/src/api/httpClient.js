@@ -3,7 +3,7 @@ import Constants from "expo-constants";
 const extras =
   Constants?.manifest?.extra || Constants?.expoConfig?.extra || {};
 export const BASE_URL =
-  process.env.EXPO_PUBLIC_BASE_URL || extras.BASE_URL || "http://10.0.2.2:8080";
+  process.env.EXPO_PUBLIC_BASE_URL || extras.BASE_URL || "http://192.168.1.24:8080";
 
 async function parseResponse(response) {
   const text = await response.text();

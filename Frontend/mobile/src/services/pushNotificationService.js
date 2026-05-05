@@ -28,12 +28,21 @@ async function ensureAndroidChannel() {
     return;
   }
 
-  await Notifications.setNotificationChannelAsync("default", {
-    name: "default",
+  // Delete old "default" channel if exists
+  try {
+    await Notifications.deleteNotificationChannelAsync("default");
+  } catch (e) {
+    // Channel doesn't exist, ignore
+  }
+
+  // Create new "rpm_notification" channel
+  await Notifications.setNotificationChannelAsync("rpm_notification", {
+    name: "Cảnh báo RPM",
     importance: Notifications.AndroidImportance.MAX,
     vibrationPattern: [0, 250, 250, 250],
     enableVibrate: true,
     lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+    sound: "rpm_notification",
   });
 }
 

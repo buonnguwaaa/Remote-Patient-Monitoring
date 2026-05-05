@@ -4,33 +4,48 @@
     "slug": "Mobile",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": false,
     "splash": {
-      "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "notification": {
+        "sound": "rpm_notification.wav"
+      }
     },
     "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+      "package": "com.rpm.app",
+      "edgeToEdgeEnabled": true,
+      "usesCleartextTraffic": true,
+      "permissions": [
+        "INTERNET",
+        "ACCESS_NETWORK_STATE"
+      ],
+      "config": {
+        "usesCleartextTraffic": true
       },
-      "edgeToEdgeEnabled": true
+      "notification": {
+        "sound": "rpm_notification.wav"
+      }
     },
-    "web": {
-      "favicon": "./assets/favicon.png"
-    },
+    "web": {},
     "extra": {
-      "BASE_URL": "http://localhost:8080"
+      "BASE_URL": "http://192.168.1.24:8080"
     },
     "scheme": "rpm",
     "plugins": [
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-notifications",
+        {
+          "color": "#ffffff"
+        }
+      ],
+      "./plugins/withCleartextTraffic",
+      "./plugins/withNotificationSound"
     ]
   }
 }
