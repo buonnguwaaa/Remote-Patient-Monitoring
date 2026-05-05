@@ -1,12 +1,13 @@
 {
   "expo": {
-    "name": "Mobile",
-    "slug": "Mobile",
+    "name": "RPM Patient",
+    "slug": "rpm-patient",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "newArchEnabled": false,
     "splash": {
+      "image": "./assets/icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -18,7 +19,11 @@
     },
     "android": {
       "package": "com.rpm.app",
-      "edgeToEdgeEnabled": true,
+      "icon": "./assets/icon.png",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#ffffff"
+      },
       "usesCleartextTraffic": true,
       "permissions": [
         "INTERNET",
@@ -27,11 +32,11 @@
       "config": {
         "usesCleartextTraffic": true
       },
-      "notification": {
-        "sound": "rpm_notification.wav"
-      }
+      "edgeToEdgeEnabled": true
     },
-    "web": {},
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
     "extra": {
       "BASE_URL": "http://192.168.1.24:8080"
     },
