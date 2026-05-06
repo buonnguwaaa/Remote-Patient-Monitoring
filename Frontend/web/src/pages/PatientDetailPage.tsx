@@ -13,8 +13,9 @@ import {
   MdDateRange,
 } from "react-icons/md";
 import { FaRegMessage } from "react-icons/fa6";
-import { FaHeartbeat, FaTemperatureHigh, FaTint } from "react-icons/fa";
+import { FaHeartbeat, FaTemperatureHigh, FaTint, FaLungs } from "react-icons/fa";
 import { GiHeartBeats } from "react-icons/gi";
+import { MdBloodtype } from "react-icons/md";
 
 import {
   LineChart,
@@ -43,6 +44,8 @@ interface ChartRow {
   pulse: number;
   glucose: number;
   spo2: number;
+  temperature: number;
+  respiratoryRate: number;
   updateAt: string;
 }
 
@@ -53,6 +56,8 @@ const normalizeMeasurements = (data: MeasurementResponse[]): ChartRow[] =>
     pulse: m.heartRate ?? 0,
     glucose: m.glucose ?? 0,
     spo2: m.spo2 ?? 0,
+    temperature: m.temperature ?? 0,
+    respiratoryRate: m.respiratoryRate ?? 0,
     updateAt: m.createdAt,
   }));
 
@@ -141,7 +146,7 @@ const PatientDetailPage = () => {
   const [thresholdLoading, setThresholdLoading] = useState(true);
   const [thresholdError, setThresholdError] = useState<string | null>(null);
 
-  const [chartType, setChartType] = useState<"bp" | "glucose">("bp");
+  const [chartType, setChartType] = useState<"bp" | "glucose" | "temperature" | "spo2" | "respiratory">("bp");
 
   /**
    * TODO [NO API]: The "Tuần / Tháng" time range selector has no matching query
@@ -256,9 +261,36 @@ const PatientDetailPage = () => {
         ),
       },
       {
+        header: "Nhiệt độ (°C)",
+        render: (item) => (
+          <span className="text-gray-700 dark:text-slate-300">
+            {item.temperature > 0 ? item.temperature.toFixed(1) : "—"}
+          </span>
+        ),
+      },
+      {
+        header: "SpO2 (%)",
+        render: (item) => (
+          <span className="text-gray-700 dark:text-slate-300">
+            {item.spo2 > 0 ? item.spo2 : "—"}
+          </span>
+        ),
+      },
+      {
+        header: "Nhịp thở (bpm)",
+        render: (item) => (
+          <span className="text-gray-700 dark:text-slate-300">
+            {item.respiratoryRate > 0 ? item.respiratoryRate : "—"}
+          </span>
+        ),
+      },
+      {
         header: "Đường huyết (mg/dL)",
-        accessor: "glucose",
-        className: "font-semibold text-gray-700 dark:text-slate-300",
+        render: (item) => (
+          <span className="text-gray-700 dark:text-slate-300">
+            {item.glucose > 0 ? item.glucose : "—"}
+          </span>
+        ),
       },
     ],
     []
@@ -430,8 +462,9 @@ const PatientDetailPage = () => {
                   <ThresholdCard icon={GiHeartBeats} label="Nhịp tim" data={{ min: threshold.heartRateMin, max: threshold.heartRateMax }} unit="bpm" colorClass="border-red-400 text-red-500" />
                   <ThresholdCard icon={FaHeartbeat} label="Huyết áp tâm thu" data={{ min: threshold.sysMin, max: threshold.sysMax }} unit="mmHg" colorClass="border-purple-400 text-purple-500" />
                   <ThresholdCard icon={FaHeartbeat} label="Huyết áp tâm trương" data={{ min: threshold.diaMin, max: threshold.diaMax }} unit="mmHg" colorClass="border-indigo-400 text-indigo-500" />
+                  <ThresholdCard icon={FaLungs} label="Nhịp thở" data={{ min: threshold.respiratoryRateMin ?? 0, max: threshold.respiratoryRateMax ?? 0 }} unit="bpm" colorClass="border-green-400 text-green-500" />
+                  <ThresholdCard icon={MdBloodtype} label="SpO2" data={{ min: threshold.spo2Min, max: 100 }} unit="%" colorClass="border-cyan-400 text-cyan-500" />
                   <ThresholdCard icon={FaTint} label="Đường huyết" data={{ min: threshold.glucoseMin ?? 0, max: threshold.glucoseMax ?? 0 }} unit="mg/dL" colorClass="border-blue-400 text-blue-500" />
-                  <ThresholdCard icon={FaTint} label="SPO2" data={{ min: threshold.spo2Min, max: 100 }} unit="%" colorClass="border-cyan-400 text-cyan-500" />
 
                   <div className="col-span-1 sm:col-span-2 flex justify-center items-center">
                     <button
@@ -466,7 +499,7 @@ const PatientDetailPage = () => {
             </h3>
 
             <div className="flex flex-wrap gap-2 md:gap-4">
-              <div className="inline-flex bg-gray-100 dark:bg-slate-700 rounded-lg p-1">
+              <div className="inline-flex bg-gray-100 dark:bg-slate-700 rounded-lg p-1 flex-wrap">
                 <button
                   onClick={() => setChartType("bp")}
                   className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
@@ -486,6 +519,36 @@ const PatientDetailPage = () => {
                   }`}
                 >
                   Đường huyết
+                </button>
+                <button
+                  onClick={() => setChartType("temperature")}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
+                    chartType === "temperature"
+                      ? "bg-white dark:bg-slate-600 text-blue-600 dark:text-blue-400 shadow-sm"
+                      : "text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200"
+                  }`}
+                >
+                  Nhiệt độ
+                </button>
+                <button
+                  onClick={() => setChartType("spo2")}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
+                    chartType === "spo2"
+                      ? "bg-white dark:bg-slate-600 text-blue-600 dark:text-blue-400 shadow-sm"
+                      : "text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200"
+                  }`}
+                >
+                  SpO2
+                </button>
+                <button
+                  onClick={() => setChartType("respiratory")}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
+                    chartType === "respiratory"
+                      ? "bg-white dark:bg-slate-600 text-blue-600 dark:text-blue-400 shadow-sm"
+                      : "text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200"
+                  }`}
+                >
+                  Nhịp thở
                 </button>
               </div>
 
@@ -550,8 +613,14 @@ const PatientDetailPage = () => {
                       <Line name="Tâm thu (Systolic)" type="monotone" dataKey="systolic" stroke="#8884d8" strokeWidth={3} activeDot={{ r: 6 }} />
                       <Line name="Tâm trương (Diastolic)" type="monotone" dataKey="diastolic" stroke="#82ca9d" strokeWidth={3} activeDot={{ r: 6 }} />
                     </>
-                  ) : (
+                  ) : chartType === "glucose" ? (
                     <Line name="Đường huyết (Glucose)" type="monotone" dataKey="glucose" stroke="#3b82f6" strokeWidth={3} activeDot={{ r: 6 }} />
+                  ) : chartType === "temperature" ? (
+                    <Line name="Nhiệt độ (Temperature)" type="monotone" dataKey="temperature" stroke="#f97316" strokeWidth={3} activeDot={{ r: 6 }} />
+                  ) : chartType === "spo2" ? (
+                    <Line name="SpO2" type="monotone" dataKey="spo2" stroke="#06b6d4" strokeWidth={3} activeDot={{ r: 6 }} />
+                  ) : (
+                    <Line name="Nhịp thở (Respiratory Rate)" type="monotone" dataKey="respiratoryRate" stroke="#10b981" strokeWidth={3} activeDot={{ r: 6 }} />
                   )}
                 </LineChart>
               </ResponsiveContainer>
