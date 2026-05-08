@@ -57,6 +57,14 @@ func main() {
 			log.Printf("[GIN-error] Error disconnecting from MongoDB: %v", err)
 		}
 	}()
+	if err := config.ConnectRedis(); err != nil {
+		log.Fatalf("[GIN-fatal] Could not connect to Redis: %v", err)
+	}
+	defer func() {
+		if err := config.DisconnectRedis(); err != nil {
+			log.Printf("[GIN-error] Error disconnecting from Redis: %v", err)
+		}
+	}()
 	config.InitGoogleOAuth2()
 
 	r := gin.New()

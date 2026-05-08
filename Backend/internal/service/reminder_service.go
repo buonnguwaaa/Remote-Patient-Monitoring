@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/client"
-	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/workflow"
+	edto "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/dto"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
 	userDomain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
@@ -74,7 +74,7 @@ func (s *reminderService) CreateReminder(ctx context.Context, input *usecase.Cre
 
 	fmt.Println("=======================", createdReminder.ID.Hex())
 
-	err = client.StartReminderWorkflow(workflow.ReminderWorkflowInput{
+	err = client.StartReminderWorkflow(edto.ReminderWorkflowInput{
 		ReminderID: createdReminder.ID.Hex(),
 	})
 	if err != nil {

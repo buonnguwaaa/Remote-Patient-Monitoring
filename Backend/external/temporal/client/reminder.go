@@ -4,12 +4,13 @@ import (
 	"context"
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/workflow"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/dto"
 	"go.temporal.io/sdk/client"
 )
 
 const ReminderTaskQueue = "REMINDER-TASK-QUEUE"
 
-func StartReminderWorkflow(input workflow.ReminderWorkflowInput) error {
+func StartReminderWorkflow(input dto.ReminderWorkflowInput) error {
 	c, err := New()
 	if err != nil {
 		return err

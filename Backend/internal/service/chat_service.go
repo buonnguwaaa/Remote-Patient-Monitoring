@@ -26,6 +26,7 @@ var (
 
 type ChatService interface {
 	CreateConversation(ctx context.Context, input *usecase.CreateConversationInput) (*dto.ConversationResponse, error)
+	FindConversationByParticipants(ctx context.Context, participantIDs []primitive.ObjectID) (*dto.ConversationResponse, error)
 	GetConversationByID(ctx context.Context, conversationID primitive.ObjectID) (*dto.ConversationResponse, error)
 	GetUserConversations(ctx context.Context, input *usecase.GetUserConversationsInput) (*dto.GetConversationsResponse, error)
 	SendMessage(ctx context.Context, input *usecase.SendMessageInput) (*dto.MessageResponse, error)
@@ -87,6 +88,26 @@ func (s *chatService) CreateConversation(ctx context.Context, input *usecase.Cre
 	}
 
 	return mapConversationToDTO(inserted), nil
+}
+
+func (s *chatService) FindConversationByParticipants(ctx context.Context, participantIDs []primitive.ObjectID) (*dto.ConversationResponse, error) {
+	uniqueParticipants := uniqueObjectIDs(participantIDs)
+	if len(uniqueParticipants) < 2 {
+		return nil, ErrChatInvalidParticipants
+	}
+	if len(uniqueParticipants) != 2 {
+		return nil, ErrChatInvalidParticipants
+	}
+
+	existing, err := s.conversationRepo.FindByParticipants(ctx, uniqueParticipants)
+	if err != nil {
+		return nil, err
+	}
+	if existing == nil {
+		return nil, nil
+	}
+
+	return mapConversationToDTO(existing), nil
 }
 
 func (s *chatService) validateAssignmentRecordForParticipants(ctx context.Context, participantIDs []primitive.ObjectID) error {
@@ -162,7 +183,14 @@ func (s *chatService) GetUserConversations(ctx context.Context, input *usecase.G
 }
 
 func (s *chatService) SendMessage(ctx context.Context, input *usecase.SendMessageInput) (*dto.MessageResponse, error) {
-	if input == nil || input.ConversationID.IsZero() || input.SenderID.IsZero() || strings.TrimSpace(input.Content) == "" {
+	if input == nil || input.ConversationID.IsZero() || strings.TrimSpace(input.Content) == "" {
+		return nil, ErrChatInvalidMessage
+	}
+
+	if input.MessageSource == "" {
+		input.MessageSource = chatDomain.UserMessage
+	}
+	if input.MessageSource != chatDomain.UserMessage && input.MessageSource != chatDomain.SystemMessage {
 		return nil, ErrChatInvalidMessage
 	}
 
@@ -173,8 +201,14 @@ func (s *chatService) SendMessage(ctx context.Context, input *usecase.SendMessag
 	if conversation == nil {
 		return nil, ErrChatConversationMissing
 	}
-	if !containsParticipant(conversation.Participants, input.SenderID) {
-		return nil, ErrChatForbidden
+
+	if input.MessageSource == chatDomain.UserMessage {
+		if input.SenderID == nil || input.SenderID.IsZero() {
+			return nil, ErrChatInvalidMessage
+		}
+		if !containsParticipant(conversation.Participants, *input.SenderID) {
+			return nil, ErrChatForbidden
+		}
 	}
 
 	if input.ReplyToMessageID != nil {
@@ -189,6 +223,7 @@ func (s *chatService) SendMessage(ctx context.Context, input *usecase.SendMessag
 
 	message := &chatDomain.Message{
 		ConversationID:   input.ConversationID,
+		MessageSource:    input.MessageSource,
 		SenderID:         input.SenderID,
 		Content:          strings.TrimSpace(input.Content),
 		ReplyToMessageID: input.ReplyToMessageID,
@@ -383,6 +418,7 @@ func mapMessageToDTO(m *chatDomain.Message) *dto.MessageResponse {
 	return &dto.MessageResponse{
 		ID:               m.ID,
 		ConversationID:   m.ConversationID,
+		MessageSource:    m.MessageSource,
 		SenderID:         m.SenderID,
 		Content:          m.Content,
 		ReplyToMessageID: m.ReplyToMessageID,

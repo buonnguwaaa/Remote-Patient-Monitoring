@@ -4,18 +4,15 @@ import (
 	"time"
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/helper/reminder_helper"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/dto"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 )
 
-type ReminderWorkflowInput struct {
-	ReminderID string
-}
-
 const ReminderStatusSignal = "REMINDER-STATUS-SIGNAL"
 
-func ReminderWorkflow(ctx workflow.Context, input ReminderWorkflowInput) error {
+func ReminderWorkflow(ctx workflow.Context, input dto.ReminderWorkflowInput) error {
 	logger := workflow.GetLogger(ctx)
 
 	ao := workflow.ActivityOptions{

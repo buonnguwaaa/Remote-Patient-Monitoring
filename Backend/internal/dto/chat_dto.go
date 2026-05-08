@@ -3,6 +3,7 @@ package dto
 import (
 	"time"
 
+	domain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/chat"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -30,14 +31,15 @@ type ConversationResponse struct {
 }
 
 type MessageResponse struct {
-	ID               primitive.ObjectID  `json:"id"`
-	ConversationID   primitive.ObjectID  `json:"conversationId"`
-	SenderID         primitive.ObjectID  `json:"senderId"`
-	Content          string              `json:"content"`
-	ReplyToMessageID *primitive.ObjectID `json:"replyToMessageId,omitempty"`
-	RelatedAlertID   *primitive.ObjectID `json:"relatedAlertId,omitempty"`
-	CreatedAt        time.Time           `json:"createdAt"`
-	UpdatedAt        time.Time           `json:"updatedAt"`
+	ID               primitive.ObjectID   `json:"id"`
+	ConversationID   primitive.ObjectID   `json:"conversationId"`
+	MessageSource    domain.MessageSource `json:"messageSource"`
+	SenderID         *primitive.ObjectID  `json:"senderId"`
+	Content          string               `json:"content"`
+	ReplyToMessageID *primitive.ObjectID  `json:"replyToMessageId,omitempty"`
+	RelatedAlertID   *primitive.ObjectID  `json:"relatedAlertId,omitempty"`
+	CreatedAt        time.Time            `json:"createdAt"`
+	UpdatedAt        time.Time            `json:"updatedAt"`
 }
 
 type GetConversationsResponse struct {

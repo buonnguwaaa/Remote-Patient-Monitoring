@@ -3,16 +3,12 @@ package workflow
 import (
 	"time"
 
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/dto"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 )
 
-type MeasurementAlertInput struct {
-	MeasurementID string
-	PatientID     string
-}
-
-func AlertWorkflow(ctx workflow.Context, input MeasurementAlertInput) (string, error) {
+func AlertWorkflow(ctx workflow.Context, input dto.MeasurementAlertInput) (string, error) {
 	ao := workflow.ActivityOptions{
 		StartToCloseTimeout: time.Second * 10,
 		RetryPolicy: &temporal.RetryPolicy{
@@ -24,18 +20,30 @@ func AlertWorkflow(ctx workflow.Context, input MeasurementAlertInput) (string, e
 
 	ctx = workflow.WithActivityOptions(ctx, ao)
 
-	var alertID string
-	if err := workflow.ExecuteActivity(ctx, "EvaluateAndCreateAlertActivity", input.MeasurementID, input.PatientID).Get(ctx, &alertID); err != nil {
+	var createResult dto.EvaluateAndCreateAlertResult
+	if err := workflow.ExecuteActivity(ctx, "EvaluateAndCreateAlertActivity", input.MeasurementID, input.PatientID).Get(ctx, &createResult); err != nil {
+		return "", err
+	}
+	if !createResult.Created {
+		return "no-violation", nil
+	}
+
+	if createResult == (dto.EvaluateAndCreateAlertResult{}) || createResult.AlertID == "" {
+		return createResult.AlertID, nil
+	}
+
+	if err := workflow.ExecuteActivity(ctx, "SendAlertPushActivity", createResult.AlertID).Get(ctx, nil); err != nil {
 		return "", err
 	}
 
-	if alertID == "" || alertID == "no-violation" || alertID == "no-threshold" {
-		return alertID, nil
-	}
-
-	if err := workflow.ExecuteActivity(ctx, "SendAlertPushActivity", alertID).Get(ctx, nil); err != nil {
+	var sendResult dto.SendAlertMessageResult
+	if err := workflow.ExecuteActivity(ctx, "SendAlertMessageActivity", dto.SendAlertMessageInput{AlertID: createResult.AlertID}).Get(ctx, &sendResult); err != nil {
 		return "", err
 	}
 
-	return alertID, nil
+	var publishResult struct{}
+	if err := workflow.ExecuteActivity(ctx, "PublishChatEventActivity", dto.PublishChatEventInput{ConversationID: sendResult.ConversationID, Message: sendResult.Message}).Get(ctx, &publishResult); err != nil {
+		return "", err
+	}
+	return "created-notification", nil
 }

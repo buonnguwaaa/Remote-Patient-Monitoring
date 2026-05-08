@@ -153,4 +153,3 @@ func (h *ThresholdHandler) UpdateThreshold(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"data": resp, "message": "Threshold updated successfully"})
 }
-
