@@ -2,7 +2,7 @@ import { useState } from "react";
 import Pagination from "./Pagination";
 
 export type Column<T> = {
-  header: string;
+  header: React.ReactNode;
   accessor?: keyof T;
   render?: (item: T) => React.ReactNode;
   className?: string;
@@ -36,7 +36,9 @@ const Table = <T,>({
 
   return (
     <>
-      <div className={`overflow-x-auto sm:rounded-lg min-h-[450px] ${className}`}>
+      <div
+        className={`overflow-x-auto sm:rounded-lg min-h-[450px] ${className}`}
+      >
         <table className="w-full text-sm text-left text-gray-500 dark:text-slate-400">
           <thead className="text-xs text-gray-700 dark:text-slate-300 uppercase bg-gray-50 dark:bg-slate-800">
             <tr>
@@ -58,8 +60,9 @@ const Table = <T,>({
                 <tr
                   key={rowIndex}
                   onClick={() => onRowClick && onRowClick(item)}
-                  className={`bg-white dark:bg-slate-900 border-t border-black/10 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors ${onRowClick ? "cursor-pointer" : ""
-                    }`}
+                  className={`bg-white dark:bg-slate-900 border-t border-black/10 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors ${
+                    onRowClick ? "cursor-pointer" : ""
+                  }`}
                 >
                   {columns.map((col, colIndex) => (
                     <td

@@ -29,6 +29,7 @@ const ThresholdSettingsPage = lazy(
 );
 const ReminderPage = lazy(() => import("./pages/ReminderPage.tsx"));
 const PatientDetailPage = lazy(() => import("./pages/PatientDetailPage.tsx"));
+const ChatListPage = lazy(() => import("./pages/ChatListPage.tsx"));
 const ChatPage = lazy(() => import("./pages/ChatPage.tsx"));
 const DocterProfile = lazy(() => import("./pages/DocterProfile.tsx"));
 
@@ -68,6 +69,8 @@ function App() {
                 <Route path="/" element={<DashBoard />} />
                 <Route path="/patient" element={<PatientPage />} />
                 <Route path="/patient/:id" element={<PatientDetailPage />} />
+                <Route path="/patient/chats" element={<ChatListPage />} />
+                <Route path="/patient/chats/:id" element={<ChatListPage />} />
                 <Route path="/patient/chat/:id" element={<ChatPage />} />
                 <Route path="/threshold-alerts" element={<ThresholdAlert />} />
                 <Route path="/doctor-profile" element={<DocterProfile />} />
