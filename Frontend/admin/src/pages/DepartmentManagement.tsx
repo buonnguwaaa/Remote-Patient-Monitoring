@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { FaBuilding, FaPlus, FaSearch, FaUserMd, FaUserNurse, FaArrowLeft } from "react-icons/fa";
+import { useTranslation } from "react-i18next";
 import api from "../services/api";
 import type { Department } from "../types";
 import { adminPrimaryButtonClass, adminSecondaryButtonClass } from "../styles/buttonStyles";
@@ -52,6 +53,7 @@ function resolveDepartmentNameById(departments: Department[], departmentId: unkn
 }
 
 const DepartmentManagement: React.FC = () => {
+    const { t } = useTranslation();
     const [departments, setDepartments] = useState<Department[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -145,10 +147,10 @@ const DepartmentManagement: React.FC = () => {
         if (!viewingDept) return;
 
         const selectedCandidate = candidates.find((candidate) => candidate.id === userId);
-        const fromDepartment = selectedCandidate?.currentDepartmentName || "Chưa thuộc khoa/phòng nào";
+        const fromDepartment = selectedCandidate?.currentDepartmentName || t("departmentManagement.noDepartment");
         const toDepartment = viewingDept.name;
         const shouldTransfer = window.confirm(
-            `Xác nhận chuyển thành viên này?\n\nTừ: ${fromDepartment}\nSang: ${toDepartment}`
+            `${t("departmentManagement.confirmTransfer")}\n\n${t("departmentManagement.from")} ${fromDepartment}\n${t("departmentManagement.to")} ${toDepartment}`
         );
 
         if (!shouldTransfer) {
@@ -162,7 +164,7 @@ const DepartmentManagement: React.FC = () => {
             fetchDepartments();
         } catch (error) {
             console.error("Failed to add member", error);
-            alert("Lỗi khi thêm thành viên");
+            alert(t("departmentManagement.addMemberError"));
         }
     };
 
@@ -177,7 +179,7 @@ const DepartmentManagement: React.FC = () => {
                     onClick={handleBack}
                     className="mb-6 flex items-center text-gray-600 transition hover:text-slate-900 dark:text-gray-400 dark:hover:text-slate-100"
                 >
-                    <FaArrowLeft className="mr-2" /> Quay lại danh sách
+                    <FaArrowLeft className="mr-2" /> {t("departmentManagement.backToList")}
                 </button>
 
                 <div className="mb-6 flex flex-col gap-4 md:mb-8 md:flex-row md:items-start md:justify-between">
@@ -193,17 +195,17 @@ const DepartmentManagement: React.FC = () => {
                         className={`${adminPrimaryButtonClass} w-full md:w-auto`}
                     >
                         <FaPlus className="mr-2" />
-                        Thêm Thành Viên
+                        {t("departmentManagement.addMember")}
                     </button>
                 </div>
 
                 <div className="overflow-hidden rounded-xl bg-white shadow-md dark:bg-slate-900 dark:ring-1 dark:ring-slate-800">
                     <div className="border-b border-gray-100 p-4 dark:border-gray-700 md:p-6">
-                        <h3 className="text-lg font-bold text-gray-800 dark:text-white md:text-xl">Danh sách nhân sự ({deptMembers.length})</h3>
+                        <h3 className="text-lg font-bold text-gray-800 dark:text-white md:text-xl">{t("departmentManagement.staffList", { count: deptMembers.length })}</h3>
                     </div>
 
                     {loadingMembers ? (
-                        <div className="p-10 text-center text-gray-500">Đang tải danh sách...</div>
+                        <div className="p-10 text-center text-gray-500">{t("departmentManagement.loadingList")}</div>
                     ) : (
                         <div className="divide-y divide-gray-100 dark:divide-gray-700">
                             {deptMembers.map(member => (
@@ -218,13 +220,13 @@ const DepartmentManagement: React.FC = () => {
                                         </div>
                                     </div>
                                     <span className={`rounded-full px-3 py-1 text-xs font-semibold ${member.role.includes('doctor') ? 'bg-slate-100 text-slate-700 dark:bg-blue-950/50 dark:text-blue-300' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200'}`}>
-                                        {member.role.includes('doctor') ? 'Bác sĩ' : 'Y tá'}
+                                        {member.role.includes('doctor') ? t("departmentManagement.roles.doctor") : t("departmentManagement.roles.nurse")}
                                     </span>
                                 </div>
                             ))}
                             {deptMembers.length === 0 && (
                                 <div className="p-10 text-center italic text-gray-500 dark:text-slate-400">
-                                    Chưa có nhân sự nào trong khoa này.
+                                    {t("departmentManagement.noStaff")}
                                 </div>
                             )}
                         </div>
@@ -235,7 +237,7 @@ const DepartmentManagement: React.FC = () => {
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
                         <div className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-lg bg-white p-6 dark:bg-slate-900 dark:ring-1 dark:ring-slate-800">
                             <div className="flex justify-between items-center mb-4">
-                                <h2 className="text-xl font-bold dark:text-white">Chọn nhân sự thêm vào khoa</h2>
+                                <h2 className="text-xl font-bold dark:text-white">{t("departmentManagement.selectStaff")}</h2>
                                 <button onClick={() => setShowAddMemberModal(false)} className="text-gray-400 hover:text-red-500">
                                     &times;
                                 </button>
@@ -245,21 +247,21 @@ const DepartmentManagement: React.FC = () => {
                                     <div key={c.id} className="flex items-center justify-between rounded-lg border p-3 hover:bg-gray-50 dark:border-slate-700 dark:hover:bg-slate-800">
                                         <div>
                                             <p className="font-medium dark:text-gray-100">{c.name}</p>
-                                            <p className="text-sm text-gray-500 dark:text-gray-400">{c.role === 'user.doctor' ? 'Bác sĩ' : 'Y tá'} - {c.email}</p>
+                                            <p className="text-sm text-gray-500 dark:text-gray-400">{c.role === 'user.doctor' ? t("departmentManagement.roles.doctor") : t("departmentManagement.roles.nurse")} - {c.email}</p>
                                             <p className="text-xs text-amber-600 dark:text-amber-300">
-                                                Hiện tại: {c.currentDepartmentName || "Chưa thuộc khoa/phòng nào"}
+                                                {t("departmentManagement.currentDepartment")} {c.currentDepartmentName || t("departmentManagement.noDepartment")}
                                             </p>
                                         </div>
                                         <button
                                             onClick={() => handleAddMember(c.id)}
                                             className="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white px-3 py-1 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                                         >
-                                            Chuyển
+                                            {t("departmentManagement.transfer")}
                                         </button>
                                     </div>
                                 ))}
                                 {candidates.length === 0 && (
-                                    <p className="text-center text-gray-500 py-4">Không còn nhân sự trống nào.</p>
+                                    <p className="text-center text-gray-500 py-4">{t("departmentManagement.noAvailableStaff")}</p>
                                 )}
                             </div>
                         </div>
@@ -275,10 +277,10 @@ const DepartmentManagement: React.FC = () => {
                 <div>
                     <h1 className="flex items-center text-2xl font-bold leading-tight text-gray-800 dark:text-white md:text-3xl">
                         <FaBuilding className="mr-3 text-slate-700 dark:text-blue-400" />
-                        Quản lý Khoa / Phòng
+                        {t("departmentManagement.title")}
                     </h1>
                     <p className="text-gray-600 dark:text-gray-400 mt-2">
-                        Tổng số: {departments.length} khoa phòng
+                        {t("departmentManagement.totalCount", { count: departments.length })}
                     </p>
                 </div>
                 <button
@@ -286,7 +288,7 @@ const DepartmentManagement: React.FC = () => {
                     className={`${adminPrimaryButtonClass} w-full md:w-auto`}
                 >
                     <FaPlus className="mr-2" />
-                    Thêm Khoa
+                    {t("departmentManagement.addDepartment")}
                 </button>
             </div>
 
@@ -295,7 +297,7 @@ const DepartmentManagement: React.FC = () => {
                     <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                     <input
                         type="text"
-                        placeholder="Tìm kiếm khoa phòng..."
+                        placeholder={t("departmentManagement.searchPlaceholder")}
                         className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder-gray-500 dark:focus:ring-slate-700"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
@@ -317,7 +319,7 @@ const DepartmentManagement: React.FC = () => {
                                         {dept.name}
                                     </h3>
                                     <p className="text-gray-500 dark:text-gray-400 text-sm mb-4 line-clamp-2">
-                                        {dept.description || "Chưa có mô tả"}
+                                        {dept.description || t("departmentManagement.noDescription")}
                                     </p>
                                 </div>
                                 <div className="rounded-full bg-slate-100 p-3 transition group-hover:bg-slate-200 dark:bg-slate-800 dark:group-hover:bg-slate-700">
@@ -328,14 +330,14 @@ const DepartmentManagement: React.FC = () => {
                             <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
                                 <div className="flex flex-col">
                                     <span className="text-xs text-gray-500 dark:text-gray-400 uppercase font-semibold">
-                                        Thành viên
+                                        {t("sidebar.assignments")}
                                     </span>
                                     <span className="text-lg font-bold text-gray-700 dark:text-gray-200">
                                         {dept.memberCount}
                                     </span>
                                 </div>
                                 <span className="mb-0 flex self-end pb-0 text-sm text-slate-500 opacity-0 transition group-hover:opacity-100 dark:text-blue-300">
-                                    Xem chi tiết &rarr;
+                                    {t("common.viewAll")} &rarr;
                                 </span>
                             </div>
                         </div>
@@ -344,13 +346,13 @@ const DepartmentManagement: React.FC = () => {
 
                 {loading && (
                     <div className="col-span-full text-center py-10 text-gray-500">
-                        Đang tải dữ liệu...
+                        {t("common.loading")}
                     </div>
                 )}
 
                 {!loading && filtered.length === 0 && (
                     <div className="col-span-full rounded-lg border border-dashed border-slate-300 bg-slate-50 py-10 text-center text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
-                        Không tìm thấy khoa phòng nào.
+                        {t("departmentManagement.notFound")}
                     </div>
                 )}
             </div>
@@ -359,12 +361,12 @@ const DepartmentManagement: React.FC = () => {
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
                     <div className="w-full max-w-md rounded-lg bg-white p-6 dark:bg-slate-900 dark:ring-1 dark:ring-slate-800">
                         <h2 className="text-2xl font-bold mb-4 dark:text-white">
-                            Thêm Khoa / Phòng mới
+                            {t("departmentManagement.addDepartment")}
                         </h2>
                         <form onSubmit={handleCreateSubmit} className="space-y-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                    Tên Khoa/Phòng
+                                    {t("departmentManagement.fields.name")}
                                 </label>
                                 <input
                                     name="name"
@@ -376,7 +378,7 @@ const DepartmentManagement: React.FC = () => {
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                    Mô tả
+                                    {t("departmentManagement.fields.description")}
                                 </label>
                                 <textarea
                                     name="description"
@@ -391,13 +393,13 @@ const DepartmentManagement: React.FC = () => {
                                     onClick={() => setShowCreateModal(false)}
                                     className={adminSecondaryButtonClass}
                                 >
-                                    Hủy
+                                    {t("common.cancel")}
                                 </button>
                                 <button
                                     type="submit"
                                     className={adminPrimaryButtonClass}
                                 >
-                                    Tạo mới
+                                    {t("common.add")}
                                 </button>
                             </div>
                         </form>

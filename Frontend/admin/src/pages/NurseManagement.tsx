@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { FaUserNurse, FaEdit, FaTrash, FaPlus, FaSearch } from "react-icons/fa";
+import { useTranslation } from "react-i18next";
 import api from "../services/api";
 import { uploadAvatar } from "../services/uploadService";
 import { useToast } from "../hooks/useToast";
@@ -39,6 +40,7 @@ function resolveDepartmentName(departments: Department[], departmentId: unknown)
 }
 
 const NurseManagement: React.FC = () => {
+  const { t } = useTranslation();
   const [nurses, setNurses] = useState<Nurse[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [showModal, setShowModal] = useState(false);
@@ -90,14 +92,14 @@ const NurseManagement: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (window.confirm("Bạn có chắc chắn muốn xóa y tá này?")) {
+    if (window.confirm(t("nurseManagement.confirmDelete"))) {
       try {
         await api.delete(`/users/${id}`);
         setNurses(nurses.filter((n) => n.id !== id));
-        showToast("Xóa y tá thành công!");
+        showToast(t("nurseManagement.deleteSuccess"));
       } catch (err) {
         console.error("Lỗi xóa y tá", err);
-        showToast("Có lỗi xảy ra khi xóa.", "error");
+        showToast(t("nurseManagement.deleteErrorMessage"), "error");
       }
     }
   };
@@ -150,25 +152,25 @@ const NurseManagement: React.FC = () => {
               : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
               }`}
           >
-            {nurse.status === "active" ? "Hoạt động" : "Không hoạt động"}
+            {nurse.status === "active" ? t("common.active") : t("common.inactive")}
           </span>
         </div>
 
         <div className="mt-4 grid grid-cols-1 gap-2 text-sm text-gray-700 dark:text-gray-300 sm:grid-cols-2">
           <div>
-            <span className="text-gray-500 dark:text-gray-400">Nơi làm việc: </span>
-            <span className="font-medium">{nurse.workplace || "Chưa cập nhật"}</span>
+            <span className="text-gray-500 dark:text-gray-400">{t("nurseManagement.labels.workplace")} </span>
+            <span className="font-medium">{nurse.workplace || t("common.notUpdated")}</span>
           </div>
           <div>
-            <span className="text-gray-500 dark:text-gray-400">Số giấy phép: </span>
-            <span className="font-medium">{nurse.licenseNumber || "Chưa cập nhật"}</span>
+            <span className="text-gray-500 dark:text-gray-400">{t("nurseManagement.labels.licenseNumber")} </span>
+            <span className="font-medium">{nurse.licenseNumber || t("common.notUpdated")}</span>
           </div>
           <div>
-            <span className="text-gray-500 dark:text-gray-400">Kinh nghiệm: </span>
-            <span className="font-medium">{nurse.yearsOfExperience} năm</span>
+            <span className="text-gray-500 dark:text-gray-400">{t("nurseManagement.labels.experience")} </span>
+            <span className="font-medium">{nurse.yearsOfExperience} {t("nurseManagement.labels.years")}</span>
           </div>
           <div className="sm:col-span-2">
-            <span className="text-gray-500 dark:text-gray-400">Liên hệ: </span>
+            <span className="text-gray-500 dark:text-gray-400">{t("nurseManagement.labels.contact")} </span>
             <span className="font-medium">{nurse.email}</span>
           </div>
         </div>
@@ -177,14 +179,14 @@ const NurseManagement: React.FC = () => {
           <button
             onClick={() => handleEdit(nurse)}
             className="rounded-lg p-2 text-blue-600 transition hover:bg-blue-50 hover:text-blue-900 dark:hover:bg-blue-900/20"
-            aria-label="Chỉnh sửa y tá"
+            aria-label={t("nurseManagement.editNurse")}
           >
             <FaEdit />
           </button>
           <button
             onClick={() => handleDelete(nurse.id)}
             className="rounded-lg p-2 text-red-600 transition hover:bg-red-50 hover:text-red-900 dark:hover:bg-red-900/20"
-            aria-label="Xóa y tá"
+            aria-label={t("common.delete")}
           >
             <FaTrash />
           </button>
@@ -224,7 +226,7 @@ const NurseManagement: React.FC = () => {
       } else {
         const password = formData.get("password") as string;
         if (!password || password.length < 8) {
-          showToast("Mật khẩu phải có ít nhất 8 ký tự!", "error");
+          showToast(t("auth.passwordMinLength"), "error");
           return;
         }
         await api.post("/auth/register", {
@@ -252,10 +254,10 @@ const NurseManagement: React.FC = () => {
       fetchPageData();
       setShowModal(false);
       setAvatarFile(null);
-      showToast(editingNurse?.id ? "Cập nhật y tá thành công!" : "Thêm y tá thành công!");
+      showToast(editingNurse?.id ? t("nurseManagement.updateSuccess") : t("nurseManagement.addSuccess"));
     } catch (err: any) {
       console.error(err);
-      showToast("Lỗi: " + (err.response?.data?.error || err.message), "error");
+      showToast(t("nurseManagement.errorPrefix") + " " + (err.response?.data?.error || err.message), "error");
     }
   };
 
@@ -267,12 +269,12 @@ const NurseManagement: React.FC = () => {
         <div>
           <h1 className="flex items-center text-2xl font-bold text-gray-800 dark:text-white md:text-3xl">
             <FaUserNurse className="mr-3 text-purple-600" />
-            Quản lý y tá
+            {t("nurseManagement.title")}
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">Tổng số: {nurses.length} y tá</p>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">{t("nurseManagement.totalCount", { count: nurses.length })}</p>
         </div>
         <button onClick={handleAdd} className={`${adminPrimaryButtonClass} w-full md:w-auto`}>
-          <FaPlus className="mr-2" />Thêm y tá
+          <FaPlus className="mr-2" />{t("nurseManagement.addNurse")}
         </button>
       </div>
 
@@ -281,7 +283,7 @@ const NurseManagement: React.FC = () => {
           <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
           <input
             type="text"
-            placeholder="Tìm kiếm theo tên, khoa/phòng, nơi làm việc..."
+            placeholder={t("nurseManagement.searchPlaceholder")}
             className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -292,7 +294,7 @@ const NurseManagement: React.FC = () => {
       <div className="space-y-4 md:hidden">
         {filteredNurses.length === 0 ? (
           <div className="rounded-lg bg-white p-6 text-center text-gray-500 shadow-md dark:bg-gray-800 dark:text-gray-400">
-            Không có dữ liệu hiển thị.
+            {t("common.noData")}
           </div>
         ) : (
           filteredNurses.map((nurse) => renderNurseCard(nurse))
@@ -304,14 +306,14 @@ const NurseManagement: React.FC = () => {
         <table className="w-full min-w-[1350px]">
           <thead className="bg-gray-50 dark:bg-gray-700 border-b dark:border-gray-600">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Y tá</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Khoa/phòng</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nơi làm việc</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Số giấy phép</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Kinh nghiệm</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Trạng thái</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Liên hệ</th>
-              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Hành động</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t("nurseManagement.fields.name")}</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t("nurseManagement.fields.department")}</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t("nurseManagement.fields.workplace")}</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t("nurseManagement.fields.licenseNumber")}</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t("nurseManagement.fields.yearsOfExperience")}</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t("nurseManagement.fields.status")}</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t("nurseManagement.fields.contact")}</th>
+              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t("common.edit")}</th>
             </tr>
           </thead>
           <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -324,7 +326,7 @@ const NurseManagement: React.FC = () => {
                       src={nurse.profileImageUrl || "/avartar.jpg"}
                       onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = "/avartar.jpg"; }}
                       onClick={() => setPreviewImage(nurse.profileImageUrl || "/avartar.jpg")}
-                      title="Nhấn để xem ảnh"
+                      title={t("doctorManagement.clickToViewImage")}
                     />
                     <div className="ml-4">
                       <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{nurse.name}</div>
@@ -332,13 +334,13 @@ const NurseManagement: React.FC = () => {
                     </div>
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{nurse.department || "Chưa gán"}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{nurse.workplace || "Chưa cập nhật"}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{nurse.department || t("common.notAssigned")}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{nurse.workplace || t("common.notUpdated")}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{nurse.licenseNumber}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{nurse.yearsOfExperience} năm</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{nurse.yearsOfExperience} {t("nurseManagement.labels.years")}</td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${nurse.status === "active" ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"}`}>
-                    {nurse.status === "active" ? "Hoạt động" : "Không hoạt động"}
+                    {nurse.status === "active" ? t("common.active") : t("common.inactive")}
                   </span>
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
@@ -359,7 +361,7 @@ const NurseManagement: React.FC = () => {
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
           <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white p-4 md:p-6 dark:bg-gray-800">
-            <h2 className="mb-4 text-xl font-bold dark:text-white md:text-2xl">{editingNurse ? "Chỉnh sửa y tá" : "Thêm y tá mới"}</h2>
+            <h2 className="mb-4 text-xl font-bold dark:text-white md:text-2xl">{editingNurse ? t("nurseManagement.editNurse") : t("nurseManagement.addNewNurse")}</h2>
             <form className="space-y-4" onSubmit={handleSubmit}>
               <AvatarUploader
                 currentUrl={editingNurse?.profileImageUrl}
@@ -367,64 +369,64 @@ const NurseManagement: React.FC = () => {
               />
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Họ tên</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t("nurseManagement.fields.name")}</label>
                   <input name="name" type="text" required className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" defaultValue={editingNurse?.name} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Khoa/phòng</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t("nurseManagement.fields.department")}</label>
                   <input
                     type="text"
                     disabled
                     value={editingNurse?.department || ""}
-                    placeholder="Gán tại Quản lý Khoa / Phòng"
+                    placeholder={t("doctorManagement.assignAtDepartment")}
                     className="w-full px-3 py-2 border border-gray-200 bg-gray-100 text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 rounded-lg cursor-not-allowed"
                     readOnly
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Số giấy phép</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t("nurseManagement.fields.licenseNumber")}</label>
                   <input name="licenseNumber" type="text" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" defaultValue={editingNurse?.licenseNumber} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nơi làm việc</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t("nurseManagement.fields.workplace")}</label>
                   <input name="workplace" type="text" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" defaultValue={editingNurse?.workplace} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Kinh nghiệm (năm)</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t("nurseManagement.fields.yearsOfExperience")}</label>
                   <input name="yearsOfExperience" type="number" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" defaultValue={editingNurse?.yearsOfExperience} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t("nurseManagement.fields.email")}</label>
                   <input name="email" type="email" required className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" defaultValue={editingNurse?.email} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Số điện thoại</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t("nurseManagement.fields.phone")}</label>
                   <input name="phone" type="tel" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" defaultValue={editingNurse?.phone} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Giới tính</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t("nurseManagement.fields.gender")}</label>
                   <select name="gender" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" defaultValue={editingNurse?.gender}>
-                    <option value="Nam">Nam</option>
-                    <option value="Nữ">Nữ</option>
+                    <option value="Nam">{t("common.male")}</option>
+                    <option value="Nữ">{t("common.female")}</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Trạng thái</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t("nurseManagement.fields.status")}</label>
                   <select name="status" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" defaultValue={editingNurse?.status || "active"}>
-                    <option value="active">Hoạt động</option>
-                    <option value="inactive">Không hoạt động</option>
+                    <option value="active">{t("common.active")}</option>
+                    <option value="inactive">{t("common.inactive")}</option>
                   </select>
                 </div>
                 {!editingNurse && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Mật khẩu <span className="text-gray-400 font-normal">(tài khoản đăng nhập)</span></label>
-                    <input name="password" type="password" required minLength={8} placeholder="Tối thiểu 8 ký tự" className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" />
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t("nurseManagement.fields.password")}</label>
+                    <input name="password" type="password" required minLength={8} placeholder={t("auth.passwordMinLength")} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" />
                   </div>
                 )}
               </div>
               <div className="mt-6 flex flex-col-reverse gap-3 md:flex-row md:justify-end md:space-x-3">
-                <button type="button" onClick={() => setShowModal(false)} className={`${adminSecondaryButtonClass} w-full md:w-auto`}>Hủy</button>
-                <button type="submit" className={`${adminPrimaryButtonClass} w-full md:w-auto`}>{editingNurse ? "Cập nhật" : "Thêm mới"}</button>
+                <button type="button" onClick={() => setShowModal(false)} className={`${adminSecondaryButtonClass} w-full md:w-auto`}>{t("common.cancel")}</button>
+                <button type="submit" className={`${adminPrimaryButtonClass} w-full md:w-auto`}>{editingNurse ? t("common.update") : t("common.add")}</button>
               </div>
             </form>
           </div>

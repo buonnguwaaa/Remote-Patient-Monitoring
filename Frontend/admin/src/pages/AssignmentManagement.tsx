@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { FaEdit, FaExchangeAlt, FaSave, FaTrash, FaUserMd, FaUserNurse } from "react-icons/fa";
+import { useTranslation } from "react-i18next";
 
 import api from "../services/api";
 import type { Assignment, Nurse, Patient, doctor } from "../types";
@@ -10,6 +11,7 @@ import {
 } from "../styles/buttonStyles";
 
 const AssignmentManagement: React.FC = () => {
+  const { t } = useTranslation();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [doctors, setDoctors] = useState<doctor[]>([]);
   const [nurses, setNurses] = useState<Nurse[]>([]);
@@ -52,7 +54,7 @@ const AssignmentManagement: React.FC = () => {
       setAssignments(extractList(resAssignments));
     } catch (error) {
       console.error("Error fetching assignment data", error);
-      setMessage({ type: "error", text: "Không thể tải dữ liệu phân công." });
+      setMessage({ type: "error", text: t("assignmentManagement.loadError") });
     } finally {
       setLoading(false);
     }
@@ -65,7 +67,7 @@ const AssignmentManagement: React.FC = () => {
       setAssignments(extractList(response));
     } catch (error) {
       console.error("Error refreshing assignments", error);
-      setMessage({ type: "error", text: "Không thể tải lại danh sách phân công." });
+      setMessage({ type: "error", text: t("assignmentManagement.refreshError") });
     } finally {
       setLoadingAssignments(false);
     }
@@ -95,12 +97,12 @@ const AssignmentManagement: React.FC = () => {
     setMessage(null);
 
     if (!selectedPatient) {
-      setMessage({ type: "error", text: "Vui lòng chọn bệnh nhân." });
+      setMessage({ type: "error", text: t("assignmentManagement.selectPatientError") });
       return;
     }
 
     if (!selectedDoctor && !selectedNurse) {
-      setMessage({ type: "error", text: "Vui lòng chọn ít nhất một bác sĩ hoặc y tá." });
+      setMessage({ type: "error", text: t("assignmentManagement.selectStaffError") });
       return;
     }
 
@@ -108,7 +110,7 @@ const AssignmentManagement: React.FC = () => {
     if (existingAssignment && existingAssignment.id !== editingAssignmentId) {
       setMessage({
         type: "error",
-        text: "Bệnh nhân này đã được phân công. Hãy dùng nút Sửa trong danh sách bên dưới.",
+        text: t("assignmentManagement.alreadyAssigned"),
       });
       return;
     }
@@ -123,13 +125,13 @@ const AssignmentManagement: React.FC = () => {
 
       setMessage({
         type: "success",
-        text: editingAssignmentId ? "Cập nhật phân công thành công!" : "Phân công thành công!",
+        text: editingAssignmentId ? t("assignmentManagement.updateSuccess") : t("assignmentManagement.assignSuccess"),
       });
       resetForm();
       await refreshAssignments();
     } catch (error) {
       console.error("Assign error", error);
-      setMessage({ type: "error", text: "Lỗi khi lưu phân công. Vui lòng thử lại." });
+      setMessage({ type: "error", text: t("assignmentManagement.saveError") });
     } finally {
       setLoading(false);
     }
@@ -146,7 +148,7 @@ const AssignmentManagement: React.FC = () => {
 
   const handleDeleteAssignment = async (assignment: Assignment) => {
     const confirmed = window.confirm(
-      `Xóa phân công của bệnh nhân ${assignment.patientName || assignment.patientId}?`
+      t("assignmentManagement.confirmDelete", { name: assignment.patientName || assignment.patientId })
     );
     if (!confirmed) return;
 
@@ -156,11 +158,11 @@ const AssignmentManagement: React.FC = () => {
       if (editingAssignmentId === assignment.id) {
         resetForm();
       }
-      setMessage({ type: "success", text: "Đã xóa phân công." });
+      setMessage({ type: "success", text: t("assignmentManagement.deleteSuccess") });
       await refreshAssignments();
     } catch (error) {
       console.error("Delete assignment error", error);
-      setMessage({ type: "error", text: "Không thể xóa phân công." });
+      setMessage({ type: "error", text: t("assignmentManagement.deleteError") });
     } finally {
       setLoadingAssignments(false);
     }
@@ -186,7 +188,7 @@ const AssignmentManagement: React.FC = () => {
     <div className="mx-auto max-w-7xl p-6">
       <h1 className="mb-8 flex items-center text-3xl font-bold text-gray-800 dark:text-white">
         <FaExchangeAlt className="mr-3 text-slate-700 dark:text-slate-200" />
-        Phân công Bệnh nhân
+        {t("assignmentManagement.title")}
       </h1>
 
       <div className="rounded-xl bg-white p-8 shadow-md dark:bg-gray-800">
@@ -205,7 +207,7 @@ const AssignmentManagement: React.FC = () => {
         <form onSubmit={handleAssign} className="space-y-8">
           <div className="flex items-center justify-between gap-4">
             <label className="block text-lg font-medium text-gray-700 dark:text-gray-300">
-              1. Chọn Bệnh nhân
+              {t("assignmentManagement.selectPatient")}
             </label>
             {editingAssignmentId && (
               <button
@@ -213,7 +215,7 @@ const AssignmentManagement: React.FC = () => {
                 onClick={resetForm}
                 className={adminSecondaryButtonClass}
               >
-                Hủy chỉnh sửa
+                {t("assignmentManagement.cancelEdit")}
               </button>
             )}
           </div>
@@ -225,7 +227,7 @@ const AssignmentManagement: React.FC = () => {
             disabled={Boolean(editingAssignmentId)}
             required
           >
-            <option value="">-- Chọn bệnh nhân --</option>
+            <option value="">{t("assignmentManagement.selectPatientPlaceholder")}</option>
             {patientOptions.map((patient) => (
               <option key={patient.id} value={patient.id}>
                 {patient.name} ({patient.email})
@@ -235,22 +237,22 @@ const AssignmentManagement: React.FC = () => {
 
           <p className="text-sm text-gray-500 dark:text-gray-400">
             {editingAssignmentId
-              ? "Đang ở chế độ chỉnh sửa. Bệnh nhân đã được khóa, bạn chỉ cập nhật bác sĩ và y tá."
-              : "Chỉ hiển thị bệnh nhân chưa được phân công. Bệnh nhân đã có phân công sẽ được sửa trong danh sách bên dưới."}
+              ? t("assignmentManagement.editMode")
+              : t("assignmentManagement.unassignedOnly")}
           </p>
 
           <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-6 dark:border-slate-700 dark:bg-slate-900/60">
               <label className="mb-3 flex items-center text-lg font-medium text-slate-800 dark:text-slate-200">
                 <FaUserMd className="mr-2" />
-                2. Chọn Bác sĩ phụ trách
+                {t("assignmentManagement.selectDoctor")}
               </label>
               <select
                 className="w-full rounded-lg border border-slate-300 bg-white p-3 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 dark:border-slate-600 dark:bg-gray-800 dark:text-white dark:focus:border-slate-500 dark:focus:ring-slate-700"
                 value={selectedDoctor}
                 onChange={(event) => setSelectedDoctor(event.target.value)}
               >
-                <option value="">-- Không chỉ định --</option>
+                <option value="">{t("assignmentManagement.notSpecified")}</option>
                 {doctors.map((doctorOption) => (
                   <option key={doctorOption.id} value={doctorOption.id}>
                     BS. {doctorOption.name}
@@ -258,21 +260,21 @@ const AssignmentManagement: React.FC = () => {
                 ))}
               </select>
               <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-                Bác sĩ chịu trách nhiệm chính về chuyên môn.
+                {t("assignmentManagement.doctorResponsibility")}
               </p>
             </div>
 
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-6 dark:border-slate-700 dark:bg-slate-900/60">
               <label className="mb-3 flex items-center text-lg font-medium text-slate-800 dark:text-slate-200">
                 <FaUserNurse className="mr-2" />
-                3. Chọn Y tá theo dõi
+                {t("assignmentManagement.selectNurse")}
               </label>
               <select
                 className="w-full rounded-lg border border-slate-300 bg-white p-3 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 dark:border-slate-600 dark:bg-gray-800 dark:text-white dark:focus:border-slate-500 dark:focus:ring-slate-700"
                 value={selectedNurse}
                 onChange={(event) => setSelectedNurse(event.target.value)}
               >
-                <option value="">-- Không chỉ định --</option>
+                <option value="">{t("assignmentManagement.notSpecified")}</option>
                 {nurses.map((nurseOption) => (
                   <option key={nurseOption.id} value={nurseOption.id}>
                     YT. {nurseOption.name}
@@ -280,7 +282,7 @@ const AssignmentManagement: React.FC = () => {
                 ))}
               </select>
               <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-                Y tá theo dõi chỉ số hằng ngày.
+                {t("assignmentManagement.nurseResponsibility")}
               </p>
             </div>
           </div>
@@ -296,11 +298,11 @@ const AssignmentManagement: React.FC = () => {
               }`}
             >
               {loading ? (
-                "Đang xử lý..."
+                t("common.processing")
               ) : (
                 <>
                   <FaSave className="mr-2" />
-                  {editingAssignmentId ? "Cập nhật phân công" : "Lưu Phân công"}
+                  {editingAssignmentId ? t("assignmentManagement.updateAssignment") : t("assignmentManagement.saveAssignment")}
                 </>
               )}
             </button>
@@ -311,9 +313,9 @@ const AssignmentManagement: React.FC = () => {
       <div className="mt-8 rounded-xl bg-white p-8 shadow-md dark:bg-gray-800">
         <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Danh sách phân công</h2>
+            <h2 className="text-2xl font-bold text-gray-800 dark:text-white">{t("assignmentManagement.assignmentList")}</h2>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Theo dõi, chỉnh sửa hoặc xóa nhanh các phân công hiện có.
+              {t("assignmentManagement.assignmentListDesc")}
             </p>
           </div>
 
@@ -321,7 +323,7 @@ const AssignmentManagement: React.FC = () => {
             type="text"
             value={searchTerm}
             onChange={(event) => setSearchTerm(event.target.value)}
-            placeholder="Tìm theo bệnh nhân, mã hồ sơ, bác sĩ, y tá..."
+            placeholder={t("assignmentManagement.searchPlaceholder")}
             className="w-full rounded-lg border border-gray-300 px-4 py-2.5 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-200 md:max-w-md dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-slate-500 dark:focus:ring-slate-700"
           />
         </div>
@@ -330,12 +332,12 @@ const AssignmentManagement: React.FC = () => {
           <table className="w-full min-w-[900px]">
             <thead className="border-b border-gray-200 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:border-gray-700 dark:text-gray-400">
               <tr>
-                <th className="px-4 py-3">Bệnh nhân</th>
-                <th className="px-4 py-3">Mã hồ sơ</th>
-                <th className="px-4 py-3">Bác sĩ</th>
-                <th className="px-4 py-3">Y tá</th>
-                <th className="px-4 py-3">Cập nhật</th>
-                <th className="px-4 py-3 text-center">Hành động</th>
+                <th className="px-4 py-3">{t("assignmentManagement.tableHeaders.patient")}</th>
+                <th className="px-4 py-3">{t("assignmentManagement.tableHeaders.patientCode")}</th>
+                <th className="px-4 py-3">{t("assignmentManagement.tableHeaders.doctor")}</th>
+                <th className="px-4 py-3">{t("assignmentManagement.tableHeaders.nurse")}</th>
+                <th className="px-4 py-3">{t("assignmentManagement.tableHeaders.updated")}</th>
+                <th className="px-4 py-3 text-center">{t("assignmentManagement.tableHeaders.actions")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -343,18 +345,18 @@ const AssignmentManagement: React.FC = () => {
                 <tr key={assignment.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/40">
                   <td className="px-4 py-4">
                     <div className="font-medium text-gray-900 dark:text-gray-100">
-                      {assignment.patientName || "Chưa có tên"}
+                      {assignment.patientName || t("common.noName")}
                     </div>
                     <div className="text-sm text-gray-500 dark:text-gray-400">{assignment.patientId}</div>
                   </td>
                   <td className="px-4 py-4 text-sm font-medium text-gray-700 dark:text-gray-200">
-                    {assignment.patientCode || "Chưa có mã"}
+                    {assignment.patientCode || t("common.noCode")}
                   </td>
                   <td className="px-4 py-4 text-sm text-gray-700 dark:text-gray-200">
-                    {assignment.doctorName || "Chưa chỉ định"}
+                    {assignment.doctorName || t("common.notSpecified")}
                   </td>
                   <td className="px-4 py-4 text-sm text-gray-700 dark:text-gray-200">
-                    {assignment.nurseName || "Chưa chỉ định"}
+                    {assignment.nurseName || t("common.notSpecified")}
                   </td>
                   <td className="px-4 py-4 text-sm text-gray-500 dark:text-gray-400">
                     {assignment.updatedAt ? new Date(assignment.updatedAt).toLocaleString("vi-VN") : "N/A"}
@@ -367,7 +369,7 @@ const AssignmentManagement: React.FC = () => {
                         className="inline-flex items-center rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700/60"
                       >
                         <FaEdit className="mr-2" />
-                        Sửa
+                        {t("assignmentManagement.buttons.edit")}
                       </button>
                       <button
                         type="button"
@@ -375,7 +377,7 @@ const AssignmentManagement: React.FC = () => {
                         className="inline-flex items-center rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-700 transition hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-900/20"
                       >
                         <FaTrash className="mr-2" />
-                        Xóa
+                        {t("assignmentManagement.buttons.delete")}
                       </button>
                     </div>
                   </td>
@@ -387,13 +389,13 @@ const AssignmentManagement: React.FC = () => {
 
         {!loadingAssignments && filteredAssignments.length === 0 && (
           <div className="py-10 text-center text-sm text-gray-500 dark:text-gray-400">
-            Chưa có phân công nào để hiển thị.
+            {t("assignmentManagement.noAssignments")}
           </div>
         )}
 
         {loadingAssignments && (
           <div className="py-10 text-center text-sm text-gray-500 dark:text-gray-400">
-            Đang tải danh sách phân công...
+            {t("assignmentManagement.loadingAssignments")}
           </div>
         )}
       </div>
