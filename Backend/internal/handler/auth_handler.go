@@ -350,13 +350,13 @@ func (h *AuthHandler) ResendActivationEmail(c *gin.Context) {
 // ========================================================
 // =============== Private Helper Functions ===============
 // ========================================================
-func (h *AuthHandler) setSameSite(c *gin.Context) {
-	if os.Getenv("GIN_MODE") == "release" {
-		c.SetSameSite(http.SameSiteNoneMode)
-	} else {
-		c.SetSameSite(http.SameSiteLaxMode)
-	}
-}
+// func (h *AuthHandler) setSameSite(c *gin.Context) {
+// 	if os.Getenv("GIN_MODE") == "release" {
+// 		c.SetSameSite(http.SameSiteNoneMode)
+// 	} else {
+// 		c.SetSameSite(http.SameSiteLaxMode)
+// 	}
+// }
 
 func (h *AuthHandler) isSecure(c *gin.Context) bool {
 	if gin.Mode() != gin.ReleaseMode {
@@ -411,8 +411,8 @@ func (h *AuthHandler) setRefreshTokenCookie(c *gin.Context, refreshToken string)
 	)
 }
 
-func (h *AuthHandler) clearAuthCookies(c *gin.Context) {
-	h.setSameSite(c)
-	c.SetCookie("accessToken", "", -1, "/", "", h.isSecure(c), false)
-	c.SetCookie("refreshToken", "", -1, "/", "", h.isSecure(c), true)
-}
+// func (h *AuthHandler) clearAuthCookies(c *gin.Context) {
+// 	h.setSameSite(c)
+// 	c.SetCookie("accessToken", "", -1, "/", "", h.isSecure(c), false)
+// 	c.SetCookie("refreshToken", "", -1, "/", "", h.isSecure(c), true)
+// }
