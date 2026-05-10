@@ -212,6 +212,7 @@
     "title": "Department Management",
     "totalCount": "Total: {{count}} departments",
     "addDepartment": "Add Department",
+    "editDepartment": "Edit Department",
     "addMember": "Add Member",
     "backToList": "Back to list",
     "searchPlaceholder": "Search departments...",
@@ -221,6 +222,7 @@
     "noStaff": "No staff in this department yet.",
     "selectStaff": "Select staff to add to department",
     "confirmTransfer": "Confirm transfer this member?",
+    "confirmDelete": "Are you sure you want to delete department \"{{name}}\"?\n\nNote: You can only delete departments with no members.",
     "from": "From:",
     "to": "To:",
     "currentDepartment": "Current:",
@@ -229,6 +231,12 @@
     "noAvailableStaff": "No available staff.",
     "addMemberError": "Error adding member",
     "notFound": "No departments found.",
+    "createSuccess": "Department added successfully",
+    "createError": "Error adding department",
+    "updateSuccess": "Department updated successfully",
+    "updateError": "Error updating department",
+    "deleteSuccess": "Department deleted successfully",
+    "deleteError": "Error deleting department",
     "fields": {
       "name": "Department Name",
       "description": "Description"

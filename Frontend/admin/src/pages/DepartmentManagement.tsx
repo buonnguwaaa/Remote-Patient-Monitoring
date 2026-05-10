@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { FaBuilding, FaPlus, FaSearch, FaUserMd, FaUserNurse, FaArrowLeft } from "react-icons/fa";
+import { FaBuilding, FaPlus, FaSearch, FaUserMd, FaUserNurse, FaArrowLeft, FaEdit, FaTrash } from "react-icons/fa";
 import { useTranslation } from "react-i18next";
 import api from "../services/api";
 import type { Department } from "../types";
 import { adminPrimaryButtonClass, adminSecondaryButtonClass } from "../styles/buttonStyles";
+import { useToast } from "../hooks/useToast";
+import Toast from "../components/ui/Toast";
 
 interface Member {
     id: string;
@@ -54,9 +56,12 @@ function resolveDepartmentNameById(departments: Department[], departmentId: unkn
 
 const DepartmentManagement: React.FC = () => {
     const { t } = useTranslation();
+    const { toast, showToast, hideToast } = useToast();
     const [departments, setDepartments] = useState<Department[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [showCreateModal, setShowCreateModal] = useState(false);
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [editingDept, setEditingDept] = useState<Department | null>(null);
     const [loading, setLoading] = useState(true);
 
     const [viewingDept, setViewingDept] = useState<Department | null>(null);
@@ -115,9 +120,59 @@ const DepartmentManagement: React.FC = () => {
             await api.post("/departments", data);
             setShowCreateModal(false);
             fetchDepartments();
+            showToast(t("departmentManagement.createSuccess") || "Thêm khoa thành công", "success");
         } catch (error) {
             console.error("Failed to save department", error);
-            alert("Có lỗi xảy ra khi lưu khoa phòng");
+            showToast(t("departmentManagement.createError") || "Có lỗi xảy ra khi thêm khoa", "error");
+        }
+    };
+
+    const handleEditClick = (e: React.MouseEvent, dept: Department) => {
+        e.stopPropagation();
+        setEditingDept(dept);
+        setShowEditModal(true);
+    };
+
+    const handleEditSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        if (!editingDept) return;
+
+        const formData = new FormData(e.currentTarget);
+        const data = {
+            name: formData.get("name") as string,
+            description: formData.get("description") as string,
+        };
+
+        try {
+            await api.put(`/departments/${editingDept.id}`, data);
+            setShowEditModal(false);
+            setEditingDept(null);
+            fetchDepartments();
+            showToast(t("departmentManagement.updateSuccess") || "Cập nhật khoa thành công", "success");
+        } catch (error) {
+            console.error("Failed to update department", error);
+            showToast(t("departmentManagement.updateError") || "Có lỗi xảy ra khi cập nhật khoa", "error");
+        }
+    };
+
+    const handleDeleteClick = async (e: React.MouseEvent, dept: Department) => {
+        e.stopPropagation();
+        
+        const confirmed = window.confirm(
+            t("departmentManagement.confirmDelete", { name: dept.name }) || 
+            `Bạn có chắc chắn muốn xóa khoa "${dept.name}"?\n\nLưu ý: Chỉ có thể xóa khoa không còn thành viên.`
+        );
+        
+        if (!confirmed) return;
+
+        try {
+            await api.delete(`/departments/${dept.id}`);
+            fetchDepartments();
+            showToast(t("departmentManagement.deleteSuccess") || "Xóa khoa thành công", "success");
+        } catch (error: any) {
+            console.error("Failed to delete department", error);
+            const errorMsg = error.response?.data?.error || t("departmentManagement.deleteError") || "Có lỗi xảy ra khi xóa khoa";
+            showToast(errorMsg, "error");
         }
     };
 
@@ -175,6 +230,7 @@ const DepartmentManagement: React.FC = () => {
     if (viewingDept) {
         return (
             <div className="p-4 md:p-6">
+                <Toast toast={toast} onClose={hideToast} />
                 <button
                     onClick={handleBack}
                     className="mb-6 flex items-center text-gray-600 transition hover:text-slate-900 dark:text-gray-400 dark:hover:text-slate-100"
@@ -273,6 +329,7 @@ const DepartmentManagement: React.FC = () => {
 
     return (
             <div className="p-4 md:p-6">
+            <Toast toast={toast} onClose={hideToast} />
             <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
                     <h1 className="flex items-center text-2xl font-bold leading-tight text-gray-800 dark:text-white md:text-3xl">
@@ -309,25 +366,40 @@ const DepartmentManagement: React.FC = () => {
                 {filtered.map((dept) => (
                     <div
                         key={dept.id}
-                        onClick={() => handleViewDept(dept)}
-                        className="group cursor-pointer overflow-hidden rounded-xl border border-gray-100 bg-white shadow-md transition duration-300 hover:shadow-lg dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700"
+                        className="group overflow-hidden rounded-xl border border-gray-100 bg-white shadow-md transition duration-300 hover:shadow-lg dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700"
                     >
                         <div className="p-4 md:p-6">
-                            <div className="flex justify-between items-start">
-                                <div>
+                            <div className="flex justify-between items-start mb-4">
+                                <div className="flex-1 cursor-pointer" onClick={() => handleViewDept(dept)}>
                                     <h3 className="mb-2 text-lg font-bold text-gray-800 transition group-hover:text-slate-900 dark:text-white dark:group-hover:text-blue-300 md:text-xl">
                                         {dept.name}
                                     </h3>
-                                    <p className="text-gray-500 dark:text-gray-400 text-sm mb-4 line-clamp-2">
+                                    <p className="text-gray-500 dark:text-gray-400 text-sm line-clamp-2">
                                         {dept.description || t("departmentManagement.noDescription")}
                                     </p>
                                 </div>
-                                <div className="rounded-full bg-slate-100 p-3 transition group-hover:bg-slate-200 dark:bg-slate-800 dark:group-hover:bg-slate-700">
-                                    <FaBuilding className="text-xl text-slate-600 dark:text-blue-300" />
+                                <div className="flex gap-2 ml-2">
+                                    <button
+                                        onClick={(e) => handleEditClick(e, dept)}
+                                        className="p-2 rounded-lg text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20 transition"
+                                        title={t("common.edit")}
+                                    >
+                                        <FaEdit />
+                                    </button>
+                                    <button
+                                        onClick={(e) => handleDeleteClick(e, dept)}
+                                        className="p-2 rounded-lg text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20 transition"
+                                        title={t("common.delete")}
+                                    >
+                                        <FaTrash />
+                                    </button>
                                 </div>
                             </div>
 
-                            <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                            <div 
+                                className="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-700 cursor-pointer"
+                                onClick={() => handleViewDept(dept)}
+                            >
                                 <div className="flex flex-col">
                                     <span className="text-xs text-gray-500 dark:text-gray-400 uppercase font-semibold">
                                         {t("sidebar.assignments")}
@@ -400,6 +472,61 @@ const DepartmentManagement: React.FC = () => {
                                     className={adminPrimaryButtonClass}
                                 >
                                     {t("common.add")}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {showEditModal && editingDept && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+                    <div className="w-full max-w-md rounded-lg bg-white p-6 dark:bg-slate-900 dark:ring-1 dark:ring-slate-800">
+                        <h2 className="text-2xl font-bold mb-4 dark:text-white">
+                            {t("departmentManagement.editDepartment")}
+                        </h2>
+                        <form onSubmit={handleEditSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                    {t("departmentManagement.fields.name")}
+                                </label>
+                                <input
+                                    name="name"
+                                    type="text"
+                                    required
+                                    defaultValue={editingDept.name}
+                                    placeholder="Ví dụ: Khoa Tim Mạch"
+                                    className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:ring-slate-700"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                    {t("departmentManagement.fields.description")}
+                                </label>
+                                <textarea
+                                    name="description"
+                                    rows={3}
+                                    defaultValue={editingDept.description}
+                                    placeholder="Mô tả chức năng, nhiệm vụ..."
+                                    className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:ring-slate-700"
+                                />
+                            </div>
+                            <div className="flex justify-end space-x-3 mt-6">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setShowEditModal(false);
+                                        setEditingDept(null);
+                                    }}
+                                    className={adminSecondaryButtonClass}
+                                >
+                                    {t("common.cancel")}
+                                </button>
+                                <button
+                                    type="submit"
+                                    className={adminPrimaryButtonClass}
+                                >
+                                    {t("common.update")}
                                 </button>
                             </div>
                         </form>

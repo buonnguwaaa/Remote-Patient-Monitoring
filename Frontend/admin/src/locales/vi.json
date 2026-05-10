@@ -215,6 +215,7 @@
     "title": "Quản lý Khoa / Phòng",
     "totalCount": "Tổng số: {{count}} khoa phòng",
     "addDepartment": "Thêm Khoa",
+    "editDepartment": "Chỉnh sửa Khoa",
     "addMember": "Thêm Thành Viên",
     "backToList": "Quay lại danh sách",
     "searchPlaceholder": "Tìm kiếm khoa phòng...",
@@ -224,6 +225,7 @@
     "noStaff": "Chưa có nhân sự nào trong khoa này.",
     "selectStaff": "Chọn nhân sự thêm vào khoa",
     "confirmTransfer": "Xác nhận chuyển thành viên này?",
+    "confirmDelete": "Bạn có chắc chắn muốn xóa khoa \"{{name}}\"?\n\nLưu ý: Chỉ có thể xóa khoa không còn thành viên.",
     "from": "Từ:",
     "to": "Sang:",
     "currentDepartment": "Hiện tại:",
@@ -232,6 +234,12 @@
     "noAvailableStaff": "Không còn nhân sự trống nào.",
     "addMemberError": "Lỗi khi thêm thành viên",
     "notFound": "Không tìm thấy khoa phòng nào.",
+    "createSuccess": "Thêm khoa thành công",
+    "createError": "Có lỗi xảy ra khi thêm khoa",
+    "updateSuccess": "Cập nhật khoa thành công",
+    "updateError": "Có lỗi xảy ra khi cập nhật khoa",
+    "deleteSuccess": "Xóa khoa thành công",
+    "deleteError": "Có lỗi xảy ra khi xóa khoa",
     "fields": {
       "name": "Tên Khoa/Phòng",
       "description": "Mô tả"

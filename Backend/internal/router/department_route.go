@@ -13,6 +13,8 @@ func RegisterDepartmentRoutes(r *gin.Engine, c *container.MainServerContainer) {
 	{
 		// Only Admin can manage departments
 		deptGroup.POST("", middleware.RequireRoles(domain.RoleAdmin), c.DepartmentHandler.CreateDepartment)
+		deptGroup.PUT("/:id", middleware.RequireRoles(domain.RoleAdmin), c.DepartmentHandler.UpdateDepartment)
+		deptGroup.DELETE("/:id", middleware.RequireRoles(domain.RoleAdmin), c.DepartmentHandler.DeleteDepartment)
 		// Everyone (Admin, Doctor, Nurse) can list departments to pick one
 		deptGroup.GET("", c.DepartmentHandler.GetDepartments)
 

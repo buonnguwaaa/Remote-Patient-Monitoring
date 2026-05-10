@@ -9,9 +9,12 @@ import {
   adminPrimaryButtonDisabledClass,
   adminSecondaryButtonClass,
 } from "../styles/buttonStyles";
+import { useToast } from "../hooks/useToast";
+import Toast from "../components/ui/Toast";
 
 const AssignmentManagement: React.FC = () => {
   const { t } = useTranslation();
+  const { toast, showToast, hideToast } = useToast();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [doctors, setDoctors] = useState<doctor[]>([]);
   const [nurses, setNurses] = useState<Nurse[]>([]);
@@ -25,7 +28,6 @@ const AssignmentManagement: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [loadingAssignments, setLoadingAssignments] = useState(false);
   const [editingAssignmentId, setEditingAssignmentId] = useState<string | null>(null);
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   useEffect(() => {
     void fetchData();
@@ -54,7 +56,7 @@ const AssignmentManagement: React.FC = () => {
       setAssignments(extractList(resAssignments));
     } catch (error) {
       console.error("Error fetching assignment data", error);
-      setMessage({ type: "error", text: t("assignmentManagement.loadError") });
+      showToast(t("assignmentManagement.loadError"), "error");
     } finally {
       setLoading(false);
     }
@@ -67,7 +69,7 @@ const AssignmentManagement: React.FC = () => {
       setAssignments(extractList(response));
     } catch (error) {
       console.error("Error refreshing assignments", error);
-      setMessage({ type: "error", text: t("assignmentManagement.refreshError") });
+      showToast(t("assignmentManagement.refreshError"), "error");
     } finally {
       setLoadingAssignments(false);
     }
@@ -94,24 +96,20 @@ const AssignmentManagement: React.FC = () => {
 
   const handleAssign = async (event: React.FormEvent) => {
     event.preventDefault();
-    setMessage(null);
 
     if (!selectedPatient) {
-      setMessage({ type: "error", text: t("assignmentManagement.selectPatientError") });
+      showToast(t("assignmentManagement.selectPatientError"), "error");
       return;
     }
 
     if (!selectedDoctor && !selectedNurse) {
-      setMessage({ type: "error", text: t("assignmentManagement.selectStaffError") });
+      showToast(t("assignmentManagement.selectStaffError"), "error");
       return;
     }
 
     const existingAssignment = assignmentByPatientId.get(selectedPatient);
     if (existingAssignment && existingAssignment.id !== editingAssignmentId) {
-      setMessage({
-        type: "error",
-        text: t("assignmentManagement.alreadyAssigned"),
-      });
+      showToast(t("assignmentManagement.alreadyAssigned"), "error");
       return;
     }
 
@@ -123,15 +121,15 @@ const AssignmentManagement: React.FC = () => {
         nurseId: selectedNurse,
       });
 
-      setMessage({
-        type: "success",
-        text: editingAssignmentId ? t("assignmentManagement.updateSuccess") : t("assignmentManagement.assignSuccess"),
-      });
+      showToast(
+        editingAssignmentId ? t("assignmentManagement.updateSuccess") : t("assignmentManagement.assignSuccess"),
+        "success"
+      );
       resetForm();
       await refreshAssignments();
     } catch (error) {
       console.error("Assign error", error);
-      setMessage({ type: "error", text: t("assignmentManagement.saveError") });
+      showToast(t("assignmentManagement.saveError"), "error");
     } finally {
       setLoading(false);
     }
@@ -142,7 +140,6 @@ const AssignmentManagement: React.FC = () => {
     setSelectedDoctor(assignment.doctorId || "");
     setSelectedNurse(assignment.nurseId || "");
     setEditingAssignmentId(assignment.id);
-    setMessage(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -158,11 +155,11 @@ const AssignmentManagement: React.FC = () => {
       if (editingAssignmentId === assignment.id) {
         resetForm();
       }
-      setMessage({ type: "success", text: t("assignmentManagement.deleteSuccess") });
+      showToast(t("assignmentManagement.deleteSuccess"), "success");
       await refreshAssignments();
     } catch (error) {
       console.error("Delete assignment error", error);
-      setMessage({ type: "error", text: t("assignmentManagement.deleteError") });
+      showToast(t("assignmentManagement.deleteError"), "error");
     } finally {
       setLoadingAssignments(false);
     }
@@ -186,24 +183,13 @@ const AssignmentManagement: React.FC = () => {
 
   return (
     <div className="mx-auto max-w-7xl p-6">
+      <Toast toast={toast} onClose={hideToast} />
       <h1 className="mb-8 flex items-center text-3xl font-bold text-gray-800 dark:text-white">
         <FaExchangeAlt className="mr-3 text-slate-700 dark:text-slate-200" />
         {t("assignmentManagement.title")}
       </h1>
 
       <div className="rounded-xl bg-white p-8 shadow-md dark:bg-gray-800">
-        {message && (
-          <div
-            className={`mb-6 rounded-lg p-4 ${
-              message.type === "success"
-                ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
-                : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
-            }`}
-          >
-            {message.text}
-          </div>
-        )}
-
         <form onSubmit={handleAssign} className="space-y-8">
           <div className="flex items-center justify-between gap-4">
             <label className="block text-lg font-medium text-gray-700 dark:text-gray-300">

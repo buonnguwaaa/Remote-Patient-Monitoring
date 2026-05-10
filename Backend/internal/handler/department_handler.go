@@ -114,3 +114,55 @@ func (h *DepartmentHandler) AddMemberToDepartment(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Member added successfully"})
 }
+
+// @Summary Update department
+// @Tags departments
+// @Accept json
+// @Produce json
+// @Param id path string true "Department ID"
+// @Param department body dto.UpdateDepartmentRequest true "Department info"
+// @Success 200 {object} map[string]interface{}
+// @Router /departments/{id} [put]
+func (h *DepartmentHandler) UpdateDepartment(c *gin.Context) {
+	var req dto.UpdateDepartmentRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	input := &usecase.UpdateDepartmentInput{
+		ID:          c.Param("id"),
+		Name:        req.Name,
+		Description: req.Description,
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	res, err := h.service.Update(ctx, input)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"data": res})
+}
+
+// @Summary Delete department
+// @Tags departments
+// @Produce json
+// @Param id path string true "Department ID"
+// @Success 200 {object} map[string]interface{}
+// @Router /departments/{id} [delete]
+func (h *DepartmentHandler) DeleteDepartment(c *gin.Context) {
+	id := c.Param("id")
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	err := h.service.Delete(ctx, id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Department deleted successfully"})
+}
