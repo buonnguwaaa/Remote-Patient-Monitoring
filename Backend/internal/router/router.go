@@ -20,6 +20,7 @@ func RegisterRoutes(r *gin.Engine, c *container.MainServerContainer) {
 	RegisterChatRoutes(r, c)
 	RegisterNotificationTokenRoutes(r, c)
 	RegisterNotificationRoutes(r, c)
+	RegisterRealtimeRoutes(r, c)
 	// Health check endpoint
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{

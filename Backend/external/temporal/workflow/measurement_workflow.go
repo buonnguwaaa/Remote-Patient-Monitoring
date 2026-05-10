@@ -45,5 +45,17 @@ func AlertWorkflow(ctx workflow.Context, input dto.MeasurementAlertInput) (strin
 	if err := workflow.ExecuteActivity(ctx, "PublishChatEventActivity", dto.PublishChatEventInput{ConversationID: sendResult.ConversationID, Message: sendResult.Message}).Get(ctx, &publishResult); err != nil {
 		return "", err
 	}
+
+	var userEventResult struct{}
+	if err := workflow.ExecuteActivity(ctx, "PublishUserEventActivity", dto.PublishUserEventInput{
+		ConversationID: sendResult.ConversationID,
+		Message:        sendResult.Message,
+		DoctorID:       sendResult.DoctorID,
+		PatientID:      sendResult.PatientID,
+		AlertID:        sendResult.AlertID,
+		Severity:       sendResult.Severity,
+	}).Get(ctx, &userEventResult); err != nil {
+		return "", err
+	}
 	return "created-notification", nil
 }

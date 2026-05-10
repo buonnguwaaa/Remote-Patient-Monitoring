@@ -8,28 +8,34 @@ import (
 	"strings"
 	"time"
 
-	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/helper/measurement_helper"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/dto"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/helper/measurement_helper"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
 	chatDomain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/chat"
-	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository"
-	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/service"
 	idto "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
-	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecase"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository"
 	chatRepository "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository/chat"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/service"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecase"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/util"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+// UserEventPublisher publishes user-level realtime events to Redis.
+type UserEventPublisher interface {
+	Publish(ctx context.Context, userID string, event interface{}) error
+}
+
 type ProcessingAlertActivity struct {
-	measurementRepo  repository.MeasurementRepository
-	thresholdRepo    repository.ThresholdRepository
-	alertRepo        repository.AlertRepository
-	assignmentRepo   repository.AssignmentRepository
-	conversationRepo chatRepository.ConversationRepository
-	messageRepo      chatRepository.MessageRepository
+	measurementRepo     repository.MeasurementRepository
+	thresholdRepo       repository.ThresholdRepository
+	alertRepo           repository.AlertRepository
+	assignmentRepo      repository.AssignmentRepository
+	conversationRepo    chatRepository.ConversationRepository
+	messageRepo         chatRepository.MessageRepository
 	notificationService service.NotificationService
-	eventPublisher   measurement_helper.ChatEventPublisher
+	eventPublisher      measurement_helper.ChatEventPublisher
+	userEventPublisher  UserEventPublisher
 }
 
 func NewProcessingAlertActivity(
@@ -41,18 +47,18 @@ func NewProcessingAlertActivity(
 	messageRepo chatRepository.MessageRepository,
 	notificationService service.NotificationService,
 	eventPublisher measurement_helper.ChatEventPublisher,
-	// notifier Notifier,
+	userEventPublisher UserEventPublisher,
 ) *ProcessingAlertActivity {
 	return &ProcessingAlertActivity{
-		measurementRepo:  measurementRepo,
-		thresholdRepo:    thresholdRepo,
-		alertRepo:        alertRepo,
-		assignmentRepo:   assignmentRepo,
-		conversationRepo: conversationRepo,
-		messageRepo:      messageRepo,
+		measurementRepo:     measurementRepo,
+		thresholdRepo:       thresholdRepo,
+		alertRepo:           alertRepo,
+		assignmentRepo:      assignmentRepo,
+		conversationRepo:    conversationRepo,
+		messageRepo:         messageRepo,
 		notificationService: notificationService,
-		eventPublisher:   eventPublisher,
-		// notifier:        notifier,
+		eventPublisher:      eventPublisher,
+		userEventPublisher:  userEventPublisher,
 	}
 }
 
@@ -106,7 +112,7 @@ func (a *ProcessingAlertActivity) EvaluateAndCreateAlertActivity(ctx context.Con
 		CreatedAt:      now,
 		UpdatedAt:      now,
 	})
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to create alert: %w", err)
 	}
@@ -239,6 +245,10 @@ func (a *ProcessingAlertActivity) SendAlertMessageActivity(ctx context.Context, 
 	return &dto.SendAlertMessageResult{
 		ConversationID: conversation.ID.Hex(),
 		Message:        mapMessageToDTO(createdMessage),
+		DoctorID:       assignment.DoctorID.Hex(),
+		PatientID:      alert.PatientID.Hex(),
+		AlertID:        alert.ID.Hex(),
+		Severity:       string(alert.Severity),
 	}, nil
 }
 
@@ -264,6 +274,58 @@ func (a *ProcessingAlertActivity) PublishChatEventActivity(ctx context.Context, 
 		return fmt.Errorf("failed to publish alert chat event: %w", err)
 	}
 
+	return nil
+}
+
+// PublishUserEventActivity publishes a user-level realtime notification for a system alert message
+// to the assigned doctor, so they receive an in-app notification.
+func (a *ProcessingAlertActivity) PublishUserEventActivity(ctx context.Context, input dto.PublishUserEventInput) error {
+	if a.userEventPublisher == nil {
+		return nil
+	}
+
+	if input.DoctorID == "" || input.Message == nil {
+		log.Printf("warn: skipping PublishUserEventActivity — missing doctorID or message")
+		return nil
+	}
+
+	var patientID *string
+	if input.PatientID != "" {
+		patientID = &input.PatientID
+	}
+	var alertID *string
+	if input.AlertID != "" {
+		alertID = &input.AlertID
+	}
+	var severity *string
+	if input.Severity != "" {
+		severity = &input.Severity
+	}
+
+	event := map[string]interface{}{
+		"type":      "chat.alert_message",
+		"eventId":   fmt.Sprintf("chat:alert_message:%s:recipient:%s", input.Message.ID.Hex(), input.DoctorID),
+		"createdAt": input.Message.CreatedAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
+		"data": map[string]interface{}{
+			"conversationId": input.ConversationID,
+			"messageId":      input.Message.ID.Hex(),
+			"senderId":       nil,
+			"messageSource":  "system",
+			"patientId":      patientID,
+			"relatedAlertId": alertID,
+			"severity":       severity,
+			"preview":        "Có cảnh báo sức khỏe mới cần kiểm tra.",
+			"message":        input.Message,
+		},
+	}
+
+	if err := a.userEventPublisher.Publish(ctx, input.DoctorID, event); err != nil {
+		log.Printf("warn: failed to publish user event for doctor=%s: %v", input.DoctorID, err)
+		// Don't fail the activity on publish error
+		return nil
+	}
+
+	log.Printf("[INFO] published user event for alert message to doctor=%s", input.DoctorID)
 	return nil
 }
 

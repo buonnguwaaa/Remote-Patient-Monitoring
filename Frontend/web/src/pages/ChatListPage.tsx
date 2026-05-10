@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { FaCommentDots, FaSearch, FaSyncAlt } from "react-icons/fa";
 
 import ChatPage from "./ChatPage";
 import { useAuth } from "../context/AuthContext";
+import { useRealtimeNotification } from "../context/RealtimeNotificationContext";
 import {
   getConversationMessages,
   getUserConversations,
@@ -58,6 +59,11 @@ const ChatListPage = () => {
   const navigate = useNavigate();
   const { id: selectedPatientId } = useParams<{ id: string }>();
   const { user } = useAuth();
+  const {
+    unreadByConversation,
+    lastChatEvent,
+    markConversationRead,
+  } = useRealtimeNotification();
   const [conversations, setConversations] = useState<ConversationPreview[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -158,10 +164,56 @@ const ChatListPage = () => {
     );
   }, [conversations, query]);
 
+  // React to lastChatEvent: update preview and reorder
+  const refreshDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!lastChatEvent) return;
+
+    const convId = lastChatEvent.data.conversationId;
+    const existing = conversations.find((c) => c.conversationId === convId);
+
+    if (existing) {
+      setConversations((prev) => {
+        const updated = prev.map((c) => {
+          if (c.conversationId !== convId) return c;
+          return {
+            ...c,
+            lastMessage: lastChatEvent.data.message
+              ? {
+                  id: lastChatEvent.data.message.id,
+                  conversationId: lastChatEvent.data.message.conversationId,
+                  senderId: lastChatEvent.data.message.senderId || "",
+                  content: lastChatEvent.data.message.content,
+                  createdAt: lastChatEvent.data.message.createdAt,
+                  updatedAt: lastChatEvent.data.message.updatedAt,
+                }
+              : c.lastMessage,
+            updatedAt: lastChatEvent.createdAt,
+          };
+        });
+        return updated.sort(
+          (a, b) =>
+            new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+        );
+      });
+    } else {
+      if (refreshDebounceRef.current) clearTimeout(refreshDebounceRef.current);
+      refreshDebounceRef.current = setTimeout(() => {
+        void loadConversations();
+      }, 2000);
+    }
+
+    return () => {
+      if (refreshDebounceRef.current) clearTimeout(refreshDebounceRef.current);
+    };
+  }, [lastChatEvent]);
+
   const handleOpenChat = (item: ConversationPreview) => {
     if (!item.patientId) {
       return;
     }
+
+    markConversationRead(item.conversationId);
 
     const target =
       window.innerWidth >= 1024
@@ -244,6 +296,13 @@ const ChatListPage = () => {
                       <div className="whitespace-nowrap text-xs text-slate-400 dark:text-slate-500">
                         {timeLabel}
                       </div>
+                      {(unreadByConversation[conversation.conversationId] || 0) > 0 && (
+                        <span className="ml-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                          {unreadByConversation[conversation.conversationId] > 99
+                            ? "99+"
+                            : unreadByConversation[conversation.conversationId]}
+                        </span>
+                      )}
                     </div>
                   </button>
                 );

@@ -7,6 +7,7 @@ import { type NavigationItem } from "../../types/index.ts";
 import { navData } from "../../data/NavData.ts";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { useRealtimeNotification } from "../../context/RealtimeNotificationContext";
 
 interface SideBarProps {
   navigationItems?: NavigationItem[];
@@ -18,6 +19,7 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { unreadTotal } = useRealtimeNotification();
 
   const itemsToDisplay = navigationItems || navData;
   const isSettingsActive = location.pathname === "/settings";
@@ -93,7 +95,7 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
                       if (window.innerWidth < 768) setIsCollapsed(true);
                     }}
                     className={`
-                      flex items-center py-2 rounded-lg transition-colors
+                      flex items-center py-2 rounded-lg transition-colors relative
                       ${isCollapsed ? "justify-center px-0" : "px-4 gap-3"}
                       ${
                         isActive
@@ -109,6 +111,16 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
                     {!isCollapsed && (
                       <span className="text-xl font-semibold whitespace-nowrap overflow-hidden">
                         {item.label}
+                      </span>
+                    )}
+                    {item.path === "/patient/chats" && unreadTotal > 0 && (
+                      <span
+                        className={`
+                          flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold
+                          ${isCollapsed ? "absolute -top-1 -right-1 h-4 w-4 min-w-0" : "ml-auto h-5 min-w-[20px] px-1"}
+                        `}
+                      >
+                        {unreadTotal > 99 ? "99+" : unreadTotal}
                       </span>
                     )}
                   </Link>

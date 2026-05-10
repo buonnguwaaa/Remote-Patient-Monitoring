@@ -3,8 +3,8 @@ package container
 import (
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/config"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository"
-	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/service"
 	chatRepository "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository/chat"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/service"
 )
 
 type TemporalWorkerContainer struct {
@@ -12,9 +12,9 @@ type TemporalWorkerContainer struct {
 	ThresholdRepo         repository.ThresholdRepository
 	AlertRepo             repository.AlertRepository
 	ReminderRepo          repository.ReminderRepository
-	AssignmentRepo   repository.AssignmentRepository
-	ConversationRepo chatRepository.ConversationRepository
-	MessageRepo      chatRepository.MessageRepository
+	AssignmentRepo        repository.AssignmentRepository
+	ConversationRepo      chatRepository.ConversationRepository
+	MessageRepo           chatRepository.MessageRepository
 	NotificationTokenRepo repository.NotificationTokenRepository
 	NotificationRepo      repository.UserNotificationRepository
 	NotificationService   service.NotificationService

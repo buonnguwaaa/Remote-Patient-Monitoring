@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 
 import { useAuth } from "../context/AuthContext";
+import { useRealtimeNotification } from "../context/RealtimeNotificationContext";
 import {
   getAlerts,
   getPatientById,
@@ -426,6 +427,10 @@ const ChatPage = ({
   const params = useParams<{ id: string }>();
   const patientId = patientIdOverride ?? params.id;
   const { user } = useAuth();
+  const {
+    setActiveConversationId: setGlobalActiveConvId,
+    markConversationRead: markGlobalConvRead,
+  } = useRealtimeNotification();
   const locationState = (location.state as ChatLocationState | null) ?? null;
   const activeAlertId =
     activeAlertIdOverride !== undefined
@@ -566,6 +571,16 @@ const ChatPage = ({
       cancelled = true;
     };
   }, [patientId]);
+
+  // Set/clear active conversation for realtime notification suppression
+  useEffect(() => {
+    if (!conversation?.id) return;
+    setGlobalActiveConvId(conversation.id);
+    markGlobalConvRead(conversation.id);
+    return () => {
+      setGlobalActiveConvId(null);
+    };
+  }, [conversation?.id, setGlobalActiveConvId, markGlobalConvRead]);
 
   useEffect(() => {
     if (!activeAlertId || !patientId) {

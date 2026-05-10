@@ -3,6 +3,7 @@ import { Loader2, MessageCircle, RefreshCcw, Search, X } from "lucide-react";
 
 import ChatPage from "../../pages/ChatPage.tsx";
 import { useAuth } from "../../context/AuthContext";
+import { useRealtimeNotification } from "../../context/RealtimeNotificationContext";
 import {
   getConversationMessages,
   getUserConversations,
@@ -55,6 +56,12 @@ const normalizePreview = (message: MessageResponse | null, isMe: boolean) => {
 
 const QuickChatWidget = () => {
   const { user } = useAuth();
+  const {
+    unreadTotal,
+    lastChatEvent,
+    setActiveConversationId,
+    markConversationRead,
+  } = useRealtimeNotification();
   const [isOpen, setIsOpen] = useState(false);
   const [view, setView] = useState<"list" | "chat">("list");
   const [activeConversation, setActiveConversation] =
@@ -213,9 +220,58 @@ const QuickChatWidget = () => {
   };
 
   const handleClose = () => {
+    if (activeConversation) {
+      setActiveConversationId(null);
+    }
     setIsOpen(false);
     setView("list");
   };
+
+  // React to lastChatEvent: update conversation preview and reorder
+  const refreshDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!lastChatEvent || !isOpen) return;
+
+    const convId = lastChatEvent.data.conversationId;
+    const existing = conversations.find((c) => c.conversationId === convId);
+
+    if (existing) {
+      // Update preview in-place
+      setConversations((prev) => {
+        const updated = prev.map((c) => {
+          if (c.conversationId !== convId) return c;
+          return {
+            ...c,
+            lastMessage: lastChatEvent.data.message
+              ? {
+                  id: lastChatEvent.data.message.id,
+                  conversationId: lastChatEvent.data.message.conversationId,
+                  senderId: lastChatEvent.data.message.senderId || "",
+                  content: lastChatEvent.data.message.content,
+                  createdAt: lastChatEvent.data.message.createdAt,
+                  updatedAt: lastChatEvent.data.message.updatedAt,
+                }
+              : c.lastMessage,
+            updatedAt: lastChatEvent.createdAt,
+          };
+        });
+        return updated.sort(
+          (a, b) =>
+            new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+        );
+      });
+    } else {
+      // Unknown conversation — debounce a refresh
+      if (refreshDebounceRef.current) clearTimeout(refreshDebounceRef.current);
+      refreshDebounceRef.current = setTimeout(() => {
+        void loadConversations("refresh");
+      }, 2000);
+    }
+
+    return () => {
+      if (refreshDebounceRef.current) clearTimeout(refreshDebounceRef.current);
+    };
+  }, [lastChatEvent]);
 
   const handleOpenChat = (conversation: ConversationPreview) => {
     if (!conversation.patientId) {
@@ -224,9 +280,14 @@ const QuickChatWidget = () => {
 
     setActiveConversation(conversation);
     setView("chat");
+    markConversationRead(conversation.conversationId);
+    setActiveConversationId(conversation.conversationId);
   };
 
   const handleBackToList = () => {
+    if (activeConversation) {
+      setActiveConversationId(null);
+    }
     setView("list");
   };
 
@@ -240,6 +301,11 @@ const QuickChatWidget = () => {
         className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-xl transition hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-400"
       >
         <MessageCircle size={22} />
+        {unreadTotal > 0 && (
+          <span className="absolute -top-1 -right-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+            {unreadTotal > 99 ? "99+" : unreadTotal}
+          </span>
+        )}
       </button>
 
       {isOpen ? (

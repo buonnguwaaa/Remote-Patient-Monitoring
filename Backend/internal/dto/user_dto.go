@@ -31,15 +31,15 @@ type PatientInfoResponse struct {
 
 type StaffInfoResponse struct {
 	BaseUserInfoResponse
-	DepartmentID  string `json:"departmentId,omitempty"`
-	Workplace     string `json:"workplace,omitempty"`
-	LicenseNumber string `json:"licenseNumber,omitempty"`
+	DepartmentID      string `json:"departmentId,omitempty"`
+	Workplace         string `json:"workplace,omitempty"`
+	LicenseNumber     string `json:"licenseNumber,omitempty"`
 	YearsOfExperience int    `json:"yearsOfExperience,omitempty"`
 }
 
 type DoctorInfoResponse struct {
 	StaffInfoResponse
-	Specialization    string `json:"specialization,omitempty"`
+	Specialization string `json:"specialization,omitempty"`
 }
 
 type NurseInfoResponse struct {
@@ -85,15 +85,15 @@ type UpdateMyPatientProfileRawRequest struct {
 
 type UpdateMedicalStaffRequest struct {
 	UpdateBaseUserRequest
-	DepartmentID  string `json:"departmentId"`
-	LicenseNumber string `json:"licenseNumber"`
-	Workplace     string `json:"workplace"`
+	DepartmentID      string `json:"departmentId"`
+	LicenseNumber     string `json:"licenseNumber"`
+	Workplace         string `json:"workplace"`
 	YearsOfExperience int    `json:"yearsOfExperience,omitempty"`
 }
 
 type UpdateDoctorRequest struct {
 	UpdateMedicalStaffRequest
-	Specialization    string `json:"specialization"`
+	Specialization string `json:"specialization"`
 }
 
 type UpdateNurseRequest struct {
