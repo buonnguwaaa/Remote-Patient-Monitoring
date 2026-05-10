@@ -1,0 +1,40 @@
+services:
+  temporal:
+    image: temporalio/temporal:latest
+    command: server start-dev --ip 0.0.0.0
+    ports:
+      - "7233:7233"   # gRPC
+      - "8233:8233"   # internal dev HTTP/metrics
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 7233"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+  server:
+    build: .
+    command: ["/server"]
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    depends_on:
+      temporal:
+        condition: service_healthy
+      redis:
+        condition: service_started
+  worker:
+    build: .
+    command: ["/worker"]
+    env_file:
+      - .env
+    depends_on:
+      temporal:
+        condition: service_healthy
+      redis:
+        condition: service_started

@@ -185,4 +185,3 @@ func (r *thresholdRepository) Update(ctx context.Context, t *domain.Threshold) (
 
 	return &updated, nil
 }
-

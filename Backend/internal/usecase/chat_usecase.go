@@ -3,6 +3,7 @@ package usecase
 import (
 	"time"
 
+	domain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/chat"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -18,7 +19,8 @@ type GetUserConversationsInput struct {
 
 type SendMessageInput struct {
 	ConversationID   primitive.ObjectID
-	SenderID         primitive.ObjectID
+	MessageSource    domain.MessageSource
+	SenderID         *primitive.ObjectID
 	Content          string
 	ReplyToMessageID *primitive.ObjectID
 	RelatedAlertID   *primitive.ObjectID

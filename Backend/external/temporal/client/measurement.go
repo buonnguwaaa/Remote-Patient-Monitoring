@@ -4,13 +4,14 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/dto"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/workflow"
 	"go.temporal.io/sdk/client"
 )
 
 const AlertTaskQueue = "ALERT-TASK-QUEUE"
 
-func StartAlertWorkflowAsync(input workflow.MeasurementAlertInput) error {
+func StartAlertWorkflowAsync(input dto.MeasurementAlertInput) error {
 	c, err := New()
 	if err != nil {
 		return err
@@ -38,7 +39,7 @@ func StartAlertWorkflowAsync(input workflow.MeasurementAlertInput) error {
 }
 
 // Optional: nếu muốn start và chờ (testing)
-func StartAlertWorkflowAndWait(input workflow.MeasurementAlertInput) (string, error) {
+func StartAlertWorkflowAndWait(input dto.MeasurementAlertInput) (string, error) {
 	c, err := New()
 	if err != nil {
 		return "", err

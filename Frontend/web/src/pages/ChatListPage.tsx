@@ -1,0 +1,270 @@
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { FaCommentDots, FaSearch, FaSyncAlt } from "react-icons/fa";
+
+import ChatPage from "./ChatPage";
+import { useAuth } from "../context/AuthContext";
+import {
+  getConversationMessages,
+  getUserConversations,
+  type MessageResponse,
+} from "../services/chatService";
+import { getMyPatients } from "../services/patientService";
+
+interface ConversationPreview {
+  conversationId: string;
+  patientId: string | null;
+  patientName: string;
+  lastMessage: MessageResponse | null;
+  updatedAt: string;
+}
+
+const formatListTime = (value: string) => {
+  const date = new Date(value);
+  const today = new Date();
+
+  if (date.toDateString() === today.toDateString()) {
+    return date.toLocaleTimeString("vi-VN", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
+
+  return date.toLocaleDateString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+  });
+};
+
+const normalizePreview = (message: MessageResponse | null, isMe: boolean) => {
+  if (!message) {
+    return "Chưa có tin nhắn";
+  }
+
+  const normalized = String(message.content || "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!normalized) {
+    return "Tin nhắn không có nội dung";
+  }
+
+  const prefix = isMe ? "Bạn: " : "";
+  const snippet =
+    normalized.length > 72 ? `${normalized.slice(0, 69)}...` : normalized;
+  return `${prefix}${snippet}`;
+};
+
+const ChatListPage = () => {
+  const navigate = useNavigate();
+  const { id: selectedPatientId } = useParams<{ id: string }>();
+  const { user } = useAuth();
+  const [conversations, setConversations] = useState<ConversationPreview[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+
+  const loadConversations = async () => {
+    if (!user?.id) {
+      setError("Không tìm thấy thông tin bác sĩ để tải cuộc trò chuyện.");
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setRefreshing(true);
+      setError(null);
+
+      const [assignmentList, conversationPayload] = await Promise.all([
+        getMyPatients(),
+        getUserConversations({ limit: 30 }),
+      ]);
+
+      const assignmentMap = new Map(
+        assignmentList.map((assignment) => [assignment.patientId, assignment]),
+      );
+
+      const previews = await Promise.all(
+        conversationPayload.conversations.map(async (conversation) => {
+          const otherParticipant =
+            conversation.participants.find((p) => p.userId !== user.id)
+              ?.userId ||
+            conversation.participants[0]?.userId ||
+            null;
+
+          const assignment = otherParticipant
+            ? assignmentMap.get(otherParticipant)
+            : undefined;
+
+          let lastMessage: MessageResponse | null = null;
+          try {
+            const messages = await getConversationMessages(conversation.id, 1);
+            lastMessage = messages[0] || null;
+          } catch {
+            lastMessage = null;
+          }
+
+          return {
+            conversationId: conversation.id,
+            patientId: otherParticipant,
+            patientName: assignment?.patientName || "Bệnh nhân",
+            lastMessage,
+            updatedAt: lastMessage?.createdAt || conversation.updatedAt,
+          } as ConversationPreview;
+        }),
+      );
+
+      previews.sort(
+        (a, b) =>
+          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+      );
+
+      const seen = new Set<string>();
+      const deduped: ConversationPreview[] = [];
+
+      previews.forEach((item) => {
+        const key = item.patientId || item.conversationId;
+        if (seen.has(key)) {
+          return;
+        }
+
+        seen.add(key);
+        deduped.push(item);
+      });
+
+      setConversations(deduped);
+    } catch (err: any) {
+      setError(
+        err?.response?.data?.error ||
+          err?.message ||
+          "Không thể tải danh sách cuộc trò chuyện.",
+      );
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadConversations();
+  }, [user?.id]);
+
+  const filteredConversations = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    if (!normalizedQuery) return conversations;
+
+    return conversations.filter((conversation) =>
+      conversation.patientName.toLowerCase().includes(normalizedQuery),
+    );
+  }, [conversations, query]);
+
+  const handleOpenChat = (item: ConversationPreview) => {
+    if (!item.patientId) {
+      return;
+    }
+
+    const target =
+      window.innerWidth >= 1024
+        ? `/patient/chats/${item.patientId}`
+        : `/patient/chat/${item.patientId}`;
+    navigate(target);
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 p-2 dark:bg-slate-950 sm:p-4">
+      <div className="grid gap-2 lg:grid-cols-[360px_1fr]">
+        <section className="rounded border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+          <div className="border-b border-slate-200 p-3 dark:border-slate-800">
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400" />
+                <input
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Tìm bệnh nhân..."
+                  className="w-full rounded-md border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:focus:ring-blue-500/20"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => void loadConversations()}
+                disabled={refreshing}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+              >
+                <FaSyncAlt className={refreshing ? "animate-spin" : ""} />
+              </button>
+            </div>
+          </div>
+
+          <div className="max-h-[calc(100vh-260px)] overflow-y-auto">
+            {loading ? (
+              <div className="p-4 text-center text-sm text-slate-500 dark:text-slate-400">
+                Đang tải cuộc trò chuyện...
+              </div>
+            ) : error ? (
+              <div className="p-4 text-sm text-red-600 dark:text-red-400">
+                {error}
+              </div>
+            ) : filteredConversations.length === 0 ? (
+              <div className="p-4 text-center text-sm text-slate-500 dark:text-slate-400">
+                Không có cuộc trò chuyện phù hợp.
+              </div>
+            ) : (
+              filteredConversations.map((conversation) => {
+                const isMe = conversation.lastMessage?.senderId === user?.id;
+                const preview = normalizePreview(
+                  conversation.lastMessage,
+                  Boolean(isMe),
+                );
+                const timeLabel = formatListTime(conversation.updatedAt);
+                const isActive =
+                  Boolean(selectedPatientId) &&
+                  conversation.patientId === selectedPatientId;
+
+                return (
+                  <button
+                    key={conversation.conversationId}
+                    type="button"
+                    onClick={() => handleOpenChat(conversation)}
+                    className={`flex w-full flex-col gap-2 border-b border-slate-100 px-4 py-3 text-left transition dark:border-slate-800 ${
+                      isActive
+                        ? "bg-blue-50/70 dark:bg-blue-500/10"
+                        : "hover:bg-slate-50 dark:hover:bg-slate-800/60"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
+                          {conversation.patientName}
+                        </div>
+                        <div className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">
+                          {preview}
+                        </div>
+                      </div>
+                      <div className="whitespace-nowrap text-xs text-slate-400 dark:text-slate-500">
+                        {timeLabel}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </section>
+
+        <section className="hidden lg:block">
+          {selectedPatientId ? (
+            <ChatPage />
+          ) : (
+            <div className="rounded-lg border border-slate-200 bg-white p-6 text-center text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
+              <FaCommentDots className="mb-3 text-3xl text-slate-300 dark:text-slate-600" />
+              Chọn một cuộc trò chuyện để mở khung chat chi tiết.
+            </div>
+          )}
+        </section>
+      </div>
+    </div>
+  );
+};
+
+export default ChatListPage;

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -271,8 +272,12 @@ func (s *authService) ForgotPassword(ctx context.Context, input *usecase.ForgotP
 	}
 
 	resetURI := fmt.Sprintf("%s/reset-password?token=%s", os.Getenv("FE_URL"), token)
-	go util.SendEmail(u.Email, constant.SubjectResetPassword,
-		fmt.Sprintf(constant.ResetPasswordEmailTemplate, u.Name, resetURI))
+	go func() {
+		if err := util.SendEmail(u.Email, constant.SubjectResetPassword,
+			fmt.Sprintf(constant.ResetPasswordEmailTemplate, u.Name, resetURI)); err != nil {
+			log.Printf("failed to send reset password email: %v", err)
+		}
+	}()
 
 	return nil
 }
@@ -377,8 +382,12 @@ func (s *authService) sendActivationEmail(ctx context.Context, email, name strin
 	}
 
 	activateURI := fmt.Sprintf("%s/activate?token=%s", os.Getenv("FE_URL"), token)
-	go util.SendEmail(email, constant.SubjectActivateAccount,
-		fmt.Sprintf(constant.ActivateEmailTemplate, name, activateURI))
+	go func() {
+		if err := util.SendEmail(email, constant.SubjectActivateAccount,
+			fmt.Sprintf(constant.ActivateEmailTemplate, name, activateURI)); err != nil {
+			log.Printf("failed to send activation email: %v", err)
+		}
+	}()
 
 	return nil
 }
