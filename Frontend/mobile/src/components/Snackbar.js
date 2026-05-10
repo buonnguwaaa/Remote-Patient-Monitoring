@@ -3,12 +3,12 @@ import { View, Text, StyleSheet, Animated, TouchableOpacity } from 'react-native
 import { Ionicons } from '@expo/vector-icons';
 
 const Snackbar = ({ visible, message, type = 'info', duration = 3000, onDismiss }) => {
-  const translateY = useRef(new Animated.Value(100)).current;
+  const translateY = useRef(new Animated.Value(-100)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (visible) {
-      // Show animation
+      // Show animation - slide down from top
       Animated.parallel([
         Animated.timing(translateY, {
           toValue: 0,
@@ -34,7 +34,7 @@ const Snackbar = ({ visible, message, type = 'info', duration = 3000, onDismiss 
   const hideSnackbar = () => {
     Animated.parallel([
       Animated.timing(translateY, {
-        toValue: 100,
+        toValue: -100,
         duration: 300,
         useNativeDriver: true,
       }),
@@ -105,7 +105,7 @@ const Snackbar = ({ visible, message, type = 'info', duration = 3000, onDismiss 
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    bottom: 20,
+    top: 50,
     left: 16,
     right: 16,
     borderRadius: 8,
