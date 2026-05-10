@@ -1,6 +1,8 @@
 package main
 
 import (
+	"log"
+
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/worker"
 	"github.com/joho/godotenv"
 )
@@ -8,9 +10,11 @@ import (
 func main() {
 	err := godotenv.Load()
 	if err != nil {
-		panic("Error loading .env file")
+		log.Println("[Worker-warning] No .env file found")
 	}
 	if err := worker.Start(); err != nil {
-		panic(err)
+		log.Fatal("[Worker-error] Failed to start worker:", err)
+	} else {
+		log.Println("[Worker] Worker started successfully")
 	}
 }
