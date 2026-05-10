@@ -13,6 +13,16 @@ export interface ConversationResponse {
   updatedAt: string;
 }
 
+export interface ConversationPaging {
+  hasMore: boolean;
+  nextCursor?: string;
+}
+
+export interface GetConversationsResponse {
+  conversations: ConversationResponse[];
+  paging: ConversationPaging;
+}
+
 export interface MessageResponse {
   id: string;
   conversationId: string;
@@ -39,8 +49,16 @@ interface ConversationApiResponse {
   updatedAt: string;
 }
 
+interface ConversationsApiPayload {
+  conversations?: ConversationApiResponse[] | null;
+  paging?: {
+    hasMore?: boolean;
+    nextCursor?: string;
+  } | null;
+}
+
 function normalizeConversationResponse(
-  conversation: ConversationApiResponse
+  conversation: ConversationApiResponse,
 ): ConversationResponse {
   return {
     id: conversation.id,
@@ -60,27 +78,56 @@ function getWebSocketBaseUrl() {
 }
 
 export async function ensureConversation(
-  participantId: string
+  participantId: string,
 ): Promise<ConversationResponse> {
   const response = await api.post<{ data: ConversationApiResponse }>(
     "/chat/conversations",
     {
       participantIds: [participantId],
-    }
+    },
   );
 
   return normalizeConversationResponse(response.data.data);
 }
 
+export async function getUserConversations(params?: {
+  limit?: number;
+  cursor?: string;
+}): Promise<GetConversationsResponse> {
+  const response = await api.get<{ data: ConversationsApiPayload }>(
+    "/chat/conversations",
+    {
+      params: {
+        limit: params?.limit,
+        cursor: params?.cursor,
+      },
+    },
+  );
+
+  const payload = response.data.data || {};
+  const conversations = (payload.conversations || []).map(
+    normalizeConversationResponse,
+  );
+  const paging = payload.paging || {};
+
+  return {
+    conversations,
+    paging: {
+      hasMore: Boolean(paging.hasMore),
+      nextCursor: paging.nextCursor,
+    },
+  };
+}
+
 export async function getConversationMessages(
   conversationId: string,
-  limit = 100
+  limit = 100,
 ): Promise<MessageResponse[]> {
   const response = await api.get<{ data: MessagesApiPayload }>(
     `/chat/conversations/${conversationId}/messages`,
     {
       params: { limit },
-    }
+    },
   );
 
   return response.data.data?.messages || [];
@@ -89,7 +136,7 @@ export async function getConversationMessages(
 export function createConversationSocket(conversationId: string) {
   return new WebSocket(
     `${getWebSocketBaseUrl()}/chat/ws?conversationId=${encodeURIComponent(
-      conversationId
-    )}`
+      conversationId,
+    )}`,
   );
 }

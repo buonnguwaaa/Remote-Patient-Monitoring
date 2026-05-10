@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import {
+  useLocation,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -10,12 +15,15 @@ import {
   Loader2,
   MoreVertical,
   Send,
-  User,
   X,
 } from "lucide-react";
 
 import { useAuth } from "../context/AuthContext";
-import { getAlerts, getPatientById, type PatientDetailResponse } from "../services/patientService";
+import {
+  getAlerts,
+  getPatientById,
+  type PatientDetailResponse,
+} from "../services/patientService";
 import {
   createConversationSocket,
   ensureConversation,
@@ -60,53 +68,63 @@ interface ChatLocationState {
   autoSendMessage?: boolean;
 }
 
+interface ChatPageProps {
+  patientIdOverride?: string | null;
+  activeAlertIdOverride?: string | null;
+  embedded?: boolean;
+  onBack?: () => void;
+  onClose?: () => void;
+}
+
 function isWsErrorPayload(payload: unknown): payload is WsErrorPayload {
   return Boolean(
     payload &&
-      typeof payload === "object" &&
-      "type" in payload &&
-      "error" in payload &&
-      (payload as WsErrorPayload).type === "error"
+    typeof payload === "object" &&
+    "type" in payload &&
+    "error" in payload &&
+    (payload as WsErrorPayload).type === "error",
   );
 }
 
 function isWsMessageEnvelope(payload: unknown): payload is WsMessageEnvelope {
   return Boolean(
     payload &&
-      typeof payload === "object" &&
-      "type" in payload &&
-      "data" in payload &&
-      (payload as WsMessageEnvelope).type === "NEW_MESSAGE"
+    typeof payload === "object" &&
+    "type" in payload &&
+    "data" in payload &&
+    (payload as WsMessageEnvelope).type === "NEW_MESSAGE",
   );
 }
 
 function isDirectMessagePayload(payload: unknown): payload is MessageResponse {
   return Boolean(
     payload &&
-      typeof payload === "object" &&
-      "id" in payload &&
-      "content" in payload &&
-      "senderId" in payload
+    typeof payload === "object" &&
+    "id" in payload &&
+    "content" in payload &&
+    "senderId" in payload,
   );
 }
 
-function isWsDeliveredEnvelope(payload: unknown): payload is WsDeliveredEnvelope {
+function isWsDeliveredEnvelope(
+  payload: unknown,
+): payload is WsDeliveredEnvelope {
   return Boolean(
     payload &&
-      typeof payload === "object" &&
-      "type" in payload &&
-      "data" in payload &&
-      (payload as WsDeliveredEnvelope).type === "DELIVERED"
+    typeof payload === "object" &&
+    "type" in payload &&
+    "data" in payload &&
+    (payload as WsDeliveredEnvelope).type === "DELIVERED",
   );
 }
 
 function isWsReadEnvelope(payload: unknown): payload is WsReadEnvelope {
   return Boolean(
     payload &&
-      typeof payload === "object" &&
-      "type" in payload &&
-      "data" in payload &&
-      (payload as WsReadEnvelope).type === "READ"
+    typeof payload === "object" &&
+    "type" in payload &&
+    "data" in payload &&
+    (payload as WsReadEnvelope).type === "READ",
   );
 }
 
@@ -141,7 +159,8 @@ function createReadPayload(lastReadMessageId: string) {
 
 function sortMessages(messages: MessageResponse[]) {
   return [...messages].sort((a, b) => {
-    const timeDiff = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    const timeDiff =
+      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
 
     if (timeDiff !== 0) {
       return timeDiff;
@@ -151,7 +170,10 @@ function sortMessages(messages: MessageResponse[]) {
   });
 }
 
-function mergeMessages(current: MessageResponse[], incoming: MessageResponse[]) {
+function mergeMessages(
+  current: MessageResponse[],
+  incoming: MessageResponse[],
+) {
   const next = [...current];
 
   incoming.forEach((message) => {
@@ -188,7 +210,7 @@ function updateConversationParticipantState(
   nextState: {
     lastDeliveredMessageId?: string | null;
     lastReadMessageId?: string | null;
-  }
+  },
 ) {
   if (!conversation) {
     return conversation;
@@ -207,7 +229,7 @@ function updateConversationParticipantState(
               ? { lastReadMessageId: nextState.lastReadMessageId }
               : {}),
           }
-        : participant
+        : participant,
     ),
   };
 }
@@ -215,7 +237,7 @@ function updateConversationParticipantState(
 function hasParticipantReachedMessage(
   messageId: string,
   checkpointMessageId: string | null | undefined,
-  messageOrder: Map<string, number>
+  messageOrder: Map<string, number>,
 ) {
   if (!checkpointMessageId) {
     return false;
@@ -232,7 +254,7 @@ function hasParticipantReachedMessage(
 
 function getLatestIncomingMessage(
   messages: MessageResponse[],
-  currentUserId: string | null | undefined
+  currentUserId: string | null | undefined,
 ) {
   for (let index = messages.length - 1; index >= 0; index -= 1) {
     if (messages[index].senderId !== currentUserId) {
@@ -245,7 +267,7 @@ function getLatestIncomingMessage(
 
 function findLatestAlertMessage(
   messages: MessageResponse[],
-  activeAlertId: string | null
+  activeAlertId: string | null,
 ) {
   if (!activeAlertId) {
     return null;
@@ -262,7 +284,7 @@ function findLatestAlertMessage(
 
 function parseAlertLinkedMessage(
   content: string,
-  relatedAlertId?: string | null
+  relatedAlertId?: string | null,
 ) {
   if (!relatedAlertId) {
     return null;
@@ -303,17 +325,24 @@ function parseAlertLinkedMessage(
 }
 
 function getReplyPreviewContent(message: MessageResponse) {
-  const alertMessage = parseAlertLinkedMessage(message.content, message.relatedAlertId);
+  const alertMessage = parseAlertLinkedMessage(
+    message.content,
+    message.relatedAlertId,
+  );
   if (alertMessage?.hasStructuredAlertSummary && alertMessage.alertSummary) {
     return `Cảnh báo chỉ số: ${alertMessage.alertSummary}`;
   }
 
-  const normalized = String(message.content || "").replace(/\s+/g, " ").trim();
+  const normalized = String(message.content || "")
+    .replace(/\s+/g, " ")
+    .trim();
   if (!normalized) {
     return "Tin nhắn không có nội dung";
   }
 
-  return normalized.length > 120 ? `${normalized.slice(0, 117)}...` : normalized;
+  return normalized.length > 120
+    ? `${normalized.slice(0, 117)}...`
+    : normalized;
 }
 
 function formatTime(iso: string) {
@@ -384,21 +413,35 @@ const QUICK_TEMPLATES = [
   "Nếu còn khó chịu, bác liên hệ lại ngay để tôi kiểm tra thêm.",
 ];
 
-const ChatPage = () => {
+const ChatPage = ({
+  patientIdOverride,
+  activeAlertIdOverride,
+  embedded = false,
+  onBack,
+  onClose,
+}: ChatPageProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { id: patientId } = useParams<{ id: string }>();
+  const params = useParams<{ id: string }>();
+  const patientId = patientIdOverride ?? params.id;
   const { user } = useAuth();
   const locationState = (location.state as ChatLocationState | null) ?? null;
-  const activeAlertId = searchParams.get("alertId");
+  const activeAlertId =
+    activeAlertIdOverride !== undefined
+      ? activeAlertIdOverride
+      : searchParams.get("alertId");
 
-  const initialPrefilledMessageRef = useRef(locationState?.prefilledMessage || "");
+  const initialPrefilledMessageRef = useRef(
+    locationState?.prefilledMessage || "",
+  );
   const initialAutoSendRef = useRef(
-    Boolean(locationState?.autoSendMessage && locationState?.prefilledMessage?.trim())
+    Boolean(
+      locationState?.autoSendMessage && locationState?.prefilledMessage?.trim(),
+    ),
   );
   const initialAlertSnapshotRef = useRef<AlertResponse | null>(
-    locationState?.alertSnapshot || null
+    locationState?.alertSnapshot || null,
   );
   const autoSendHandledRef = useRef(false);
   const socketRef = useRef<WebSocket | null>(null);
@@ -408,34 +451,55 @@ const ChatPage = () => {
   const lastReadSentRef = useRef<string | null>(null);
 
   const [patient, setPatient] = useState<PatientDetailResponse | null>(null);
-  const [conversation, setConversation] = useState<ConversationResponse | null>(null);
+  const [conversation, setConversation] = useState<ConversationResponse | null>(
+    null,
+  );
   const [messages, setMessages] = useState<MessageResponse[]>([]);
   const [draft, setDraft] = useState(
-    initialAutoSendRef.current ? "" : initialPrefilledMessageRef.current
+    initialAutoSendRef.current ? "" : initialPrefilledMessageRef.current,
   );
   const [pendingAutoMessage, setPendingAutoMessage] = useState(
-    initialAutoSendRef.current ? initialPrefilledMessageRef.current.trim() : ""
+    initialAutoSendRef.current ? initialPrefilledMessageRef.current.trim() : "",
   );
   const [alertContext, setAlertContext] = useState<AlertResponse | null>(
-    initialAlertSnapshotRef.current
+    initialAlertSnapshotRef.current,
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [alertContextError, setAlertContextError] = useState<string | null>(null);
-  const [alertContextLoading, setAlertContextLoading] = useState(Boolean(activeAlertId));
+  const [alertContextError, setAlertContextError] = useState<string | null>(
+    null,
+  );
+  const [alertContextLoading, setAlertContextLoading] = useState(
+    Boolean(activeAlertId),
+  );
   const [socketState, setSocketState] = useState<SocketState>("idle");
   const [replyTarget, setReplyTarget] = useState<MessageResponse | null>(null);
-  const [openMessageMenuId, setOpenMessageMenuId] = useState<string | null>(null);
+  const [openMessageMenuId, setOpenMessageMenuId] = useState<string | null>(
+    null,
+  );
   const currentUserId = user?.id || null;
 
+  const handleBack = () => {
+    if (onBack) {
+      onBack();
+      return;
+    }
+
+    navigate(-1);
+  };
+
   useEffect(() => {
+    if (embedded) {
+      return;
+    }
+
     if (location.state) {
       navigate(`${location.pathname}${location.search}`, {
         replace: true,
         state: null,
       });
     }
-  }, [location.pathname, location.search, location.state, navigate]);
+  }, [embedded, location.pathname, location.search, location.state, navigate]);
 
   useEffect(() => {
     const latestAlertMessage = findLatestAlertMessage(messages, activeAlertId);
@@ -484,7 +548,9 @@ const ChatPage = () => {
       } catch (err: any) {
         if (!cancelled) {
           setError(
-            err?.response?.data?.error || err?.message || "Không thể tải cuộc trò chuyện."
+            err?.response?.data?.error ||
+              err?.message ||
+              "Không thể tải cuộc trò chuyện.",
           );
         }
       } finally {
@@ -529,7 +595,9 @@ const ChatPage = () => {
 
         setAlertContext(matchedAlert || null);
         if (!matchedAlert) {
-          setAlertContextError("Không tìm thấy chi tiết cảnh báo để hiển thị ngữ cảnh.");
+          setAlertContextError(
+            "Không tìm thấy chi tiết cảnh báo để hiển thị ngữ cảnh.",
+          );
         }
       } catch (err: any) {
         if (!cancelled) {
@@ -538,7 +606,7 @@ const ChatPage = () => {
           } else {
             setAlertContext(null);
             setAlertContextError(
-              err?.response?.data?.error || "Không thể tải ngữ cảnh cảnh báo."
+              err?.response?.data?.error || "Không thể tải ngữ cảnh cảnh báo.",
             );
           }
         }
@@ -588,7 +656,7 @@ const ChatPage = () => {
           setConversation((current) =>
             updateConversationParticipantState(current, payload.data.userId, {
               lastDeliveredMessageId: payload.data.messageId,
-            })
+            }),
           );
           return;
         }
@@ -598,7 +666,7 @@ const ChatPage = () => {
             updateConversationParticipantState(current, payload.data.userId, {
               lastDeliveredMessageId: payload.data.lastReadMessageId,
               lastReadMessageId: payload.data.lastReadMessageId,
-            })
+            }),
           );
           return;
         }
@@ -610,7 +678,9 @@ const ChatPage = () => {
     };
 
     socket.onerror = () => {
-      setError("Kết nối thời gian thực đang gặp lỗi. Bạn thử tải lại trang nhé.");
+      setError(
+        "Kết nối thời gian thực đang gặp lỗi. Bạn thử tải lại trang nhé.",
+      );
     };
 
     socket.onclose = () => {
@@ -624,7 +694,11 @@ const ChatPage = () => {
   }, [conversation?.id]);
 
   useEffect(() => {
-    if (!pendingAutoMessage || autoSendHandledRef.current || socketState !== "open") {
+    if (
+      !pendingAutoMessage ||
+      autoSendHandledRef.current ||
+      socketState !== "open"
+    ) {
       return;
     }
 
@@ -652,7 +726,9 @@ const ChatPage = () => {
 
     setDraft((current) => current || pendingAutoMessage);
     setPendingAutoMessage("");
-    setError("Không thể tự gửi lời nhắn đã chuẩn bị. Nội dung đã được giữ lại ở ô soạn tin.");
+    setError(
+      "Không thể tự gửi lời nhắn đã chuẩn bị. Nội dung đã được giữ lại ở ô soạn tin.",
+    );
   }, [pendingAutoMessage, socketState]);
 
   useEffect(() => {
@@ -725,8 +801,9 @@ const ChatPage = () => {
     }
 
     return (
-      conversation.participants.find((participant) => participant.userId !== currentUserId) ||
-      null
+      conversation.participants.find(
+        (participant) => participant.userId !== currentUserId,
+      ) || null
     );
   }, [conversation?.participants, currentUserId]);
 
@@ -750,13 +827,18 @@ const ChatPage = () => {
       return;
     }
 
-    const latestIncomingMessage = getLatestIncomingMessage(messages, currentUserId);
+    const latestIncomingMessage = getLatestIncomingMessage(
+      messages,
+      currentUserId,
+    );
     if (!latestIncomingMessage?.id) {
       return;
     }
 
     if (lastDeliveredSentRef.current !== latestIncomingMessage.id) {
-      socketRef.current.send(JSON.stringify(createDeliveredPayload(latestIncomingMessage.id)));
+      socketRef.current.send(
+        JSON.stringify(createDeliveredPayload(latestIncomingMessage.id)),
+      );
       lastDeliveredSentRef.current = latestIncomingMessage.id;
     }
 
@@ -765,7 +847,9 @@ const ChatPage = () => {
       document.visibilityState === "visible" &&
       lastReadSentRef.current !== latestIncomingMessage.id
     ) {
-      socketRef.current.send(JSON.stringify(createReadPayload(latestIncomingMessage.id)));
+      socketRef.current.send(
+        JSON.stringify(createReadPayload(latestIncomingMessage.id)),
+      );
       lastReadSentRef.current = latestIncomingMessage.id;
     }
   }, [conversation?.id, currentUserId, messages, socketState]);
@@ -810,6 +894,14 @@ const ChatPage = () => {
   };
 
   const clearAlertContext = () => {
+    if (activeAlertIdOverride !== undefined) {
+      setAlertContext(null);
+      setAlertContextError(null);
+      setAlertContextLoading(false);
+      setPendingAutoMessage("");
+      return;
+    }
+
     const nextParams = new URLSearchParams(searchParams);
     nextParams.delete("alertId");
     setSearchParams(nextParams, { replace: true });
@@ -856,24 +948,23 @@ const ChatPage = () => {
   }
 
   const patientSummary = patient ? getPatientSummary(patient) : "";
+  const containerClassName = embedded
+    ? "flex h-full min-h-0 flex-col overflow-hidden bg-[#F0F2F5] dark:bg-slate-950"
+    : "flex h-[calc(100vh-2rem)] flex-col overflow-hidden rounded bg-[#F0F2F5] dark:bg-slate-950 dark:ring-1 dark:ring-slate-800/80";
 
   return (
-    <div className="flex h-[calc(100vh-2rem)] flex-col overflow-hidden rounded-3xl bg-[#F0F2F5] shadow-sm dark:bg-slate-950 dark:ring-1 dark:ring-slate-800/80">
-      <header className="sticky top-0 z-20 border-b border-gray-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <div className={containerClassName}>
+      <header className="sticky top-0 z-20 border-b border-gray-200 bg-white px-4 py-3  dark:border-slate-800 dark:bg-slate-900">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <button
               className="rounded-full p-2 text-gray-600 transition hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800"
-              onClick={() => navigate(-1)}
+              onClick={handleBack}
             >
               <ArrowLeft size={22} />
             </button>
 
             <div className="flex items-center gap-3">
-              <div className="relative flex h-10 w-10 items-center justify-center rounded-full border border-indigo-200 bg-indigo-100 text-indigo-600 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300">
-                <User size={20} />
-              </div>
-
               <div>
                 <h1 className="text-base font-bold leading-tight text-gray-800 dark:text-slate-100">
                   {patient?.name || "Bệnh nhân"}
@@ -881,36 +972,35 @@ const ChatPage = () => {
                 <p className="text-xs text-gray-500 dark:text-slate-400">
                   {patientSummary || "Trao đổi trực tiếp với bệnh nhân"}
                 </p>
-                <p
-                  className={`mt-1 text-[11px] font-medium ${
-                    socketState === "open"
-                      ? "text-green-600 dark:text-emerald-300"
-                      : "text-amber-600 dark:text-amber-300"
-                  }`}
-                >
-                  {socketState === "open"
-                    ? "Đang kết nối thời gian thực"
-                    : "Đang đồng bộ cuộc trò chuyện"}
-                </p>
               </div>
             </div>
           </div>
 
-          <button className="rounded-full p-2 text-gray-500 transition hover:bg-gray-100 dark:text-slate-400 dark:hover:bg-slate-800">
-            <MoreVertical size={20} />
-          </button>
+          {onClose ? (
+            <button
+              className="rounded-full p-2 text-gray-500 transition hover:bg-gray-100 dark:text-slate-400 dark:hover:bg-slate-800"
+              onClick={onClose}
+              aria-label="Đóng chat nhanh"
+            >
+              <X size={20} />
+            </button>
+          ) : (
+            <button className="rounded-full p-2 text-gray-500 transition hover:bg-gray-100 dark:text-slate-400 dark:hover:bg-slate-800">
+              <MoreVertical size={20} />
+            </button>
+          )}
         </div>
       </header>
 
       <main className="flex-1 overflow-y-auto px-4 py-5">
         {error && conversation ? (
-          <div className="mb-4 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-200">
+          <div className="mb-4 rounded border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-200">
             {error}
           </div>
         ) : null}
 
         {activeAlertId ? (
-          <section className="mb-4 rounded-3xl border border-amber-200 bg-white p-4 shadow-sm dark:border-amber-500/20 dark:bg-slate-900 dark:shadow-none">
+          <section className="mb-4 rounded border border-amber-200 bg-white p-4 shadow-sm dark:border-amber-500/20 dark:bg-slate-900 dark:shadow-none">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <div className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-600 dark:text-amber-300">
@@ -920,21 +1010,23 @@ const ChatPage = () => {
                   Tin nhắn mới sẽ được gắn với cảnh báo này
                 </h2>
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                  Alert ID: <span className="font-medium text-slate-700 dark:text-slate-200">{activeAlertId}</span>
+                  Alert ID:{" "}
+                  <span className="font-medium text-slate-700 dark:text-slate-200">
+                    {activeAlertId}
+                  </span>
                 </p>
               </div>
 
               <button
                 type="button"
                 onClick={clearAlertContext}
-                className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:bg-slate-800"
+                className="inline-flex items-center gap-2 rounded-md border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:bg-slate-800"
               >
                 <X size={16} />
                 Bỏ ngữ cảnh
               </button>
             </div>
-
-            <div className="mt-4 rounded-2xl bg-amber-50/70 p-4 dark:bg-amber-500/10">
+            <div className="mt-4 rounded-lg bg-amber-50/70 p-4 dark:bg-amber-500/10">
               {alertContextLoading ? (
                 <div className="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-200">
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -944,7 +1036,7 @@ const ChatPage = () => {
                 <div className="space-y-3">
                   <div className="flex flex-wrap items-center gap-2">
                     <span
-                      className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${
+                      className={`inline-flex items-center gap-1 rounded-md px-3 py-1 text-xs font-medium ${
                         alertContext.severity === "high"
                           ? "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300"
                           : "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-200"
@@ -955,16 +1047,20 @@ const ChatPage = () => {
                       ) : (
                         <Info size={14} />
                       )}
-                      {alertContext.severity === "high" ? "Nghiêm trọng" : "Thông tin"}
+                      {alertContext.severity === "high"
+                        ? "Nghiêm trọng"
+                        : "Thông tin"}
                     </span>
                     <span
-                      className={`rounded-full px-3 py-1 text-xs font-medium ${
+                      className={`rounded-md px-3 py-1 text-xs font-medium ${
                         alertContext.status === "ack"
                           ? "bg-green-100 text-green-700 dark:bg-emerald-500/15 dark:text-emerald-300"
                           : "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200"
                       }`}
                     >
-                      {alertContext.status === "ack" ? "Đã xác nhận" : "Chờ xử lý"}
+                      {alertContext.status === "ack"
+                        ? "Đã xác nhận"
+                        : "Chờ xử lý"}
                     </span>
                     <span className="text-xs text-slate-500 dark:text-slate-400">
                       Đo lúc {formatDateTime(alertContext.createdAt)}
@@ -975,7 +1071,7 @@ const ChatPage = () => {
                     {alertContext.violations.map((violation, index) => (
                       <div
                         key={`${alertContext.id}-${index}`}
-                        className="rounded-2xl border border-white/80 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-950/70"
+                        className="rounded-lg border border-white/80 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-950/70"
                       >
                         <div className="text-sm font-medium text-slate-800 dark:text-slate-200">
                           {getViolationLabel(violation.type)}
@@ -992,7 +1088,8 @@ const ChatPage = () => {
                 </div>
               ) : (
                 <div className="text-sm text-amber-700 dark:text-amber-200">
-                  {alertContextError || "Không có dữ liệu chi tiết cho cảnh báo này."}
+                  {alertContextError ||
+                    "Không có dữ liệu chi tiết cho cảnh báo này."}
                 </div>
               )}
             </div>
@@ -1001,9 +1098,9 @@ const ChatPage = () => {
 
         {messageItems.length === 0 ? (
           <div className="flex h-full items-center justify-center">
-            <div className="max-w-sm rounded-3xl border border-dashed border-gray-300 bg-white px-6 py-8 text-center text-sm text-gray-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
-              Cuộc trò chuyện này chưa có tin nhắn nào. Bạn có thể gửi lời nhắn đầu tiên
-              cho bệnh nhân ở khung bên dưới.
+            <div className="max-w-sm rounded-lg border border-dashed border-gray-300 bg-white px-6 py-8 text-center text-sm text-gray-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
+              Cuộc trò chuyện này chưa có tin nhắn nào. Bạn có thể gửi lời nhắn
+              đầu tiên cho bệnh nhân ở khung bên dưới.
             </div>
           </div>
         ) : (
@@ -1012,7 +1109,7 @@ const ChatPage = () => {
               if (item.type === "day") {
                 return (
                   <div key={item.key} className="flex justify-center">
-                    <span className="rounded-full bg-gray-200 px-3 py-1 text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:bg-slate-800 dark:text-slate-400">
+                    <span className="rounded-md bg-gray-200 px-3 py-1 text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:bg-slate-800 dark:text-slate-400">
                       {item.label}
                     </span>
                   </div>
@@ -1021,11 +1118,12 @@ const ChatPage = () => {
 
               const isMe = item.message.senderId === currentUserId;
               const isActiveAlertMessage =
-                Boolean(activeAlertId) && item.message.relatedAlertId === activeAlertId;
+                Boolean(activeAlertId) &&
+                item.message.relatedAlertId === activeAlertId;
               const hasAlertTag = Boolean(item.message.relatedAlertId);
               const alertMessage = parseAlertLinkedMessage(
                 item.message.content,
-                item.message.relatedAlertId
+                item.message.relatedAlertId,
               );
               const repliedMessage = item.message.replyToMessageId
                 ? messageLookup.get(item.message.replyToMessageId)
@@ -1040,7 +1138,7 @@ const ChatPage = () => {
                 hasParticipantReachedMessage(
                   item.message.id,
                   otherParticipantState?.lastReadMessageId,
-                  messageOrder
+                  messageOrder,
                 );
 
               return (
@@ -1056,7 +1154,9 @@ const ChatPage = () => {
                   >
                     <div
                       className={`pointer-events-none flex items-center gap-1 opacity-0 transition duration-150 group-hover:pointer-events-auto group-hover:opacity-100 ${
-                        openMessageMenuId === item.message.id ? "pointer-events-auto opacity-100" : ""
+                        openMessageMenuId === item.message.id
+                          ? "pointer-events-auto opacity-100"
+                          : ""
                       }`}
                     >
                       <button
@@ -1073,7 +1173,9 @@ const ChatPage = () => {
                           onClick={(event) => {
                             event.stopPropagation();
                             setOpenMessageMenuId((current) =>
-                              current === item.message.id ? null : item.message.id
+                              current === item.message.id
+                                ? null
+                                : item.message.id,
                             );
                           }}
                           className="rounded-full p-2 text-slate-500 transition hover:bg-slate-200 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
@@ -1083,7 +1185,7 @@ const ChatPage = () => {
 
                         {openMessageMenuId === item.message.id ? (
                           <div
-                            className={`absolute top-full z-20 mt-2 min-w-[170px] rounded-2xl border border-slate-200 bg-white p-2 text-slate-700 shadow-xl dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 ${
+                            className={`absolute top-full z-20 mt-2 min-w-42.5 rounded-2xl border border-slate-200 bg-white p-2 text-slate-700 shadow-xl dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 ${
                               isMe ? "left-0" : "right-0"
                             }`}
                           >
@@ -1103,28 +1205,31 @@ const ChatPage = () => {
                     </div>
 
                     <div
-                      className={`max-w-[78%] rounded-3xl px-4 py-3 text-sm shadow-sm ${
+                      className={`max-w-[78%] rounded-lg px-4 py-3 text-sm shadow-sm ${
                         isMe
-                          ? "rounded-tr-md bg-blue-600 text-white dark:bg-blue-500"
-                          : "rounded-tl-md border border-gray-100 bg-white text-gray-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                          ? "rounded-tr-sm bg-blue-600 text-white dark:bg-blue-500"
+                          : "rounded-tl-sm border border-gray-100 bg-white text-gray-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                       } ${isActiveAlertMessage ? "ring-2 ring-amber-300 ring-offset-2 dark:ring-amber-400/70 dark:ring-offset-slate-950" : ""}`}
                     >
                       {hasAlertTag ? (
                         <div
-                          className={`mb-3 inline-flex rounded-full px-2.5 py-1 text-[11px] font-medium ${
+                          className={`mb-3 inline-flex rounded-md px-2.5 py-1 text-[11px] font-medium ${
                             isMe
                               ? "bg-white/15 text-blue-50 dark:bg-white/10 dark:text-blue-100"
                               : "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-200"
                           }`}
                         >
-                          {isActiveAlertMessage ? "Đang xem từ cảnh báo này" : "Tin nhắn có gắn cảnh báo"}
+                          {isActiveAlertMessage
+                            ? "Đang xem từ cảnh báo này"
+                            : "Tin nhắn có gắn cảnh báo"}
                         </div>
                       ) : null}
 
-                      {hasAlertTag && alertMessage?.hasStructuredAlertSummary ? (
+                      {hasAlertTag &&
+                      alertMessage?.hasStructuredAlertSummary ? (
                         <div className="space-y-3">
                           <div
-                            className={`rounded-2xl border px-3 py-3 ${
+                            className={`rounded-lg border px-3 py-3 ${
                               isMe
                                 ? "border-white/15 bg-white/10 text-blue-50"
                                 : "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-100"
@@ -1132,7 +1237,9 @@ const ChatPage = () => {
                           >
                             <div
                               className={`mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] ${
-                                isMe ? "text-blue-100" : "text-amber-700 dark:text-amber-300"
+                                isMe
+                                  ? "text-blue-100"
+                                  : "text-amber-700 dark:text-amber-300"
                               }`}
                             >
                               <AlertTriangle size={14} />
@@ -1144,7 +1251,9 @@ const ChatPage = () => {
                             </p>
                             <div
                               className={`mt-3 text-[11px] ${
-                                isMe ? "text-blue-100/90" : "text-amber-700/80 dark:text-amber-300/80"
+                                isMe
+                                  ? "text-blue-100/90"
+                                  : "text-amber-700/80 dark:text-amber-300/80"
                               }`}
                             >
                               Alert #{alertMessage.shortAlertId}
@@ -1153,7 +1262,7 @@ const ChatPage = () => {
 
                           {alertMessage.note ? (
                             <div
-                              className={`rounded-2xl px-3 py-3 ${
+                              className={`rounded-lg px-3 py-3 ${
                                 isMe
                                   ? "bg-white/12 text-white"
                                   : "border border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-200"
@@ -1161,7 +1270,9 @@ const ChatPage = () => {
                             >
                               <div
                                 className={`mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] ${
-                                  isMe ? "text-blue-100" : "text-slate-500 dark:text-slate-400"
+                                  isMe
+                                    ? "text-blue-100"
+                                    : "text-slate-500 dark:text-slate-400"
                                 }`}
                               >
                                 Lời nhắn bác sĩ
@@ -1176,7 +1287,7 @@ const ChatPage = () => {
                         <>
                           {repliedMessage ? (
                             <div
-                              className={`mb-3 rounded-2xl border-l-4 px-3 py-2 ${
+                              className={`mb-3 rounded-lg border-l-4 px-3 py-2 ${
                                 isMe
                                   ? "border-white/55 bg-white/12 text-blue-50"
                                   : "border-blue-300 bg-slate-50 text-slate-600 dark:border-blue-500/60 dark:bg-slate-900 dark:text-slate-300"
@@ -1184,7 +1295,9 @@ const ChatPage = () => {
                             >
                               <div
                                 className={`text-[11px] font-semibold ${
-                                  isMe ? "text-blue-100" : "text-blue-700 dark:text-blue-300"
+                                  isMe
+                                    ? "text-blue-100"
+                                    : "text-blue-700 dark:text-blue-300"
                                 }`}
                               >
                                 {repliedSenderLabel}
@@ -1194,13 +1307,17 @@ const ChatPage = () => {
                               </div>
                             </div>
                           ) : null}
-                          <p className="whitespace-pre-wrap leading-relaxed">{item.message.content}</p>
+                          <p className="whitespace-pre-wrap leading-relaxed">
+                            {item.message.content}
+                          </p>
                         </>
                       )}
 
                       <div
                         className={`mt-3 flex items-center justify-end gap-1 text-[11px] ${
-                          isMe ? "text-blue-100" : "text-gray-400 dark:text-slate-500"
+                          isMe
+                            ? "text-blue-100"
+                            : "text-gray-400 dark:text-slate-500"
                         }`}
                       >
                         <span>{formatTime(item.message.createdAt)}</span>
@@ -1244,7 +1361,9 @@ const ChatPage = () => {
                     Đang trả lời
                   </div>
                   <div className="mt-1 text-xs font-medium text-slate-700 dark:text-slate-200">
-                    {replyTarget.senderId === currentUserId ? "Bạn" : patient?.name || "Bệnh nhân"}
+                    {replyTarget.senderId === currentUserId
+                      ? "Bạn"
+                      : patient?.name || "Bệnh nhân"}
                   </div>
                   <div className="mt-1 truncate text-sm text-slate-500 dark:text-slate-400">
                     {getReplyPreviewContent(replyTarget)}
@@ -1274,7 +1393,7 @@ const ChatPage = () => {
                   handleSend();
                 }
               }}
-              className="max-h-32 min-h-[24px] w-full resize-none border-none bg-transparent py-1 text-sm text-gray-800 outline-none placeholder:text-gray-400 dark:text-slate-100 dark:placeholder:text-slate-500"
+              className="max-h-32 min-h-6 w-full resize-none border-none bg-transparent py-1 text-sm text-gray-800 outline-none placeholder:text-gray-400 dark:text-slate-100 dark:placeholder:text-slate-500"
             />
           </div>
 
