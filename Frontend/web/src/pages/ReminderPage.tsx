@@ -236,9 +236,6 @@ const ReminderPage = () => {
     return new Map(entries);
   }, [patientOptions]);
 
-  const selectedPatientInfo = selectedPatientId
-    ? patientDisplayMap.get(selectedPatientId)
-    : null;
   const modeLabel = editingReminderId
     ? "Chỉnh sửa nhắc nhở"
     : "Tạo nhắc nhở mới";

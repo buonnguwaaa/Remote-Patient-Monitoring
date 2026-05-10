@@ -730,7 +730,15 @@ const DashBoard = () => {
                       <input
                         type="date"
                         value={startDate}
-                        onChange={(e) => setStartDate(e.target.value)}
+                        onChange={(e) => {
+                          const newStartDate = e.target.value;
+                          setStartDate(newStartDate);
+                          // Auto-adjust endDate if it's before startDate
+                          if (endDate && newStartDate > endDate) {
+                            setEndDate(newStartDate);
+                          }
+                        }}
+                        max={endDate || undefined}
                         className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-white"
                       />
                     </div>
@@ -742,7 +750,15 @@ const DashBoard = () => {
                       <input
                         type="date"
                         value={endDate}
-                        onChange={(e) => setEndDate(e.target.value)}
+                        onChange={(e) => {
+                          const newEndDate = e.target.value;
+                          setEndDate(newEndDate);
+                          // Auto-adjust startDate if it's after endDate
+                          if (startDate && newEndDate < startDate) {
+                            setStartDate(newEndDate);
+                          }
+                        }}
+                        min={startDate || undefined}
                         className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-white"
                       />
                     </div>
@@ -948,7 +964,15 @@ const DashBoard = () => {
                     <input
                       type="date"
                       value={reportStartDate}
-                      onChange={(e) => setReportStartDate(e.target.value)}
+                      onChange={(e) => {
+                        const newStartDate = e.target.value;
+                        setReportStartDate(newStartDate);
+                        // Auto-adjust reportEndDate if it's before reportStartDate
+                        if (reportEndDate && newStartDate > reportEndDate) {
+                          setReportEndDate(newStartDate);
+                        }
+                      }}
+                      max={reportEndDate || undefined}
                       disabled={isGeneratingReport}
                       className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-white disabled:opacity-50"
                     />
@@ -960,7 +984,15 @@ const DashBoard = () => {
                     <input
                       type="date"
                       value={reportEndDate}
-                      onChange={(e) => setReportEndDate(e.target.value)}
+                      onChange={(e) => {
+                        const newEndDate = e.target.value;
+                        setReportEndDate(newEndDate);
+                        // Auto-adjust reportStartDate if it's after reportEndDate
+                        if (reportStartDate && newEndDate < reportStartDate) {
+                          setReportStartDate(newEndDate);
+                        }
+                      }}
+                      min={reportStartDate || undefined}
                       disabled={isGeneratingReport}
                       className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-white disabled:opacity-50"
                     />

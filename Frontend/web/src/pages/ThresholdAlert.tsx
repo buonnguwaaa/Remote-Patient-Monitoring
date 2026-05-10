@@ -42,6 +42,8 @@ const ThresholdAlert = () => {
   const [draftMessage, setDraftMessage] = useState("");
   const [sendToPatient, setSendToPatient] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
   const { toast, showToast, hideToast } = useToast();
 
   const patientIds = useMemo(() => myPatients.map((item) => item.patientId), [myPatients]);
@@ -53,6 +55,17 @@ const ThresholdAlert = () => {
       return true;
     });
   }, [alerts, filterSeverity, filterStatus]);
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredAlerts.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedAlerts = filteredAlerts.slice(startIndex, endIndex);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterStatus, filterSeverity]);
 
   const stats = useMemo(() => {
     return {
@@ -332,7 +345,7 @@ const ThresholdAlert = () => {
             </button>
           )}
 
-          {alert.status !== "pending" && (
+          {alert.status === "open" && (
             <button
               type="button"
               onClick={() => navigateToChat(alert)}
@@ -466,7 +479,7 @@ const ThresholdAlert = () => {
               Không có cảnh báo nào trong scope hiện tại.
             </div>
           ) : (
-            filteredAlerts.map((alert) => renderAlertCard(alert))
+            paginatedAlerts.map((alert) => renderAlertCard(alert))
           )}
         </div>
 
@@ -510,7 +523,7 @@ const ThresholdAlert = () => {
                       </td>
                     </tr>
                   ) : (
-                    filteredAlerts.map((alert) => (
+                    paginatedAlerts.map((alert) => (
                       <tr key={alert.id} className="transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/70">
                         <td className="whitespace-nowrap px-6 py-4">
                           <div className="flex items-center">
@@ -605,6 +618,76 @@ const ThresholdAlert = () => {
             </div>
           </div>
         </div>
+
+        {/* Pagination Controls */}
+        {!loading && filteredAlerts.length > 0 && (
+          <div className="mt-6 flex flex-col items-center justify-between gap-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none sm:flex-row">
+            <div className="text-sm text-slate-600 dark:text-slate-400">
+              Hiển thị <span className="font-semibold text-slate-900 dark:text-slate-100">{startIndex + 1}</span> -{" "}
+              <span className="font-semibold text-slate-900 dark:text-slate-100">
+                {Math.min(endIndex, filteredAlerts.length)}
+              </span>{" "}
+              trong tổng số <span className="font-semibold text-slate-900 dark:text-slate-100">{filteredAlerts.length}</span> cảnh báo
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+              >
+                Trước
+              </button>
+
+              <div className="flex items-center gap-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                  // Show first page, last page, current page, and pages around current
+                  const showPage =
+                    page === 1 ||
+                    page === totalPages ||
+                    (page >= currentPage - 1 && page <= currentPage + 1);
+
+                  if (!showPage) {
+                    // Show ellipsis
+                    if (page === currentPage - 2 || page === currentPage + 2) {
+                      return (
+                        <span
+                          key={page}
+                          className="px-2 text-slate-400 dark:text-slate-500"
+                        >
+                          ...
+                        </span>
+                      );
+                    }
+                    return null;
+                  }
+
+                  return (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`min-w-[40px] rounded-xl px-3 py-2 text-sm font-medium transition ${
+                        currentPage === page
+                          ? "bg-blue-600 text-white"
+                          : "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+                className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+              >
+                Sau
+              </button>
+            </div>
+          </div>
+        )}
 
         {showResolveModal && currentAlert && (
           <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/45 p-4 backdrop-blur-sm">

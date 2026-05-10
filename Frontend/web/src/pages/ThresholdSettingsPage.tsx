@@ -386,11 +386,6 @@ const ThresholdSettingsPage = () => {
     }));
   };
 
-  const handlePatientChange = (event: ChangeEvent<HTMLSelectElement>) => {
-    const patientId = event.target.value;
-    setFormData(createDefaultFormData(patientId));
-  };
-
   const handlePatientFilterChange = (event: ChangeEvent<HTMLSelectElement>) => {
     const patientId = event.target.value;
     setFormData(createDefaultFormData(patientId));

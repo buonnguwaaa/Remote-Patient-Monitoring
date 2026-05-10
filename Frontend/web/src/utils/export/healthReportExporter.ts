@@ -139,7 +139,7 @@ const createEmptyStats = (): MetricStats => ({
 /**
  * Export health report to Excel
  */
-export const exportHealthReportToExcel = (
+export const exportHealthReportToExcel = async (
   reportData: PatientReportData[],
   startDate: string,
   endDate: string
@@ -282,5 +282,5 @@ export const exportHealthReportToExcel = (
 
   // Download file
   const filename = generateFilename('bao_cao_chi_so');
-  downloadExcelFile(workbook, filename);
+  await downloadExcelFile(workbook, filename);
 };
