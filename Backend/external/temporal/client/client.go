@@ -1,8 +1,9 @@
 package client
 
 import (
-	"os"
 	"log"
+	"os"
+
 	"go.temporal.io/sdk/client"
 )
 

@@ -8,28 +8,28 @@ import (
 	"strings"
 	"time"
 
-	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/helper/measurement_helper"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/dto"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/helper/measurement_helper"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
 	chatDomain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/chat"
-	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository"
-	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/service"
 	idto "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
-	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecase"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository"
 	chatRepository "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository/chat"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/service"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecase"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/util"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type ProcessingAlertActivity struct {
-	measurementRepo  repository.MeasurementRepository
-	thresholdRepo    repository.ThresholdRepository
-	alertRepo        repository.AlertRepository
-	assignmentRepo   repository.AssignmentRepository
-	conversationRepo chatRepository.ConversationRepository
-	messageRepo      chatRepository.MessageRepository
+	measurementRepo     repository.MeasurementRepository
+	thresholdRepo       repository.ThresholdRepository
+	alertRepo           repository.AlertRepository
+	assignmentRepo      repository.AssignmentRepository
+	conversationRepo    chatRepository.ConversationRepository
+	messageRepo         chatRepository.MessageRepository
 	notificationService service.NotificationService
-	eventPublisher   measurement_helper.ChatEventPublisher
+	eventPublisher      measurement_helper.ChatEventPublisher
 }
 
 func NewProcessingAlertActivity(
@@ -44,14 +44,14 @@ func NewProcessingAlertActivity(
 	// notifier Notifier,
 ) *ProcessingAlertActivity {
 	return &ProcessingAlertActivity{
-		measurementRepo:  measurementRepo,
-		thresholdRepo:    thresholdRepo,
-		alertRepo:        alertRepo,
-		assignmentRepo:   assignmentRepo,
-		conversationRepo: conversationRepo,
-		messageRepo:      messageRepo,
+		measurementRepo:     measurementRepo,
+		thresholdRepo:       thresholdRepo,
+		alertRepo:           alertRepo,
+		assignmentRepo:      assignmentRepo,
+		conversationRepo:    conversationRepo,
+		messageRepo:         messageRepo,
 		notificationService: notificationService,
-		eventPublisher:   eventPublisher,
+		eventPublisher:      eventPublisher,
 		// notifier:        notifier,
 	}
 }
@@ -106,7 +106,7 @@ func (a *ProcessingAlertActivity) EvaluateAndCreateAlertActivity(ctx context.Con
 		CreatedAt:      now,
 		UpdatedAt:      now,
 	})
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to create alert: %w", err)
 	}
