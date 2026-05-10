@@ -32,6 +32,7 @@ type MainServerContainer struct {
 	ReminderRepo          repository.ReminderRepository
 	ConversationRepo      chatRepository.ConversationRepository
 	MessageRepo           chatRepository.MessageRepository
+	ActivityLogRepo       *repository.ActivityLogRepository
 
 	AuthService         service.AuthService
 	UserService         service.UserService
@@ -55,6 +56,7 @@ type MainServerContainer struct {
 	ChatHandler              *handler.ChatHandler
 	NotificationTokenHandler *handler.NotificationTokenHandler
 	NotificationHandler      *handler.NotificationHandler
+	ActivityLogHandler       *handler.ActivityLogHandler
 
 	WSChatHandler *ws.Handler
 	Hub           *ws.Hub
@@ -87,6 +89,7 @@ func NewMainServerContainer() *MainServerContainer {
 	c.ReminderRepo = repository.NewReminderRepository(db)
 	c.ConversationRepo = chatRepository.NewConversationRepository(db)
 	c.MessageRepo = chatRepository.NewMessageRepository(db)
+	c.ActivityLogRepo = repository.NewActivityLogRepository(db)
 	if err := c.ConversationRepo.EnsureIndexes(context.Background()); err != nil {
 		log.Printf("[WARN] failed to ensure conversation indexes: %v", err)
 	}
@@ -115,6 +118,7 @@ func NewMainServerContainer() *MainServerContainer {
 	c.ChatHandler = handler.NewChatHandler(c.ChatService)
 	c.NotificationTokenHandler = handler.NewNotificationTokenHandler(c.NotificationService)
 	c.NotificationHandler = handler.NewNotificationHandler(c.NotificationService)
+	c.ActivityLogHandler = handler.NewActivityLogHandler(c.ActivityLogRepo)
 
 	c.Hub = ws.NewHub()
 	go c.Hub.Run()

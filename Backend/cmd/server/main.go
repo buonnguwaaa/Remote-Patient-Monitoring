@@ -24,6 +24,7 @@ import (
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/config"
 	_ "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/docs"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/container"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/middleware"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/router"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -79,6 +80,11 @@ func main() {
 	r.Use(cors.New(corsConfig))
 
 	c := container.NewMainServerContainer()
+	
+	// Add activity logger middleware for admin users
+	activityLogger := middleware.NewActivityLoggerMiddleware(c.ActivityLogRepo, c.BaseUserRepo)
+	r.Use(activityLogger.LogActivity())
+	
 	router.RegisterRoutes(r, c)
 
 	log.Printf("[GIN-info] Starting server on :%s", port)
