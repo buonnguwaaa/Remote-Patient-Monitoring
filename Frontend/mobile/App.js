@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 import * as Notifications from "expo-notifications";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AuthProvider } from "./src/context/AuthContext";
+import { SnackbarProvider } from "./src/context/SnackbarContext";
 import AppNavigator from "./src/navigation/AppNavigator";
 import {
   attachNotificationListeners,
@@ -29,10 +30,12 @@ function NotificationLifecycleBridge() {
 export default function App() {
   return (
     <AuthProvider>
-      <SafeAreaProvider>
-        <NotificationLifecycleBridge />
-        <AppNavigator />
-      </SafeAreaProvider>
+      <SnackbarProvider>
+        <SafeAreaProvider>
+          <NotificationLifecycleBridge />
+          <AppNavigator />
+        </SafeAreaProvider>
+      </SnackbarProvider>
     </AuthProvider>
   );
 }

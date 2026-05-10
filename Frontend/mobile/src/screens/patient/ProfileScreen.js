@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   Image,
   TextInput,
-  Alert,
   ActivityIndicator,
   RefreshControl,
   KeyboardAvoidingView,
@@ -20,6 +19,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import QRCode from "react-native-qrcode-svg";
 
 import { useAuth } from "../../hooks/useAuth";
+import { useSnackbar } from "../../hooks/useSnackbar";
 import {
   getMyPatientProfile,
   updateMyPatientProfile,
@@ -181,6 +181,7 @@ function ValidationMessage({ message }) {
 
 export default function ProfileScreen() {
   const { logout, updateUser } = useAuth();
+  const { showSuccess, showError, showWarning } = useSnackbar();
 
   const [editMode, setEditMode] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -284,7 +285,7 @@ export default function ProfileScreen() {
 
     if (!isValid) {
       setFieldErrors(errors);
-      Alert.alert("Thông tin chưa hợp lệ", getFirstValidationMessage(errors));
+      showWarning(getFirstValidationMessage(errors));
       return;
     }
 
@@ -326,9 +327,9 @@ export default function ProfileScreen() {
       });
 
       setEditMode(false);
-      Alert.alert("Đã lưu", "Thông tin hồ sơ đã được cập nhật.");
+      showSuccess("Thông tin hồ sơ đã được cập nhật");
     } catch (error) {
-      Alert.alert("Không thể lưu hồ sơ", error.message || "Vui lòng thử lại.");
+      showError(error.message || "Không thể lưu hồ sơ. Vui lòng thử lại.");
     } finally {
       setSaving(false);
     }
