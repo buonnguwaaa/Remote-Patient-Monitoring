@@ -30,9 +30,9 @@ func (c *Client) readPump() {
 	}()
 
 	c.Conn.SetReadLimit(512)
-	c.Conn.SetReadDeadline(time.Now().Add(rtPongWait))
+	_ = c.Conn.SetReadDeadline(time.Now().Add(rtPongWait))
 	c.Conn.SetPongHandler(func(string) error {
-		c.Conn.SetReadDeadline(time.Now().Add(rtPongWait))
+		_ = c.Conn.SetReadDeadline(time.Now().Add(rtPongWait))
 		return nil
 	})
 
@@ -59,9 +59,9 @@ func (c *Client) writePump() {
 	for {
 		select {
 		case message, ok := <-c.Send:
-			c.Conn.SetWriteDeadline(time.Now().Add(rtWriteWait))
+			_ = c.Conn.SetWriteDeadline(time.Now().Add(rtWriteWait))
 			if !ok {
-				c.Conn.WriteMessage(websocket.CloseMessage, []byte{})
+				_ = c.Conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
 
@@ -69,13 +69,13 @@ func (c *Client) writePump() {
 			if err != nil {
 				return
 			}
-			w.Write(message)
+			_, _ = w.Write(message)
 
 			// Batch any queued messages separated by newlines
 			n := len(c.Send)
 			for i := 0; i < n; i++ {
-				w.Write([]byte{'\n'})
-				w.Write(<-c.Send)
+				_, _ = w.Write([]byte{'\n'})
+				_, _ = w.Write(<-c.Send)
 			}
 
 			if err := w.Close(); err != nil {
@@ -83,7 +83,7 @@ func (c *Client) writePump() {
 			}
 
 		case <-ticker.C:
-			c.Conn.SetWriteDeadline(time.Now().Add(rtWriteWait))
+			_ = c.Conn.SetWriteDeadline(time.Now().Add(rtWriteWait))
 			if err := c.Conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				return
 			}

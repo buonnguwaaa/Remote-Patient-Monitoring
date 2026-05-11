@@ -40,9 +40,9 @@ type ActivityLogStatsResponse struct {
 
 // ActivityLogQueryParams represents query parameters for fetching activity logs
 type ActivityLogQueryParams struct {
-	StartDate    string `form:"startDate" binding:"omitempty"`    // YYYY-MM-DD
-	EndDate      string `form:"endDate" binding:"omitempty"`      // YYYY-MM-DD
-	ActivityType string `form:"type" binding:"omitempty"`         // login, create, update, delete, system, all
+	StartDate    string `form:"startDate" binding:"omitempty"` // YYYY-MM-DD
+	EndDate      string `form:"endDate" binding:"omitempty"`   // YYYY-MM-DD
+	ActivityType string `form:"type" binding:"omitempty"`      // login, create, update, delete, system, all
 	Page         int    `form:"page" binding:"omitempty,min=1"`
 	PageSize     int    `form:"pageSize" binding:"omitempty,min=1,max=100"`
 }

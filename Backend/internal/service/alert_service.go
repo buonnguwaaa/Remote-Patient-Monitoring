@@ -13,7 +13,7 @@ import (
 )
 
 type alertService struct {
-	alertRepo      repository.AlertRepository
+	alertRepo repository.AlertRepository
 	// assignmentRepo repository.AssignmentRepository
 	// baseUserRepo   userRepository.BaseUserRepository
 }
