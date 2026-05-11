@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { FaHistory, FaPowerOff, FaSave } from "react-icons/fa";
+import { FaHistory, FaSave } from "react-icons/fa";
 import { MdAdminPanelSettings } from "react-icons/md";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 import Toast from "../components/ui/Toast";
 import { useTheme } from "../context/ThemeContext";
+import { useLanguage } from "../context/LanguageContext";
 import { useToast } from "../hooks/useToast";
 
 type SystemStatus = "online" | "offline" | "maintenance";
@@ -63,7 +65,9 @@ const initialFormState = (theme: ThemeMode): SettingsFormState => ({
 const SystemSettings: React.FC = () => {
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
+  const { language, setLanguage } = useLanguage();
   const { toast, showToast, hideToast } = useToast(4000);
+  const { t } = useTranslation();
 
   const [savedSettings, setSavedSettings] = useState<SettingsFormState>(() =>
     initialFormState(theme as ThemeMode)
@@ -75,10 +79,10 @@ const SystemSettings: React.FC = () => {
 
   useEffect(() => {
     if (!isEditing) {
-      setSavedSettings((current) => ({ ...current, theme: theme as ThemeMode }));
-      setDraftSettings((current) => ({ ...current, theme: theme as ThemeMode }));
+      setSavedSettings((current) => ({ ...current, theme: theme as ThemeMode, language }));
+      setDraftSettings((current) => ({ ...current, theme: theme as ThemeMode, language }));
     }
-  }, [theme, isEditing]);
+  }, [theme, language, isEditing]);
 
   const currentStatus = statusMeta[draftSettings.systemStatus];
 
@@ -101,32 +105,19 @@ const SystemSettings: React.FC = () => {
 
     if (!isEditing) return;
 
-    if (draftSettings.systemStatus === "maintenance" && !draftSettings.maintenanceMessage.trim()) {
-      showToast("Vui lòng nhập thông báo bảo trì trước khi lưu.", "error", {
-        title: "Cập nhật thất bại",
-      });
-      return;
-    }
-
-    if (!Number.isFinite(draftSettings.maxPatientsPerDoctor) || draftSettings.maxPatientsPerDoctor < 1) {
-      showToast("Số bệnh nhân tối đa mỗi bác sĩ phải lớn hơn 0.", "error", {
-        title: "Cập nhật thất bại",
-      });
-      return;
-    }
-
     setSavedSettings(draftSettings);
     setTheme(draftSettings.theme);
+    setLanguage(draftSettings.language);
     setIsEditing(false);
-    showToast("Cài đặt hệ thống đã được cập nhật.", "success", {
-      title: "Cập nhật thành công",
+    showToast(t("systemSettings.toast.updateSuccess"), "success", {
+      title: t("systemSettings.toast.updateSuccessTitle"),
     });
   };
 
   const toggleSystemStatus = () => {
     if (!isEditing) {
-      showToast("Hãy bấm Chỉnh sửa hệ thống trước khi cập nhật trạng thái.", "error", {
-        title: "Chưa thể thay đổi",
+      showToast(t("systemSettings.toast.updateFailed"), "error", {
+        title: t("systemSettings.toast.updateFailed"),
       });
       return;
     }
@@ -145,9 +136,9 @@ const SystemSettings: React.FC = () => {
               <MdAdminPanelSettings className="text-2xl" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-slate-900 dark:text-white">Cài đặt hệ thống</h1>
+              <h1 className="text-3xl font-bold text-slate-900 dark:text-white">{t("systemSettings.title")}</h1>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">
-                Quản lý trạng thái vận hành, quyền đăng ký và giao diện hiển thị theo một bố cục gọn hơn, dễ nhìn hơn.
+                {t("systemSettings.description")}
               </p>
             </div>
           </div>
@@ -160,192 +151,62 @@ const SystemSettings: React.FC = () => {
                   : "bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-200"
               }`}
             >
-              {isEditing ? "Đang chỉnh sửa" : "Chế độ xem"}
+              {isEditing ? t("common.editMode") : t("common.viewMode")}
             </div>
 
             <button
               type="button"
-              onClick={() => navigate("/admin/activity-history")}
+              onClick={() => navigate("/activity-history")}
               className="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
             >
               <FaHistory className="mr-2 text-slate-500 dark:text-slate-300" />
-              Xem lịch sử hoạt động
+              {t("systemSettings.viewHistory")}
             </button>
           </div>
         </div>
 
         <form onSubmit={handleSaveSettings} className="space-y-6">
           <section className={sectionClass}>
-            <div className="mb-5 flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-100">
-                <FaPowerOff />
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Trạng thái hệ thống</h2>
-                <p className="text-sm text-slate-500 dark:text-slate-400">
-                  Theo dõi nhanh tình trạng hiện tại và chuyển đổi ngay khi cần.
-                </p>
-              </div>
-            </div>
-
-            <div className="mb-6 rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-700 dark:bg-slate-800/70">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div>
-                  <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
-                    Trạng thái hiện tại
-                  </p>
-                  <div
-                    className={`mt-3 inline-flex items-center rounded-full px-4 py-2 text-sm font-semibold ${currentStatus.badgeClass}`}
-                  >
-                    {currentStatus.label}
-                  </div>
-                  <p className="mt-3 max-w-xl text-sm text-slate-600 dark:text-slate-300">
-                    {currentStatus.helperText}
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={toggleSystemStatus}
-                  disabled={!isEditing}
-                  className={`inline-flex items-center justify-center rounded-xl px-5 py-3 text-sm font-semibold text-white transition ${
-                    !isEditing
-                      ? "cursor-not-allowed bg-slate-300 text-slate-500 dark:bg-slate-700 dark:text-slate-400"
-                      : draftSettings.systemStatus === "online"
-                        ? "bg-rose-600 hover:bg-rose-700"
-                        : "bg-slate-900 hover:bg-slate-700 dark:bg-indigo-500 dark:hover:bg-indigo-400"
-                  }`}
-                >
-                  {draftSettings.systemStatus === "online" ? "Tắt hệ thống" : "Bật hệ thống"}
-                </button>
-              </div>
-            </div>
-
-            <div className="grid gap-5 lg:grid-cols-[1.2fr,0.8fr]">
-              <div>
-                <label className={labelClass}>Chế độ vận hành</label>
-                <select
-                  className={inputClass}
-                  value={draftSettings.systemStatus}
-                  onChange={(event) =>
-                    updateDraft("systemStatus", event.target.value as SettingsFormState["systemStatus"])
-                  }
-                  disabled={!isEditing}
-                >
-                  <option value="online">Trực tuyến</option>
-                  <option value="offline">Ngoại tuyến</option>
-                  <option value="maintenance">Bảo trì</option>
-                </select>
-              </div>
-
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-4 dark:border-slate-700 dark:bg-slate-800/50">
-                <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Gợi ý hiển thị</p>
-                <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
-                  Chỉ khi bấm Chỉnh sửa hệ thống thì các trường mới được mở để giảm thao tác nhầm trên trang admin.
-                </p>
-              </div>
-            </div>
-
-            {draftSettings.systemStatus === "maintenance" && (
-              <div className="mt-5">
-                <label className={labelClass}>Thông báo bảo trì</label>
-                <textarea
-                  className={inputClass}
-                  rows={4}
-                  value={draftSettings.maintenanceMessage}
-                  onChange={(event) => updateDraft("maintenanceMessage", event.target.value)}
-                  disabled={!isEditing}
-                />
-              </div>
-            )}
-          </section>
-
-          <section className={sectionClass}>
             <div className="mb-5">
-              <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Cài đặt chung</h2>
+              <h2 className="text-xl font-semibold text-slate-900 dark:text-white">{t("systemSettings.interfaceSettings.title")}</h2>
               <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                Điều chỉnh đăng ký mới và giới hạn bệnh nhân theo bác sĩ.
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              <div className={rowClass}>
-                <div>
-                  <p className="font-semibold text-slate-800 dark:text-slate-100">Cho phép đăng ký mới</p>
-                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                    Bật để cho phép người dùng mới tạo tài khoản trong hệ thống.
-                  </p>
-                </div>
-
-                <label className={`relative inline-flex items-center ${!isEditing ? "cursor-not-allowed" : "cursor-pointer"}`}>
-                  <input
-                    type="checkbox"
-                    className="peer sr-only"
-                    checked={draftSettings.allowRegistrations}
-                    onChange={(event) => updateDraft("allowRegistrations", event.target.checked)}
-                    disabled={!isEditing}
-                  />
-                  <div className="h-6 w-11 rounded-full bg-slate-300 transition peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-100 peer-checked:bg-slate-900 peer-checked:after:translate-x-full peer-checked:after:border-white peer-disabled:opacity-60 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-slate-200 after:bg-white after:transition-all after:content-[''] dark:bg-slate-600 dark:peer-focus:ring-indigo-500/20 dark:peer-checked:bg-indigo-500" />
-                </label>
-              </div>
-
-              <div>
-                <label className={labelClass}>Số bệnh nhân tối đa mỗi bác sĩ</label>
-                <input
-                  type="number"
-                  className={inputClass}
-                  value={draftSettings.maxPatientsPerDoctor}
-                  onChange={(event) =>
-                    updateDraft("maxPatientsPerDoctor", parseInt(event.target.value, 10) || 0)
-                  }
-                  min={1}
-                  disabled={!isEditing}
-                />
-              </div>
-            </div>
-          </section>
-
-          <section className={sectionClass}>
-            <div className="mb-5">
-              <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Cài đặt giao diện</h2>
-              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                Giữ giao diện admin đồng bộ với ngôn ngữ và chế độ hiển thị bạn muốn.
+                {t("systemSettings.interfaceSettings.description")}
               </p>
             </div>
 
             <div className="grid gap-5 md:grid-cols-2">
               <div>
-                <label className={labelClass}>Chế độ hiển thị</label>
+                <label className={labelClass}>{t("systemSettings.interfaceSettings.displayMode")}</label>
                 <select
                   className={inputClass}
                   value={draftSettings.theme}
                   onChange={(event) => updateDraft("theme", event.target.value as ThemeMode)}
                   disabled={!isEditing}
                 >
-                  <option value="light">Sáng</option>
-                  <option value="dark">Tối</option>
+                  <option value="light">{t("systemSettings.interfaceSettings.light")}</option>
+                  <option value="dark">{t("systemSettings.interfaceSettings.dark")}</option>
                 </select>
               </div>
 
               <div>
-                <label className={labelClass}>Ngôn ngữ</label>
+                <label className={labelClass}>{t("systemSettings.interfaceSettings.language")}</label>
                 <select
                   className={inputClass}
                   value={draftSettings.language}
                   onChange={(event) => updateDraft("language", event.target.value as Language)}
                   disabled={!isEditing}
                 >
-                  <option value="vi">Tiếng Việt</option>
-                  <option value="en">English</option>
+                  <option value="vi">{t("systemSettings.interfaceSettings.vietnamese")}</option>
+                  <option value="en">{t("systemSettings.interfaceSettings.english")}</option>
                 </select>
               </div>
             </div>
 
             <div className={`${rowClass} mt-5`}>
               <div>
-                <p className="font-semibold text-slate-800 dark:text-slate-100">Thông báo qua email</p>
+                <p className="font-semibold text-slate-800 dark:text-slate-100">{t("systemSettings.interfaceSettings.emailNotifications")}</p>
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                  Gửi các thay đổi và thông báo hệ thống quan trọng đến email quản trị.
+                  {t("systemSettings.interfaceSettings.emailNotificationsDesc")}
                 </p>
               </div>
 
@@ -370,14 +231,14 @@ const SystemSettings: React.FC = () => {
                   onClick={cancelEditing}
                   className="inline-flex items-center rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
                 >
-                  Hủy
+                  {t("common.cancel")}
                 </button>
                 <button
                   type="submit"
                   className="inline-flex items-center rounded-xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 dark:bg-indigo-500 dark:hover:bg-indigo-400"
                 >
                   <FaSave className="mr-2" />
-                  Lưu cài đặt
+                  {t("systemSettings.saveSettings")}
                 </button>
               </>
             ) : (
@@ -387,7 +248,7 @@ const SystemSettings: React.FC = () => {
                 className="inline-flex items-center rounded-xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 dark:bg-indigo-500 dark:hover:bg-indigo-400"
               >
                 <MdAdminPanelSettings className="mr-2 text-lg" />
-                Chỉnh sửa hệ thống
+                {t("systemSettings.editSystem")}
               </button>
             )}
           </div>

@@ -4,12 +4,11 @@ import {
   TbLayoutSidebarRightCollapseFilled,
 } from "react-icons/tb";
 import { FiLogOut } from "react-icons/fi";
-import { MdDarkMode, MdLightMode } from "react-icons/md";
+import { useTranslation } from "react-i18next";
 import { type NavigationItem } from "../../types/index.ts";
-import { navData, adminNavData } from "../../data/NavData.ts";
+import { useNavigationItems } from "../../hooks/useNavigationItems";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { useTheme } from "../../context/ThemeContext";
 
 interface SideBarProps {
   navigationItems?: NavigationItem[];
@@ -21,10 +20,10 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout, getUserRole } = useAuth();
-  const { theme, toggleTheme } = useTheme();
+  const { t } = useTranslation();
 
   const userRole = getUserRole();
-  const defaultNavItems = userRole === "admin" ? adminNavData : navData;
+  const defaultNavItems = useNavigationItems(userRole as "admin" | "doctor" | "nurse");
   const itemsToDisplay = navigationItems || defaultNavItems;
 
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -59,13 +58,6 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
       <div
         className={`
           h-screen bg-slate-50 dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800 flex flex-col transition-all duration-300
-          
-          /* --- LOGIC QUAN TRỌNG Ở ĐÂY --- */
-          /* Mobile: Luôn Fixed đè lên content, Z-index cao hơn backdrop */
-          fixed left-0 top-0 z-50 
-          
-          /* Desktop (md): Trở về Relative để đẩy content sang phải */
-          md:relative md:z-auto
 
           ${isCollapsed ? "w-14" : "w-80"}
         `}
@@ -156,36 +148,13 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
               </div>
             )}
           </div>
-          {/* Toggle Dark/Light Mode */}
-          <button
-            onClick={toggleTheme}
-            title={theme === "dark" ? "Chuyển sang Light Mode" : "Chuyển sang Dark Mode"}
-            className={`
-              flex w-full items-center py-2 rounded-lg mt-1
-              text-slate-600 dark:text-slate-300
-              hover:bg-blue-50 dark:hover:bg-slate-900
-              hover:text-blue-700 dark:hover:text-blue-300
-              transition-all duration-200
-              ${isCollapsed ? "justify-center px-0" : "px-4 gap-3"}
-            `}
-          >
-            <span className="text-2xl transition-transform duration-300">
-              {theme === "dark" ? <MdDarkMode /> : <MdLightMode className="text-orange-400" />}
-            </span>
-            {!isCollapsed && (
-              <span className="text-base font-semibold">
-                {theme === "dark" ? "Dark Mode" : "Light Mode"}
-              </span>
-            )}
-          </button>
-
           <button
             onClick={handleLogout}
             className="flex w-full items-center justify-center py-2 rounded-md text-xl 
             text-slate-600 dark:text-slate-300 hover:bg-rose-100 dark:hover:bg-rose-950/60 hover:text-rose-700 dark:hover:text-rose-300 transition duration-400 mt-1"
           >
             <FiLogOut className="mr-1" />
-            {!isCollapsed && <span>Đăng xuất</span>}
+            {!isCollapsed && <span>{t("sidebar.logout")}</span>}
           </button>
           <div className="mt-16 md:mt-0 "> </div>
         </div>

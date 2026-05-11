@@ -11,6 +11,11 @@ type CreateDepartmentRequest struct {
 	Description string `json:"description"`
 }
 
+type UpdateDepartmentRequest struct {
+	Name        string `json:"name" binding:"required"`
+	Description string `json:"description"`
+}
+
 type AddDepartmentMemberRequest struct {
 	UserID string `json:"userId" binding:"required"`
 }

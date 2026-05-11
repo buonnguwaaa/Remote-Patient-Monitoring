@@ -17,6 +17,8 @@ import (
 
 type DepartmentService interface {
 	Create(ctx context.Context, input *usecase.CreateDepartmentInput) (*dto.DepartmentResponse, error)
+	Update(ctx context.Context, input *usecase.UpdateDepartmentInput) (*dto.DepartmentResponse, error)
+	Delete(ctx context.Context, id string) error
 	FindAll(ctx context.Context) ([]*dto.DepartmentResponse, error)
 	GetMembers(ctx context.Context, input *usecase.GetDepartmentMembersInput) ([]*dto.Member, error)
 	AddMember(ctx context.Context, input *usecase.AddDepartmentMemberInput) error
@@ -151,4 +153,75 @@ func (s *departmentService) AddMember(ctx context.Context, input *usecase.AddDep
 	}
 
 	return errors.New("only doctors and nurses can be assigned to departments")
+}
+
+func (s *departmentService) Update(ctx context.Context, input *usecase.UpdateDepartmentInput) (*dto.DepartmentResponse, error) {
+	oid, err := primitive.ObjectIDFromHex(input.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check if department exists
+	existing, err := s.deptRepo.FindByID(ctx, oid)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, errors.New("department not found")
+		}
+		return nil, err
+	}
+
+	// Update fields
+	existing.Name = input.Name
+	existing.Description = input.Description
+	existing.UpdatedAt = time.Now().UTC()
+
+	// Save to database
+	updated, err := s.deptRepo.Update(ctx, existing)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get member count
+	memberCount, err := s.deptRepo.CountMembersByDepartmentIDs(ctx, []primitive.ObjectID{updated.ID})
+	if err != nil {
+		memberCount = map[primitive.ObjectID]int{updated.ID: 0}
+	}
+
+	return &dto.DepartmentResponse{
+		ID:          updated.ID,
+		Name:        updated.Name,
+		Description: updated.Description,
+		MemberCount: memberCount[updated.ID],
+		CreatedAt:   updated.CreatedAt,
+		UpdatedAt:   updated.UpdatedAt,
+	}, nil
+}
+
+func (s *departmentService) Delete(ctx context.Context, id string) error {
+	oid, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return err
+	}
+
+	// Check if department exists
+	_, err = s.deptRepo.FindByID(ctx, oid)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return errors.New("department not found")
+		}
+		return err
+	}
+
+	// Check if department has members
+	memberCount, err := s.deptRepo.CountMembersByDepartmentIDs(ctx, []primitive.ObjectID{oid})
+	if err != nil {
+		return err
+	}
+
+	if memberCount[oid] > 0 {
+		return errors.New("cannot delete department with members")
+	}
+
+	// Delete department
+	return s.deptRepo.Delete(ctx, oid)
 }

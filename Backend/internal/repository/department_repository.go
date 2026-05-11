@@ -12,11 +12,12 @@ import (
 
 type DepartmentRepository interface {
 	Create(ctx context.Context, dept *domain.Department) (*domain.Department, error)
+	Update(ctx context.Context, dept *domain.Department) (*domain.Department, error)
+	Delete(ctx context.Context, id primitive.ObjectID) error
 	FindAll(ctx context.Context) ([]*domain.Department, error)
 	FindByID(ctx context.Context, id primitive.ObjectID) (*domain.Department, error)
 	FindMembersByDepartmentID(ctx context.Context, deptID primitive.ObjectID) ([]*userDomain.BaseUser, error)
 	CountMembersByDepartmentIDs(ctx context.Context, deptIDs []primitive.ObjectID) (map[primitive.ObjectID]int, error)
-	Update(ctx context.Context, dept *domain.Department) error
 }
 
 type departmentRepository struct {
@@ -123,9 +124,18 @@ func (r *departmentRepository) CountMembersByDepartmentIDs(ctx context.Context, 
 	return counts, nil
 }
 
-func (r *departmentRepository) Update(ctx context.Context, dept *domain.Department) error {
+func (r *departmentRepository) Update(ctx context.Context, dept *domain.Department) (*domain.Department, error) {
 	filter := bson.M{"_id": dept.ID}
 	update := bson.M{"$set": dept}
 	_, err := r.collection.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return nil, err
+	}
+	return dept, nil
+}
+
+func (r *departmentRepository) Delete(ctx context.Context, id primitive.ObjectID) error {
+	filter := bson.M{"_id": id}
+	_, err := r.collection.DeleteOne(ctx, filter)
 	return err
 }

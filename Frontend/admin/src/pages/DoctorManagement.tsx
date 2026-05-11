@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { FaUserMd, FaEdit, FaTrash, FaPlus, FaSearch } from "react-icons/fa";
+import { useTranslation } from "react-i18next";
 import api from "../services/api";
 import { uploadAvatar } from "../services/uploadService";
 import { useToast } from "../hooks/useToast";
@@ -39,6 +40,7 @@ function resolveDepartmentName(departments: Department[], departmentId: unknown)
 }
 
 const DoctorManagement: React.FC = () => {
+  const { t } = useTranslation();
   const [doctors, setDoctors] = useState<doctor[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [showModal, setShowModal] = useState(false);
@@ -75,7 +77,7 @@ const DoctorManagement: React.FC = () => {
         setDoctors(apiDoctors);
       }
     } catch (err) {
-      console.error("Lỗi khi tải danh sách bác sĩ", err);
+      console.error(t("doctorManagement.loadError"), err);
     }
   };
 
@@ -84,13 +86,14 @@ const DoctorManagement: React.FC = () => {
   }, []);
 
   const handleDelete = async (id: string) => {
-    if (window.confirm("Bạn có chắc chắn muốn xóa bác sĩ này?")) {
+    if (window.confirm(t("doctorManagement.confirmDelete"))) {
       try {
         await api.delete(`/users/${id}`);
         setDoctors(doctors.filter((doc) => doc.id !== id));
+        showToast(t("doctorManagement.deleteSuccess"));
       } catch (err) {
-        console.error("Lỗi xóa bác sĩ", err);
-        alert("Có lỗi xảy ra khi xóa.");
+        console.error(t("doctorManagement.deleteError"), err);
+        showToast(t("doctorManagement.deleteErrorMessage"), "error");
       }
     }
   };
@@ -140,7 +143,7 @@ const DoctorManagement: React.FC = () => {
               {doctor.gender} - {doctor.dateOfBirth}
             </div>
             <div className="mt-1 text-sm text-gray-700 dark:text-gray-300">
-              {doctor.department || "Chưa gán"}
+              {doctor.department || t("common.notAssigned")}
             </div>
           </div>
 
@@ -150,29 +153,29 @@ const DoctorManagement: React.FC = () => {
               : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
               }`}
           >
-            {doctor.status === "active" ? "Hoạt động" : "Không hoạt động"}
+            {doctor.status === "active" ? t("common.active") : t("common.inactive")}
           </span>
         </div>
 
         <div className="mt-4 grid grid-cols-1 gap-2 text-sm text-gray-700 dark:text-gray-300 sm:grid-cols-2">
           <div>
-            <span className="text-gray-500 dark:text-gray-400">Chuyên khoa: </span>
-            <span className="font-medium">{doctor.specialization || "Chưa cập nhật"}</span>
+            <span className="text-gray-500 dark:text-gray-400">{t("doctorManagement.labels.specialization")} </span>
+            <span className="font-medium">{doctor.specialization || t("common.notUpdated")}</span>
           </div>
           <div>
-            <span className="text-gray-500 dark:text-gray-400">Nơi làm việc: </span>
-            <span className="font-medium">{doctor.workplace || "Chưa cập nhật"}</span>
+            <span className="text-gray-500 dark:text-gray-400">{t("doctorManagement.labels.workplace")} </span>
+            <span className="font-medium">{doctor.workplace || t("common.notUpdated")}</span>
           </div>
           <div>
-            <span className="text-gray-500 dark:text-gray-400">Số giấy phép: </span>
-            <span className="font-medium">{doctor.licenseNumber || "Chưa cập nhật"}</span>
+            <span className="text-gray-500 dark:text-gray-400">{t("doctorManagement.labels.licenseNumber")} </span>
+            <span className="font-medium">{doctor.licenseNumber || t("common.notUpdated")}</span>
           </div>
           <div>
-            <span className="text-gray-500 dark:text-gray-400">Kinh nghiệm: </span>
-            <span className="font-medium">{doctor.yearsOfExperience} năm</span>
+            <span className="text-gray-500 dark:text-gray-400">{t("doctorManagement.labels.experience")} </span>
+            <span className="font-medium">{doctor.yearsOfExperience} {t("doctorManagement.labels.years")}</span>
           </div>
           <div className="sm:col-span-2">
-            <span className="text-gray-500 dark:text-gray-400">Liên hệ: </span>
+            <span className="text-gray-500 dark:text-gray-400">{t("doctorManagement.labels.contact")} </span>
             <span className="font-medium">{doctor.email}</span>
           </div>
         </div>
@@ -181,14 +184,14 @@ const DoctorManagement: React.FC = () => {
           <button
             onClick={() => handleEdit(doctor)}
             className="rounded-lg p-2 text-blue-600 transition hover:bg-blue-50 hover:text-blue-900 dark:hover:bg-blue-900/20"
-            aria-label="Chỉnh sửa bác sĩ"
+            aria-label={t("doctorManagement.editDoctor")}
           >
             <FaEdit />
           </button>
           <button
             onClick={() => handleDelete(doctor.id)}
             className="rounded-lg p-2 text-red-600 transition hover:bg-red-50 hover:text-red-900 dark:hover:bg-red-900/20"
-            aria-label="Xóa bác sĩ"
+            aria-label={t("common.delete")}
           >
             <FaTrash />
           </button>
@@ -224,7 +227,7 @@ const DoctorManagement: React.FC = () => {
       } else {
         const password = formData.get("password") as string;
         if (!password || password.length < 8) {
-          alert("Mật khẩu phải có ít nhất 8 ký tự!");
+          showToast(t("auth.passwordMinLength"), "error");
           return;
         }
         await api.post("/auth/register", {
@@ -249,10 +252,10 @@ const DoctorManagement: React.FC = () => {
       fetchPageData();
       setShowModal(false);
       setAvatarFile(null);
-      showToast(editingDoctor?.id ? "Cập nhật bác sĩ thành công!" : "Thêm bác sĩ thành công!");
+      showToast(editingDoctor?.id ? t("doctorManagement.updateSuccess") : t("doctorManagement.addSuccess"));
     } catch (err: any) {
       console.error(err);
-      showToast("Lỗi: " + (err.response?.data?.error || err.message), "error");
+      showToast(t("doctorManagement.errorPrefix") + " " + (err.response?.data?.error || err.message), "error");
     }
   };
 
@@ -263,15 +266,15 @@ const DoctorManagement: React.FC = () => {
         <div>
           <h1 className="flex items-center text-2xl font-bold text-gray-800 dark:text-white md:text-3xl">
             <FaUserMd className="mr-3 text-blue-600" />
-            Quản lý bác sĩ
+            {t("doctorManagement.title")}
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-2">
-            Tổng số: {doctors.length} bác sĩ
+            {t("doctorManagement.totalCount", { count: doctors.length })}
           </p>
         </div>
         <button onClick={handleAdd} className={`${adminPrimaryButtonClass} w-full md:w-auto`}>
           <FaPlus className="mr-2" />
-          Thêm bác sĩ
+          {t("doctorManagement.addDoctor")}
         </button>
       </div>
 
@@ -280,7 +283,7 @@ const DoctorManagement: React.FC = () => {
           <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
           <input
             type="text"
-            placeholder="Tìm kiếm theo tên, chuyên khoa, khoa/phòng..."
+            placeholder={t("doctorManagement.searchPlaceholder")}
             className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -291,7 +294,7 @@ const DoctorManagement: React.FC = () => {
       <div className="space-y-4 md:hidden">
         {filteredDoctors.length === 0 ? (
           <div className="rounded-lg bg-white p-6 text-center text-gray-500 shadow-md dark:bg-gray-800 dark:text-gray-400">
-            Không có dữ liệu hiển thị.
+            {t("common.noData")}
           </div>
         ) : (
           filteredDoctors.map((doctor) => renderDoctorCard(doctor))
@@ -304,31 +307,31 @@ const DoctorManagement: React.FC = () => {
           <thead className="bg-gray-50 dark:bg-gray-700 border-b dark:border-gray-600">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Bác sĩ
+                {t("doctorManagement.fields.name")}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Khoa/phòng
+                {t("doctorManagement.fields.department")}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Chuyên khoa
+                {t("doctorManagement.fields.specialization")}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Nơi làm việc
+                {t("doctorManagement.fields.workplace")}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Số giấy phép
+                {t("doctorManagement.fields.licenseNumber")}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Kinh nghiệm
+                {t("doctorManagement.fields.yearsOfExperience")}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Trạng thái
+                {t("doctorManagement.fields.status")}
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Liên hệ
+                {t("doctorManagement.fields.contact")}
               </th>
               <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Hành động
+                {t("common.edit")}
               </th>
             </tr>
           </thead>
@@ -342,7 +345,7 @@ const DoctorManagement: React.FC = () => {
                       src={doctor.profileImageUrl || "/avartar.jpg"}
                       onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = "/avartar.jpg"; }}
                       onClick={() => setPreviewImage(doctor.profileImageUrl || "/avartar.jpg")}
-                      title="Nhấn để xem ảnh"
+                      title={t("doctorManagement.clickToViewImage")}
                     />
                     <div className="ml-4">
                       <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
@@ -355,23 +358,23 @@ const DoctorManagement: React.FC = () => {
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                  {doctor.department || "Chưa gán"}
+                  {doctor.department || t("common.notAssigned")}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                   {doctor.specialization}
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
-                  {doctor.workplace || "Chưa cập nhật"}
+                  {doctor.workplace || t("common.notUpdated")}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                   {doctor.licenseNumber}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                  {doctor.yearsOfExperience} năm
+                  {doctor.yearsOfExperience} {t("doctorManagement.labels.years")}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${doctor.status === "active" ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"}`}>
-                    {doctor.status === "active" ? "Hoạt động" : "Không hoạt động"}
+                    {doctor.status === "active" ? t("common.active") : t("common.inactive")}
                   </span>
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
@@ -403,7 +406,7 @@ const DoctorManagement: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
           <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white p-4 md:p-6 dark:bg-gray-800">
             <h2 className="mb-4 text-xl font-bold dark:text-white md:text-2xl">
-              {editingDoctor ? "Chỉnh sửa bác sĩ" : "Thêm bác sĩ mới"}
+              {editingDoctor ? t("doctorManagement.editDoctor") : t("doctorManagement.addNewDoctor")}
             </h2>
             <form className="space-y-4" onSubmit={handleSubmit}>
               <AvatarUploader
@@ -414,7 +417,7 @@ const DoctorManagement: React.FC = () => {
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Họ tên
+                    {t("doctorManagement.fields.name")}
                   </label>
                   <input
                     name="name"
@@ -426,20 +429,20 @@ const DoctorManagement: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Khoa/phòng
+                    {t("doctorManagement.fields.department")}
                   </label>
                   <input
                     type="text"
                     disabled
                     value={editingDoctor?.department || ""}
-                    placeholder="Gán tại Quản lý Khoa / Phòng"
+                    placeholder={t("doctorManagement.assignAtDepartment")}
                     className="w-full px-3 py-2 border border-gray-200 bg-gray-100 text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 rounded-lg cursor-not-allowed"
                     readOnly
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Chuyên khoa
+                    {t("doctorManagement.fields.specialization")}
                   </label>
                   <input
                     name="specialization"
@@ -451,7 +454,7 @@ const DoctorManagement: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Số giấy phép
+                    {t("doctorManagement.fields.licenseNumber")}
                   </label>
                   <input
                     name="licenseNumber"
@@ -463,7 +466,7 @@ const DoctorManagement: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Nơi làm việc
+                    {t("doctorManagement.fields.workplace")}
                   </label>
                   <input
                     name="workplace"
@@ -475,7 +478,7 @@ const DoctorManagement: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Kinh nghiệm (năm)
+                    {t("doctorManagement.fields.yearsOfExperience")}
                   </label>
                   <input
                     name="yearsOfExperience"
@@ -487,7 +490,7 @@ const DoctorManagement: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Email
+                    {t("doctorManagement.fields.email")}
                   </label>
                   <input
                     name="email"
@@ -499,7 +502,7 @@ const DoctorManagement: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Số điện thoại
+                    {t("doctorManagement.fields.phone")}
                   </label>
                   <input
                     name="phone"
@@ -511,41 +514,41 @@ const DoctorManagement: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Giới tính
+                    {t("doctorManagement.fields.gender")}
                   </label>
                   <select
                     name="gender"
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     defaultValue={editingDoctor?.gender}
                   >
-                    <option value="Nam">Nam</option>
-                    <option value="Nữ">Nữ</option>
+                    <option value="Nam">{t("common.male")}</option>
+                    <option value="Nữ">{t("common.female")}</option>
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Trạng thái
+                    {t("doctorManagement.fields.status")}
                   </label>
                   <select
                     name="status"
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     defaultValue={editingDoctor?.status || "active"}
                   >
-                    <option value="active">Hoạt động</option>
-                    <option value="inactive">Không hoạt động</option>
+                    <option value="active">{t("common.active")}</option>
+                    <option value="inactive">{t("common.inactive")}</option>
                   </select>
                 </div>
                 {!editingDoctor && (
                   <div className="col-span-2">
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Mật khẩu <span className="text-gray-400 font-normal">(tài khoản đăng nhập)</span>
+                      {t("doctorManagement.fields.password")}
                     </label>
                     <input
                       name="password"
                       type="password"
                       required
                       minLength={8}
-                      placeholder="Tối thiểu 8 ký tự"
+                      placeholder={t("auth.passwordMinLength")}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
@@ -557,13 +560,13 @@ const DoctorManagement: React.FC = () => {
                   onClick={() => setShowModal(false)}
                   className={`${adminSecondaryButtonClass} w-full md:w-auto`}
                 >
-                  Hủy
+                  {t("common.cancel")}
                 </button>
                 <button
                   type="submit"
                   className={`${adminPrimaryButtonClass} w-full md:w-auto`}
                 >
-                  {editingDoctor ? "Cập nhật" : "Thêm mới"}
+                  {editingDoctor ? t("common.update") : t("common.add")}
                 </button>
               </div>
             </form>
@@ -590,7 +593,7 @@ const DoctorManagement: React.FC = () => {
             </button>
             <img
               src={previewImage}
-              alt="Ảnh đại diện"
+              alt={t("avatarUploader.title")}
               className="rounded-2xl shadow-2xl object-cover"
               style={{ maxWidth: "80vw", maxHeight: "80vh", minWidth: 200, minHeight: 200 }}
               onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = "/avartar.jpg"; }}

@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, Modal } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons, FontAwesome5 } from "@expo/vector-icons";
 import { useAuth } from "../../hooks/useAuth";
@@ -7,7 +7,8 @@ import { useFocusEffect } from "@react-navigation/native";
 import React, { useCallback, useState } from "react";
 import { LineChart } from "react-native-chart-kit";
 
-const screenWidth = Dimensions.get("window").width - 40;
+const screenWidth = Dimensions.get("window").width;
+const chartWidth = screenWidth - 60; // Account for padding and margins
 
 function formatDate(iso) {
   const d = new Date(iso);
@@ -60,6 +61,7 @@ export default function HistoryScreen({ route, isEmbedded }) {
   const [tab, setTab] = useState("bp");
   const [showMore, setShowMore] = useState(false);
   const [measurements, setMeasurements] = useState([]);
+  const [showChartModal, setShowChartModal] = useState(false);
 
   const fetchMeasurements = async () => {
     const res = await getMeasurements(patientId);
@@ -80,16 +82,35 @@ export default function HistoryScreen({ route, isEmbedded }) {
       (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
     );
 
+  // Filter data based on time range
+  const now = new Date();
+  const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+  const fourMonthsAgo = new Date(now.getTime() - 120 * 24 * 60 * 60 * 1000);
+
+  // For small chart: show last 2 weeks
+  const recentMeasurements = activeMeasurements.filter(
+    (m) => new Date(m.createdAt) >= twoWeeksAgo
+  );
+
+  // For modal chart: show last 4 months
+  const extendedMeasurements = activeMeasurements.filter(
+    (m) => new Date(m.createdAt) >= fourMonthsAgo
+  );
+
   let chartLabels = [];
   let chartDatasets = [];
   let legend = [];
 
-  if (activeMeasurements.length > 0) {
-    chartLabels = activeMeasurements.map((m) => formatShortLabel(m.createdAt));
+  if (recentMeasurements.length > 0) {
+    // Show fewer labels to prevent overlap - show every nth label based on data count
+    const labelInterval = recentMeasurements.length > 10 ? Math.ceil(recentMeasurements.length / 6) : 1;
+    chartLabels = recentMeasurements.map((m, idx) => 
+      idx % labelInterval === 0 ? formatShortLabel(m.createdAt) : ""
+    );
 
     if (tab === "bp") { 
-      const systolicArr = activeMeasurements.map((m) => m.bloodPressure?.systolic || m.systolic || 0);
-      const diastolicArr = activeMeasurements.map((m) => m.bloodPressure?.diastolic || m.diastolic || 0);
+      const systolicArr = recentMeasurements.map((m) => m.bloodPressure?.systolic || m.systolic || 0);
+      const diastolicArr = recentMeasurements.map((m) => m.bloodPressure?.diastolic || m.diastolic || 0);
       chartDatasets = [
         {
           data: systolicArr,
@@ -104,7 +125,7 @@ export default function HistoryScreen({ route, isEmbedded }) {
       ];
       legend = ["Tâm thu", "Tâm trương"];
     } else if (tab === "glucose") {
-      const glucoseArr = activeMeasurements.map((m) => m.glucose || 0);
+      const glucoseArr = recentMeasurements.map((m) => m.glucose || 0);
       chartDatasets = [
         {
           data: glucoseArr,
@@ -114,7 +135,7 @@ export default function HistoryScreen({ route, isEmbedded }) {
       ];
       legend = ["Đường huyết (mg/dL)"];
     } else if (tab === "spo2") {
-      const spo2Arr = activeMeasurements.map((m) => m.spo2 || 0);
+      const spo2Arr = recentMeasurements.map((m) => m.spo2 || 0);
       chartDatasets = [
         {
           data: spo2Arr,
@@ -124,7 +145,7 @@ export default function HistoryScreen({ route, isEmbedded }) {
       ];
       legend = ["SpO₂ (%)"];
     } else if (tab === "temp") {
-      const tempArr = activeMeasurements.map((m) => m.temperature || 0);
+      const tempArr = recentMeasurements.map((m) => m.temperature || 0);
       chartDatasets = [
         {
           data: tempArr,
@@ -134,7 +155,7 @@ export default function HistoryScreen({ route, isEmbedded }) {
       ];
       legend = ["Nhiệt độ (°C)"];
     } else if (tab === "heartRate") {
-      const heartRateArr = activeMeasurements.map((m) => m.heartRate || 0);
+      const heartRateArr = recentMeasurements.map((m) => m.heartRate || 0);
       chartDatasets = [
         {
           data: heartRateArr,
@@ -144,7 +165,7 @@ export default function HistoryScreen({ route, isEmbedded }) {
       ];
       legend = ["Nhịp tim (bpm)"];
     } else if (tab === "respiratoryRate") {
-      const respiratoryRateArr = activeMeasurements.map((m) => m.respiratoryRate || 0);
+      const respiratoryRateArr = recentMeasurements.map((m) => m.respiratoryRate || 0);
       chartDatasets = [
         {
           data: respiratoryRateArr,
@@ -153,6 +174,80 @@ export default function HistoryScreen({ route, isEmbedded }) {
         },
       ];
       legend = ["Nhịp thở (lần/ph)"];
+    }
+  }
+
+  // Prepare data for modal chart (4 months)
+  let modalChartLabels = [];
+  let modalChartDatasets = [];
+
+  if (extendedMeasurements.length > 0) {
+    // Show labels with appropriate spacing for 4 months of data
+    const labelInterval = extendedMeasurements.length > 20 ? Math.ceil(extendedMeasurements.length / 10) : 1;
+    modalChartLabels = extendedMeasurements.map((m, idx) => 
+      idx % labelInterval === 0 ? formatShortLabel(m.createdAt) : ""
+    );
+
+    if (tab === "bp") { 
+      const systolicArr = extendedMeasurements.map((m) => m.bloodPressure?.systolic || m.systolic || 0);
+      const diastolicArr = extendedMeasurements.map((m) => m.bloodPressure?.diastolic || m.diastolic || 0);
+      modalChartDatasets = [
+        {
+          data: systolicArr,
+          strokeWidth: 2,
+          color: (opacity = 1) => `rgba(220, 38, 38, ${opacity})`,
+        },
+        {
+          data: diastolicArr,
+          strokeWidth: 2,
+          color: (opacity = 1) => `rgba(37, 99, 235, ${opacity})`,
+        },
+      ];
+    } else if (tab === "glucose") {
+      const glucoseArr = extendedMeasurements.map((m) => m.glucose || 0);
+      modalChartDatasets = [
+        {
+          data: glucoseArr,
+          strokeWidth: 2,
+          color: (opacity = 1) => `rgba(245, 158, 11, ${opacity})`,
+        },
+      ];
+    } else if (tab === "spo2") {
+      const spo2Arr = extendedMeasurements.map((m) => m.spo2 || 0);
+      modalChartDatasets = [
+        {
+          data: spo2Arr,
+          strokeWidth: 2,
+          color: (opacity = 1) => `rgba(16, 185, 129, ${opacity})`,
+        },
+      ];
+    } else if (tab === "temp") {
+      const tempArr = extendedMeasurements.map((m) => m.temperature || 0);
+      modalChartDatasets = [
+        {
+          data: tempArr,
+          strokeWidth: 2,
+          color: (opacity = 1) => `rgba(239, 68, 68, ${opacity})`,
+        },
+      ];
+    } else if (tab === "heartRate") {
+      const heartRateArr = extendedMeasurements.map((m) => m.heartRate || 0);
+      modalChartDatasets = [
+        {
+          data: heartRateArr,
+          strokeWidth: 2,
+          color: (opacity = 1) => `rgba(139, 92, 246, ${opacity})`,
+        },
+      ];
+    } else if (tab === "respiratoryRate") {
+      const respiratoryRateArr = extendedMeasurements.map((m) => m.respiratoryRate || 0);
+      modalChartDatasets = [
+        {
+          data: respiratoryRateArr,
+          strokeWidth: 2,
+          color: (opacity = 1) => `rgba(14, 165, 233, ${opacity})`,
+        },
+      ];
     }
   }
 
@@ -293,7 +388,7 @@ export default function HistoryScreen({ route, isEmbedded }) {
         <View style={styles.card}>
           <View style={styles.rowBetween}>
             <Text style={styles.cardTitle}>Xu hướng gần đây</Text>
-            <TouchableOpacity>
+            <TouchableOpacity onPress={() => setShowChartModal(true)}>
               <Text style={styles.detailBtn}>Xem chi tiết</Text>
             </TouchableOpacity>
           </View>
@@ -303,6 +398,11 @@ export default function HistoryScreen({ route, isEmbedded }) {
               <Ionicons name="stats-chart" size={22} color="#9CA3AF" />
               <Text style={styles.emptyChartText}>Chưa có dữ liệu để hiển thị</Text>
             </View>
+          ) : recentMeasurements.length === 0 ? (
+            <View style={styles.emptyChartBox}>
+              <Ionicons name="stats-chart" size={22} color="#9CA3AF" />
+              <Text style={styles.emptyChartText}>Không có dữ liệu trong 2 tuần gần đây</Text>
+            </View>
           ) : (
             <LineChart
               data={{
@@ -310,7 +410,7 @@ export default function HistoryScreen({ route, isEmbedded }) {
                 datasets: chartDatasets,
                 legend,
               }}
-              width={screenWidth}
+              width={chartWidth}
               height={200}
               yAxisLabel=""
               chartConfig={{
@@ -449,6 +549,76 @@ export default function HistoryScreen({ route, isEmbedded }) {
           </View>
         )}
       </ScrollView>
+
+      {/* CHART MODAL */}
+      <Modal
+        visible={showChartModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowChartModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Biểu đồ chi tiết</Text>
+              <TouchableOpacity
+                onPress={() => setShowChartModal(false)}
+                style={styles.modalCloseBtn}
+              >
+                <Ionicons name="close" size={24} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+              {activeMeasurements.length === 0 ? (
+                <View style={[styles.emptyChartBox, { width: screenWidth - 40 }]}>
+                  <Ionicons name="stats-chart" size={32} color="#9CA3AF" />
+                  <Text style={styles.emptyChartText}>Chưa có dữ liệu để hiển thị</Text>
+                </View>
+              ) : extendedMeasurements.length === 0 ? (
+                <View style={[styles.emptyChartBox, { width: screenWidth - 40 }]}>
+                  <Ionicons name="stats-chart" size={32} color="#9CA3AF" />
+                  <Text style={styles.emptyChartText}>Không có dữ liệu trong 4 tháng gần đây</Text>
+                </View>
+              ) : (
+                <LineChart
+                  data={{
+                    labels: modalChartLabels,
+                    datasets: modalChartDatasets,
+                    legend,
+                  }}
+                  width={Math.max(screenWidth - 40, extendedMeasurements.length * 40)}
+                  height={400}
+                  yAxisLabel=""
+                  chartConfig={{
+                    backgroundColor: "#FFFFFF",
+                    backgroundGradientFrom: "#FFFFFF",
+                    backgroundGradientTo: "#FFFFFF",
+                    decimalPlaces: 0,
+                    color: (opacity = 1) => `rgba(17, 24, 39, ${opacity})`,
+                    labelColor: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
+                    propsForDots: {
+                      r: "5",
+                    },
+                    propsForBackgroundLines: {
+                      strokeDasharray: "4",
+                    },
+                  }}
+                  bezier
+                  style={{ marginVertical: 8, borderRadius: 12 }}
+                />
+              )}
+            </ScrollView>
+
+            <View style={styles.modalFooter}>
+              <Text style={styles.modalHint}>
+                <Ionicons name="information-circle" size={14} color="#6B7280" />
+                {" "}Hiển thị dữ liệu 4 tháng gần nhất · Vuốt ngang để xem toàn bộ
+              </Text>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </Container>
   );
 }
@@ -674,5 +844,55 @@ const styles = StyleSheet.create({
   emptyListText: {
     fontSize: 13,
     color: "#6B7280",
+  },
+
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    padding: 20,
+    width: screenWidth - 40,
+    maxHeight: "80%",
+    shadowColor: "#000",
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 5,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#111827",
+  },
+  modalCloseBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#F3F4F6",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalFooter: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#E5E7EB",
+  },
+  modalHint: {
+    fontSize: 12,
+    color: "#6B7280",
+    textAlign: "center",
   },
 });
