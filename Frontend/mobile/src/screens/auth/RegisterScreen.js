@@ -12,7 +12,6 @@ import {
 import ButtonPrimary from '../../components/ButtonPrimary';
 import { Feather } from '@expo/vector-icons';
 import styles from '../../styles/login';
-import { Alert } from 'react-native';
 
 import { useAuth } from '../../hooks/useAuth';
 

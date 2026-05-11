@@ -42,7 +42,10 @@ func AlertWorkflow(ctx workflow.Context, input dto.MeasurementAlertInput) (strin
 	}
 
 	var publishResult struct{}
-	if err := workflow.ExecuteActivity(ctx, "PublishChatEventActivity", dto.PublishChatEventInput{ConversationID: sendResult.ConversationID, Message: sendResult.Message}).Get(ctx, &publishResult); err != nil {
+	if err := workflow.ExecuteActivity(ctx, "PublishChatEventActivity", dto.PublishChatEventInput{
+		ConversationID: sendResult.ConversationID,
+		Message:        sendResult.Message,
+	}).Get(ctx, &publishResult); err != nil {
 		return "", err
 	}
 

@@ -3,63 +3,87 @@
  * Common utilities for exporting data to Excel files
  */
 
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 
 /**
  * Apply styling to header row
  */
-export const styleHeaderRow = (worksheet: XLSX.WorkSheet, headerColor: string = '4F46E5') => {
-  const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+export const styleHeaderRow = (worksheet: ExcelJS.Worksheet, headerColor: string = '4F46E5') => {
+  const headerRow = worksheet.getRow(1);
   
-  for (let col = range.s.c; col <= range.e.c; col++) {
-    const cellAddress = XLSX.utils.encode_cell({ r: 0, c: col });
-    if (!worksheet[cellAddress]) continue;
-    
-    worksheet[cellAddress].s = {
-      font: { bold: true, color: { rgb: "FFFFFF" } },
-      fill: { fgColor: { rgb: headerColor } },
-      alignment: { horizontal: "center", vertical: "center" },
+  headerRow.eachCell((cell) => {
+    cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    cell.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: `FF${headerColor}` },
     };
-  }
+    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+  });
+  
+  headerRow.height = 20;
 };
 
 /**
  * Set column widths for worksheet
  */
-export const setColumnWidths = (worksheet: XLSX.WorkSheet, widths: number[]) => {
-  worksheet['!cols'] = widths.map(wch => ({ wch }));
+export const setColumnWidths = (worksheet: ExcelJS.Worksheet, widths: number[]) => {
+  worksheet.columns = worksheet.columns.map((col, index) => ({
+    ...col,
+    width: widths[index] || 15,
+  }));
 };
 
 /**
  * Create and download Excel file
  */
-export const downloadExcelFile = (workbook: XLSX.WorkBook, filename: string) => {
-  XLSX.writeFile(workbook, filename);
+export const downloadExcelFile = async (workbook: ExcelJS.Workbook, filename: string) => {
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { 
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+  });
+  
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  window.URL.revokeObjectURL(url);
 };
 
 /**
  * Create a new workbook
  */
-export const createWorkbook = (): XLSX.WorkBook => {
-  return XLSX.utils.book_new();
+export const createWorkbook = (): ExcelJS.Workbook => {
+  return new ExcelJS.Workbook();
 };
 
 /**
  * Add worksheet to workbook
  */
 export const addWorksheet = (
-  workbook: XLSX.WorkBook,
+  workbook: ExcelJS.Workbook,
   data: any[],
   sheetName: string,
   columnWidths?: number[]
-): XLSX.WorkSheet => {
-  const worksheet = XLSX.utils.json_to_sheet(data);
+): ExcelJS.Worksheet => {
+  const worksheet = workbook.addWorksheet(sheetName);
   
-  if (columnWidths) {
-    setColumnWidths(worksheet, columnWidths);
+  if (data.length > 0) {
+    // Add headers
+    const headers = Object.keys(data[0]);
+    worksheet.addRow(headers);
+    
+    // Add data rows
+    data.forEach(row => {
+      worksheet.addRow(Object.values(row));
+    });
+    
+    // Apply column widths
+    if (columnWidths) {
+      setColumnWidths(worksheet, columnWidths);
+    }
   }
-  
-  XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
   
   return worksheet;
 };

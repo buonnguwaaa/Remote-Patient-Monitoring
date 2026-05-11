@@ -5,7 +5,6 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
@@ -19,6 +18,7 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 
 import MeasurementDraftForm from "../../components/MeasurementDraftForm";
 import { useAuth } from "../../hooks/useAuth";
+import { useSnackbar } from "../../hooks/useSnackbar";
 import { createMeasurement } from "../../api/measurementApi";
 import { getMyAssignments } from "../../api/assignmentApi";
 import { getPatientById } from "../../api/patientApi";
@@ -86,6 +86,7 @@ function getPatientSuccessLabel(patient = {}) {
 
 export default function MeasurementInputScreen() {
   const { user } = useAuth() || {};
+  const { showSuccess, showError, showWarning, showInfo } = useSnackbar();
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [assignedPatients, setAssignedPatients] = useState([]);
   const [assignmentsLoading, setAssignmentsLoading] = useState(true);
@@ -203,7 +204,7 @@ export default function MeasurementInputScreen() {
 
   const ensureSelectedPatient = () => {
     if (!selectedPatient?.patientId) {
-      Alert.alert("Thiếu thông tin", "Hãy quét QR hoặc nhập mã hồ sơ để chọn bệnh nhân trước.");
+      showWarning("Hãy quét QR hoặc nhập mã hồ sơ để chọn bệnh nhân trước");
       return false;
     }
     return true;
@@ -213,7 +214,7 @@ export default function MeasurementInputScreen() {
     if (!ensureSelectedPatient()) return false;
     const validationError = getMeasurementValidationError(sectionKey, measurementValues);
     if (validationError) {
-      Alert.alert(validationError.title, validationError.message);
+      showWarning(`${validationError.title}: ${validationError.message}`);
       return false;
     }
     return true;
@@ -237,7 +238,7 @@ export default function MeasurementInputScreen() {
       setPatientSearchCode(partialPatient.patientCode);
       setLookupError(error.message || "Không tải được hồ sơ chi tiết của bệnh nhân.");
       resetMeasurementDraft();
-      Alert.alert("Đã chọn bệnh nhân", "Đã nhận diện được bệnh nhân theo mã hồ sơ nhưng chưa tải đủ hồ sơ chi tiết.");
+      showInfo("Đã nhận diện được bệnh nhân theo mã hồ sơ nhưng chưa tải đủ hồ sơ chi tiết");
       return partialPatient;
     } finally {
       setLookupLoading(false);
@@ -248,7 +249,7 @@ export default function MeasurementInputScreen() {
   const lookupPatientByCode = async (rawCode) => {
     const normalizedCode = String(rawCode || "").trim();
     if (!normalizedCode) {
-      Alert.alert("Thiếu mã hồ sơ", "Hãy nhập hoặc quét mã hồ sơ bệnh nhân.");
+      showWarning("Hãy nhập hoặc quét mã hồ sơ bệnh nhân");
       return;
     }
     const sourcePatients = assignedPatients.length > 0 ? assignedPatients : await loadAssignments();
@@ -258,7 +259,7 @@ export default function MeasurementInputScreen() {
     if (!matchedPatient) {
       setScannerVisible(false);
       setLookupError("Không tìm thấy bệnh nhân phù hợp trong danh sách được phân công.");
-      Alert.alert("Không tìm thấy bệnh nhân", "Mã hồ sơ không thuộc danh sách bệnh nhân đang được phân công cho điều dưỡng này.");
+      showError("Mã hồ sơ không thuộc danh sách bệnh nhân đang được phân công cho điều dưỡng này");
       return;
     }
     setPatientSearchCode(matchedPatient.patientCode);
@@ -267,7 +268,7 @@ export default function MeasurementInputScreen() {
 
   const openScanner = async () => {
     if (Platform.OS === "web") {
-      Alert.alert("Chưa hỗ trợ", "Quét QR chỉ khả dụng trên thiết bị có camera.");
+      showWarning("Quét QR chỉ khả dụng trên thiết bị có camera");
       return;
     }
     let granted = cameraPermission?.granted;
@@ -276,7 +277,7 @@ export default function MeasurementInputScreen() {
       granted = permission.granted;
     }
     if (!granted) {
-      Alert.alert("Không có quyền camera", "Vui lòng cho phép ứng dụng sử dụng camera để quét QR.");
+      showError("Vui lòng cho phép ứng dụng sử dụng camera để quét QR");
       return;
     }
     setScannerLocked(false);
@@ -306,21 +307,21 @@ export default function MeasurementInputScreen() {
     if (!validateSection(type)) return;
     setSavedSections((prev) => ({ ...prev, [type]: true }));
     const label = getMeasurementSectionLabel(type);
-    Alert.alert("Đã lưu tạm", `${label} đã được lưu. Bạn có thể nhập tiếp nhóm chỉ số khác.`);
+    showInfo(`${label} đã được lưu. Bạn có thể nhập tiếp nhóm chỉ số khác.`);
   };
 
   const submitMeasurement = async () => {
     if (!ensureSelectedPatient()) return;
     const missingSections = MEASUREMENT_SECTIONS.filter((item) => !savedSections[item.key]);
     if (missingSections.length > 0) {
-      Alert.alert("Thiếu chỉ số", `Bạn cần nhập và lưu đủ tất cả chỉ số trước khi gửi. Còn thiếu: ${missingSections.map((item) => item.label).join(", ")}.`);
+      showWarning(`Bạn cần nhập và lưu đủ tất cả chỉ số trước khi gửi. Còn thiếu: ${missingSections.map((item) => item.label).join(", ")}.`);
       return;
     }
     const unsavedSections = MEASUREMENT_SECTIONS.filter(
       (item) => hasMeasurementSectionValue(item.key, measurementValues) && !savedSections[item.key]
     );
     if (unsavedSections.length > 0) {
-      Alert.alert("Chưa lưu hết dữ liệu", `Bạn còn ${unsavedSections.length} nhóm chỉ số đang nhập nhưng chưa bấm "Lưu thông tin".`);
+      showWarning(`Bạn còn ${unsavedSections.length} nhóm chỉ số đang nhập nhưng chưa bấm "Lưu thông tin".`);
       return;
     }
     for (const section of MEASUREMENT_SECTIONS) {
@@ -335,13 +336,10 @@ export default function MeasurementInputScreen() {
       setSubmitting(true);
       const response = await createMeasurement(payload);
       if (!response.ok) throw new Error(getErrorMessage(response));
-      Alert.alert(
-        "Thành công",
-        `Đã gửi bản đo lên hệ thống cho ${getPatientSuccessLabel(selectedPatient)}.`
-      );
+      showSuccess(`Đã gửi bản đo lên hệ thống cho ${getPatientSuccessLabel(selectedPatient)}`);
       resetMeasurementDraft();
     } catch (error) {
-      Alert.alert("Gửi dữ liệu thất bại", error.message || "Vui lòng thử lại.");
+      showError(error.message || "Gửi dữ liệu thất bại. Vui lòng thử lại.");
     } finally {
       setSubmitting(false);
     }

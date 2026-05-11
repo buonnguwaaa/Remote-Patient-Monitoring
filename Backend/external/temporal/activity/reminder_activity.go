@@ -49,7 +49,7 @@ func (a *ReminderActivity) SendReminderActivity(ctx context.Context, reminderID 
 		return fmt.Errorf("invalid scheduled reminder time: %w", err)
 	}
 
-	title := "Nhắc nhở sức khỏe"
+	var title string
 	body := strings.TrimSpace(reminder.Message)
 	targetScreen := "PatientNotifications"
 	if reminder.Kind == domain.KindMeasure {

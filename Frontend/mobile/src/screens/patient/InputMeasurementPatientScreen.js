@@ -1,10 +1,11 @@
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
 
 import MeasurementDraftForm from "../../components/MeasurementDraftForm";
 import { useAuth } from "../../hooks/useAuth";
+import { useSnackbar } from "../../hooks/useSnackbar";
 import { createMeasurement } from "../../api/measurementApi";
 import {
   buildMeasurementPayload,
@@ -18,6 +19,7 @@ import {
 
 export default function InputMeasurementPatientScreen({ isEmbedded }) {
   const { user } = useAuth() || {};
+  const { showSuccess, showError, showWarning, showInfo } = useSnackbar();
   const currentPatientUser = user || { _id: "u_patient_self_1", id: "p1", name: "Thong tin mau" };
   const [type, setType] = useState("bp");
   const [timing, setTiming] = useState("pre");
@@ -83,7 +85,7 @@ export default function InputMeasurementPatientScreen({ isEmbedded }) {
 
   const ensurePatient = () => {
     if (!currentPatientUser || (!currentPatientUser._id && !currentPatientUser.id)) {
-      Alert.alert("Lỗi", "Không xác định được tài khoản bệnh nhân.");
+      showError("Không xác định được tài khoản bệnh nhân");
       return false;
     }
     return true;
@@ -93,7 +95,7 @@ export default function InputMeasurementPatientScreen({ isEmbedded }) {
     if (!ensurePatient()) return false;
     const validationError = getMeasurementValidationError(sectionKey, measurementValues);
     if (validationError) {
-      Alert.alert(validationError.title, validationError.message);
+      showWarning(`${validationError.title}: ${validationError.message}`);
       return false;
     }
     return true;
@@ -123,15 +125,14 @@ export default function InputMeasurementPatientScreen({ isEmbedded }) {
     if (!validateSection(type)) return;
     setSavedSections((prev) => ({ ...prev, [type]: true }));
     const label = getMeasurementSectionLabel(type);
-    Alert.alert("Đã lưu tạm", `${label} đã được lưu trên màn hình. Bạn có thể nhập tiếp phần khác rồi gửi một lần.`);
+    showInfo(`${label} đã được lưu trên màn hình. Bạn có thể nhập tiếp phần khác rồi gửi một lần.`);
   };
 
   const submitMeasurement = async () => {
     if (!ensurePatient()) return;
     const missingSections = MEASUREMENT_SECTIONS.filter((item) => !savedSections[item.key]);
     if (missingSections.length > 0) {
-      Alert.alert(
-        "Thiếu chỉ số",
+      showWarning(
         `Bạn cần nhập và lưu đủ tất cả chỉ số trước khi gửi. Còn thiếu: ${missingSections
           .map((item) => item.label)
           .join(", ")}.`
@@ -143,7 +144,7 @@ export default function InputMeasurementPatientScreen({ isEmbedded }) {
       (item) => hasMeasurementSectionValue(item.key, measurementValues) && !savedSections[item.key]
     );
     if (unsavedKeys.length > 0) {
-      Alert.alert("Chưa lưu hết dữ liệu", `Bạn còn ${unsavedKeys.length} phần đang nhập nhưng chưa bấm "Lưu thông tin".`);
+      showWarning(`Bạn còn ${unsavedKeys.length} phần đang nhập nhưng chưa bấm "Lưu thông tin".`);
       return;
     }
     for (const key of savedKeys) {
@@ -159,14 +160,14 @@ export default function InputMeasurementPatientScreen({ isEmbedded }) {
       setSubmitting(true);
       const response = await createMeasurement(payload);
       if (response.ok) {
-        Alert.alert("Thành công", "Đã gửi bản đo lên hệ thống.");
+        showSuccess("Đã gửi bản đo lên hệ thống");
         resetForm();
         return;
       }
       const errorMessage = response.body?.error || response.error || "Gửi dữ liệu lỗi, vui lòng thử lại.";
-      Alert.alert("Đã xảy ra lỗi", errorMessage);
+      showError(errorMessage);
     } catch (error) {
-      Alert.alert("Lỗi", "Không thể kết nối đến máy chủ.");
+      showError("Không thể kết nối đến máy chủ");
     } finally {
       setSubmitting(false);
     }

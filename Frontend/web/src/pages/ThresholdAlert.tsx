@@ -6,13 +6,9 @@ import {
   FaExclamationTriangle,
   FaInfoCircle,
   FaRegClock,
-  FaSort,
-  FaSortDown,
-  FaSortUp,
   FaSyncAlt,
 } from "react-icons/fa";
 
-import Table, { type Column } from "../components/ui/Table";
 import Toast from "../components/ui/Toast";
 import { useToast } from "../hooks/useToast";
 import {
@@ -22,38 +18,23 @@ import {
 } from "../services/patientService";
 import type { AlertResponse, AssignmentResponse } from "../types/patient";
 
-type SortField = "severity" | "status";
-type SortDirection = "asc" | "desc";
-
 const ThresholdAlert = () => {
   const navigate = useNavigate();
   const [alerts, setAlerts] = useState<AlertResponse[]>([]);
-  const [myPatients, setMyPatients] = useState<AssignmentResponse[]>([]);
-  const [sortState, setSortState] = useState<{
-    field: SortField;
-    direction: SortDirection;
-  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showResolveModal, setShowResolveModal] = useState(false);
   const [currentAlert, setCurrentAlert] = useState<AlertResponse | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
   const { toast, showToast, hideToast } = useToast();
 
-  const sortedAlerts = useMemo(() => {
-    if (!sortState) return alerts;
-
-    const direction = sortState.direction === "asc" ? 1 : -1;
-    return [...alerts].sort((a, b) => {
-      const getSortValue = (alert: AlertResponse, field: SortField) => {
-        if (field === "severity") return alert.severity === "high" ? 1 : 0;
-        return alert.status === "open" ? 1 : 0;
-      };
-      const diff =
-        getSortValue(a, sortState.field) - getSortValue(b, sortState.field);
-      return diff * direction;
-    });
-  }, [alerts, sortState]);
+  // Pagination calculations
+  const totalPages = Math.ceil(alerts.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const filteredAlerts = alerts.slice(startIndex, endIndex);
 
   const stats = useMemo(() => {
     return {
@@ -86,7 +67,6 @@ const ThresholdAlert = () => {
         };
       });
 
-      setMyPatients(patientAssignments);
       setAlerts(scopedAlerts);
       setLastUpdated(new Date().toISOString());
     } catch (error) {
@@ -105,33 +85,6 @@ const ThresholdAlert = () => {
   useEffect(() => {
     void loadAlerts(true);
   }, []);
-
-  const handleSort = (field: SortField) => {
-    setSortState((prev) => {
-      if (!prev || prev.field !== field) {
-        return { field, direction: "asc" };
-      }
-
-      return {
-        field,
-        direction: prev.direction === "asc" ? "desc" : "asc",
-      };
-    });
-  };
-
-  const getSortIcon = (field: SortField) => {
-    if (!sortState || sortState.field !== field) {
-      return (
-        <FaSort className="text-[11px] text-gray-400 dark:text-slate-400" />
-      );
-    }
-
-    return sortState.direction === "asc" ? (
-      <FaSortUp className="text-[11px] text-gray-700 dark:text-slate-100" />
-    ) : (
-      <FaSortDown className="text-[11px] text-gray-700 dark:text-slate-100" />
-    );
-  };
 
   const navigateToChat = (alert: AlertResponse) => {
     const query = new URLSearchParams({ alertId: alert.id });
@@ -321,7 +274,7 @@ const ThresholdAlert = () => {
           <button
             type="button"
             onClick={() => navigateToChat(alert)}
-            className="inline-flex items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 dark:border-slate-600 dark:bg-slate-700/70 dark:text-slate-100 dark:hover:border-blue-400/40 dark:hover:bg-slate-700 dark:hover:text-blue-200"
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 dark:border-slate-600 dark:bg-slate-700/70 dark:text-slate-100 dark:hover:border-blue-400/40 dark:hover:bg-slate-700 dark:hover:text-blue-200"
           >
             <FaCommentDots />
             Tin nhắn
@@ -353,130 +306,6 @@ const ThresholdAlert = () => {
       </span>
     );
   };
-
-  const tableColumns: Column<AlertResponse>[] = [
-    {
-      header: "Bệnh nhân",
-      className: "whitespace-nowrap",
-      render: (alert) => (
-        <div>
-          <div className="text-sm font-medium text-gray-900 dark:text-slate-100">
-            {alert.patientName || "Bệnh nhân"}
-          </div>
-        </div>
-      ),
-    },
-    {
-      header: "Vi phạm",
-      className: "min-w-[320px]",
-      render: (alert) => (
-        <div className="space-y-1.5">
-          {alert.violations.map((violation, index) => (
-            <div key={`${alert.id}-${index}`} className="text-sm">
-              <span className="font-medium text-gray-700 dark:text-slate-200">
-                {getViolationLabel(violation.type)}:
-              </span>{" "}
-              <span className="font-semibold text-red-600 dark:text-red-300">
-                {violation.observed}
-              </span>
-              <span className="ml-1 text-xs text-gray-500 dark:text-slate-400">
-                (Ngưỡng: {violation.threshold})
-              </span>
-            </div>
-          ))}
-        </div>
-      ),
-    },
-    {
-      header: (
-        <button
-          type="button"
-          onClick={() => handleSort("severity")}
-          className="inline-flex items-center justify-center gap-2 text-xs font-semibold uppercase tracking-wider text-gray-500 transition hover:text-gray-700 dark:text-slate-300 dark:hover:text-slate-100"
-        >
-          <span>Mức độ</span>
-          {getSortIcon("severity")}
-        </button>
-      ),
-      className: "min-w-[150px] text-center",
-      render: (alert) =>
-        alert.severity === "high" ? (
-          <span className="inline-flex whitespace-nowrap items-center gap-1 rounded-md bg-red-100 px-3 py-1 text-xs font-medium text-red-800 dark:bg-red-500/15 dark:text-red-300 dark:ring-1 dark:ring-red-500/25">
-            <FaExclamationTriangle />
-            Nghiêm trọng
-          </span>
-        ) : (
-          <span className="inline-flex whitespace-nowrap items-center gap-1 rounded-md bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800 dark:bg-amber-500/15 dark:text-amber-200 dark:ring-1 dark:ring-amber-500/25">
-            <FaInfoCircle />
-            Thông tin
-          </span>
-        ),
-    },
-    {
-      header: (
-        <button
-          type="button"
-          onClick={() => handleSort("status")}
-          className="inline-flex items-center justify-center gap-2 text-xs font-semibold uppercase tracking-wider text-gray-500 transition hover:text-gray-700 dark:text-slate-300 dark:hover:text-slate-100"
-        >
-          <span>Trạng thái</span>
-          {getSortIcon("status")}
-        </button>
-      ),
-      className: "min-w-[170px] text-center",
-      render: (alert) => renderStatusBadge(alert),
-    },
-    {
-      header: "Thời gian",
-      className: "min-w-[210px]",
-      render: (alert) => (
-        <div className="text-sm text-gray-600 dark:text-slate-300">
-          <div>{formatDate(alert.createdAt)}</div>
-          {alert.acknowledgedAt && (
-            <div className="mt-1 text-xs text-green-600 dark:text-emerald-300">
-              Đã xác nhận lúc: {formatDate(alert.acknowledgedAt)}
-            </div>
-          )}
-        </div>
-      ),
-    },
-    {
-      header: "Hành động",
-      className: "min-w-[200px] text-center",
-      render: (alert) => (
-        <div className="flex min-w-[160px] flex-col items-center gap-2">
-          {alert.status === "open" ? (
-            <>
-              <button
-                type="button"
-                onClick={() => handleOpenResolveModal(alert)}
-                className="w-full rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-blue-700"
-              >
-                Xử lý
-              </button>
-              <button
-                type="button"
-                onClick={() => navigateToChat(alert)}
-                className="inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 dark:border-slate-600 dark:bg-slate-700/70 dark:text-slate-100 dark:hover:border-blue-400/40 dark:hover:bg-slate-700 dark:hover:text-blue-200"
-              >
-                <FaCommentDots />
-                Tin nhắn
-              </button>
-            </>
-          ) : (
-            <button
-              type="button"
-              onClick={() => navigateToChat(alert)}
-              className="inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 dark:border-slate-600 dark:bg-slate-700/70 dark:text-slate-100 dark:hover:border-blue-400/40 dark:hover:bg-slate-700 dark:hover:text-blue-200"
-            >
-              <FaCommentDots />
-              Tin nhắn
-            </button>
-          )}
-        </div>
-      ),
-    },
-  ];
 
   return (
     <>
@@ -558,33 +387,220 @@ const ThresholdAlert = () => {
             <div className="rounded-lg border border-slate-200 bg-white p-6 text-center text-gray-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
               Đang tải cảnh báo thật từ hệ thống...
             </div>
-          ) : sortedAlerts.length === 0 ? (
+          ) : alerts.length === 0 ? (
             <div className="rounded-lg border border-slate-200 bg-white p-6 text-center text-gray-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
               Không có cảnh báo nào trong scope hiện tại.
             </div>
           ) : (
-            sortedAlerts.map((alert) => renderAlertCard(alert))
+            filteredAlerts.map((alert) => renderAlertCard(alert))
           )}
         </div>
 
         <div className="hidden md:block">
-          {loading ? (
-            <div className="rounded-lg border border-slate-200 bg-white p-6 text-center text-gray-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
-              Đang tải cảnh báo thật từ hệ thống...
+          <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
+            <div className="overflow-x-scroll">
+              <table className="w-full min-w-[1450px] divide-y divide-gray-200 dark:divide-slate-700">
+                <thead className="bg-gray-50 dark:bg-slate-800">
+                  <tr>
+                    <th className="whitespace-nowrap px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-300">
+                      Bệnh nhân
+                    </th>
+                    <th className="whitespace-nowrap px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-300">
+                      Vi phạm
+                    </th>
+                    <th className="min-w-[150px] whitespace-nowrap px-6 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-300">
+                      Mức độ
+                    </th>
+                    <th className="min-w-[170px] whitespace-nowrap px-6 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-300">
+                      Trạng thái
+                    </th>
+                    <th className="min-w-[210px] whitespace-nowrap px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-300">
+                      Thời gian
+                    </th>
+                    <th className="min-w-[220px] whitespace-nowrap px-6 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-300">
+                      Hành động
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 bg-white dark:divide-slate-800 dark:bg-slate-900">
+                  {loading ? (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-10 text-center text-gray-500 dark:text-slate-400">
+                        Đang tải cảnh báo thật từ hệ thống...
+                      </td>
+                    </tr>
+                  ) : filteredAlerts.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-10 text-center text-gray-500 dark:text-slate-400">
+                        Không có cảnh báo nào trong scope hiện tại.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredAlerts.map((alert) => (
+                      <tr key={alert.id} className="transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/70">
+                        <td className="whitespace-nowrap px-6 py-4">
+                          <div className="flex items-center">
+                            <div className="mr-3 flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-blue-100 text-sm font-semibold text-blue-700 dark:bg-blue-500/15 dark:text-blue-200">
+                              {alert.patientAvatarUrl ? (
+                                <img
+                                  src={alert.patientAvatarUrl}
+                                  alt={alert.patientName || alert.patientId}
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : (
+                                (alert.patientName || "P").slice(0, 1).toUpperCase()
+                              )}
+                            </div>
+                            <div>
+                              <div className="text-sm font-medium text-gray-900 dark:text-slate-100">
+                                {alert.patientName || alert.patientId}
+                              </div>
+                              <div className="text-xs text-gray-500 dark:text-slate-400">ID: {alert.patientId}</div>
+                            </div>
+                          </div>
+                        </td>
+
+                        <td className="px-6 py-4">
+                          <div className="space-y-1.5">
+                            {alert.violations.map((violation, index) => (
+                              <div key={`${alert.id}-${index}`} className="text-sm">
+                                <span className="font-medium text-gray-700 dark:text-slate-200">
+                                  {getViolationLabel(violation.type)}:
+                                </span>{" "}
+                                <span className="font-semibold text-red-600 dark:text-red-300">{violation.observed}</span>
+                                <span className="ml-1 text-xs text-gray-500 dark:text-slate-400">
+                                  (Ngưỡng: {violation.threshold})
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </td>
+
+                        <td className="px-6 py-4 text-center">
+                          {alert.severity === "high" ? (
+                            <span className="inline-flex whitespace-nowrap items-center gap-1 rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-800 dark:bg-red-500/15 dark:text-red-300 dark:ring-1 dark:ring-red-500/25">
+                              <FaExclamationTriangle />
+                              Nghiêm trọng
+                            </span>
+                          ) : (
+                            <span className="inline-flex whitespace-nowrap items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800 dark:bg-amber-500/15 dark:text-amber-200 dark:ring-1 dark:ring-amber-500/25">
+                              <FaInfoCircle />
+                              Thông tin
+                            </span>
+                          )}
+                        </td>
+
+                        <td className="px-6 py-4 text-center">{renderStatusBadge(alert)}</td>
+
+                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600 dark:text-slate-300">
+                          <div>{formatDate(alert.createdAt)}</div>
+                          {alert.acknowledgedAt && (
+                            <div className="mt-1 text-xs text-green-600 dark:text-emerald-300">
+                              Đã xác nhận lúc: {formatDate(alert.acknowledgedAt)}
+                            </div>
+                          )}
+                        </td>
+
+                        <td className="px-6 py-4 text-center">
+                          <div className="flex min-w-[180px] flex-col items-center gap-2">
+                            {alert.status === "open" ? (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenResolveModal(alert)}
+                                className="w-full rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+                              >
+                                Xử lý
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => navigateToChat(alert)}
+                                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 dark:border-slate-600 dark:bg-slate-700/70 dark:text-slate-100 dark:hover:border-blue-400/40 dark:hover:bg-slate-700 dark:hover:text-blue-200"
+                              >
+                                <FaCommentDots />
+                                Tin nhắn
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
-          ) : sortedAlerts.length === 0 ? (
-            <div className="rounded-lg border border-slate-200 bg-white p-6 text-center text-gray-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
-              Không có cảnh báo nào trong scope hiện tại.
-            </div>
-          ) : (
-            <Table
-              data={sortedAlerts}
-              columns={tableColumns}
-              itemsPerPage={Math.max(sortedAlerts.length, 1)}
-              className="min-h-0 rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
-            />
-          )}
+          </div>
         </div>
+
+        {/* Pagination Controls */}
+        {!loading && filteredAlerts.length > 0 && (
+          <div className="mt-6 flex flex-col items-center justify-between gap-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none sm:flex-row">
+            <div className="text-sm text-slate-600 dark:text-slate-400">
+              Hiển thị <span className="font-semibold text-slate-900 dark:text-slate-100">{startIndex + 1}</span> -{" "}
+              <span className="font-semibold text-slate-900 dark:text-slate-100">
+                {Math.min(endIndex, filteredAlerts.length)}
+              </span>{" "}
+              trong tổng số <span className="font-semibold text-slate-900 dark:text-slate-100">{filteredAlerts.length}</span> cảnh báo
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+              >
+                Trước
+              </button>
+
+              <div className="flex items-center gap-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                  // Show first page, last page, current page, and pages around current
+                  const showPage =
+                    page === 1 ||
+                    page === totalPages ||
+                    (page >= currentPage - 1 && page <= currentPage + 1);
+
+                  if (!showPage) {
+                    // Show ellipsis
+                    if (page === currentPage - 2 || page === currentPage + 2) {
+                      return (
+                        <span
+                          key={page}
+                          className="px-2 text-slate-400 dark:text-slate-500"
+                        >
+                          ...
+                        </span>
+                      );
+                    }
+                    return null;
+                  }
+
+                  return (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`min-w-[40px] rounded-xl px-3 py-2 text-sm font-medium transition ${
+                        currentPage === page
+                          ? "bg-blue-600 text-white"
+                          : "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+                className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+              >
+                Sau
+              </button>
+            </div>
+          </div>
+        )}
 
         {showResolveModal && currentAlert && (
           <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 pt-10 sm:pt-14">

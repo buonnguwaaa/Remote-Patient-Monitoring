@@ -45,7 +45,7 @@ const isAttentionAlert = (alert: AlertResponse) => {
 /**
  * Export alerts to Excel
  */
-export const exportAlertsToExcel = (data: AlertExportData) => {
+export const exportAlertsToExcel = async (data: AlertExportData) => {
   const { assignments, latestAlertsByPatient, dashboardStats, dateRange } = data;
 
   // Prepare alert data
@@ -94,5 +94,5 @@ export const exportAlertsToExcel = (data: AlertExportData) => {
 
   // Download file
   const filename = generateFilename('canh_bao');
-  downloadExcelFile(workbook, filename);
+  await downloadExcelFile(workbook, filename);
 };

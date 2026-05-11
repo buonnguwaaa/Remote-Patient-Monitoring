@@ -31,7 +31,6 @@ type PublishChatEventInput struct {
 	ConversationID string               `json:"conversationId"`
 	Message        *dto.MessageResponse `json:"message"`
 }
-
 type PublishUserEventInput struct {
 	ConversationID string               `json:"conversationId"`
 	Message        *dto.MessageResponse `json:"message"`
