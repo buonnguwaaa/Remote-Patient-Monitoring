@@ -24,10 +24,11 @@ type ConversationParticipantResponse struct {
 }
 
 type ConversationResponse struct {
-	ID           primitive.ObjectID                `json:"id"`
-	Participants []ConversationParticipantResponse `json:"participants"`
-	CreatedAt    time.Time                         `json:"createdAt"`
-	UpdatedAt    time.Time                         `json:"updatedAt"`
+	ID              primitive.ObjectID                `json:"id"`
+	Participants    []ConversationParticipantResponse `json:"participants"`
+	LatestMessageID *primitive.ObjectID               `json:"latestMessageId,omitempty"`
+	CreatedAt       time.Time                         `json:"createdAt"`
+	UpdatedAt       time.Time                         `json:"updatedAt"`
 }
 
 type MessageResponse struct {

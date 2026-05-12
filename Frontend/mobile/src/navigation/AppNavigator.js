@@ -16,6 +16,7 @@ import {
   navigationRef,
   flushPendingNotificationNavigation,
 } from "./navigationRef";
+import { BadgeProvider, useBadge } from "../context/BadgeContext";
 
 import LoginScreen from "../screens/auth/LoginScreen";
 import RegisterScreen from "../screens/auth/RegisterScreen";
@@ -39,7 +40,11 @@ const Tab = createBottomTabNavigator();
 
 function PatientTabNavigator() {
   const insets = useSafeAreaInsets();
-  
+  const { unreadNotifCount, unreadMessageCount } = useBadge();
+
+  const notifBadge = unreadNotifCount > 0 ? (unreadNotifCount > 99 ? "99+" : unreadNotifCount) : undefined;
+  const msgBadge = unreadMessageCount > 0 ? (unreadMessageCount > 99 ? "99+" : unreadMessageCount) : undefined;
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -57,6 +62,15 @@ function PatientTabNavigator() {
           height: 60 + insets.bottom,
           paddingBottom: insets.bottom + 8,
           paddingTop: 6,
+        },
+        tabBarBadgeStyle: {
+          fontSize: 10,
+          fontWeight: "700",
+          minWidth: 18,
+          height: 18,
+          borderRadius: 9,
+          lineHeight: 18,
+          backgroundColor: "#DC2626",
         },
         tabBarIcon: ({ color, size }) => {
           if (route.name === "PatientHome") {
@@ -80,8 +94,8 @@ function PatientTabNavigator() {
     >
       <Tab.Screen name="PatientHome" component={HomeScreen} options={{ title: "Trang chủ" }} />
       <Tab.Screen name="PatientTracking" component={TrackingScreen} options={{ title: "Theo dõi" }} />
-      <Tab.Screen name="DoctorChat" component={DoctorChatScreen} options={{ title: "Tin nhắn" }} />
-      <Tab.Screen name="PatientNotifs" component={NotificationContainerScreen} options={{ title: "Thông báo" }} />
+      <Tab.Screen name="DoctorChat" component={DoctorChatScreen} options={{ title: "Tin nhắn", tabBarBadge: msgBadge }} />
+      <Tab.Screen name="PatientNotifs" component={NotificationContainerScreen} options={{ title: "Thông báo", tabBarBadge: notifBadge }} />
       <Tab.Screen name="PatientProfile" component={ProfileScreen} options={{ title: "Hồ sơ" }} />
     </Tab.Navigator>
   );
@@ -160,7 +174,15 @@ function RootNavigator() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen
         name="MainTabs"
-        component={role === "user.nurse" || role === "nurse" ? NurseTabNavigator : PatientTabNavigator}
+        component={
+          role === "user.nurse" || role === "nurse"
+            ? NurseTabNavigator
+            : () => (
+                <BadgeProvider>
+                  <PatientTabNavigator />
+                </BadgeProvider>
+              )
+        }
       />
       {role !== "user.nurse" && role !== "nurse" && (
         <>

@@ -23,6 +23,7 @@ import {
   getConversationMessages,
   getConversations,
 } from "../../api/chatApi";
+import { getAlertById } from "../../api/alertApi";
 
 const QUICK_REPLIES = [
   "Dạ tôi đã xem.",
@@ -89,6 +90,7 @@ function normalizeMessage(message) {
     id: message.id || message._id,
     conversationId: message.conversationId || message.chatId,
     senderId: message.senderId,
+    messageSource: message.messageSource || null,
     content: message.content || message.message || "",
     replyToMessageId: message.replyToMessageId || null,
     relatedAlertId: message.relatedAlertId || null,
@@ -96,6 +98,7 @@ function normalizeMessage(message) {
     updatedAt: message.updatedAt || message.createdAt,
   };
 }
+
 
 function formatTime(iso) {
   const date = new Date(iso);
@@ -266,9 +269,9 @@ function parseAlertLinkedMessage(content, relatedAlertId) {
   }
 
   return {
-    hasStructuredAlertSummary: false,
-    alertSummary: "",
-    note: segments.join("\n").trim(),
+    hasStructuredAlertSummary: true,
+    alertSummary: segments.join("\n").trim(),
+    note: "",
     shortAlertId: String(relatedAlertId).slice(-8),
   };
 }
@@ -290,6 +293,20 @@ function getReplyPreviewContent(message) {
   return normalized.length > 100 ? `${normalized.slice(0, 97)}...` : normalized;
 }
 
+function getViolationLabel(type) {
+  const labels = {
+    temperature: "Nhiệt độ",
+    heart_rate: "Nhịp tim",
+    respiratory_rate: "Nhịp thở",
+    spo2: "SpO2",
+    blood_pressure_systolic: "Huyết áp tâm thu",
+    blood_pressure_diastolic: "Huyết áp tâm trương",
+    glucose: "Đường huyết",
+  };
+  return labels[type] || type;
+}
+
+
 export default function DoctorChatScreen() {
   const { user } = useAuth();
   const currentUserId = user?.id || user?._id;
@@ -308,6 +325,7 @@ export default function DoctorChatScreen() {
   const scrollViewRef = useRef(null);
   const lastDeliveredSentRef = useRef(null);
   const lastReadSentRef = useRef(null);
+  const [alertsCache, setAlertsCache] = useState({});
   async function fetchConversationMessages(conversationId, limit = 100) {
     const messagesResponse = await getConversationMessages(conversationId, limit);
     if (!messagesResponse.ok) {
@@ -403,6 +421,30 @@ export default function DoctorChatScreen() {
 
     loadChat();
   }, [currentUserId, isFocused]);
+
+  // Batch pre-fetch alert data for system messages to show violations inline
+  useEffect(() => {
+    const systemAlertIds = [...new Set(
+      messages
+        .filter((m) => m.messageSource === "system" && m.relatedAlertId)
+        .map((m) => m.relatedAlertId)
+    )];
+
+    const missing = systemAlertIds.filter((id) => !alertsCache[id]);
+    if (missing.length === 0) return;
+
+    Promise.allSettled(missing.map((id) => getAlertById(id))).then((results) => {
+      const next = {};
+      results.forEach((result, i) => {
+        if (result.status === "fulfilled" && result.value?.ok) {
+          next[missing[i]] = result.value.body?.data || null;
+        }
+      });
+      if (Object.keys(next).length > 0) {
+        setAlertsCache((prev) => ({ ...prev, ...next }));
+      }
+    });
+  }, [messages]);
 
   useEffect(() => {
     if (!isFocused || conversation?.id) {
@@ -734,12 +776,91 @@ export default function DoctorChatScreen() {
                 }
 
                 const isMine = item.message.senderId === currentUserId;
-                const isDoctor = !isMine;
+                const isSystemMessage = item.message.messageSource === "system";
+                const isDoctor = !isMine && !isSystemMessage;
                 const alertMessage = parseAlertLinkedMessage(
                   item.message.content,
                   item.message.relatedAlertId
                 );
                 const hasAlertTag = Boolean(item.message.relatedAlertId);
+
+                // System messages: 3rd-party participant with shield icon + violations grid
+                if (isSystemMessage) {
+                  const cachedAlert = item.message.relatedAlertId
+                    ? alertsCache[item.message.relatedAlertId]
+                    : null;
+                  const isHigh = cachedAlert?.severity === "high";
+                  const violations = cachedAlert?.violations ?? [];
+
+                  return (
+                    <View key={item.key} style={styles.systemMsgRow}>
+                      {/* Shield avatar */}
+                      <View style={[styles.systemAvatar, isHigh ? styles.systemAvatarHigh : styles.systemAvatarWarn]}>
+                        <Ionicons
+                          name="shield-checkmark-outline"
+                          size={16}
+                          color={isHigh ? "#DC2626" : "#D97706"}
+                        />
+                      </View>
+
+                      <View style={styles.systemMsgBody}>
+                        {/* Sender label + severity badge */}
+                        <View style={styles.systemMsgHeader}>
+                          <Text style={styles.systemSenderLabel}>Hệ thống giám sát</Text>
+                          {cachedAlert ? (
+                            <View style={[styles.systemSeverityBadge, isHigh ? styles.severityHigh : styles.severityWarn]}>
+                              <Ionicons name="warning-outline" size={9} color={isHigh ? "#DC2626" : "#D97706"} />
+                              <Text style={[styles.systemSeverityText, isHigh ? styles.severityHighText : styles.severityWarnText]}>
+                                {isHigh ? "Nghiêm trọng" : "Cảnh báo"}
+                              </Text>
+                            </View>
+                          ) : null}
+                        </View>
+
+                        {/* Message card */}
+                        <View style={[styles.systemCard, isHigh ? styles.systemCardHigh : styles.systemCardWarn]}>
+                          {/* Violations grid */}
+                          {violations.length > 0 ? (
+                            <View style={styles.violationsBlock}>
+                              <Text style={[styles.violationsTitle, isHigh ? styles.violationsTitleHigh : styles.violationsTitleWarn]}>
+                                {violations.length} chỉ số vượt ngưỡng
+                              </Text>
+                              <View style={styles.violationsGrid}>
+                                {violations.map((v, idx) => (
+                                  <View
+                                    key={idx}
+                                    style={[styles.violationItem, v.severity === "high" ? styles.violationItemHigh : styles.violationItemWarn]}
+                                  >
+                                    <Text style={styles.violationLabel}>{getViolationLabel(v.type)}</Text>
+                                    <Text style={[styles.violationValue, v.severity === "high" ? styles.violationValueHigh : styles.violationValueWarn]}>
+                                      {v.observed}
+                                    </Text>
+                                    <Text style={styles.violationThreshold}>Ngưỡng: {v.threshold}</Text>
+                                  </View>
+                                ))}
+                              </View>
+                            </View>
+                          ) : null}
+
+                          {/* Message text */}
+                          <Text style={[styles.systemMsgText, isHigh ? styles.systemMsgTextHigh : styles.systemMsgTextWarn]}>
+                            {item.message.content}
+                          </Text>
+
+                          {/* Time + ack status */}
+                          <View style={styles.systemMsgFooter}>
+                            <Text style={styles.systemMsgTime}>{formatTime(item.message.createdAt)}</Text>
+                            {cachedAlert ? (
+                              <Text style={styles.systemMsgStatus}>
+                                • {cachedAlert.status === "ack" ? "Đã xác nhận" : "Chờ xử lý"}
+                              </Text>
+                            ) : null}
+                          </View>
+                        </View>
+                      </View>
+                    </View>
+                  );
+                }
                 const repliedMessage = item.message.replyToMessageId
                   ? messageLookup.get(item.message.replyToMessageId)
                   : null;
@@ -1606,4 +1727,191 @@ const styles = StyleSheet.create({
   sendButtonDisabled: {
     backgroundColor: "#9CA3AF",
   },
+
+  // System message styles
+  systemMessageWrapper: {
+    alignItems: "center",
+    marginVertical: 6,
+    paddingHorizontal: 16,
+  },
+  systemMessageBubble: {
+    maxWidth: "85%",
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    alignItems: "center",
+    backgroundColor: "#F1F5F9",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  systemMessageBubbleAlert: {
+    backgroundColor: "#FFFBEB",
+    borderColor: "#FDE68A",
+  },
+  systemAlertBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginBottom: 6,
+    backgroundColor: "#FEF3C7",
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  systemAlertBadgeText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#B45309",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginLeft: 3,
+  },
+  systemMessageText: {
+    fontSize: 13,
+    color: "#64748B",
+    textAlign: "center",
+    lineHeight: 19,
+  },
+  systemMessageTextAlert: {
+    color: "#92400E",
+    fontWeight: "500",
+  },
+  systemMessageHint: {
+    marginTop: 5,
+    fontSize: 11,
+    color: "#B45309",
+    textAlign: "center",
+    fontStyle: "italic",
+  },
+  systemMessageTime: {
+    marginTop: 4,
+    fontSize: 10,
+    color: "#94A3B8",
+    textAlign: "center",
+  },
+  // ── New 3rd-party system message styles ──────────────────────────────
+  systemMsgRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginVertical: 3,
+    paddingHorizontal: 12,
+    gap: 7,
+  },
+  systemAvatar: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 14,
+    flexShrink: 0,
+  },
+  systemAvatarHigh: { backgroundColor: "#FEE2E2" },
+  systemAvatarWarn: { backgroundColor: "#FEF3C7" },
+  systemMsgBody: { flex: 1 },
+  systemMsgHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    marginBottom: 3,
+  },
+  systemSenderLabel: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: "#94A3B8",
+  },
+  systemSeverityBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+    borderRadius: 999,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+  },
+  severityHigh: { backgroundColor: "#FEE2E2" },
+  severityWarn: { backgroundColor: "#FEF3C7" },
+  systemSeverityText: { fontSize: 9, fontWeight: "700" },
+  severityHighText: { color: "#DC2626" },
+  severityWarnText: { color: "#D97706" },
+  systemCard: {
+    borderRadius: 12,
+    borderTopLeftRadius: 3,
+    padding: 9,
+    borderWidth: 1,
+  },
+  systemCardHigh: {
+    backgroundColor: "#FFF5F5",
+    borderColor: "#FECACA",
+  },
+  systemCardWarn: {
+    backgroundColor: "#FFFBEB",
+    borderColor: "#FDE68A",
+  },
+  violationsBlock: { marginBottom: 7 },
+  violationsTitle: {
+    fontSize: 9,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+    marginBottom: 4,
+  },
+  violationsTitleHigh: { color: "#DC2626" },
+  violationsTitleWarn: { color: "#D97706" },
+  violationsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 4,
+  },
+  violationItem: {
+    width: "47%",
+    borderRadius: 6,
+    padding: 6,
+    borderWidth: 1,
+  },
+  violationItemHigh: {
+    backgroundColor: "#FEE2E2",
+    borderColor: "#FECACA",
+  },
+  violationItemWarn: {
+    backgroundColor: "#FEF3C7",
+    borderColor: "#FDE68A",
+  },
+  violationLabel: {
+    fontSize: 9,
+    fontWeight: "500",
+    color: "#475569",
+    marginBottom: 1,
+  },
+  violationValue: {
+    fontSize: 13,
+    fontWeight: "700",
+    marginBottom: 1,
+  },
+  violationValueHigh: { color: "#DC2626" },
+  violationValueWarn: { color: "#D97706" },
+  violationThreshold: {
+    fontSize: 9,
+    color: "#64748B",
+  },
+  systemMsgText: {
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  systemMsgTextHigh: { color: "#7F1D1D" },
+  systemMsgTextWarn: { color: "#78350F" },
+  systemMsgFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 4,
+    gap: 5,
+  },
+  systemMsgTime: {
+    fontSize: 9,
+    color: "#94A3B8",
+  },
+  systemMsgStatus: {
+    fontSize: 9,
+    color: "#94A3B8",
+  },
 });
+

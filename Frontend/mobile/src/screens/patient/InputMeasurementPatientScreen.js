@@ -1,7 +1,8 @@
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
+import { useNavigation } from "@react-navigation/native";
 
 import MeasurementDraftForm from "../../components/MeasurementDraftForm";
 import { useAuth } from "../../hooks/useAuth";
@@ -19,6 +20,8 @@ import {
 
 export default function InputMeasurementPatientScreen({ isEmbedded }) {
   const { user } = useAuth() || {};
+  const navigation = useNavigation();
+  const canGoBack = navigation.canGoBack();
   const { showSuccess, showError, showWarning, showInfo } = useSnackbar();
   const currentPatientUser = user || { _id: "u_patient_self_1", id: "p1", name: "Thong tin mau" };
   const [type, setType] = useState("bp");
@@ -179,6 +182,16 @@ export default function InputMeasurementPatientScreen({ isEmbedded }) {
     <Container style={{ flex: 1, backgroundColor: "#F2F6FF" }}>
       <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}>
         <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}>
+          {canGoBack ? (
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="arrow-back" size={20} color="#2563EB" />
+              <Text style={styles.backButtonText}>Quay lại</Text>
+            </TouchableOpacity>
+          ) : null}
           <View style={styles.headerRow}>
             <Text style={styles.headerTitle}>Tự nhập chỉ số sức khỏe</Text>
             <View style={{ width: 40 }} />
@@ -219,6 +232,8 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   container: { padding: 20 },
   contentContainer: { paddingBottom: 32 },
+  backButton: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 12, alignSelf: "flex-start", paddingVertical: 4 },
+  backButtonText: { fontSize: 14, fontWeight: "600", color: "#2563EB" },
   headerRow: { flexDirection: "row", alignItems: "center", marginBottom: 16 },
   headerTitle: { fontSize: 18, fontWeight: "700", color: "#111827", flex: 1 },
   patientBar: { backgroundColor: "#EEF2FF", borderRadius: 16, padding: 12, flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 },

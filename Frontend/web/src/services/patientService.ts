@@ -94,6 +94,15 @@ export const acknowledgeAlert = async (alertId: string): Promise<AlertResponse> 
   return response.data.data;
 };
 
+export const getAlertById = async (alertId: string): Promise<AlertResponse | null> => {
+  try {
+    const response = await api.get<{ data: AlertResponse }>(`/alerts/${alertId}`);
+    return response.data.data || null;
+  } catch {
+    return null;
+  }
+};
+
 export const getPatientById = async (
   id: string
 ): Promise<PatientDetailResponse> => {
