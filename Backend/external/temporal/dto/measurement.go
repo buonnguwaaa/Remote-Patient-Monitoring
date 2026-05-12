@@ -21,9 +21,21 @@ type SendAlertMessageInput struct {
 type SendAlertMessageResult struct {
 	ConversationID string               `json:"conversationId"`
 	Message        *dto.MessageResponse `json:"message"`
+	DoctorID       string               `json:"doctorId"`
+	PatientID      string               `json:"patientId"`
+	AlertID        string               `json:"alertId"`
+	Severity       string               `json:"severity"`
 }
 
 type PublishChatEventInput struct {
 	ConversationID string               `json:"conversationId"`
 	Message        *dto.MessageResponse `json:"message"`
+}
+type PublishUserEventInput struct {
+	ConversationID string               `json:"conversationId"`
+	Message        *dto.MessageResponse `json:"message"`
+	DoctorID       string               `json:"doctorId"`
+	PatientID      string               `json:"patientId"`
+	AlertID        string               `json:"alertId"`
+	Severity       string               `json:"severity"`
 }

@@ -47,6 +47,7 @@ func Start() error {
 
 	container := container.NewTemporalWorkerContainer(pushClient)
 	publisher := measurement_helper.NewRedisChatEventPublisher(config.Redis.Client)
+	userEventPublisher := measurement_helper.NewRedisUserEventPublisher(config.Redis.Client)
 	alertActs := activity.NewProcessingAlertActivity(
 		container.MeasurementRepo,
 		container.ThresholdRepo,
@@ -56,6 +57,7 @@ func Start() error {
 		container.MessageRepo,
 		container.NotificationService,
 		publisher,
+		userEventPublisher,
 	)
 	reminderActs := activity.NewReminderActivity(container.ReminderRepo, container.NotificationService)
 
@@ -66,6 +68,7 @@ func Start() error {
 	alertWorker.RegisterActivity(alertActs.SendAlertPushActivity)
 	alertWorker.RegisterActivity(alertActs.SendAlertMessageActivity)
 	alertWorker.RegisterActivity(alertActs.PublishChatEventActivity)
+	alertWorker.RegisterActivity(alertActs.PublishUserEventActivity)
 	reminderWorker.RegisterActivity(reminderActs.GetReminderActivity)
 	reminderWorker.RegisterActivity(reminderActs.SendReminderActivity)
 	reminderWorker.RegisterActivity(reminderActs.UpdateReminderStatusActivity)

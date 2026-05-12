@@ -8,6 +8,7 @@ import (
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/config"
 	domain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/handler"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/realtime"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository"
 	chatRepository "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository/chat"
 	userRepository "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository/user"
@@ -60,6 +61,10 @@ type MainServerContainer struct {
 
 	WSChatHandler *ws.Handler
 	Hub           *ws.Hub
+
+	RealtimeHub       *realtime.Hub
+	RealtimeHandler   *realtime.Handler
+	RealtimePublisher *realtime.RedisUserEventPublisher
 
 	JWTManager *util.JWTManager
 
@@ -129,7 +134,21 @@ func NewMainServerContainer() *MainServerContainer {
 			}
 		}()
 	}
-	c.WSChatHandler = ws.NewHandler(c.Hub, c.ChatService)
+
+	// Realtime notification hub + Redis subscriber
+	c.RealtimeHub = realtime.NewHub()
+	go c.RealtimeHub.Run()
+	c.RealtimePublisher = realtime.NewRedisUserEventPublisher(config.Redis.Client)
+	if rtSubscriber := realtime.NewRedisUserEventSubscriber(config.Redis.Client, c.RealtimeHub); rtSubscriber != nil {
+		go func() {
+			if err := rtSubscriber.Start(context.Background()); err != nil {
+				log.Printf("[GIN-error] redis user-event subscriber stopped: %v", err)
+			}
+		}()
+	}
+	c.RealtimeHandler = realtime.NewHandler(c.RealtimeHub)
+
+	c.WSChatHandler = ws.NewHandler(c.Hub, c.ChatService, c.RealtimePublisher, c.ChatService)
 
 	if cldClient, err := config.NewCloudinaryClient(); err != nil {
 		println("[WARN] Cloudinary not configured:", err.Error())

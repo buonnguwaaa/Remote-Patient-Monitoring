@@ -23,3 +23,9 @@ export function getMyNurseAlerts(params = {}) {
     method: "GET",
   });
 }
+
+export function getAlertById(alertId) {
+  return request(`/alerts/${alertId}`, {
+    method: "GET",
+  });
+}

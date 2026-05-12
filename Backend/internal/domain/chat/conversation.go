@@ -13,8 +13,9 @@ type Participant struct {
 }
 
 type Conversation struct {
-	ID           primitive.ObjectID `bson:"_id,omitempty"`
-	Participants []Participant      `bson:"participants"`
-	CreatedAt    time.Time          `bson:"createdAt"`
-	UpdatedAt    time.Time          `bson:"updatedAt"`
+	ID              primitive.ObjectID  `bson:"_id,omitempty"`
+	Participants    []Participant       `bson:"participants"`
+	LatestMessageID *primitive.ObjectID `bson:"latestMessageId,omitempty"`
+	CreatedAt       time.Time           `bson:"createdAt"`
+	UpdatedAt       time.Time           `bson:"updatedAt"`
 }

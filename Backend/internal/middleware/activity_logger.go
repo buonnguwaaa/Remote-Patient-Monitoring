@@ -151,7 +151,7 @@ func (m *ActivityLoggerMiddleware) LogActivity() gin.HandlerFunc {
 		if err := m.repo.Create(c.Request.Context(), activityLog); err != nil {
 			// Log error but don't fail the request
 			log.Printf("[ActivityLogger] Error saving activity log: %v", err)
-			c.Error(err)
+			_ = c.Error(err)
 		} else {
 			log.Printf("[ActivityLogger] Successfully saved activity log: %s - %s", userName, action)
 		}
@@ -207,7 +207,7 @@ func (m *ActivityLoggerMiddleware) logLoginActivity(c *gin.Context, requestBody 
 	if err := m.repo.Create(c.Request.Context(), activityLog); err != nil {
 		// Log error but don't fail the request
 		log.Printf("[ActivityLogger] Login - error saving activity log: %v", err)
-		c.Error(err)
+		_ = c.Error(err)
 	} else {
 		log.Printf("[ActivityLogger] Login - successfully saved activity log for: %s", user.Name)
 	}
@@ -397,7 +397,7 @@ func enhanceActionMessage(action string, metadata map[string]any) string {
 			} else if status == "inactive" {
 				statusVN = "Vô hiệu hóa"
 			}
-			
+
 			resource := ""
 			if strings.Contains(action, "bác sĩ") {
 				resource = "bác sĩ"
@@ -406,7 +406,7 @@ func enhanceActionMessage(action string, metadata map[string]any) string {
 			} else if strings.Contains(action, "bệnh nhân") {
 				resource = "bệnh nhân"
 			}
-			
+
 			if resource != "" {
 				if name, ok := metadata["name"].(string); ok && name != "" {
 					return fmt.Sprintf("%s %s: %s", statusVN, resource, name)

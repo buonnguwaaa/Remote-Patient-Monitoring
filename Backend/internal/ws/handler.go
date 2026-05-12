@@ -3,6 +3,7 @@ package ws
 import (
 	"net/http"
 
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/realtime"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/service"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecase"
 	"github.com/gin-gonic/gin"
@@ -19,14 +20,18 @@ var upgrader = websocket.Upgrader{
 }
 
 type Handler struct {
-	Hub         *Hub
-	ChatService service.ChatService
+	Hub                *Hub
+	ChatService        service.ChatService
+	RealtimePublisher  *realtime.RedisUserEventPublisher
+	ParticipantService service.ChatService
 }
 
-func NewHandler(hub *Hub, chatService service.ChatService) *Handler {
+func NewHandler(hub *Hub, chatService service.ChatService, realtimePublisher *realtime.RedisUserEventPublisher, participantService service.ChatService) *Handler {
 	return &Handler{
-		Hub:         hub,
-		ChatService: chatService,
+		Hub:                hub,
+		ChatService:        chatService,
+		RealtimePublisher:  realtimePublisher,
+		ParticipantService: participantService,
 	}
 }
 
@@ -98,12 +103,13 @@ func (h *Handler) ServeWs(c *gin.Context) {
 
 	// 5. Create client and register with hub
 	client := &Client{
-		UserID:         userID,
-		ConversationID: conversationID,
-		Conn:           conn,
-		Hub:            h.Hub,
-		Send:           make(chan []byte, 256),
-		ChatService:    h.ChatService,
+		UserID:            userID,
+		ConversationID:    conversationID,
+		Conn:              conn,
+		Hub:               h.Hub,
+		Send:              make(chan []byte, 256),
+		ChatService:       h.ChatService,
+		RealtimePublisher: h.RealtimePublisher,
 	}
 
 	h.Hub.Register <- client

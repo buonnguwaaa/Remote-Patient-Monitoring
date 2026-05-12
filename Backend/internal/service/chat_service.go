@@ -235,8 +235,8 @@ func (s *chatService) SendMessage(ctx context.Context, input *usecase.SendMessag
 		return nil, err
 	}
 
-	if err := s.conversationRepo.TouchUpdatedAt(ctx, input.ConversationID); err != nil {
-		log.Printf("warn: failed to touch conversation updatedAt: %v", err)
+	if err := s.conversationRepo.SetLatestMessage(ctx, input.ConversationID, created.ID); err != nil {
+		log.Printf("warn: failed to set conversation latestMessageId: %v", err)
 	}
 
 	return mapMessageToDTO(created), nil
@@ -379,10 +379,11 @@ func mapConversationToDTO(c *chatDomain.Conversation) *dto.ConversationResponse 
 	}
 
 	return &dto.ConversationResponse{
-		ID:           c.ID,
-		Participants: mapParticipantsToDTO(c.Participants),
-		CreatedAt:    c.CreatedAt,
-		UpdatedAt:    c.UpdatedAt,
+		ID:              c.ID,
+		Participants:    mapParticipantsToDTO(c.Participants),
+		LatestMessageID: c.LatestMessageID,
+		CreatedAt:       c.CreatedAt,
+		UpdatedAt:       c.UpdatedAt,
 	}
 }
 

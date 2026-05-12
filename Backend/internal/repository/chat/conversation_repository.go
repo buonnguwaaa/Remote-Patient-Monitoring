@@ -19,6 +19,7 @@ type ConversationRepository interface {
 	FindByParticipantID(ctx context.Context, participantID primitive.ObjectID, limit int, cursor time.Time) ([]*chatDomain.Conversation, error)
 	UpdateParticipantState(ctx context.Context, conversationID primitive.ObjectID, userID primitive.ObjectID, lastDeliveredMessageID *primitive.ObjectID, lastReadMessageID *primitive.ObjectID) error
 	TouchUpdatedAt(ctx context.Context, id primitive.ObjectID) error
+	SetLatestMessage(ctx context.Context, id primitive.ObjectID, messageID primitive.ObjectID) error
 	EnsureIndexes(ctx context.Context) error
 }
 
@@ -149,6 +150,16 @@ func (r *conversationRepository) FindWithFilter(ctx context.Context, filter Conv
 func (r *conversationRepository) TouchUpdatedAt(ctx context.Context, id primitive.ObjectID) error {
 	_, err := r.col.UpdateByID(ctx, id, bson.M{
 		"$set": bson.M{"updatedAt": time.Now().UTC()},
+	})
+	return err
+}
+
+func (r *conversationRepository) SetLatestMessage(ctx context.Context, id primitive.ObjectID, messageID primitive.ObjectID) error {
+	_, err := r.col.UpdateByID(ctx, id, bson.M{
+		"$set": bson.M{
+			"updatedAt":       time.Now().UTC(),
+			"latestMessageId": messageID,
+		},
 	})
 	return err
 }

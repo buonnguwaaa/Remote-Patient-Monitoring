@@ -15,12 +15,15 @@ import {
   Loader2,
   MoreVertical,
   Send,
+  ShieldAlert,
   X,
 } from "lucide-react";
 
 import { useAuth } from "../context/AuthContext";
+import { useRealtimeNotification } from "../context/RealtimeNotificationContext";
 import {
   getAlerts,
+  getAlertById,
   getPatientById,
   type PatientDetailResponse,
 } from "../services/patientService";
@@ -317,9 +320,9 @@ function parseAlertLinkedMessage(
   }
 
   return {
-    hasStructuredAlertSummary: false,
-    alertSummary: "",
-    note: segments.join("\n").trim(),
+    hasStructuredAlertSummary: true,
+    alertSummary: segments.join("\n").trim(),
+    note: "",
     shortAlertId: relatedAlertId.slice(-8),
   };
 }
@@ -426,6 +429,10 @@ const ChatPage = ({
   const params = useParams<{ id: string }>();
   const patientId = patientIdOverride ?? params.id;
   const { user } = useAuth();
+  const {
+    setActiveConversationId: setGlobalActiveConvId,
+    markConversationRead: markGlobalConvRead,
+  } = useRealtimeNotification();
   const locationState = (location.state as ChatLocationState | null) ?? null;
   const activeAlertId =
     activeAlertIdOverride !== undefined
@@ -464,6 +471,7 @@ const ChatPage = ({
   const [alertContext, setAlertContext] = useState<AlertResponse | null>(
     initialAlertSnapshotRef.current,
   );
+  const [alertsCache, setAlertsCache] = useState<Map<string, AlertResponse>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [alertContextError, setAlertContextError] = useState<string | null>(
@@ -566,6 +574,44 @@ const ChatPage = ({
       cancelled = true;
     };
   }, [patientId]);
+
+  // Pre-fetch alerts for all system messages to show violations inline
+  useEffect(() => {
+    const systemAlertIds = [...new Set(
+      messages
+        .filter((m) => m.messageSource === "system" && m.relatedAlertId)
+        .map((m) => m.relatedAlertId!)
+    )];
+
+    if (systemAlertIds.length === 0) return;
+
+    // Only fetch those not yet in cache
+    const missing = systemAlertIds.filter((id) => !alertsCache.has(id));
+    if (missing.length === 0) return;
+
+    Promise.allSettled(missing.map((id) => getAlertById(id))).then((results) => {
+      setAlertsCache((prev) => {
+        const next = new Map(prev);
+        results.forEach((result, i) => {
+          if (result.status === "fulfilled" && result.value) {
+            next.set(missing[i], result.value);
+          }
+        });
+        return next;
+      });
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages]);
+
+  // Set/clear active conversation for realtime notification suppression
+  useEffect(() => {
+    if (!conversation?.id) return;
+    setGlobalActiveConvId(conversation.id);
+    markGlobalConvRead(conversation.id);
+    return () => {
+      setGlobalActiveConvId(null);
+    };
+  }, [conversation?.id, setGlobalActiveConvId, markGlobalConvRead]);
 
   useEffect(() => {
     if (!activeAlertId || !patientId) {
@@ -1000,21 +1046,20 @@ const ChatPage = ({
         ) : null}
 
         {activeAlertId ? (
-          <section className="mb-4 rounded border border-amber-200 bg-white p-4 shadow-sm dark:border-amber-500/20 dark:bg-slate-900 dark:shadow-none">
+          <section className="mb-4 rounded-xl border border-amber-200 bg-white p-4 shadow-sm dark:border-amber-500/20 dark:bg-slate-900 dark:shadow-none">
             <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-600 dark:text-amber-300">
-                  Ngữ cảnh cảnh báo
+              <div className="flex items-start gap-2.5">
+                <div className="mt-0.5 rounded-lg bg-amber-100 p-2 dark:bg-amber-500/20">
+                  <AlertTriangle size={16} className="text-amber-600 dark:text-amber-300" />
                 </div>
-                <h2 className="mt-2 text-base font-semibold text-slate-900 dark:text-slate-100">
-                  Tin nhắn mới sẽ được gắn với cảnh báo này
-                </h2>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                  Alert ID:{" "}
-                  <span className="font-medium text-slate-700 dark:text-slate-200">
-                    {activeAlertId}
-                  </span>
-                </p>
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-600 dark:text-amber-300">
+                    Đang xem ngữ cảnh cảnh báo
+                  </div>
+                  <h2 className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    Tin nhắn bạn gửi sẽ được gắn kèm cảnh báo này
+                  </h2>
+                </div>
               </div>
 
               <button
@@ -1116,6 +1161,103 @@ const ChatPage = ({
                 );
               }
 
+              // System messages render as a 3rd-party participant with avatar + inline violations
+              if (item.message.messageSource === "system") {
+                const cachedAlert = item.message.relatedAlertId
+                  ? alertsCache.get(item.message.relatedAlertId)
+                  : undefined;
+                const isHighSeverity = cachedAlert?.severity === "high";
+                const violations = cachedAlert?.violations ?? [];
+
+                return (
+                  <div
+                    key={item.key}
+                    ref={(node) => { messageRefs.current[item.message.id] = node; }}
+                    className="flex items-start gap-3 px-2"
+                  >
+                    {/* System avatar */}
+                    <div className={`flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center shadow-sm ${
+                      isHighSeverity
+                        ? "bg-red-100 dark:bg-red-500/20"
+                        : "bg-amber-100 dark:bg-amber-500/20"
+                    }`}>
+                      <ShieldAlert size={18} className={isHighSeverity ? "text-red-600 dark:text-red-300" : "text-amber-600 dark:text-amber-300"} />
+                    </div>
+
+                    <div className="flex-1 min-w-0 max-w-[80%]">
+                      {/* System sender label */}
+                      <div className="mb-1 flex items-center gap-2">
+                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Hệ thống giám sát</span>
+                        {cachedAlert && (
+                          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                            isHighSeverity
+                              ? "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300"
+                              : "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300"
+                          }`}>
+                            <AlertTriangle size={9} />
+                            {isHighSeverity ? "Nghiêm trọng" : "Cảnh báo"}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Message card */}
+                      <div className={`rounded-2xl rounded-tl-sm border px-4 py-3 shadow-sm ${
+                        isHighSeverity
+                          ? "border-red-200 bg-red-50 dark:border-red-500/20 dark:bg-red-500/8"
+                          : "border-amber-200 bg-amber-50 dark:border-amber-500/20 dark:bg-amber-500/8"
+                      }`}>
+
+                        {/* Violations grid — shown when alert data is available */}
+                        {violations.length > 0 ? (
+                          <div className="mb-3">
+                            <div className={`mb-2 text-[11px] font-semibold uppercase tracking-wider ${
+                              isHighSeverity ? "text-red-600 dark:text-red-300" : "text-amber-600 dark:text-amber-300"
+                            }`}>
+                              {violations.length} chỉ số vượt ngưỡng
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              {violations.map((v, idx) => (
+                                <div
+                                  key={idx}
+                                  className={`rounded-lg border px-3 py-2 ${
+                                    v.severity === "high"
+                                      ? "border-red-200/70 bg-red-100/60 dark:border-red-500/20 dark:bg-red-500/10"
+                                      : "border-amber-200/70 bg-amber-100/60 dark:border-amber-500/20 dark:bg-amber-500/10"
+                                  }`}
+                                >
+                                  <div className="text-[11px] font-medium text-slate-600 dark:text-slate-300">{getViolationLabel(v.type)}</div>
+                                  <div className={`text-base font-bold ${
+                                    v.severity === "high" ? "text-red-600 dark:text-red-300" : "text-amber-600 dark:text-amber-300"
+                                  }`}>{v.observed}</div>
+                                  <div className="text-[10px] text-slate-500 dark:text-slate-400">Ngưỡng: {v.threshold}</div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ) : null}
+
+                        {/* Message text */}
+                        <p className={`text-sm leading-relaxed ${
+                          isHighSeverity ? "text-red-900 dark:text-red-100" : "text-amber-900 dark:text-amber-100"
+                        }`}>
+                          {item.message.content}
+                        </p>
+
+                        {/* Time + status */}
+                        <div className="mt-2 text-[10px] text-slate-400 dark:text-slate-500">
+                          {formatDateTime(item.message.createdAt)}
+                          {cachedAlert && (
+                            <span className="ml-2">
+                              • {cachedAlert.status === "ack" ? "Đã xác nhận" : "Chờ xử lý"}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
               const isMe = item.message.senderId === currentUserId;
               const isActiveAlertMessage =
                 Boolean(activeAlertId) &&
@@ -1147,8 +1289,20 @@ const ChatPage = ({
                   ref={(node) => {
                     messageRefs.current[item.message.id] = node;
                   }}
-                  className={`group flex ${isMe ? "justify-end" : "justify-start"}`}
+                  className={`group flex items-end gap-2.5 ${
+                    isMe ? "flex-row-reverse" : "flex-row"
+                  }`}
                 >
+                  {/* Avatar */}
+                  {!isMe ? (
+                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">
+                      {(patient?.name || "BN").split(" ").slice(-2).map((w: string) => w[0]).join("").toUpperCase().slice(0, 2)}
+                    </div>
+                  ) : (
+                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-600 dark:bg-blue-500 flex items-center justify-center text-xs font-bold text-white mb-1">
+                      {(user?.name || "BS").split(" ").slice(-2).map((w: string) => w[0]).join("").toUpperCase().slice(0, 2)}
+                    </div>
+                  )}
                   <div
                     className={`relative flex items-center gap-2 ${isMe ? "flex-row" : "flex-row-reverse"}`}
                   >
@@ -1209,7 +1363,16 @@ const ChatPage = ({
                         isMe
                           ? "rounded-tr-sm bg-blue-600 text-white dark:bg-blue-500"
                           : "rounded-tl-sm border border-gray-100 bg-white text-gray-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-                      } ${isActiveAlertMessage ? "ring-2 ring-amber-300 ring-offset-2 dark:ring-amber-400/70 dark:ring-offset-slate-950" : ""}`}
+                      } ${isActiveAlertMessage ? "ring-2 ring-amber-300 ring-offset-2 dark:ring-amber-400/70 dark:ring-offset-slate-950" : ""} ${
+                        hasAlertTag ? "cursor-pointer transition hover:ring-2 hover:ring-amber-400/50 hover:shadow-md" : ""
+                      }`}
+                      onClick={() => {
+                        if (hasAlertTag && item.message.relatedAlertId) {
+                          const nextParams = new URLSearchParams(searchParams);
+                          nextParams.set("alertId", item.message.relatedAlertId);
+                          setSearchParams(nextParams, { replace: true });
+                        }
+                      }}
                     >
                       {hasAlertTag ? (
                         <div

@@ -19,22 +19,22 @@ const (
 
 // ActivityLog represents an activity log entry in the system
 type ActivityLog struct {
-	ID          primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-	UserID      primitive.ObjectID `bson:"userId" json:"userId"`
-	UserName    string             `bson:"userName" json:"userName"`
-	UserRole    string             `bson:"userRole" json:"userRole"`
-	Type        ActivityType       `bson:"type" json:"type"`
-	Action      string             `bson:"action" json:"action"`
-	Resource    string             `bson:"resource,omitempty" json:"resource,omitempty"`       // e.g., "doctor", "patient", "department"
-	ResourceID  string             `bson:"resourceId,omitempty" json:"resourceId,omitempty"`   // ID of the affected resource
-	Method      string             `bson:"method,omitempty" json:"method,omitempty"`           // HTTP method
-	Path        string             `bson:"path,omitempty" json:"path,omitempty"`               // API path
-	IPAddress   string             `bson:"ipAddress,omitempty" json:"ipAddress,omitempty"`     // Client IP
-	UserAgent   string             `bson:"userAgent,omitempty" json:"userAgent,omitempty"`     // Client user agent
-	StatusCode  int                `bson:"statusCode,omitempty" json:"statusCode,omitempty"`   // HTTP status code
-	ErrorMsg    string             `bson:"errorMsg,omitempty" json:"errorMsg,omitempty"`       // Error message if any
-	Metadata    map[string]any     `bson:"metadata,omitempty" json:"metadata,omitempty"`       // Additional data
-	CreatedAt   time.Time          `bson:"createdAt" json:"createdAt"`
+	ID         primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+	UserID     primitive.ObjectID `bson:"userId" json:"userId"`
+	UserName   string             `bson:"userName" json:"userName"`
+	UserRole   string             `bson:"userRole" json:"userRole"`
+	Type       ActivityType       `bson:"type" json:"type"`
+	Action     string             `bson:"action" json:"action"`
+	Resource   string             `bson:"resource,omitempty" json:"resource,omitempty"`     // e.g., "doctor", "patient", "department"
+	ResourceID string             `bson:"resourceId,omitempty" json:"resourceId,omitempty"` // ID of the affected resource
+	Method     string             `bson:"method,omitempty" json:"method,omitempty"`         // HTTP method
+	Path       string             `bson:"path,omitempty" json:"path,omitempty"`             // API path
+	IPAddress  string             `bson:"ipAddress,omitempty" json:"ipAddress,omitempty"`   // Client IP
+	UserAgent  string             `bson:"userAgent,omitempty" json:"userAgent,omitempty"`   // Client user agent
+	StatusCode int                `bson:"statusCode,omitempty" json:"statusCode,omitempty"` // HTTP status code
+	ErrorMsg   string             `bson:"errorMsg,omitempty" json:"errorMsg,omitempty"`     // Error message if any
+	Metadata   map[string]any     `bson:"metadata,omitempty" json:"metadata,omitempty"`     // Additional data
+	CreatedAt  time.Time          `bson:"createdAt" json:"createdAt"`
 }
 
 // NewActivityLog creates a new activity log entry

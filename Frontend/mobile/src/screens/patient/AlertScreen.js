@@ -263,6 +263,7 @@ export default function AlertScreen({ isEmbedded }) {
   }, [alerts, navigation, route?.params?.selectedAlertId]);
 
   const Container = isEmbedded ? View : SafeAreaView;
+  const canGoBack = navigation.canGoBack();
 
   return (
     <Container style={styles.safeArea}>
@@ -274,6 +275,16 @@ export default function AlertScreen({ isEmbedded }) {
           <RefreshControl refreshing={refreshing} onRefresh={() => void loadAlerts(true)} />
         }
       >
+        {canGoBack ? (
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={20} color="#2563EB" />
+            <Text style={styles.backButtonText}>Quay lại</Text>
+          </TouchableOpacity>
+        ) : null}
         <View style={styles.headerRow}>
           <Text style={styles.headerTitle}>Cảnh báo</Text>
           <View style={[styles.badge, openCount === 0 && styles.badgeNeutral]}>
@@ -514,6 +525,8 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#F2F6FF" },
   container: { flex: 1, paddingHorizontal: 20 },
   contentContainer: { paddingTop: 20, paddingBottom: 32 },
+  backButton: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 12, alignSelf: "flex-start", paddingVertical: 4 },
+  backButtonText: { fontSize: 14, fontWeight: "600", color: "#2563EB" },
   headerRow: { flexDirection: "row", alignItems: "center", marginBottom: 8, gap: 12 },
   headerTitle: { flex: 1, fontSize: 20, fontWeight: "700", color: "#111827" },
   subtitle: { marginBottom: 16, fontSize: 13, lineHeight: 19, color: "#6B7280" },
