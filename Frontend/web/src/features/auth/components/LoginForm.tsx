@@ -5,6 +5,7 @@ import { useAuth } from "../../../context/AuthContext";
 import { useTranslation } from "react-i18next";
 
 const LoginForm: React.FC = () => {
+  const { t } = useTranslation();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");

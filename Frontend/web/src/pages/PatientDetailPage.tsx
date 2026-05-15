@@ -14,6 +14,8 @@ import {
   MdDateRange,
   MdFullscreen,
   MdFullscreenExit,
+  MdAdd,
+  MdRemove,
 } from "react-icons/md";
 import { FaRegMessage } from "react-icons/fa6";
 import { FaHeartbeat, FaTemperatureHigh, FaTint, FaLungs } from "react-icons/fa";
@@ -157,7 +159,8 @@ const PatientDetailPage = () => {
    * param in GET /measurements. Filtering is currently done client-side.
    * Backend should add ?from=&to= params for proper server-side filtering.
    */
-  const [timeRange, setTimeRange] = useState<"week" | "month" | "8weeks" | "4months">("week");
+  const [timeRangeType, setTimeRangeType] = useState<"week" | "month">("week");
+  const [timeRangeValue, setTimeRangeValue] = useState<number>(1);
   const [isChartExpanded, setIsChartExpanded] = useState(false);
 
   // Re-fetch measurements whenever the time range changes
@@ -185,7 +188,7 @@ const PatientDetailPage = () => {
 
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [patientId, timeRange]);
+  }, [patientId, timeRangeType, timeRangeValue]);
 
   useEffect(() => {
     if (!patientId) return;
@@ -246,17 +249,13 @@ const PatientDetailPage = () => {
   const filteredMeasurements = useMemo(() => {
     const now = new Date();
     const cutoff = new Date(now);
-    if (timeRange === "week") {
-      cutoff.setDate(now.getDate() - 7);
-    } else if (timeRange === "8weeks") {
-      cutoff.setDate(now.getDate() - 56);
-    } else if (timeRange === "4months") {
-      cutoff.setMonth(now.getMonth() - 4);
+    if (timeRangeType === "week") {
+      cutoff.setDate(now.getDate() - (timeRangeValue * 7));
     } else {
-      cutoff.setMonth(now.getMonth() - 1);
+      cutoff.setMonth(now.getMonth() - timeRangeValue);
     }
     return measurements.filter((m) => new Date(m.updateAt) >= cutoff);
-  }, [measurements, timeRange]);
+  }, [measurements, timeRangeType, timeRangeValue]);
 
   const columns = useMemo<Column<ChartRow>[]>(
     () => [
@@ -514,11 +513,7 @@ const PatientDetailPage = () => {
         {isChartExpanded && (
           <div 
             className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" 
-            onClick={() => { 
-              setIsChartExpanded(false); 
-              if (timeRange === "4months") setTimeRange("month");
-              if (timeRange === "8weeks") setTimeRange("week");
-            }} 
+            onClick={() => setIsChartExpanded(false)} 
           />
         )}
         <section 
@@ -533,19 +528,7 @@ const PatientDetailPage = () => {
               <MdShowChart className="mr-2 text-blue-500" size={24} />
               {t("patientDetail.healthChart")}
               <button
-                onClick={() => {
-                  const expanding = !isChartExpanded;
-                  setIsChartExpanded(expanding);
-                  if (expanding) {
-                    // Expand: week → 8weeks, month → 4months
-                    if (timeRange === "week") setTimeRange("8weeks");
-                    else if (timeRange === "month") setTimeRange("4months");
-                  } else {
-                    // Collapse: 8weeks → week, 4months → month
-                    if (timeRange === "8weeks") setTimeRange("week");
-                    else if (timeRange === "4months") setTimeRange("month");
-                  }
-                }}
+                onClick={() => setIsChartExpanded(!isChartExpanded)}
                 className="ml-3 p-1 rounded-full text-gray-500 hover:bg-gray-100 dark:text-slate-400 dark:hover:bg-slate-700 transition"
                 title={isChartExpanded ? t("common.collapse") || "Thu nhỏ" : t("common.expand") || "Phóng to"}
               >
@@ -607,27 +590,68 @@ const PatientDetailPage = () => {
                 </button>
               </div>
 
-              <div className="inline-flex bg-gray-100 dark:bg-slate-700 rounded-lg p-1">
-                <button
-                  onClick={() => setTimeRange(isChartExpanded ? "8weeks" : "week")}
-                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all flex items-center ${
-                    timeRange === "week" || timeRange === "8weeks"
-                      ? "bg-white dark:bg-slate-600 text-green-600 dark:text-green-400 shadow-sm"
-                      : "text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200"
-                  }`}
-                >
-                  <MdDateRange className="mr-1" /> {isChartExpanded ? (t("patientDetail.last8WeeksBtn") || "8 tuần gần nhất") : t("patientDetail.week")}
-                </button>
-                <button
-                  onClick={() => setTimeRange(isChartExpanded ? "4months" : "month")}
-                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all flex items-center ${
-                    timeRange === "month" || timeRange === "4months"
-                      ? "bg-white dark:bg-slate-600 text-green-600 dark:text-green-400 shadow-sm"
-                      : "text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200"
-                  }`}
-                >
-                  <MdDateRange className="mr-1" /> {isChartExpanded ? (t("patientDetail.last4MonthsBtn") || "4 tháng gần nhất") : t("patientDetail.month")}
-                </button>
+              <div className="inline-flex items-center gap-3 bg-gray-100 dark:bg-slate-700 rounded-lg p-2">
+                {/* Type selector */}
+                <div className="inline-flex bg-white dark:bg-slate-600 rounded-md p-0.5 shadow-sm">
+                  <button
+                    onClick={() => setTimeRangeType("week")}
+                    className={`px-3 py-1.5 text-sm font-medium rounded transition-all flex items-center ${
+                      timeRangeType === "week"
+                        ? "bg-blue-500 text-white shadow-md"
+                        : "text-gray-600 dark:text-slate-300 hover:text-gray-800 dark:hover:text-slate-100"
+                    }`}
+                  >
+                    <MdDateRange className="mr-1.5" size={16} /> {t("patientDetail.week")}
+                  </button>
+                  <button
+                    onClick={() => setTimeRangeType("month")}
+                    className={`px-3 py-1.5 text-sm font-medium rounded transition-all flex items-center ${
+                      timeRangeType === "month"
+                        ? "bg-blue-500 text-white shadow-md"
+                        : "text-gray-600 dark:text-slate-300 hover:text-gray-800 dark:hover:text-slate-100"
+                    }`}
+                  >
+                    <MdDateRange className="mr-1.5" size={16} /> {t("patientDetail.month")}
+                  </button>
+                </div>
+
+                {/* Divider */}
+                <div className="h-8 w-px bg-gray-300 dark:bg-slate-600"></div>
+
+                {/* Number input with +/- buttons */}
+                <div className="inline-flex items-center bg-white dark:bg-slate-600 rounded-md shadow-sm">
+                  <button
+                    onClick={() => setTimeRangeValue(Math.max(1, timeRangeValue - 1))}
+                    disabled={timeRangeValue <= 1}
+                    className="p-2 text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-500 rounded-l-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    title="Giảm"
+                  >
+                    <MdRemove size={18} />
+                  </button>
+                  <input
+                    type="number"
+                    min="1"
+                    max={timeRangeType === "week" ? "52" : "12"}
+                    value={timeRangeValue}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value) || 1;
+                      const max = timeRangeType === "week" ? 52 : 12;
+                      setTimeRangeValue(Math.min(max, Math.max(1, val)));
+                    }}
+                    className="w-14 px-2 py-1.5 text-sm font-semibold text-center bg-transparent text-gray-800 dark:text-slate-100 border-x border-gray-200 dark:border-slate-500 focus:outline-none focus:bg-gray-50 dark:focus:bg-slate-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                  <button
+                    onClick={() => {
+                      const max = timeRangeType === "week" ? 52 : 12;
+                      setTimeRangeValue(Math.min(max, timeRangeValue + 1));
+                    }}
+                    disabled={timeRangeValue >= (timeRangeType === "week" ? 52 : 12)}
+                    className="p-2 text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-500 rounded-r-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    title="Tăng"
+                  >
+                    <MdAdd size={18} />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -683,13 +707,7 @@ const PatientDetailPage = () => {
           </div>
           <p className="text-xs text-gray-400 dark:text-slate-500 mt-2 text-center italic">
             {t("patientDetail.dataNote")}{" "}
-            {timeRange === "week"
-              ? t("patientDetail.last7Days")
-              : timeRange === "8weeks"
-              ? (t("patientDetail.last8Weeks") || "8 tuần qua")
-              : timeRange === "4months"
-              ? (t("patientDetail.last4Months") || "4 tháng qua")
-              : t("patientDetail.last30Days")}.
+            {timeRangeValue} {timeRangeType === "week" ? (timeRangeValue === 1 ? t("patientDetail.week") : "tuần") : (timeRangeValue === 1 ? t("patientDetail.month") : "tháng")} gần nhất.
           </p>
         </section>
 
