@@ -1,5 +1,6 @@
 import { type ChangeEvent, type FormEvent, useEffect, useMemo, useState } from "react";
 import { FaChevronLeft, FaChevronRight, FaEdit, FaPlus, FaSave, FaStopCircle, FaTimes, FaUndo, FaSyncAlt } from "react-icons/fa";
+import { useTranslation } from "react-i18next";
 
 import Toast from "../components/ui/Toast";
 import { useAuth } from "../context/AuthContext";
@@ -58,8 +59,12 @@ const toEndOfDayIso = (value: string) => new Date(`${value}T23:59:59`).toISOStri
 const toNumber = (value: string) => Number.parseFloat(value || "0");
 const HISTORY_PAGE_SIZE = 5;
 
+const ThresholdSettingsPage = () => {
+  const { user } = useAuth();
+  const { t } = useTranslation();
+
 const formatDateTime = (value?: string | null) => {
-  if (!value) return "Không giới hạn";
+  if (!value) return t("thresholds.unlimited");
 
   return new Date(value).toLocaleString("vi-VN", {
     hour: "2-digit",
@@ -72,37 +77,37 @@ const formatDateTime = (value?: string | null) => {
 
 const thresholdSections = [
   {
-    title: "Nhiệt độ (độ C)",
+    title: t("thresholds.temperature"),
     minKey: "temperatureMin" as const,
     maxKey: "temperatureMax" as const,
     step: "0.1",
   },
   {
-    title: "Huyết áp tâm thu (mmHg)",
+    title: t("thresholds.systolic"),
     minKey: "systolicMin" as const,
     maxKey: "systolicMax" as const,
     step: "1",
   },
   {
-    title: "Huyết áp tâm trương (mmHg)",
+    title: t("thresholds.diastolic"),
     minKey: "diastolicMin" as const,
     maxKey: "diastolicMax" as const,
     step: "1",
   },
   {
-    title: "Nhịp tim (bpm)",
+    title: t("thresholds.heartRate"),
     minKey: "pulseMin" as const,
     maxKey: "pulseMax" as const,
     step: "1",
   },
   {
-    title: "Đường huyết (mg/dL)",
+    title: t("thresholds.glucose"),
     minKey: "glucoseMin" as const,
     maxKey: "glucoseMax" as const,
     step: "1",
   },
   {
-    title: "Nhịp thở (lần/phút)",
+    title: t("thresholds.respiratoryRate"),
     minKey: "respiratoryRateMin" as const,
     maxKey: "respiratoryRateMax" as const,
     step: "1",
@@ -113,21 +118,19 @@ const buildHistoryChips = (item: ThresholdRecord) => {
   const chips = [
     `HATT: ${item.sysMin}-${item.sysMax}`,
     `HATTr: ${item.diaMin}-${item.diaMax}`,
-    `Nhịp tim: ${item.heartRateMin}-${item.heartRateMax}`,
-    `Nhiệt độ: ${item.temperatureMin}-${item.temperatureMax}`,
-    `Nhịp thở: ${item.respiratoryRateMin}-${item.respiratoryRateMax}`,
+    `${t("alerts.heartRate")}: ${item.heartRateMin}-${item.heartRateMax}`,
+    `${t("alerts.temperature")}: ${item.temperatureMin}-${item.temperatureMax}`,
+    `${t("alerts.respiratoryRate")}: ${item.respiratoryRateMin}-${item.respiratoryRateMax}`,
     `SpO2 >= ${item.spo2Min}%`,
   ];
 
   if (item.glucoseMin != null || item.glucoseMax != null) {
-    chips.push(`Đường huyết: ${item.glucoseMin ?? "-"}-${item.glucoseMax ?? "-"}`);
+    chips.push(`${t("alerts.glucose")}: ${item.glucoseMin ?? "-"}-${item.glucoseMax ?? "-"}`);
   }
 
   return chips;
 };
 
-const ThresholdSettingsPage = () => {
-  const { user } = useAuth();
   const { toast, showToast, hideToast } = useToast();
 
   const [patients, setPatients] = useState<AssignmentResponse[]>([]);
@@ -160,7 +163,7 @@ const ThresholdSettingsPage = () => {
     [formData.patientId, patientOptions]
   );
 
-  const modeLabel = editingThresholdId ? "Cập nhật cấu hình hiện tại" : "Tạo cấu hình mới";
+  const modeLabel = editingThresholdId ? t("thresholds.updateCurrent") : t("thresholds.createNew");
   const reusableHistoryCount = thresholdHistory.filter((item) => item.id !== activeThreshold?.id).length;
   const totalHistoryPages = Math.max(1, Math.ceil(thresholdHistory.length / HISTORY_PAGE_SIZE));
   const paginatedHistory = useMemo(() => {
@@ -205,7 +208,7 @@ const ThresholdSettingsPage = () => {
 
   const handleOpenCreateForm = () => {
     if (!formData.patientId) {
-      showToast("Vui lòng chọn bệnh nhân trước.", "error");
+      showToast(t("thresholds.patientRequired"), "error");
       return;
     }
     // Force create new - clear editing mode
@@ -217,12 +220,12 @@ const ThresholdSettingsPage = () => {
 
   const buildPayload = (): ThresholdPayload | null => {
     if (!user?.id) {
-      showToast("Không tìm thấy thông tin bác sĩ đang đăng nhập.", "error");
+      showToast(t("profile.loadingError"), "error");
       return null;
     }
 
     if (!formData.patientId) {
-      showToast("Vui lòng chọn bệnh nhân trước khi lưu.", "error");
+      showToast(t("thresholds.patientRequired"), "error");
       return null;
     }
 
@@ -231,7 +234,7 @@ const ThresholdSettingsPage = () => {
 
     if (startDate.getTime() > now.getTime() && !editingThresholdId) {
       showToast(
-        "Tạm thời chỉ nên tạo cấu hình có hiệu lực từ hôm nay trở về trước để tránh khoảng trống cảnh báo.",
+        t("thresholds.futureStartDate"),
         "error"
       );
       return null;
@@ -240,7 +243,7 @@ const ThresholdSettingsPage = () => {
     if (formData.effectiveTo) {
       const endDate = new Date(`${formData.effectiveTo}T23:59:59`);
       if (endDate.getTime() < startDate.getTime()) {
-        showToast("Ngày kết thúc không được nhỏ hơn ngày bắt đầu.", "error");
+        showToast(t("thresholds.endDateBeforeStart"), "error");
         return null;
       }
     }
@@ -249,35 +252,35 @@ const ThresholdSettingsPage = () => {
     const temperatureMin = toNumber(formData.temperatureMin);
     const temperatureMax = toNumber(formData.temperatureMax);
     if (temperatureMin >= temperatureMax) {
-      showToast("Nhiệt độ tối thiểu phải nhỏ hơn nhiệt độ tối đa.", "error");
+      showToast(t("thresholds.temperatureMinMax"), "error");
       return null;
     }
 
     const systolicMin = toNumber(formData.systolicMin);
     const systolicMax = toNumber(formData.systolicMax);
     if (systolicMin >= systolicMax) {
-      showToast("Huyết áp tâm thu tối thiểu phải nhỏ hơn tối đa.", "error");
+      showToast(t("thresholds.systolicMinMax"), "error");
       return null;
     }
 
     const diastolicMin = toNumber(formData.diastolicMin);
     const diastolicMax = toNumber(formData.diastolicMax);
     if (diastolicMin >= diastolicMax) {
-      showToast("Huyết áp tâm trương tối thiểu phải nhỏ hơn tối đa.", "error");
+      showToast(t("thresholds.diastolicMinMax"), "error");
       return null;
     }
 
     const pulseMin = toNumber(formData.pulseMin);
     const pulseMax = toNumber(formData.pulseMax);
     if (pulseMin >= pulseMax) {
-      showToast("Nhịp tim tối thiểu phải nhỏ hơn tối đa.", "error");
+      showToast(t("thresholds.heartRateMinMax"), "error");
       return null;
     }
 
     const respiratoryRateMin = toNumber(formData.respiratoryRateMin);
     const respiratoryRateMax = toNumber(formData.respiratoryRateMax);
     if (respiratoryRateMin >= respiratoryRateMax) {
-      showToast("Nhịp thở tối thiểu phải nhỏ hơn tối đa.", "error");
+      showToast(t("thresholds.respiratoryRateMinMax"), "error");
       return null;
     }
 
@@ -286,7 +289,7 @@ const ThresholdSettingsPage = () => {
       const glucoseMin = toNumber(formData.glucoseMin);
       const glucoseMax = toNumber(formData.glucoseMax);
       if (glucoseMin >= glucoseMax) {
-        showToast("Đường huyết tối thiểu phải nhỏ hơn tối đa.", "error");
+        showToast(t("thresholds.glucoseMinMax"), "error");
         return null;
       }
     }
@@ -337,7 +340,7 @@ const ThresholdSettingsPage = () => {
       // User needs to explicitly click "Edit" or "Create" button
     } catch (error) {
       console.error("Failed to load thresholds", error);
-      showToast("Không thể tải cấu hình ngưỡng đã lưu.", "error");
+      showToast(t("common.error"), "error");
     } finally {
       setLoadingThresholds(false);
     }
@@ -351,7 +354,7 @@ const ThresholdSettingsPage = () => {
         setPatients(response);
       } catch (error) {
         console.error("Failed to load patients", error);
-        showToast("Không thể tải danh sách bệnh nhân của bác sĩ.", "error");
+        showToast(t("profile.loadingError"), "error");
       } finally {
         setLoadingPatients(false);
       }
@@ -414,16 +417,16 @@ const ThresholdSettingsPage = () => {
 
       if (editingThresholdId) {
         await updateThreshold(editingThresholdId, payload);
-        showToast("Đã cập nhật cấu hình ngưỡng thành công.", "success");
+        showToast(t("thresholds.updateSuccess"), "success");
       } else {
         await createThreshold(payload);
-        showToast("Đã tạo cấu hình ngưỡng mới thành công.", "success");
+        showToast(t("thresholds.createSuccess"), "success");
       }
 
       await loadPatientThresholds(payload.patientId);
     } catch (error: any) {
       console.error("Failed to save threshold", error);
-      showToast(error?.response?.data?.error || "Không thể lưu cấu hình ngưỡng.", "error");
+      showToast(error?.response?.data?.error || t("thresholds.saveError"), "error");
     } finally {
       setSaving(false);
     }
@@ -433,7 +436,7 @@ const ThresholdSettingsPage = () => {
     if (!activeThreshold || !user?.id) return;
 
     const confirmed = window.confirm(
-      "Thao tác này sẽ ngừng hiệu lực cấu hình hiện tại. Bạn có muốn tiếp tục không?"
+      t("thresholds.stopConfirm")
     );
     if (!confirmed) return;
 
@@ -459,12 +462,12 @@ const ThresholdSettingsPage = () => {
         effectiveTo: new Date().toISOString(),
       });
 
-      showToast("Đã ngừng hiệu lực cấu hình hiện tại. Bạn có thể tạo cấu hình mới ngay bây giờ.", "success");
+      showToast(t("thresholds.stopSuccess"), "success");
       await loadPatientThresholds(activeThreshold.patientId);
       setFormData(createDefaultFormData(activeThreshold.patientId));
     } catch (error: any) {
       console.error("Failed to archive threshold", error);
-      showToast(error?.response?.data?.error || "Không thể ngừng hiệu lực cấu hình hiện tại.", "error");
+      showToast(error?.response?.data?.error || t("thresholds.stopError"), "error");
     } finally {
       setSaving(false);
     }
@@ -474,11 +477,8 @@ const ThresholdSettingsPage = () => {
     <div className="mx-auto p-6">
       <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800 dark:text-slate-100">Cấu Hình Ngưỡng Cảnh Báo</h1>
-          <p className="mt-2 max-w-3xl text-gray-600 dark:text-slate-400">
-            Cấu hình ngưỡng theo từng bệnh nhân, lưu lịch sử thay đổi, và cho phép chỉnh sửa hoặc
-            ngừng hiệu lực ngay trên một màn hình.
-          </p>
+          <h1 className="text-3xl font-bold text-gray-800 dark:text-slate-100">{t("thresholds.title")}</h1>
+          <p className="mt-2 max-w-3xl text-gray-600 dark:text-slate-400">{t("thresholds.description")}</p>
         </div>
 
         <div className="flex flex-wrap gap-3">
@@ -487,9 +487,7 @@ const ThresholdSettingsPage = () => {
             onClick={handleOpenCreateForm}
             className="inline-flex items-center rounded-xl bg-slate-100 dark:bg-slate-700 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-200 dark:hover:bg-slate-600"
           >
-            <FaPlus className="mr-2" />
-            Tạo cấu hình
-          </button>
+            <FaPlus className="mr-2" />{t("thresholds.createConfig")}</button>
           <button
             type="button"
             onClick={() => formData.patientId && void loadPatientThresholds(formData.patientId)}
@@ -498,31 +496,27 @@ const ThresholdSettingsPage = () => {
           >
             <FaSyncAlt
               className={`mr-2 ${loadingThresholds ? "animate-spin" : ""}`}
-            />
-            Làm mới
-          </button>
+            />{t("common.refresh")}</button>
         </div>
       </div>
 
       <div className="mb-6 grid gap-4 md:grid-cols-3">
         <div className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">
-          <div className="text-sm text-gray-500 dark:text-slate-400">Bệnh nhân đang quản lý</div>
+          <div className="text-sm text-gray-500 dark:text-slate-400">{t("thresholds.managedPatients")}</div>
           <div className="mt-2 text-3xl font-bold text-gray-900 dark:text-slate-100">{patientOptions.length}</div>
         </div>
         <div className="rounded-2xl border border-blue-100 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/30 p-4 shadow-sm">
-          <div className="text-sm text-blue-700 dark:text-blue-300">Bản đang hiệu lực</div>
+          <div className="text-sm text-blue-700 dark:text-blue-300">{t("thresholds.activeConfigs")}</div>
           <div className="mt-2 text-3xl font-bold text-blue-800 dark:text-blue-200">{activeThreshold ? 1 : 0}</div>
         </div>
         <div className="rounded-2xl border border-indigo-100 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-900/30 p-4 shadow-sm">
-          <div className="text-sm text-indigo-700 dark:text-indigo-300">Bản lịch sử sẵn sàng dùng lại</div>
+          <div className="text-sm text-indigo-700 dark:text-indigo-300">{t("thresholds.historyConfigs")}</div>
           <div className="mt-2 text-3xl font-bold text-indigo-800 dark:text-indigo-200">{reusableHistoryCount}</div>
         </div>
       </div>
 
       <div className="mb-6 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
-        <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
-          Lọc theo bệnh nhân
-        </label>
+        <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">{t("thresholds.filterByPatient")}</label>
         <select
           name="patientId"
           value={formData.patientId}
@@ -531,7 +525,7 @@ const ThresholdSettingsPage = () => {
           className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="">
-            {loadingPatients ? "-- Đang tải bệnh nhân --" : "-- Chọn bệnh nhân --"}
+            {loadingPatients ? t("thresholds.loadingPatients") : t("thresholds.selectPatient")}
           </option>
           {patientOptions.map((patient) => (
             <option key={patient.patientId} value={patient.patientId}>
@@ -545,35 +539,25 @@ const ThresholdSettingsPage = () => {
       <div className="rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-xl font-semibold text-gray-800 dark:text-slate-100">
-              Danh sách cấu hình ngưỡng
-            </h2>
-            <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
-              Theo dõi cấu hình đang áp dụng, chỉnh sửa nhanh, và xem lịch sử thay đổi.
-            </p>
+            <h2 className="text-xl font-semibold text-gray-800 dark:text-slate-100">{t("thresholds.configList")}</h2>
+            <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">{t("thresholds.configListDesc")}</p>
           </div>
           <div className="rounded-full bg-slate-100 dark:bg-slate-700 px-3 py-1 text-xs font-semibold text-slate-600 dark:text-slate-300">
-            {thresholdHistory.length} cấu hình
+            {thresholdHistory.length} {t("thresholds.configsCount")}
           </div>
         </div>
 
         <div className="mt-5 space-y-4">
           {loadingThresholds && (
-            <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 px-4 py-6 text-sm text-slate-500 dark:text-slate-400">
-              Đang tải cấu hình...
-            </div>
+            <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 px-4 py-6 text-sm text-slate-500 dark:text-slate-400">{t("thresholds.loadingConfigs")}</div>
           )}
 
           {!loadingThresholds && !formData.patientId && (
-            <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 px-4 py-6 text-sm text-slate-500 dark:text-slate-400">
-              Vui lòng chọn bệnh nhân để xem cấu hình ngưỡng.
-            </div>
+            <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 px-4 py-6 text-sm text-slate-500 dark:text-slate-400">{t("thresholds.selectPatientFirst")}</div>
           )}
 
           {!loadingThresholds && formData.patientId && thresholdHistory.length === 0 && (
-            <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 px-4 py-6 text-sm text-slate-500 dark:text-slate-400">
-              Chưa có cấu hình nào cho bệnh nhân này.
-            </div>
+            <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 px-4 py-6 text-sm text-slate-500 dark:text-slate-400">{t("thresholds.noConfigs")}</div>
           )}
 
           {paginatedHistory.map((threshold, index) => {
@@ -596,10 +580,10 @@ const ThresholdSettingsPage = () => {
                             : "bg-slate-200 dark:bg-slate-600 text-slate-600 dark:text-slate-300"
                         }`}
                       >
-                        {isActive ? "Đang hiệu lực" : "Lịch sử"}
+                        {isActive ? t("thresholds.currentlyActive") : t("thresholds.history")}
                       </span>
                       <span className="text-sm font-semibold text-gray-800 dark:text-slate-100">
-                        Bản cấu hình #{thresholdHistory.length - absoluteIndex}
+                        {t("thresholds.configVersion")} #{thresholdHistory.length - absoluteIndex}
                       </span>
                     </div>
 
@@ -609,7 +593,7 @@ const ThresholdSettingsPage = () => {
                       </span>
                       <span className="text-slate-400">•</span>
                       <span className="text-gray-500 dark:text-slate-400">
-                        {selectedPatient?.patientCode || "Chưa có mã"}
+                        {selectedPatient?.patientCode || t("common.notUpdated")}
                       </span>
                     </div>
 
@@ -626,27 +610,21 @@ const ThresholdSettingsPage = () => {
 
                     <div className="mt-4 flex flex-wrap gap-3">
                       <div className="flex-none rounded-lg bg-slate-50 dark:bg-slate-800 px-4 py-3">
-                        <div className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">
-                          Hiệu lực từ
-                        </div>
+                        <div className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">{t("thresholds.validFrom")}</div>
                         <div className="mt-1 text-sm font-semibold text-gray-800 dark:text-slate-100">
                           {formatDateTime(threshold.effectiveFrom)}
                         </div>
                       </div>
 
                       <div className="flex-none rounded-lg bg-slate-50 dark:bg-slate-800 px-4 py-3">
-                        <div className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">
-                          Hiệu lực đến
-                        </div>
+                        <div className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">{t("thresholds.validTo")}</div>
                         <div className="mt-1 text-sm font-semibold text-gray-800 dark:text-slate-100">
                           {formatDateTime(threshold.effectiveTo)}
                         </div>
                       </div>
 
                       <div className="flex-none rounded-lg bg-slate-50 dark:bg-slate-800 px-4 py-3">
-                        <div className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">
-                          Cập nhật
-                        </div>
+                        <div className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">{t("thresholds.updated")}</div>
                         <div className="mt-1 text-sm font-semibold text-gray-800 dark:text-slate-100">
                           {formatDateTime(threshold.updatedAt)}
                         </div>
@@ -661,9 +639,7 @@ const ThresholdSettingsPage = () => {
                       disabled={!canEdit || saving}
                       className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      <FaEdit className="mr-2" />
-                      Chỉnh sửa
-                    </button>
+                      <FaEdit className="mr-2" />{t("thresholds.edit")}</button>
 
                     <button
                       type="button"
@@ -671,9 +647,7 @@ const ThresholdSettingsPage = () => {
                       disabled={saving}
                       className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      <FaPlus className="mr-2" />
-                      Sao chép
-                    </button>
+                      <FaPlus className="mr-2" />{t("thresholds.copy")}</button>
 
                     {isActive && (
                       <button
@@ -682,9 +656,7 @@ const ThresholdSettingsPage = () => {
                         disabled={saving}
                         className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 transition hover:bg-slate-50 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                       >
-                        <FaStopCircle className="mr-2" />
-                        Ngừng hiệu lực
-                      </button>
+                        <FaStopCircle className="mr-2" />{t("thresholds.stopValidity")}</button>
                     )}
                   </div>
                 </div>
@@ -697,7 +669,7 @@ const ThresholdSettingsPage = () => {
         {totalHistoryPages > 1 && (
           <div className="mt-6 flex items-center justify-between border-t border-slate-200 dark:border-slate-700 pt-4">
             <div className="text-sm text-slate-500 dark:text-slate-400">
-              Trang {historyPage}/{totalHistoryPages}
+              {t("common.page")} {historyPage}/{totalHistoryPages}
             </div>
             
             <div className="flex items-center gap-2">
@@ -707,9 +679,7 @@ const ThresholdSettingsPage = () => {
                 disabled={historyPage === 1}
                 className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 dark:hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <FaChevronLeft className="mr-1" />
-                Trước
-              </button>
+                <FaChevronLeft className="mr-1" />{t("common.previous")}</button>
               
               <button
                 type="button"
@@ -758,7 +728,7 @@ const ThresholdSettingsPage = () => {
                 <div className="grid gap-4">
                   <div>
                     <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
-                      Bệnh nhân <span className="text-red-500">*</span>
+                      {t("alerts.patient")} <span className="text-red-500">*</span>
                     </label>
                     <select
                       name="patientId"
@@ -769,8 +739,8 @@ const ThresholdSettingsPage = () => {
                     >
                       <option value="">
                         {loadingPatients
-                          ? "-- Đang tải bệnh nhân --"
-                          : "-- Chọn bệnh nhân --"}
+                          ? t("thresholds.loadingPatients")
+                          : t("thresholds.selectPatient")}
                       </option>
                       {patientOptions.map((patient) => (
                         <option
@@ -793,9 +763,7 @@ const ThresholdSettingsPage = () => {
                       </h3>
                       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                         <div>
-                          <label className="mb-1 block text-sm text-gray-600 dark:text-slate-300">
-                            Tối thiểu
-                          </label>
+                          <label className="mb-1 block text-sm text-gray-600 dark:text-slate-300">{t("thresholds.minimum")}</label>
                           <input
                             type="number"
                             step={section.step}
@@ -806,9 +774,7 @@ const ThresholdSettingsPage = () => {
                           />
                         </div>
                         <div>
-                          <label className="mb-1 block text-sm text-gray-600 dark:text-slate-300">
-                            Tối đa
-                          </label>
+                          <label className="mb-1 block text-sm text-gray-600 dark:text-slate-300">{t("thresholds.maximum")}</label>
                           <input
                             type="number"
                             step={section.step}
@@ -828,9 +794,7 @@ const ThresholdSettingsPage = () => {
                     </h3>
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                       <div>
-                        <label className="mb-1 block text-sm text-gray-600 dark:text-slate-300">
-                          Tối thiểu
-                        </label>
+                        <label className="mb-1 block text-sm text-gray-600 dark:text-slate-300">{t("thresholds.minimum")}</label>
                         <input
                           type="number"
                           name="spo2Min"
@@ -843,13 +807,10 @@ const ThresholdSettingsPage = () => {
                   </div>
 
                   <div>
-                    <h3 className="mb-3 text-base font-semibold text-gray-800 dark:text-slate-100">
-                      Thời gian hiệu lực
-                    </h3>
+                    <h3 className="mb-3 text-base font-semibold text-gray-800 dark:text-slate-100">{t("thresholds.validityPeriod")}</h3>
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                       <div>
-                        <label className="mb-1 block text-sm text-gray-600 dark:text-slate-300">
-                          Từ ngày <span className="text-red-500">*</span>
+                        <label className="mb-1 block text-sm text-gray-600 dark:text-slate-300">{t("thresholds.fromDate")} <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="date"
@@ -861,9 +822,7 @@ const ThresholdSettingsPage = () => {
                         />
                       </div>
                       <div>
-                        <label className="mb-1 block text-sm text-gray-600 dark:text-slate-300">
-                          Đến ngày (tùy chọn)
-                        </label>
+                        <label className="mb-1 block text-sm text-gray-600 dark:text-slate-300">{t("thresholds.toDate")}</label>
                         <input
                           type="date"
                           name="effectiveTo"
@@ -883,18 +842,14 @@ const ThresholdSettingsPage = () => {
                   onClick={() => resetForm()}
                   className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
                 >
-                  <FaUndo className="mr-2" />
-                  Đặt lại
-                </button>
+                  <FaUndo className="mr-2" />{t("common.reset")}</button>
 
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={handleCloseForm}
                     className="rounded-lg border border-slate-300 dark:border-slate-600 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
-                  >
-                    Hủy
-                  </button>
+                  >{t("common.cancel")}</button>
                   <button
                     type="submit"
                     disabled={!formData.patientId || saving}
@@ -902,10 +857,10 @@ const ThresholdSettingsPage = () => {
                   >
                     <FaSave className="mr-2" />
                     {saving
-                      ? "Đang lưu..."
+                      ? t("thresholds.saving")
                       : editingThresholdId
-                        ? "Cập nhật cấu hình"
-                        : "Lưu cấu hình mới"}
+                        ? t("thresholds.updateConfig")
+                        : t("thresholds.saveConfig")}
                   </button>
                 </div>
               </div>

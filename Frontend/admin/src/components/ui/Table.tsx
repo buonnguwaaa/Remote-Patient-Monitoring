@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import Pagination from "./Pagination";
 
 export type Column<T> = {
@@ -22,6 +23,7 @@ const Table = <T,>({
   className = "",
   itemsPerPage = 10,
 }: TableProps<T>) => {
+  const { t } = useTranslation();
   const [currentPage, setCurrentPage] = useState(1);
 
   const totalPages = Math.ceil(data.length / itemsPerPage);
@@ -80,7 +82,7 @@ const Table = <T,>({
                   colSpan={columns.length}
                   className="px-6 py-8 text-center text-gray-400"
                 >
-                  Không có dữ liệu hiển thị.
+                  {t("common.noData")}
                 </td>
               </tr>
             )}

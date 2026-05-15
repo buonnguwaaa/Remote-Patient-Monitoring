@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { HiOutlineEnvelope, HiLockClosed, HiOutlineEye, HiOutlineEyeSlash } from "react-icons/hi2";
 import { useAuth } from "../../../context/AuthContext";
+import { useTranslation } from "react-i18next";
 
 const LoginForm: React.FC = () => {
   const [username, setUsername] = useState("");
@@ -74,7 +75,7 @@ const LoginForm: React.FC = () => {
             htmlFor="password"
             className="mb-2 block text-sm font-medium text-gray-700"
           >
-            Mật khẩu
+            {t("auth.password")}
           </label>
           <div className="relative">
             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
@@ -114,7 +115,7 @@ const LoginForm: React.FC = () => {
           disabled={isLoading}
           className="w-full rounded-md bg-gray-900 px-4 py-3 text-base font-semibold text-white shadow-sm transition duration-200 ease-in-out hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed"
         >
-          {isLoading ? "Đang xử lý..." : "Đăng nhập"}
+          {isLoading ? t("dashboard.generating") : t("auth.login")}
         </button>
       </form>
     </div>

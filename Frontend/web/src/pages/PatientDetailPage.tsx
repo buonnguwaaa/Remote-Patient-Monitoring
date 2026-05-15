@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   MdOutlineKeyboardBackspace,
   MdOutlineCake,
@@ -11,6 +12,8 @@ import {
   MdNotificationsActive,
   MdShowChart,
   MdDateRange,
+  MdFullscreen,
+  MdFullscreenExit,
 } from "react-icons/md";
 import { FaRegMessage } from "react-icons/fa6";
 import { FaHeartbeat, FaTemperatureHigh, FaTint, FaLungs } from "react-icons/fa";
@@ -112,10 +115,10 @@ const ThresholdCard = ({ icon: Icon, label, data, unit, colorClass }: any) => (
  * at the backend level. There is no backend field that maps to clinical display
  * labels "Bình thường / Cảnh báo / Nguy hiểm".
  */
-const mapStatusLabel = (status: string) => {
+const mapStatusLabel = (status: string, t: (key: string) => string) => {
   switch (status) {
-    case "active": return "Đang theo dõi";
-    case "inactive": return "Ngưng theo dõi";
+    case "active": return t("patients.monitoring");
+    case "inactive": return t("patients.stopped");
     default: return status;
   }
 };
@@ -135,6 +138,7 @@ const getStatusColorObj = (status: string) => {
 const PatientDetailPage = () => {
   const navigate = useNavigate();
   const { id: patientId } = useParams<{ id: string }>();
+  const { t } = useTranslation();
 
   const [patient, setPatient] = useState<PatientDetailResponse | null>(null);
   const [measurements, setMeasurements] = useState<ChartRow[]>([]);
@@ -153,7 +157,35 @@ const PatientDetailPage = () => {
    * param in GET /measurements. Filtering is currently done client-side.
    * Backend should add ?from=&to= params for proper server-side filtering.
    */
-  const [timeRange, setTimeRange] = useState<"week" | "month">("week");
+  const [timeRange, setTimeRange] = useState<"week" | "month" | "8weeks" | "4months">("week");
+  const [isChartExpanded, setIsChartExpanded] = useState(false);
+
+  // Re-fetch measurements whenever the time range changes
+  useEffect(() => {
+    if (!patientId) return;
+    let cancelled = false;
+    setMeasurementsLoading(true);
+    setMeasurementsError(null);
+
+    getMeasurements({ patientId })
+      .then((rawMeasurements) => {
+        if (cancelled) return;
+        setMeasurements(normalizeMeasurements(rawMeasurements));
+      })
+      .catch((err: any) => {
+        if (cancelled) return;
+        setMeasurements([]);
+        setMeasurementsError(
+          err?.response?.data?.error ?? err?.message ?? t("patientDetail.historyError")
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setMeasurementsLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [patientId, timeRange]);
 
   useEffect(() => {
     if (!patientId) return;
@@ -168,22 +200,7 @@ const PatientDetailPage = () => {
       setThresholdLoading(true);
       setThresholdError(null);
 
-      const measurementsPromise = getMeasurements({ patientId })
-        .then((rawMeasurements) => {
-          if (cancelled) return;
-          setMeasurements(normalizeMeasurements(rawMeasurements));
-        })
-        .catch((err: any) => {
-          if (cancelled) return;
-          setMeasurements([]);
-          setMeasurementsError(
-            err?.response?.data?.error ?? err?.message ?? "Không thể tải dữ liệu đo"
-          );
-        })
-        .finally(() => {
-          if (cancelled) return;
-          setMeasurementsLoading(false);
-        });
+      const measurementsPromise = Promise.resolve(); // measurements fetched by timeRange effect above
 
       const thresholdsPromise = getThresholds({ patientId, latest: true })
         .then((thresholds) => {
@@ -194,7 +211,7 @@ const PatientDetailPage = () => {
           if (cancelled) return;
           setThreshold(null);
           setThresholdError(
-            err?.response?.data?.error ?? err?.message ?? "Không thể tải ngưỡng an toàn"
+            err?.response?.data?.error ?? err?.message ?? t("patientDetail.loadingThresholds")
           );
         })
         .finally(() => {
@@ -208,7 +225,7 @@ const PatientDetailPage = () => {
         setPatient(patientData);
       } catch (err: any) {
         if (cancelled) return;
-        setError(err?.response?.data?.error ?? err?.message ?? "Lỗi tải dữ liệu");
+        setError(err?.response?.data?.error ?? err?.message ?? t("common.error"));
       } finally {
         if (!cancelled) {
           setLoading(false);
@@ -231,6 +248,10 @@ const PatientDetailPage = () => {
     const cutoff = new Date(now);
     if (timeRange === "week") {
       cutoff.setDate(now.getDate() - 7);
+    } else if (timeRange === "8weeks") {
+      cutoff.setDate(now.getDate() - 56);
+    } else if (timeRange === "4months") {
+      cutoff.setMonth(now.getMonth() - 4);
     } else {
       cutoff.setMonth(now.getMonth() - 1);
     }
@@ -240,12 +261,12 @@ const PatientDetailPage = () => {
   const columns = useMemo<Column<ChartRow>[]>(
     () => [
       {
-        header: "Thời gian",
+        header: t("patientDetail.time"),
         accessor: "updateAt",
         className: "font-medium text-gray-900 dark:text-slate-100",
       },
       {
-        header: "Huyết áp (mmHg)",
+        header: `${t("patientDetail.bloodPressure")} (mmHg)`,
         render: (item) => (
           <span className="text-gray-700 dark:text-slate-300">
             {item.systolic} / {item.diastolic}
@@ -253,7 +274,7 @@ const PatientDetailPage = () => {
         ),
       },
       {
-        header: "Nhịp tim (bpm)",
+        header: `${t("patientDetail.heartRate")} (bpm)`,
         render: (item) => (
           <span className="inline-flex items-center font-semibold text-gray-700 dark:text-slate-300">
             {item.pulse}
@@ -261,7 +282,7 @@ const PatientDetailPage = () => {
         ),
       },
       {
-        header: "Nhiệt độ (°C)",
+        header: `${t("patientDetail.temperature")} (°C)`,
         render: (item) => (
           <span className="text-gray-700 dark:text-slate-300">
             {item.temperature > 0 ? item.temperature.toFixed(1) : "—"}
@@ -269,7 +290,7 @@ const PatientDetailPage = () => {
         ),
       },
       {
-        header: "SpO2 (%)",
+        header: `${t("patientDetail.spo2")} (%)`,
         render: (item) => (
           <span className="text-gray-700 dark:text-slate-300">
             {item.spo2 > 0 ? item.spo2 : "—"}
@@ -277,7 +298,7 @@ const PatientDetailPage = () => {
         ),
       },
       {
-        header: "Nhịp thở (bpm)",
+        header: `${t("patientDetail.respiratoryRate")} (bpm)`,
         render: (item) => (
           <span className="text-gray-700 dark:text-slate-300">
             {item.respiratoryRate > 0 ? item.respiratoryRate : "—"}
@@ -285,7 +306,7 @@ const PatientDetailPage = () => {
         ),
       },
       {
-        header: "Đường huyết (mg/dL)",
+        header: `${t("patientDetail.glucose")} (mg/dL)`,
         render: (item) => (
           <span className="text-gray-700 dark:text-slate-300">
             {item.glucose > 0 ? item.glucose : "—"}
@@ -293,7 +314,7 @@ const PatientDetailPage = () => {
         ),
       },
     ],
-    []
+    [t]
   );
 
   const tableData = useMemo(
@@ -321,12 +342,12 @@ const PatientDetailPage = () => {
   if (error || !patient) {
     return (
       <div className="flex h-screen flex-col items-center justify-center gap-4 text-center bg-gray-100 dark:bg-slate-900">
-        <p className="text-red-500 font-medium">{error ?? "Không tìm thấy bệnh nhân"}</p>
+        <p className="text-red-500 font-medium">{error ?? t("patientDetail.patientNotFound")}</p>
         <button
           onClick={() => navigate(-1)}
           className="px-4 py-2 bg-gray-200 dark:bg-slate-700 dark:text-slate-200 rounded hover:bg-gray-300 dark:hover:bg-slate-600 transition"
         >
-          Quay lại
+          {t("common.back")}
         </button>
       </div>
     );
@@ -343,7 +364,7 @@ const PatientDetailPage = () => {
         >
           <MdOutlineKeyboardBackspace size={24} />
           <span className="font-medium whitespace-nowrap overflow-hidden max-w-0 opacity-0 group-hover:max-w-xs group-hover:opacity-100 group-hover:ml-2 transition-all duration-500 ease-in-out">
-            Quay lại trang trước
+            {t("patientDetail.backToPrevious")}
           </span>
         </button>
 
@@ -361,13 +382,13 @@ const PatientDetailPage = () => {
               </h1>
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3">
                 <span className="text-gray-500 dark:text-slate-400 text-sm">
-                  {patient.patientCode ? `Mã BN: ${patient.patientCode}` : `ID: #${patient.id.slice(0, 8)}`}
+                  {patient.patientCode ? `${t("patientDetail.patientCode")}: ${patient.patientCode}` : `ID: #${patient.id.slice(0, 8)}`}
                 </span>
                 {/* TODO [NO API]: status is 'active'/'inactive', not clinical severity. */}
                 <span
                   className={`px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full border ${statusColors.bg} ${statusColors.text} ${statusColors.border}`}
                 >
-                  {mapStatusLabel(patient.status)}
+                  {mapStatusLabel(patient.status, t)}
                 </span>
               </div>
               <div className="mt-4 flex flex-wrap justify-center sm:justify-start gap-3">
@@ -376,7 +397,7 @@ const PatientDetailPage = () => {
                   className="inline-flex items-center rounded-xl border border-blue-200 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/30 px-4 py-2 text-sm font-medium text-blue-700 dark:text-blue-300 transition hover:bg-blue-100 dark:hover:bg-blue-900/50"
                 >
                   <MdNotificationsActive className="mr-2" size={18} />
-                  Quản lý nhắc nhở
+                  {t("patientDetail.manageReminders")}
                 </button>
                 <button
                   onClick={() => navigate(`/patient/chat/${patientId}`)}
@@ -401,34 +422,34 @@ const PatientDetailPage = () => {
           <div className="lg:col-span-1 space-y-6">
             <section className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-5">
               <h3 className="text-lg font-bold text-gray-800 dark:text-slate-100 mb-4 pb-2 border-b border-gray-200 dark:border-slate-700">
-                Thông tin cá nhân
+                {t("patientDetail.personalInfo")}
               </h3>
               <div className="space-y-3">
                 <InfoItem
                   icon={MdOutlineCake}
-                  label="Ngày sinh"
+                  label={t("profile.dateOfBirth")}
                   value={patient.dob ? patient.dob.split("T")[0] : ""}
                 />
-                <InfoItem icon={MdPerson} label="Giới tính" value={patient.gender} />
+                <InfoItem icon={MdPerson} label={t("profile.gender")} value={patient.gender} />
                 {patient.phone && (
-                  <InfoItem icon={MdPhoneInTalk} label="Số điện thoại" value={patient.phone} />
+                  <InfoItem icon={MdPhoneInTalk} label={t("profile.phone")} value={patient.phone} />
                 )}
               </div>
             </section>
 
             <section className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-5">
               <h3 className="text-lg font-bold text-gray-800 dark:text-slate-100 mb-4 pb-2 border-b border-gray-200 dark:border-slate-700">
-                Liên hệ khẩn cấp
+                {t("patientDetail.emergencyContact")}
               </h3>
               <div className="space-y-3">
                 <InfoItem
                   icon={MdContactEmergency}
-                  label="Người liên hệ"
+                  label={t("patientDetail.contactPerson")}
                   value={patient.emergencyContactName ?? ""}
                 />
                 <InfoItem
                   icon={MdPhoneInTalk}
-                  label="Số điện thoại"
+                  label={t("profile.phone")}
                   value={patient.emergencyContactPhone ?? ""}
                 />
               </div>
@@ -440,11 +461,11 @@ const PatientDetailPage = () => {
             <section className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-5 h-full">
               <h3 className="text-lg font-bold text-gray-800 dark:text-slate-100 mb-6 pb-2 border-b border-gray-200 dark:border-slate-700 flex items-center">
                 <GiHeartBeats className="mr-2 text-red-500" size={24} />
-                Ngưỡng chỉ số an toàn
+                {t("patientDetail.safetyThresholds")}
               </h3>
               {thresholdLoading ? (
                 <div className="flex h-48 items-center justify-center text-sm text-gray-400 dark:text-slate-500">
-                  Đang tải ngưỡng an toàn...
+                  {t("patientDetail.loadingThresholds")}
                 </div>
               ) : thresholdError ? (
                 <div className="flex h-48 flex-col items-center justify-center gap-3 text-center text-sm text-red-500 dark:text-red-300">
@@ -453,36 +474,36 @@ const PatientDetailPage = () => {
                     onClick={() => navigate(`/threshold-settings`)}
                     className="rounded-lg bg-primary px-4 py-2 text-white transition hover:bg-primary-dark"
                   >
-                    Mở cài đặt ngưỡng
+                    {t("patientDetail.openThresholdSettings")}
                   </button>
                 </div>
               ) : threshold ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <ThresholdCard icon={FaTemperatureHigh} label="Nhiệt độ" data={{ min: threshold.temperatureMin, max: threshold.temperatureMax }} unit="°C" colorClass="border-orange-400 text-orange-500" />
-                  <ThresholdCard icon={GiHeartBeats} label="Nhịp tim" data={{ min: threshold.heartRateMin, max: threshold.heartRateMax }} unit="bpm" colorClass="border-red-400 text-red-500" />
-                  <ThresholdCard icon={FaHeartbeat} label="Huyết áp tâm thu" data={{ min: threshold.sysMin, max: threshold.sysMax }} unit="mmHg" colorClass="border-purple-400 text-purple-500" />
-                  <ThresholdCard icon={FaHeartbeat} label="Huyết áp tâm trương" data={{ min: threshold.diaMin, max: threshold.diaMax }} unit="mmHg" colorClass="border-indigo-400 text-indigo-500" />
-                  <ThresholdCard icon={FaLungs} label="Nhịp thở" data={{ min: threshold.respiratoryRateMin ?? 0, max: threshold.respiratoryRateMax ?? 0 }} unit="bpm" colorClass="border-green-400 text-green-500" />
-                  <ThresholdCard icon={MdBloodtype} label="SpO2" data={{ min: threshold.spo2Min, max: 100 }} unit="%" colorClass="border-cyan-400 text-cyan-500" />
-                  <ThresholdCard icon={FaTint} label="Đường huyết" data={{ min: threshold.glucoseMin ?? 0, max: threshold.glucoseMax ?? 0 }} unit="mg/dL" colorClass="border-blue-400 text-blue-500" />
+                  <ThresholdCard icon={FaTemperatureHigh} label={t("patientDetail.temperature")} data={{ min: threshold.temperatureMin, max: threshold.temperatureMax }} unit="°C" colorClass="border-orange-400 text-orange-500" />
+                  <ThresholdCard icon={GiHeartBeats} label={t("patientDetail.heartRate")} data={{ min: threshold.heartRateMin, max: threshold.heartRateMax }} unit="bpm" colorClass="border-red-400 text-red-500" />
+                  <ThresholdCard icon={FaHeartbeat} label={t("patientDetail.systolic")} data={{ min: threshold.sysMin, max: threshold.sysMax }} unit="mmHg" colorClass="border-purple-400 text-purple-500" />
+                  <ThresholdCard icon={FaHeartbeat} label={t("patientDetail.diastolic")} data={{ min: threshold.diaMin, max: threshold.diaMax }} unit="mmHg" colorClass="border-indigo-400 text-indigo-500" />
+                  <ThresholdCard icon={FaLungs} label={t("patientDetail.respiratoryRate")} data={{ min: threshold.respiratoryRateMin ?? 0, max: threshold.respiratoryRateMax ?? 0 }} unit="bpm" colorClass="border-green-400 text-green-500" />
+                  <ThresholdCard icon={MdBloodtype} label={t("patientDetail.spo2")} data={{ min: threshold.spo2Min, max: 100 }} unit="%" colorClass="border-cyan-400 text-cyan-500" />
+                  <ThresholdCard icon={FaTint} label={t("patientDetail.glucose")} data={{ min: threshold.glucoseMin ?? 0, max: threshold.glucoseMax ?? 0 }} unit="mg/dL" colorClass="border-blue-400 text-blue-500" />
 
                   <div className="col-span-1 sm:col-span-2 flex justify-center items-center">
                     <button
                       onClick={() => navigate(`/threshold-settings`)}
                       className="mt-2 w-full bg-primary hover:bg-primary-dark text-white py-2.5 rounded-lg font-medium transition-colors shadow-lg shadow-purple-200"
                     >
-                      Cập nhật ngưỡng
+                      {t("patientDetail.updateThresholds")}
                     </button>
                   </div>
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center h-48 text-gray-400 dark:text-slate-500 gap-3">
-                  <p>Chưa có ngưỡng chỉ số nào được thiết lập.</p>
+                  <p>{t("patientDetail.noThresholds")}</p>
                   <button
                     onClick={() => navigate(`/threshold-settings`)}
                     className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition"
                   >
-                    Thiết lập ngưỡng
+                    {t("patientDetail.setupThresholds")}
                   </button>
                 </div>
               )}
@@ -490,12 +511,46 @@ const PatientDetailPage = () => {
           </div>
         </div>
 
-        {/* Chart */}
-        <section className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-5 mb-6">
+        {isChartExpanded && (
+          <div 
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" 
+            onClick={() => { 
+              setIsChartExpanded(false); 
+              if (timeRange === "4months") setTimeRange("month");
+              if (timeRange === "8weeks") setTimeRange("week");
+            }} 
+          />
+        )}
+        <section 
+          className={`bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-5 transition-all ${
+            isChartExpanded 
+              ? "fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[95vw] h-[90vh] flex flex-col m-0" 
+              : "mb-6"
+          }`}
+        >
           <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-gray-200 dark:border-slate-700 pb-4 mb-4">
             <h3 className="text-lg font-bold text-gray-800 dark:text-slate-100 flex items-center mb-4 md:mb-0">
               <MdShowChart className="mr-2 text-blue-500" size={24} />
-              Biểu đồ sức khỏe
+              {t("patientDetail.healthChart")}
+              <button
+                onClick={() => {
+                  const expanding = !isChartExpanded;
+                  setIsChartExpanded(expanding);
+                  if (expanding) {
+                    // Expand: week → 8weeks, month → 4months
+                    if (timeRange === "week") setTimeRange("8weeks");
+                    else if (timeRange === "month") setTimeRange("4months");
+                  } else {
+                    // Collapse: 8weeks → week, 4months → month
+                    if (timeRange === "8weeks") setTimeRange("week");
+                    else if (timeRange === "4months") setTimeRange("month");
+                  }
+                }}
+                className="ml-3 p-1 rounded-full text-gray-500 hover:bg-gray-100 dark:text-slate-400 dark:hover:bg-slate-700 transition"
+                title={isChartExpanded ? t("common.collapse") || "Thu nhỏ" : t("common.expand") || "Phóng to"}
+              >
+                {isChartExpanded ? <MdFullscreenExit size={24} /> : <MdFullscreen size={24} />}
+              </button>
             </h3>
 
             <div className="flex flex-wrap gap-2 md:gap-4">
@@ -508,7 +563,7 @@ const PatientDetailPage = () => {
                       : "text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200"
                   }`}
                 >
-                  Huyết áp
+                  {t("patientDetail.chartBP")}
                 </button>
                 <button
                   onClick={() => setChartType("glucose")}
@@ -518,7 +573,7 @@ const PatientDetailPage = () => {
                       : "text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200"
                   }`}
                 >
-                  Đường huyết
+                  {t("patientDetail.chartGlucose")}
                 </button>
                 <button
                   onClick={() => setChartType("temperature")}
@@ -528,7 +583,7 @@ const PatientDetailPage = () => {
                       : "text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200"
                   }`}
                 >
-                  Nhiệt độ
+                  {t("patientDetail.chartTemperature")}
                 </button>
                 <button
                   onClick={() => setChartType("spo2")}
@@ -538,7 +593,7 @@ const PatientDetailPage = () => {
                       : "text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200"
                   }`}
                 >
-                  SpO2
+                  {t("patientDetail.chartSpo2")}
                 </button>
                 <button
                   onClick={() => setChartType("respiratory")}
@@ -548,39 +603,39 @@ const PatientDetailPage = () => {
                       : "text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200"
                   }`}
                 >
-                  Nhịp thở
+                  {t("patientDetail.chartRespiratory")}
                 </button>
               </div>
 
               <div className="inline-flex bg-gray-100 dark:bg-slate-700 rounded-lg p-1">
                 <button
-                  onClick={() => setTimeRange("week")}
+                  onClick={() => setTimeRange(isChartExpanded ? "8weeks" : "week")}
                   className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all flex items-center ${
-                    timeRange === "week"
+                    timeRange === "week" || timeRange === "8weeks"
                       ? "bg-white dark:bg-slate-600 text-green-600 dark:text-green-400 shadow-sm"
                       : "text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200"
                   }`}
                 >
-                  <MdDateRange className="mr-1" /> Tuần
+                  <MdDateRange className="mr-1" /> {isChartExpanded ? (t("patientDetail.last8WeeksBtn") || "8 tuần gần nhất") : t("patientDetail.week")}
                 </button>
                 <button
-                  onClick={() => setTimeRange("month")}
+                  onClick={() => setTimeRange(isChartExpanded ? "4months" : "month")}
                   className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all flex items-center ${
-                    timeRange === "month"
+                    timeRange === "month" || timeRange === "4months"
                       ? "bg-white dark:bg-slate-600 text-green-600 dark:text-green-400 shadow-sm"
                       : "text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200"
                   }`}
                 >
-                  <MdDateRange className="mr-1" /> Tháng
+                  <MdDateRange className="mr-1" /> {isChartExpanded ? (t("patientDetail.last4MonthsBtn") || "4 tháng gần nhất") : t("patientDetail.month")}
                 </button>
               </div>
             </div>
           </div>
 
-          <div className="h-80 w-full">
+          <div className={isChartExpanded ? "flex-1 w-full min-h-[400px]" : "h-80 w-full"}>
             {measurementsLoading ? (
               <div className="flex h-full items-center justify-center text-sm text-gray-400 dark:text-slate-500">
-                Đang tải dữ liệu đo...
+                {t("patientDetail.loadingMeasurements")}
               </div>
             ) : measurementsError ? (
               <div className="flex h-full items-center justify-center text-center text-sm text-red-500 dark:text-red-300">
@@ -610,25 +665,31 @@ const PatientDetailPage = () => {
 
                   {chartType === "bp" ? (
                     <>
-                      <Line name="Tâm thu (Systolic)" type="monotone" dataKey="systolic" stroke="#8884d8" strokeWidth={3} activeDot={{ r: 6 }} />
-                      <Line name="Tâm trương (Diastolic)" type="monotone" dataKey="diastolic" stroke="#82ca9d" strokeWidth={3} activeDot={{ r: 6 }} />
+                      <Line name={t("patientDetail.lineSystolic")} type="monotone" dataKey="systolic" stroke="#8884d8" strokeWidth={3} activeDot={{ r: 6 }} />
+                      <Line name={t("patientDetail.lineDiastolic")} type="monotone" dataKey="diastolic" stroke="#82ca9d" strokeWidth={3} activeDot={{ r: 6 }} />
                     </>
                   ) : chartType === "glucose" ? (
-                    <Line name="Đường huyết (Glucose)" type="monotone" dataKey="glucose" stroke="#3b82f6" strokeWidth={3} activeDot={{ r: 6 }} />
+                    <Line name={t("patientDetail.lineGlucose")} type="monotone" dataKey="glucose" stroke="#3b82f6" strokeWidth={3} activeDot={{ r: 6 }} />
                   ) : chartType === "temperature" ? (
-                    <Line name="Nhiệt độ (Temperature)" type="monotone" dataKey="temperature" stroke="#f97316" strokeWidth={3} activeDot={{ r: 6 }} />
+                    <Line name={t("patientDetail.lineTemperature")} type="monotone" dataKey="temperature" stroke="#f97316" strokeWidth={3} activeDot={{ r: 6 }} />
                   ) : chartType === "spo2" ? (
                     <Line name="SpO2" type="monotone" dataKey="spo2" stroke="#06b6d4" strokeWidth={3} activeDot={{ r: 6 }} />
                   ) : (
-                    <Line name="Nhịp thở (Respiratory Rate)" type="monotone" dataKey="respiratoryRate" stroke="#10b981" strokeWidth={3} activeDot={{ r: 6 }} />
+                    <Line name={t("patientDetail.lineRespiratory")} type="monotone" dataKey="respiratoryRate" stroke="#10b981" strokeWidth={3} activeDot={{ r: 6 }} />
                   )}
                 </LineChart>
               </ResponsiveContainer>
             )}
           </div>
           <p className="text-xs text-gray-400 dark:text-slate-500 mt-2 text-center italic">
-            * Dữ liệu hiển thị theo{" "}
-            {timeRange === "week" ? "7 ngày" : "30 ngày"} gần nhất.
+            {t("patientDetail.dataNote")}{" "}
+            {timeRange === "week"
+              ? t("patientDetail.last7Days")
+              : timeRange === "8weeks"
+              ? (t("patientDetail.last8Weeks") || "8 tuần qua")
+              : timeRange === "4months"
+              ? (t("patientDetail.last4Months") || "4 tháng qua")
+              : t("patientDetail.last30Days")}.
           </p>
         </section>
 
@@ -636,13 +697,13 @@ const PatientDetailPage = () => {
         <section className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden mb-8">
           <div className="p-5 border-b border-gray-200 dark:border-slate-700">
             <h3 className="text-lg font-bold text-gray-800 dark:text-slate-100">
-              Lịch sử đo gần đây
+              {t("patientDetail.recentHistory")}
             </h3>
           </div>
 
           {measurementsLoading ? (
             <div className="p-5 text-sm text-gray-400 dark:text-slate-500">
-              Đang tải lịch sử đo...
+              {t("patientDetail.loadingHistory")}
             </div>
           ) : measurementsError ? (
             <div className="p-5 text-sm text-red-500 dark:text-red-300">

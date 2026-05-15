@@ -196,6 +196,7 @@
     "updateSuccess": "Cập nhật bệnh nhân thành công!",
     "addSuccess": "Thêm bệnh nhân thành công!",
     "errorPrefix": "Lỗi:",
+    "loginAccount": "tài khoản đăng nhập",
     "fields": {
       "name": "Họ tên",
       "email": "Email",
@@ -308,6 +309,14 @@
       "delete": "Xóa",
       "system": "Hệ thống",
       "other": "Khác"
+    },
+    "pagination": {
+      "showing": "Hiển thị",
+      "of": "trong tổng số",
+      "logs": "logs",
+      "page": "Trang",
+      "previous": "Trước",
+      "next": "Sau"
     }
   },
   "chart": {

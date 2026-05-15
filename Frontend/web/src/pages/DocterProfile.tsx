@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { type Doctor, type Department } from "../types";
 import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
+import { useTranslation } from "react-i18next";
 import {
   User,
   Mail,
@@ -24,7 +25,9 @@ const InfoItem = ({
   icon: any;
   label: string;
   value: string;
-}) => (
+}) => {
+  const { t } = useTranslation();
+  return (
   <div className="flex items-center gap-3 py-3">
     <div className="p-2 rounded-lg bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-300">
       <Icon size={18} />
@@ -34,11 +37,12 @@ const InfoItem = ({
         {label}
       </p>
       <p className="text-sm font-medium text-gray-800 dark:text-slate-100 truncate">
-        {value || "Chưa cập nhật"}
+        {value || t("common.notUpdated")}
       </p>
     </div>
   </div>
-);
+  );
+};
 
 function normalizeObjectId(value: unknown): string {
   if (!value) {
@@ -89,6 +93,7 @@ function resolveDepartmentName(profile: Doctor, departments: Department[]): stri
 }
 
 const DoctorProfile = () => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [doctor, setDoctor] = useState<Doctor | null>(null);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -108,7 +113,7 @@ const DoctorProfile = () => {
         setDoctor(doctorResponse.data?.data || null);
         setDepartments(departmentResponse.data?.data || []);
       } catch (err: any) {
-        setError(err?.response?.data?.error || "Không thể tải thông tin bác sĩ");
+        setError(err?.response?.data?.error || t("profile.loadingError"));
       } finally {
         setLoading(false);
       }
@@ -127,19 +132,19 @@ const DoctorProfile = () => {
   if (error || !doctor) {
     return (
       <div className="flex items-center justify-center min-h-[60vh] bg-gray-50 dark:bg-slate-900">
-        <p className="text-gray-500 dark:text-slate-400">{error || "Không tìm thấy thông tin"}</p>
+        <p className="text-gray-500 dark:text-slate-400">{error || t("profile.notFound")}</p>
       </div>
     );
   }
 
   const formatGender = (g: string) => {
     if (g === "M") return "Nam";
-    if (g === "F") return "Nữ";
-    return "Khác";
+    if (g === "F") return t("common.female");
+    return t("common.other");
   };
 
   const formatDate = (d: string) => {
-    if (!d) return "Chưa cập nhật";
+    if (!d) return t("common.notUpdated");
     return new Date(d).toLocaleDateString("vi-VN");
   };
 
@@ -187,32 +192,32 @@ const DoctorProfile = () => {
           {/* Personal Info */}
           <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 p-6">
             <h2 className="text-sm font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-4">
-              Thông tin cá nhân
+              {t("profile.title")}
             </h2>
             <div className="divide-y divide-gray-100 dark:divide-slate-700">
-              <InfoItem icon={User} label="Giới tính" value={formatGender(doctor.gender)} />
-              <InfoItem icon={Calendar} label="Ngày sinh" value={formatDate(doctor.dob)} />
+              <InfoItem icon={User} label={t("profile.gender")} value={formatGender(doctor.gender)} />
+              <InfoItem icon={Calendar} label={t("profile.dateOfBirth")} value={formatDate(doctor.dob)} />
               <InfoItem icon={Mail} label="Email" value={doctor.email} />
-              <InfoItem icon={Phone} label="Số điện thoại" value={doctor.phone || ""} />
+              <InfoItem icon={Phone} label={t("profile.phone")} value={doctor.phone || ""} />
             </div>
           </div>
 
           {/* Work Info */}
           <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 p-6">
             <h2 className="text-sm font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-4">
-              Thông tin công việc
+              {t("profile.workInfo")}
             </h2>
             <div className="divide-y divide-gray-100 dark:divide-slate-700">
-              <InfoItem icon={Stethoscope} label="Chuyên khoa" value={doctor.specialization || ""} />
-              <InfoItem icon={Building2} label="Khoa/Phòng" value={resolveDepartmentName(doctor, departments)} />
-              <InfoItem icon={MapPin} label="Nơi làm việc" value={doctor.workplace || ""} />
-              <InfoItem icon={FileBadge} label="Số giấy phép" value={doctor.licenseNumber || ""} />
+              <InfoItem icon={Stethoscope} label={t("profile.specialization")} value={doctor.specialization || ""} />
+              <InfoItem icon={Building2} label={t("profile.department")} value={resolveDepartmentName(doctor, departments)} />
+              <InfoItem icon={MapPin} label={t("profile.workplace")} value={doctor.workplace || ""} />
+              <InfoItem icon={FileBadge} label={t("profile.licenseNumber")} value={doctor.licenseNumber || ""} />
               <InfoItem
                 icon={Award}
-                label="Kinh nghiệm"
+                label={t("profile.experience")}
                 value={doctor.yearsOfExperience ? `${doctor.yearsOfExperience} năm` : ""}
               />
-              <InfoItem icon={Briefcase} label="Vai trò" value="Bác sĩ" />
+              <InfoItem icon={Briefcase} label={t("profile.role")} value={t("profile.doctor")} />
             </div>
           </div>
         </div>
