@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { CiCircleChevLeft, CiCircleChevRight } from "react-icons/ci";
 import { FiLogOut } from "react-icons/fi";
+import { useTranslation } from "react-i18next";
 
 import { IoMdSettings } from "react-icons/io";
 import { type NavigationItem } from "../../types/index.ts";
-import { navData } from "../../data/NavData.ts";
+import { getNavData } from "../../data/NavData.ts";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useRealtimeNotification } from "../../context/RealtimeNotificationContext";
@@ -20,8 +21,9 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { unreadTotal } = useRealtimeNotification();
+  const { t } = useTranslation();
 
-  const itemsToDisplay = navigationItems || navData;
+  const itemsToDisplay = navigationItems || getNavData(t);
   const isSettingsActive = location.pathname === "/settings";
 
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -127,6 +129,33 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
                 </li>
               );
             })}
+            <li>
+              <Link
+                to="/settings"
+                onClick={() => {
+                  if (window.innerWidth < 768) setIsCollapsed(true);
+                }}
+                className={`
+                  flex items-center py-2 rounded-lg transition-colors
+                  ${isCollapsed ? "justify-center px-0" : "px-4 gap-3"}
+                  ${
+                    isSettingsActive
+                      ? "bg-btn-clicked text-white"
+                      : "text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800"
+                  }
+                `}
+                title={isCollapsed ? t("nav.settings") : ""}
+              >
+                <div className="text-2xl shrink-0">
+                  <IoMdSettings />
+                </div>
+                {!isCollapsed && (
+                  <span className="text-xl font-semibold whitespace-nowrap overflow-hidden">
+                    {t("nav.settings")}
+                  </span>
+                )}
+              </Link>
+            </li>
           </ul>
         </nav>
 
@@ -157,32 +186,13 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
               </div>
             )}
           </div>
-          <Link
-            to="/settings"
-            className={`
-              flex w-full items-center justify-center py-2 rounded-md text-xl mt-2
-              transition duration-300 mb-2
-              ${isCollapsed ? "px-0" : "px-4 gap-2"}
-              ${
-                isSettingsActive
-                  ? "bg-btn-clicked text-white"
-                  : "text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800"
-              }
-            `}
-          >
-            {isCollapsed ? (
-              <IoMdSettings size={22} />
-            ) : (
-              <span className="text-base font-semibold">Cài đặt</span>
-            )}
-          </Link>
           <button
             onClick={handleLogout}
             className="flex w-full items-center justify-center py-2 rounded-md text-xl 
             text-gray-500 dark:text-slate-400 hover:bg-rose-400 hover:text-gray-800 transition duration-400 mt-3"
           >
             <FiLogOut className="mr-1" />
-            {!isCollapsed && <span>Đăng xuất</span>}
+            {!isCollapsed && <span>{t("auth.logout")}</span>}
           </button>
           <div className="mt-16 md:mt-0 "> </div>
         </div>

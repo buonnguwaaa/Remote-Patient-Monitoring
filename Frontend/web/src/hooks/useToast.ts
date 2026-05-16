@@ -1,4 +1,6 @@
 import { useCallback, useState } from "react";
+import i18n from "../i18n/config";
+const t = i18n.t;
 
 export type ToastType = "success" | "error" | "info";
 
@@ -17,7 +19,7 @@ export interface ToastOptions {
 }
 
 const defaultTitles: Record<ToastType, string> = {
-  success: "Thành công",
+  success: t("common.success"),
   error: "Thất bại",
   info: "Thông báo",
 };

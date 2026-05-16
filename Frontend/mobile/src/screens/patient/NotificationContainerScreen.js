@@ -1,12 +1,23 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useIsFocused } from "@react-navigation/native";
 
+import { useBadge } from "../../context/BadgeContext";
 import AlertScreen from "./AlertScreen";
 import NotificationInboxScreen from "./NotificationInboxScreen";
 
 export default function NotificationContainerScreen({ navigation, route }) {
   const [activeTab, setActiveTab] = useState("alerts"); // "alerts" | "system"
+  const isFocused = useIsFocused();
+  const { refreshBadges } = useBadge();
+
+  // Refresh badge count when screen is focused
+  useEffect(() => {
+    if (isFocused) {
+      refreshBadges();
+    }
+  }, [isFocused, refreshBadges]);
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { FaCommentDots, FaSearch, FaSyncAlt } from "react-icons/fa";
+import { useTranslation } from "react-i18next";
 
 import ChatPage from "./ChatPage";
 import { useAuth } from "../context/AuthContext";
@@ -37,19 +38,19 @@ const formatListTime = (value: string) => {
   });
 };
 
-const normalizePreview = (message: MessageResponse | null, isMe: boolean) => {
+const normalizePreview = (message: MessageResponse | null, isMe: boolean, t: (key: string) => string) => {
   if (!message) {
-    return "Chưa có tin nhắn";
+    return t("chat.noMessages");
   }
 
   const normalized = String(message.content || "")
     .replace(/\s+/g, " ")
     .trim();
   if (!normalized) {
-    return "Tin nhắn không có nội dung";
+    return t("chat.noContent");
   }
 
-  const prefix = isMe ? "Bạn: " : "";
+  const prefix = isMe ? `${t("chat.you")}: ` : "";
   const snippet =
     normalized.length > 72 ? `${normalized.slice(0, 69)}...` : normalized;
   return `${prefix}${snippet}`;
@@ -59,6 +60,7 @@ const ChatListPage = () => {
   const navigate = useNavigate();
   const { id: selectedPatientId } = useParams<{ id: string }>();
   const { user } = useAuth();
+  const { t } = useTranslation();
   const {
     unreadByConversation,
     lastChatEvent,
@@ -72,7 +74,7 @@ const ChatListPage = () => {
 
   const loadConversations = async () => {
     if (!user?.id) {
-      setError("Không tìm thấy thông tin bác sĩ để tải cuộc trò chuyện.");
+      setError(t("chat.loadingError"));
       setLoading(false);
       return;
     }
@@ -113,7 +115,7 @@ const ChatListPage = () => {
           return {
             conversationId: conversation.id,
             patientId: otherParticipant,
-            patientName: assignment?.patientName || "Bệnh nhân",
+            patientName: assignment?.patientName || t("chat.patient"),
             lastMessage,
             updatedAt: lastMessage?.createdAt || conversation.updatedAt,
           } as ConversationPreview;
@@ -143,7 +145,7 @@ const ChatListPage = () => {
       setError(
         err?.response?.data?.error ||
           err?.message ||
-          "Không thể tải danh sách cuộc trò chuyện.",
+          t("chat.cannotLoadConversations"),
       );
     } finally {
       setLoading(false);
@@ -233,7 +235,7 @@ const ChatListPage = () => {
                 <input
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Tìm bệnh nhân..."
+                  placeholder={t("chat.searchPatients")}
                   className="w-full rounded-md border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:focus:ring-blue-500/20"
                 />
               </div>
@@ -251,7 +253,7 @@ const ChatListPage = () => {
           <div className="max-h-[calc(100vh-260px)] overflow-y-auto">
             {loading ? (
               <div className="p-4 text-center text-sm text-slate-500 dark:text-slate-400">
-                Đang tải cuộc trò chuyện...
+                {t("chat.loadingConversations")}
               </div>
             ) : error ? (
               <div className="p-4 text-sm text-red-600 dark:text-red-400">
@@ -259,7 +261,7 @@ const ChatListPage = () => {
               </div>
             ) : filteredConversations.length === 0 ? (
               <div className="p-4 text-center text-sm text-slate-500 dark:text-slate-400">
-                Không có cuộc trò chuyện phù hợp.
+                {t("chat.noConversations")}
               </div>
             ) : (
               filteredConversations.map((conversation) => {
@@ -267,6 +269,7 @@ const ChatListPage = () => {
                 const preview = normalizePreview(
                   conversation.lastMessage,
                   Boolean(isMe),
+                  t,
                 );
                 const timeLabel = formatListTime(conversation.updatedAt);
                 const isActive =
@@ -317,7 +320,7 @@ const ChatListPage = () => {
           ) : (
             <div className="rounded-lg border border-slate-200 bg-white p-6 text-center text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
               <FaCommentDots className="mb-3 text-3xl text-slate-300 dark:text-slate-600" />
-              Chọn một cuộc trò chuyện để mở khung chat chi tiết.
+              {t("chat.selectConversation")}
             </div>
           )}
         </section>

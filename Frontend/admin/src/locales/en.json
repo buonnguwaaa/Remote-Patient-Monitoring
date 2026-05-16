@@ -90,13 +90,16 @@
     "system": "System",
     "online": "Online",
     "recentActivity": "Recent Activity",
+    "noRecentActivity": "No activities today",
     "activities": {
       "doctorLogin": "Dr. Nguyen Van A logged in",
       "newPatient": "New patient added: Tran Thi B",
       "updateNurse": "Updated nurse information",
       "timeAgo": {
+        "justNow": "Just now",
         "minutes": "minutes ago",
-        "hours": "hours ago"
+        "hours": "hours ago",
+        "days": "days ago"
       }
     }
   },
@@ -193,6 +196,7 @@
     "updateSuccess": "Patient updated successfully!",
     "addSuccess": "Patient added successfully!",
     "errorPrefix": "Error:",
+    "loginAccount": "login account",
     "fields": {
       "name": "Full Name",
       "email": "Email",
@@ -305,6 +309,14 @@
       "delete": "Delete",
       "system": "System",
       "other": "Other"
+    },
+    "pagination": {
+      "showing": "Showing",
+      "of": "of",
+      "logs": "logs",
+      "page": "Page",
+      "previous": "Previous",
+      "next": "Next"
     }
   },
   "chart": {

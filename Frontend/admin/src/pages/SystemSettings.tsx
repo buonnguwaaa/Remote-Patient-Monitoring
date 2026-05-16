@@ -31,27 +31,6 @@ const labelClass = "mb-2 block text-sm font-semibold text-slate-700 dark:text-sl
 const rowClass =
   "flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 dark:border-slate-700 dark:bg-slate-800/70";
 
-const statusMeta = {
-  online: {
-    label: "Trực tuyến",
-    badgeClass:
-      "border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300",
-    helperText: "Hệ thống đang hoạt động bình thường và chấp nhận truy cập mới.",
-  },
-  offline: {
-    label: "Ngoại tuyến",
-    badgeClass:
-      "border border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300",
-    helperText: "Toàn bộ truy cập mới sẽ bị chặn cho đến khi bạn bật lại hệ thống.",
-  },
-  maintenance: {
-    label: "Bảo trì",
-    badgeClass:
-      "border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300",
-    helperText: "Người dùng sẽ thấy thông báo bảo trì thay vì nội dung chính.",
-  },
-} as const;
-
 const initialFormState = (theme: ThemeMode): SettingsFormState => ({
   systemStatus: "online",
   maintenanceMessage: "Hệ thống đang bảo trì, vui lòng quay lại sau.",
@@ -84,8 +63,6 @@ const SystemSettings: React.FC = () => {
     }
   }, [theme, language, isEditing]);
 
-  const currentStatus = statusMeta[draftSettings.systemStatus];
-
   const updateDraft = <K extends keyof SettingsFormState>(key: K, value: SettingsFormState[K]) => {
     setDraftSettings((current) => ({ ...current, [key]: value }));
   };
@@ -112,17 +89,6 @@ const SystemSettings: React.FC = () => {
     showToast(t("systemSettings.toast.updateSuccess"), "success", {
       title: t("systemSettings.toast.updateSuccessTitle"),
     });
-  };
-
-  const toggleSystemStatus = () => {
-    if (!isEditing) {
-      showToast(t("systemSettings.toast.updateFailed"), "error", {
-        title: t("systemSettings.toast.updateFailed"),
-      });
-      return;
-    }
-
-    updateDraft("systemStatus", draftSettings.systemStatus === "online" ? "offline" : "online");
   };
 
   return (

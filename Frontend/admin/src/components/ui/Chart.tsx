@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   BarChart,
   Bar,
@@ -14,6 +15,7 @@ interface ChartDataPoint {
   period: string;
   normalPatients: number;
   warningPatients: number;
+  totalLabel?: string;
 }
 
 interface StatItem {
@@ -89,15 +91,15 @@ const CustomTooltip: React.FC<any> = ({ active, payload, label }) => {
         <p className="font-semibold text-gray-800 mb-1">{label}</p>
         <div className="space-y-1">
           <p className="text-sm text-emerald-600">
-            <span className="font-medium">Bệnh nhân bình thường:</span>{" "}
+            <span className="font-medium">{payload[0].name}:</span>{" "}
             {payload[0].value.toLocaleString()}
           </p>
           <p className="text-sm text-amber-600">
-            <span className="font-medium">Bệnh nhân cảnh báo:</span>{" "}
+            <span className="font-medium">{payload[1].name}:</span>{" "}
             {payload[1].value.toLocaleString()}
           </p>
           <p className="text-sm text-gray-600 mt-1 pt-1 border-t border-gray-100">
-            <span className="font-medium">Tổng:</span>{" "}
+            <span className="font-medium">{payload[0].payload.totalLabel}:</span>{" "}
             {(payload[0].value + payload[1].value).toLocaleString()}
           </p>
         </div>
@@ -130,29 +132,30 @@ const renderLegend = (props: any) => {
 // --- Main Widget Container ---
 
 export const Chart: React.FC = () => {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<string>("all");
 
   // Mock stats data
   const stats: StatItem[] = [
-    { id: "all", label: "Tất cả", value: 1240, type: "primary" },
-    { id: "month", label: "Tháng", value: 320, type: "neutral" },
-    { id: "week", label: "Tuần", value: 80, type: "warning" },
+    { id: "all", label: t("chart.tabs.all"), value: 1240, type: "primary" },
+    { id: "month", label: t("chart.tabs.month"), value: 320, type: "neutral" },
+    { id: "week", label: t("chart.tabs.week"), value: 80, type: "warning" },
   ];
 
   // Chart Data for last 4 months
   const monthlyChartData: ChartDataPoint[] = [
-    { period: "T3", normalPatients: 220, warningPatients: 45 },
-    { period: "T4", normalPatients: 180, warningPatients: 60 },
-    { period: "T5", normalPatients: 250, warningPatients: 70 },
-    { period: "T6", normalPatients: 280, warningPatients: 40 },
+    { period: t("chart.periods.month3"), normalPatients: 220, warningPatients: 45, totalLabel: t("chart.total") },
+    { period: t("chart.periods.month4"), normalPatients: 180, warningPatients: 60, totalLabel: t("chart.total") },
+    { period: t("chart.periods.month5"), normalPatients: 250, warningPatients: 70, totalLabel: t("chart.total") },
+    { period: t("chart.periods.month6"), normalPatients: 280, warningPatients: 40, totalLabel: t("chart.total") },
   ];
 
   // Chart Data for last 4 weeks
   const weeklyChartData: ChartDataPoint[] = [
-    { period: "Tuần 1", normalPatients: 65, warningPatients: 15 },
-    { period: "Tuần 2", normalPatients: 70, warningPatients: 10 },
-    { period: "Tuần 3", normalPatients: 85, warningPatients: 20 },
-    { period: "Tuần 4", normalPatients: 60, warningPatients: 20 },
+    { period: t("chart.periods.week1"), normalPatients: 65, warningPatients: 15, totalLabel: t("chart.total") },
+    { period: t("chart.periods.week2"), normalPatients: 70, warningPatients: 10, totalLabel: t("chart.total") },
+    { period: t("chart.periods.week3"), normalPatients: 85, warningPatients: 20, totalLabel: t("chart.total") },
+    { period: t("chart.periods.week4"), normalPatients: 60, warningPatients: 20, totalLabel: t("chart.total") },
   ];
 
   // Select data based on active tab
@@ -209,14 +212,14 @@ export const Chart: React.FC = () => {
             <Legend content={renderLegend} />
             <Bar
               dataKey="normalPatients"
-              name="Bệnh nhân bình thường"
+              name={t("chart.normalPatients")}
               fill="#10b981" // emerald-500
               radius={[4, 4, 0, 0]}
               barSize={40}
             />
             <Bar
               dataKey="warningPatients"
-              name="Bệnh nhân cảnh báo"
+              name={t("chart.warningPatients")}
               fill="#f59e0b" // amber-500
               radius={[4, 4, 0, 0]}
               barSize={40}
@@ -228,14 +231,14 @@ export const Chart: React.FC = () => {
         <div className="mt-6 pt-4 border-t border-gray-100">
           <div className="flex justify-between items-center">
             <div className="text-sm text-gray-500">
-              Hiển thị{" "}
-              {activeTab === "all" ? "4 tháng gần đây" : "4 tuần gần đây"}
+              {t("chart.showing")}{" "}
+              {activeTab === "all" ? t("chart.last4Months") : t("chart.last4Weeks")}
             </div>
             <div className="flex space-x-4">
               <div className="flex items-center">
                 <div className="w-3 h-3 rounded-full bg-emerald-500 mr-2"></div>
                 <span className="text-sm text-gray-600">
-                  Tổng bình thường:{" "}
+                  {t("chart.totalNormal")}{" "}
                   {chartData
                     .reduce((sum, item) => sum + item.normalPatients, 0)
                     .toLocaleString()}
@@ -244,7 +247,7 @@ export const Chart: React.FC = () => {
               <div className="flex items-center">
                 <div className="w-3 h-3 rounded-full bg-amber-500 mr-2"></div>
                 <span className="text-sm text-gray-600">
-                  Tổng cảnh báo:{" "}
+                  {t("chart.totalWarning")}{" "}
                   {chartData
                     .reduce((sum, item) => sum + item.warningPatients, 0)
                     .toLocaleString()}

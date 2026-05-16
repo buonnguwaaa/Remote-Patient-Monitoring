@@ -4,6 +4,8 @@
  */
 
 import type { AlertResponse, AssignmentResponse } from '../../types/patient';
+import i18n from "../../i18n/config";
+const t = i18n.t;
 import {
   createWorkbook,
   addWorksheet,
@@ -16,15 +18,15 @@ import {
 const violationLabel: Record<string, string> = {
   systolic: "HA tâm thu",
   diastolic: "HA tâm trương",
-  pulse: "Nhịp tim",
-  glucose: "Đường huyết",
-  temperature: "Nhiệt độ",
+  pulse: t("patientDetail.heartRate"),
+  glucose: t("patientDetail.glucose"),
+  temperature: t("patientDetail.temperature"),
   spo2: "SpO2",
-  respiratoryRate: "Nhịp thở",
-  heart_rate: "Nhịp tim",
-  respiratory_rate: "Nhịp thở",
-  blood_pressure_systolic: "Huyết áp tâm thu",
-  blood_pressure_diastolic: "Huyết áp tâm trương",
+  respiratoryRate: t("patientDetail.respiratoryRate"),
+  heart_rate: t("patientDetail.heartRate"),
+  respiratory_rate: t("patientDetail.respiratoryRate"),
+  blood_pressure_systolic: t("patientDetail.systolic"),
+  blood_pressure_diastolic: t("patientDetail.diastolic"),
 };
 
 interface AlertExportData {
@@ -51,20 +53,20 @@ export const exportAlertsToExcel = async (data: AlertExportData) => {
   // Prepare alert data
   const alertData = assignments.map((assignment) => {
     const latestAlert = latestAlertsByPatient.get(assignment.patientId);
-    const status = latestAlert && isAttentionAlert(latestAlert) ? 'Cần chú ý' : 'Ổn định';
+    const status = latestAlert && isAttentionAlert(latestAlert) ? t("dashboard.needAttention") : 'Ổn định';
     const alertInfo = latestAlert 
       ? latestAlert.violations.map(v => `${violationLabel[v.type] ?? v.type}: ${v.observed}`).join('; ')
       : 'Không có';
-    const severity = latestAlert ? (latestAlert.severity === 'high' ? 'Cao' : 'Trung bình') : '-';
+    const severity = latestAlert ? (latestAlert.severity === 'high' ? 'Cao' : t("dashboard.filterMedium")) : '-';
     const time = latestAlert ? formatDateTimeVN(latestAlert.createdAt) : '-';
     
     return {
-      'Bệnh nhân': assignment.patientName || 'Không rõ',
+      [t("chat.patient")]: assignment.patientName || 'Không rõ',
       'Mã BN': assignment.patientCode || assignment.patientPublicId || '-',
-      'Trạng thái': status,
+      [t("patients.status")]: status,
       'Cảnh báo gần nhất': alertInfo,
-      'Mức độ': severity,
-      'Thời gian': time,
+      [t("alerts.severity")]: severity,
+      [t("patientDetail.time")]: time,
     };
   });
 
@@ -75,22 +77,22 @@ export const exportAlertsToExcel = async (data: AlertExportData) => {
   const alertSheet = addWorksheet(
     workbook,
     alertData,
-    'Cảnh báo',
+    t("patients.warning"),
     [25, 15, 15, 50, 12, 20]
   );
   styleHeaderRow(alertSheet);
 
   // Add summary worksheet
   const summaryData = [
-    { 'Chỉ số': 'Tổng bệnh nhân', 'Giá trị': dashboardStats.total || 0 },
-    { 'Chỉ số': 'Đang ổn định', 'Giá trị': dashboardStats.stable || 0 },
-    { 'Chỉ số': 'Cần chú ý', 'Giá trị': dashboardStats.attention || 0 },
+    { 'Chỉ số': t("dashboard.totalPatients"), 'Giá trị': dashboardStats.total || 0 },
+    { 'Chỉ số': t("dashboard.stablePatients"), 'Giá trị': dashboardStats.stable || 0 },
+    { 'Chỉ số': t("dashboard.needAttention"), 'Giá trị': dashboardStats.attention || 0 },
     { 'Chỉ số': '', 'Giá trị': '' },
-    { 'Chỉ số': 'Khoảng thời gian', 'Giá trị': dateRange },
+    { 'Chỉ số': t("dashboard.dateRange"), 'Giá trị': dateRange },
     { 'Chỉ số': 'Ngày xuất', 'Giá trị': formatDateTimeVN(new Date()) },
   ];
   
-  addWorksheet(workbook, summaryData, 'Tổng quan', [20, 30]);
+  addWorksheet(workbook, summaryData, t("dashboard.title"), [20, 30]);
 
   // Download file
   const filename = generateFilename('canh_bao');

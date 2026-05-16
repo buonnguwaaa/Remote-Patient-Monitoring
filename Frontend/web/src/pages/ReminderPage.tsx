@@ -6,6 +6,7 @@ import {
   useState,
 } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   FaEdit,
   FaPauseCircle,
@@ -52,14 +53,18 @@ interface ReminderFormData {
   status: ReminderStatus;
 }
 
+const ReminderPage = () => {
+  const [searchParams] = useSearchParams();
+  const { t } = useTranslation();
+
 const weekdayOptions = [
-  { value: 1, label: "T2" },
-  { value: 2, label: "T3" },
-  { value: 3, label: "T4" },
-  { value: 4, label: "T5" },
-  { value: 5, label: "T6" },
-  { value: 6, label: "T7" },
-  { value: 0, label: "CN" },
+  { value: 1, label: t("reminders.mon") },
+  { value: 2, label: t("reminders.tue") },
+  { value: 3, label: t("reminders.wed") },
+  { value: 4, label: t("reminders.thu") },
+  { value: 5, label: t("reminders.fri") },
+  { value: 6, label: t("reminders.sat") },
+  { value: 0, label: t("reminders.sun") },
 ];
 
 const reminderKindOptions: Array<{
@@ -69,13 +74,13 @@ const reminderKindOptions: Array<{
 }> = [
   {
     value: "measure",
-    label: "Đo chỉ số",
-    helper: "Nhắc bệnh nhân đo huyết áp, đường huyết, SpO2...",
+    label: t("reminders.measure"),
+    helper: t("reminders.measureHelper"),
   },
   {
     value: "medication",
-    label: "Uống thuốc",
-    helper: "Nhắc bệnh nhân dùng thuốc đúng giờ và đều đặn.",
+    label: t("reminders.medication"),
+    helper: t("reminders.medicationHelper"),
   },
 ];
 
@@ -83,15 +88,15 @@ const reminderStatusOptions: Array<{
   value: ReminderStatusFilter;
   label: string;
 }> = [
-  { value: "all", label: "Tất cả trạng thái" },
-  { value: "active", label: "Đang chạy" },
-  { value: "paused", label: "Tạm dừng" },
-  { value: "expired", label: "Hết hạn" },
-  { value: "canceled", label: "Đã hủy" },
+  { value: "all", label: t("reminders.allStatuses") },
+  { value: "active", label: t("reminders.active") },
+  { value: "paused", label: t("reminders.paused") },
+  { value: "expired", label: t("reminders.expired") },
+  { value: "canceled", label: t("reminders.canceled") },
 ];
 
 const timezoneOptions = [
-  { value: "Asia/Saigon", label: "Asia/Saigon (Khuyến nghị)" },
+  { value: "Asia/Saigon", label: t("reminders.timezoneRecommended") },
   { value: "UTC", label: "UTC" },
   { value: "Asia/Bangkok", label: "Asia/Bangkok" },
 ];
@@ -140,18 +145,18 @@ const formatTime = (hour: number, minute: number) =>
   `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
 
 const getKindLabel = (kind: ReminderKind) =>
-  kind === "measure" ? "Đo chỉ số" : "Uống thuốc";
+  kind === "measure" ? t("reminders.measure") : t("reminders.medication");
 
 const getStatusLabel = (status: ReminderStatus) => {
   switch (status) {
     case "active":
-      return "Đang chạy";
+      return t("reminders.active");
     case "paused":
-      return "Tạm dừng";
+      return t("reminders.paused");
     case "expired":
-      return "Hết hạn";
+      return t("reminders.expired");
     case "canceled":
-      return "Đã hủy";
+      return t("reminders.canceled");
     default:
       return status;
   }
@@ -177,14 +182,14 @@ const buildWeekdaySummary = (daysOfWeek: number[]) => {
     daysOfWeek.includes(option.value),
   );
   if (orderedDays.length === weekdayOptions.length) {
-    return "Mỗi ngày";
+    return t("reminders.everyday");
   }
 
   return orderedDays.map((option) => option.label).join(" • ");
 };
 
-const ReminderPage = () => {
-  const [searchParams] = useSearchParams();
+
+
   const initialPatientId = searchParams.get("patientId") ?? "";
 
   const { toast, showToast, hideToast } = useToast();
@@ -228,7 +233,7 @@ const ReminderPage = () => {
           item.patientId,
           {
             name: item.patientName || item.patientId,
-            code: item.patientCode || item.patientPublicId || "Chưa có mã",
+            code: item.patientCode || item.patientPublicId || t("common.notUpdated"),
           },
         ] as const,
     );
@@ -237,8 +242,8 @@ const ReminderPage = () => {
   }, [patientOptions]);
 
   const modeLabel = editingReminderId
-    ? "Chỉnh sửa nhắc nhở"
-    : "Tạo nhắc nhở mới";
+    ? t("reminders.editReminder")
+    : t("reminders.createNew");
 
   // Pagination calculations
   const totalPages = Math.ceil(reminders.length / itemsPerPage);
@@ -289,17 +294,17 @@ const ReminderPage = () => {
     | UpdateReminderPayload
     | null => {
     if (!formData.patientId) {
-      showToast("Vui lòng chọn bệnh nhân cho nhắc nhở này.", "error");
+      showToast(t("reminders.patientRequired"), "error");
       return null;
     }
 
     if (!formData.message.trim()) {
-      showToast("Nội dung nhắc nhở không được để trống.", "error");
+      showToast(t("reminders.messageRequired"), "error");
       return null;
     }
 
     if (formData.daysOfWeek.length === 0) {
-      showToast("Cần chọn ít nhất một ngày lặp lại.", "error");
+      showToast(t("reminders.daysRequired"), "error");
       return null;
     }
 
@@ -308,7 +313,7 @@ const ReminderPage = () => {
     const minute = Number.parseInt(minuteText || "", 10);
 
     if (Number.isNaN(hour) || Number.isNaN(minute)) {
-      showToast("Giờ nhắc chưa hợp lệ.", "error");
+      showToast(t("reminders.invalidTime"), "error");
       return null;
     }
 
@@ -316,7 +321,7 @@ const ReminderPage = () => {
     const endDate = new Date(`${formData.endDate}T23:59:59`);
 
     if (endDate.getTime() < startDate.getTime()) {
-      showToast("Ngày kết thúc không được nhỏ hơn ngày bắt đầu.", "error");
+      showToast(t("reminders.endDateBeforeStart"), "error");
       return null;
     }
 
@@ -481,10 +486,10 @@ const ReminderPage = () => {
           editingReminderId,
           payload as UpdateReminderPayload,
         );
-        showToast("Đã cập nhật nhắc nhở thành công.", "success");
+        showToast(t("reminders.updateSuccess"), "success");
       } else {
         await createReminder(payload as ReminderBasePayload);
-        showToast("Đã tạo nhắc nhở mới thành công.", "success");
+        showToast(t("reminders.createSuccess"), "success");
       }
 
       await loadReminders();
@@ -493,7 +498,7 @@ const ReminderPage = () => {
     } catch (error: any) {
       console.error("Failed to save reminder", error);
       showToast(
-        error?.response?.data?.error || "Không thể lưu nhắc nhở.",
+        error?.response?.data?.error || t("reminders.saveError"),
         "error",
       );
     } finally {
@@ -507,10 +512,10 @@ const ReminderPage = () => {
   ) => {
     const actionLabel =
       nextStatus === "paused"
-        ? "tạm dừng"
+        ? t("reminders.paused").toLowerCase()
         : nextStatus === "active"
-          ? "kích hoạt lại"
-          : "hủy";
+          ? t("reminders.resume").toLowerCase()
+          : t("common.cancel").toLowerCase();
 
     const confirmed = window.confirm(
       `Bạn có muốn ${actionLabel} nhắc nhở này không?`,
@@ -530,7 +535,7 @@ const ReminderPage = () => {
       console.error("Failed to update reminder status", error);
       showToast(
         error?.response?.data?.error ||
-          "Không thể cập nhật trạng thái nhắc nhở.",
+          t("reminders.statusUpdateError"),
         "error",
       );
     } finally {
@@ -542,14 +547,8 @@ const ReminderPage = () => {
     <div className="mx-auto  p-6">
       <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800 dark:text-slate-100">
-            Nhắc Nhở Bệnh Nhân
-          </h1>
-          <p className="mt-2 max-w-3xl text-gray-600 dark:text-slate-400">
-            Quản lý lịch nhắc đo chỉ số và uống thuốc theo từng bệnh nhân, theo
-            dõi trạng thái chạy, và điều chỉnh nhanh khi kế hoạch chăm sóc thay
-            đổi.
-          </p>
+          <h1 className="text-3xl font-bold text-gray-800 dark:text-slate-100">{t("reminders.title")}</h1>
+          <p className="mt-2 max-w-3xl text-gray-600 dark:text-slate-400">{t("reminders.description")}</p>
         </div>
 
         <div className="flex flex-wrap gap-3">
@@ -558,9 +557,7 @@ const ReminderPage = () => {
             onClick={handleOpenCreateForm}
             className="inline-flex items-center rounded-xl bg-slate-100 dark:bg-slate-700 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-200 dark:hover:bg-slate-600"
           >
-            <FaPlus className="mr-2" />
-            Tạo nhắc nhở
-          </button>
+            <FaPlus className="mr-2" />{t("reminders.createReminder")}</button>
           <button
             type="button"
             onClick={() => void loadReminders()}
@@ -569,18 +566,14 @@ const ReminderPage = () => {
           >
             <FaSyncAlt
               className={`mr-2 ${loadingReminders ? "animate-spin" : ""}`}
-            />
-            Làm mới
-          </button>
+            />{t("common.refresh")}</button>
         </div>
       </div>
 
       <div className="mb-6 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
           <div className="flex-1">
-            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
-              Lọc theo bệnh nhân
-            </label>
+            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">{t("reminders.filterByPatient")}</label>
             <select
               value={selectedPatientId}
               onChange={handlePatientFilterChange}
@@ -589,8 +582,8 @@ const ReminderPage = () => {
             >
               <option value="">
                 {loadingPatients
-                  ? "-- Đang tải bệnh nhân --"
-                  : "-- Tất cả bệnh nhân tôi quản lý --"}
+                  ? t("reminders.loadingPatients")
+                  : t("reminders.allPatients")}
               </option>
               {patientOptions.map((patient) => (
                 <option key={patient.patientId} value={patient.patientId}>
@@ -602,9 +595,7 @@ const ReminderPage = () => {
           </div>
 
           <div className="lg:w-64">
-            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
-              Trạng thái
-            </label>
+            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">{t("reminders.status")}</label>
             <select
               value={statusFilter}
               onChange={(event) =>
@@ -621,9 +612,7 @@ const ReminderPage = () => {
           </div>
 
           <div className="lg:w-64">
-            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
-              Loại nhắc nhở
-            </label>
+            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">{t("reminders.reminderType")}</label>
             <select
               value={kindFilter}
               onChange={(event) =>
@@ -631,7 +620,7 @@ const ReminderPage = () => {
               }
               className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="all">Tất cả loại</option>
+              <option value="all">{t("reminders.allTypes")}</option>
               {reminderKindOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
@@ -645,37 +634,28 @@ const ReminderPage = () => {
       <div className="rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-xl font-semibold text-gray-800 dark:text-slate-100">
-              Danh sách nhắc nhở
-            </h2>
-            <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
-              Theo dõi lịch đang áp dụng, chỉnh sửa nhanh, và tạm dừng hay hủy
-              khi kế hoạch thay đổi.
-            </p>
+            <h2 className="text-xl font-semibold text-gray-800 dark:text-slate-100">{t("reminders.reminderList")}</h2>
+            <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">{t("reminders.reminderListDesc")}</p>
           </div>
           <div className="flex items-center gap-3">
             {totalPages > 1 && (
               <div className="text-xs text-slate-500 dark:text-slate-400">
-                Trang {currentPage} / {totalPages}
+                {t("common.page")} {currentPage} {t("common.of")} {totalPages}
               </div>
             )}
             <div className="rounded-full bg-slate-100 dark:bg-slate-700 px-3 py-1 text-xs font-semibold text-slate-600 dark:text-slate-300">
-              {reminders.length} nhắc nhở
+              {reminders.length} {t("reminders.remindersCount")}
             </div>
           </div>
         </div>
 
         <div className="mt-5 space-y-4">
           {loadingReminders && (
-            <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 px-4 py-6 text-sm text-slate-500 dark:text-slate-400">
-              Đang tải reminder...
-            </div>
+            <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 px-4 py-6 text-sm text-slate-500 dark:text-slate-400">{t("reminders.loadingReminders")}</div>
           )}
 
           {!loadingReminders && reminders.length === 0 && (
-            <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 px-4 py-6 text-sm text-slate-500 dark:text-slate-400">
-              Chưa có reminder nào theo bộ lọc hiện tại.
-            </div>
+            <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 px-4 py-6 text-sm text-slate-500 dark:text-slate-400">{t("reminders.noReminders")}</div>
           )}
 
           {currentReminders.map((reminder) => {
@@ -709,7 +689,7 @@ const ReminderPage = () => {
                       </span>
                       <span className="text-slate-400">•</span>
                       <span className="text-gray-500 dark:text-slate-400">
-                        {patientInfo?.code || "Chưa có mã"}
+                        {patientInfo?.code || t("common.notUpdated")}
                       </span>
                     </div>
 
@@ -719,9 +699,7 @@ const ReminderPage = () => {
 
                     <div className="mt-4 flex flex-wrap gap-3">
                       <div className="flex-none rounded-lg bg-slate-50 dark:bg-slate-800 px-4 py-3">
-                        <div className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">
-                          Giờ nhắc
-                        </div>
+                        <div className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">{t("reminders.reminderTime")}</div>
                         <div className="mt-1 flex items-center text-sm font-semibold text-gray-800 dark:text-slate-100">
                           <FaRegClock className="mr-2 text-slate-400" />
                           {formatTime(reminder.hour, reminder.minute)}
@@ -729,18 +707,14 @@ const ReminderPage = () => {
                       </div>
 
                       <div className="flex-none rounded-lg bg-slate-50 dark:bg-slate-800 px-4 py-3">
-                        <div className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">
-                          Lặp lại
-                        </div>
+                        <div className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">{t("reminders.repeatDays")}</div>
                         <div className="mt-1 text-sm font-semibold text-gray-800 dark:text-slate-100">
                           {buildWeekdaySummary(reminder.daysOfWeek)}
                         </div>
                       </div>
 
                       <div className="flex-none rounded-lg bg-slate-50 dark:bg-slate-800 px-4 py-3">
-                        <div className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">
-                          Hiệu lực
-                        </div>
+                        <div className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">{t("reminders.validity")}</div>
                         <div className="mt-1 whitespace-nowrap text-sm font-semibold text-gray-800 dark:text-slate-100">
                           {formatDate(reminder.startDate)} -{" "}
                           {formatDate(reminder.endDate)}
@@ -748,9 +722,7 @@ const ReminderPage = () => {
                       </div>
 
                       <div className="flex-none rounded-lg bg-slate-50 dark:bg-slate-800 px-4 py-3">
-                        <div className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">
-                          Cập nhật
-                        </div>
+                        <div className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">{t("reminders.updated")}</div>
                         <div className="mt-1 text-sm font-semibold text-gray-800 dark:text-slate-100">
                           {formatDateTime(reminder.updatedAt)}
                         </div>
@@ -765,9 +737,7 @@ const ReminderPage = () => {
                       disabled={!canEdit || saving}
                       className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      <FaEdit className="mr-2" />
-                      Chỉnh sửa
-                    </button>
+                      <FaEdit className="mr-2" />{t("reminders.edit")}</button>
 
                     {reminder.status === "active" && (
                       <button
@@ -778,9 +748,7 @@ const ReminderPage = () => {
                         disabled={saving}
                         className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                       >
-                        <FaPauseCircle className="mr-2" />
-                        Tạm dừng
-                      </button>
+                        <FaPauseCircle className="mr-2" />{t("reminders.paused")}</button>
                     )}
 
                     {reminder.status === "paused" && (
@@ -792,9 +760,7 @@ const ReminderPage = () => {
                         disabled={saving}
                         className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                       >
-                        <FaPlayCircle className="mr-2" />
-                        Tiếp tục
-                      </button>
+                        <FaPlayCircle className="mr-2" />{t("reminders.resume")}</button>
                     )}
 
                     {canToggle && (
@@ -806,9 +772,7 @@ const ReminderPage = () => {
                         disabled={saving}
                         className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 transition hover:bg-slate-50 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                       >
-                        <FaStopCircle className="mr-2" />
-                        Hủy lịch
-                      </button>
+                        <FaStopCircle className="mr-2" />{t("reminders.cancel")}</button>
                     )}
                   </div>
                 </div>
@@ -821,7 +785,7 @@ const ReminderPage = () => {
         {totalPages > 1 && (
           <div className="mt-6 flex items-center justify-between border-t border-slate-200 dark:border-slate-700 pt-4">
             <div className="text-sm text-slate-500 dark:text-slate-400">
-              Hiển thị {startIndex + 1}-{Math.min(endIndex, reminders.length)} trong tổng số {reminders.length} nhắc nhở
+              {t("common.showing")} {startIndex + 1}-{Math.min(endIndex, reminders.length)} {t("common.of")} {reminders.length} {t("reminders.remindersCount")}
             </div>
             
             <div className="flex items-center gap-2">
@@ -831,9 +795,7 @@ const ReminderPage = () => {
                 disabled={currentPage === 1}
                 className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 dark:hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <FaChevronLeft className="mr-1" />
-                Trước
-              </button>
+                <FaChevronLeft className="mr-1" />{t("common.previous")}</button>
               
               <div className="flex items-center gap-1">
                 {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
@@ -899,7 +861,7 @@ const ReminderPage = () => {
                 <div className="grid gap-4">
                   <div>
                     <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
-                      Bệnh nhân <span className="text-red-500">*</span>
+                      {t("alerts.patient")} <span className="text-red-500">*</span>
                     </label>
                     <select
                       name="patientId"
@@ -910,8 +872,8 @@ const ReminderPage = () => {
                     >
                       <option value="">
                         {loadingPatients
-                          ? "-- Đang tải bệnh nhân --"
-                          : "-- Chọn bệnh nhân --"}
+                          ? t("reminders.loadingPatients")
+                          : t("reminders.selectPatient")}
                       </option>
                       {patientOptions.map((patient) => (
                         <option
@@ -929,9 +891,7 @@ const ReminderPage = () => {
 
                   <div className="grid gap-4 md:grid-cols-2">
                     <div>
-                      <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
-                        Loại nhắc nhở
-                      </label>
+                      <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">{t("reminders.reminderType")}</label>
                       <select
                         name="kind"
                         value={formData.kind}
@@ -954,9 +914,7 @@ const ReminderPage = () => {
                     </div>
 
                     <div>
-                      <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
-                        Giờ nhắc
-                      </label>
+                      <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">{t("reminders.reminderTime")}</label>
                       <input
                         type="time"
                         name="time"
@@ -968,8 +926,7 @@ const ReminderPage = () => {
                   </div>
 
                   <div>
-                    <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
-                      Nội dung nhắc nhở <span className="text-red-500">*</span>
+                    <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">{t("reminders.reminderContent")} <span className="text-red-500">*</span>
                     </label>
                     <textarea
                       name="message"
@@ -978,17 +935,15 @@ const ReminderPage = () => {
                       onChange={handleFormChange}
                       placeholder={
                         formData.kind === "medication"
-                          ? "Ví dụ: Uống thuốc huyết áp sau ăn sáng."
-                          : "Ví dụ: Đo huyết áp và SpO2 trước 8h sáng."
+                          ? t("reminders.medicationPlaceholder")
+                          : t("reminders.reminderContentPlaceholder")
                       }
                       className="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2.5 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
 
                   <div>
-                    <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
-                      Lặp lại theo ngày
-                    </label>
+                    <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">{t("reminders.repeatOn")}</label>
                     <div className="flex flex-wrap gap-2">
                       {weekdayOptions.map((option) => {
                         const active = formData.daysOfWeek.includes(
@@ -1015,9 +970,7 @@ const ReminderPage = () => {
 
                   <div className="grid gap-4 md:grid-cols-2">
                     <div>
-                      <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
-                        Hiệu lực từ ngày
-                      </label>
+                      <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">{t("reminders.validFrom")}</label>
                       <input
                         type="date"
                         name="startDate"
@@ -1028,9 +981,7 @@ const ReminderPage = () => {
                     </div>
 
                     <div>
-                      <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
-                        Hiệu lực đến ngày
-                      </label>
+                      <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">{t("reminders.validTo")}</label>
                       <input
                         type="date"
                         name="endDate"
@@ -1043,9 +994,7 @@ const ReminderPage = () => {
 
                   <div className="grid gap-4 md:grid-cols-2">
                     <div>
-                      <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
-                        Múi giờ
-                      </label>
+                      <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">{t("reminders.timezone")}</label>
                       <select
                         name="timezone"
                         value={formData.timezone}
@@ -1061,9 +1010,7 @@ const ReminderPage = () => {
                     </div>
 
                     <div>
-                      <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
-                        Trạng thái
-                      </label>
+                      <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">{t("reminders.status")}</label>
                       <select
                         name="status"
                         value={formData.status}
@@ -1071,10 +1018,10 @@ const ReminderPage = () => {
                         disabled={!editingReminderId}
                         className="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2.5 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-70"
                       >
-                        <option value="active">Đang chạy</option>
-                        <option value="paused">Tạm dừng</option>
-                        <option value="canceled">Đã hủy</option>
-                        <option value="expired">Hết hạn</option>
+                        <option value="active">{t("reminders.active")}</option>
+                        <option value="paused">{t("reminders.paused")}</option>
+                        <option value="canceled">{t("reminders.canceled")}</option>
+                        <option value="expired">{t("reminders.expired")}</option>
                       </select>
                     </div>
                   </div>
@@ -1087,18 +1034,14 @@ const ReminderPage = () => {
                   onClick={() => resetForm()}
                   className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
                 >
-                  <FaUndo className="mr-2" />
-                  Đặt lại
-                </button>
+                  <FaUndo className="mr-2" />{t("common.reset")}</button>
 
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={handleCloseForm}
                     className="rounded-lg border border-slate-300 dark:border-slate-600 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
-                  >
-                    Hủy
-                  </button>
+                  >{t("common.cancel")}</button>
                   <button
                     type="submit"
                     disabled={!formData.patientId || saving}
@@ -1106,10 +1049,10 @@ const ReminderPage = () => {
                   >
                     <FaSave className="mr-2" />
                     {saving
-                      ? "Đang lưu..."
+                      ? t("reminders.saving")
                       : editingReminderId
-                        ? "Cập nhật nhắc nhở"
-                        : "Lưu nhắc nhở"}
+                        ? t("reminders.updateReminder")
+                        : t("reminders.saveReminder")}
                   </button>
                 </div>
               </div>

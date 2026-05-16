@@ -35,6 +35,7 @@ import {
   type MessageResponse,
 } from "../services/chatService";
 import type { AlertResponse } from "../types/patient";
+import { useTranslation } from "react-i18next";
 
 type SocketState = "idle" | "connecting" | "open" | "closed";
 
@@ -224,14 +225,14 @@ function updateConversationParticipantState(
     participants: conversation.participants.map((participant) =>
       participant.userId === userId
         ? {
-            ...participant,
-            ...(nextState.lastDeliveredMessageId !== undefined
-              ? { lastDeliveredMessageId: nextState.lastDeliveredMessageId }
-              : {}),
-            ...(nextState.lastReadMessageId !== undefined
-              ? { lastReadMessageId: nextState.lastReadMessageId }
-              : {}),
-          }
+          ...participant,
+          ...(nextState.lastDeliveredMessageId !== undefined
+            ? { lastDeliveredMessageId: nextState.lastDeliveredMessageId }
+            : {}),
+          ...(nextState.lastReadMessageId !== undefined
+            ? { lastReadMessageId: nextState.lastReadMessageId }
+            : {}),
+        }
         : participant,
     ),
   };
@@ -327,7 +328,7 @@ function parseAlertLinkedMessage(
   };
 }
 
-function getReplyPreviewContent(message: MessageResponse) {
+function getReplyPreviewContent(message: MessageResponse, t: (key: string) => string) {
   const alertMessage = parseAlertLinkedMessage(
     message.content,
     message.relatedAlertId,
@@ -340,7 +341,7 @@ function getReplyPreviewContent(message: MessageResponse) {
     .replace(/\s+/g, " ")
     .trim();
   if (!normalized) {
-    return "Tin nhắn không có nội dung";
+    return t("chat.noContent");
   }
 
   return normalized.length > 120
@@ -365,18 +366,18 @@ function formatDateTime(iso: string) {
   });
 }
 
-function formatDayLabel(iso: string) {
+function formatDayLabel(iso: string, t: (key: string) => string) {
   const date = new Date(iso);
   const today = new Date();
   const yesterday = new Date();
   yesterday.setDate(today.getDate() - 1);
 
   if (date.toDateString() === today.toDateString()) {
-    return "Hôm nay";
+    return t("chat.today");
   }
 
   if (date.toDateString() === yesterday.toDateString()) {
-    return "Hôm qua";
+    return t("chat.yesterday");
   }
 
   return date.toLocaleDateString("vi-VN", {
@@ -396,15 +397,15 @@ function getPatientSummary(patient: PatientDetailResponse) {
   return parts.join(" • ");
 }
 
-function getViolationLabel(type: string) {
+function getViolationLabel(type: string, t: (key: string) => string) {
   const labels: Record<string, string> = {
-    temperature: "Nhiệt độ",
-    heart_rate: "Nhịp tim",
-    respiratory_rate: "Nhịp thở",
+    temperature: t("patientDetail.temperature"),
+    heart_rate: t("patientDetail.heartRate"),
+    respiratory_rate: t("patientDetail.respiratoryRate"),
     spo2: "SpO2",
-    blood_pressure_systolic: "Huyết áp tâm thu",
-    blood_pressure_diastolic: "Huyết áp tâm trương",
-    glucose: "Đường huyết",
+    blood_pressure_systolic: t("patientDetail.systolic"),
+    blood_pressure_diastolic: t("patientDetail.diastolic"),
+    glucose: t("patientDetail.glucose"),
   };
 
   return labels[type] || type;
@@ -423,6 +424,7 @@ const ChatPage = ({
   onBack,
   onClose,
 }: ChatPageProps) => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -525,7 +527,7 @@ const ChatPage = ({
   useEffect(() => {
     if (!patientId) {
       setLoading(false);
-      setError("Không tìm thấy bệnh nhân để mở cuộc trò chuyện.");
+      setError(t("chat.patientNotFound"));
       return;
     }
 
@@ -557,8 +559,8 @@ const ChatPage = ({
         if (!cancelled) {
           setError(
             err?.response?.data?.error ||
-              err?.message ||
-              "Không thể tải cuộc trò chuyện.",
+            err?.message ||
+            t("chat.cannotLoadChat"),
           );
         }
       } finally {
@@ -600,7 +602,7 @@ const ChatPage = ({
         return next;
       });
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages]);
 
   // Set/clear active conversation for realtime notification suppression
@@ -642,7 +644,7 @@ const ChatPage = ({
         setAlertContext(matchedAlert || null);
         if (!matchedAlert) {
           setAlertContextError(
-            "Không tìm thấy chi tiết cảnh báo để hiển thị ngữ cảnh.",
+            t("patientDetail.thresholdError"),
           );
         }
       } catch (err: any) {
@@ -689,7 +691,7 @@ const ChatPage = ({
 
       payloads.forEach((payload) => {
         if (isWsErrorPayload(payload)) {
-          setError(payload.error || "Không thể gửi tin nhắn.");
+          setError(payload.error || t("chat.cannotSendMessage"));
           return;
         }
 
@@ -813,7 +815,7 @@ const ChatPage = ({
 
     let lastLabel = "";
     messages.forEach((message) => {
-      const label = formatDayLabel(message.createdAt);
+      const label = formatDayLabel(message.createdAt, t);
       if (label !== lastLabel) {
         items.push({
           type: "day",
@@ -907,7 +909,7 @@ const ChatPage = ({
     }
 
     if (!socketRef.current || socketRef.current.readyState !== WebSocket.OPEN) {
-      setError("Kết nối chat chưa sẵn sàng để gửi tin nhắn.");
+      setError(t("chat.chatNotReady"));
       return false;
     }
 
@@ -967,7 +969,7 @@ const ChatPage = ({
       await navigator.clipboard.writeText(content);
       setOpenMessageMenuId(null);
     } catch {
-      setError("Không thể sao chép nội dung tin nhắn.");
+      setError(t("chat.cannotCopyMessage"));
     }
   };
 
@@ -987,7 +989,7 @@ const ChatPage = ({
           className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-400"
           onClick={() => navigate(-1)}
         >
-          Quay lại
+          {t("common.back")}
         </button>
       </div>
     );
@@ -1013,10 +1015,10 @@ const ChatPage = ({
             <div className="flex items-center gap-3">
               <div>
                 <h1 className="text-base font-bold leading-tight text-gray-800 dark:text-slate-100">
-                  {patient?.name || "Bệnh nhân"}
+                  {patient?.name || t("chat.patient")}
                 </h1>
                 <p className="text-xs text-gray-500 dark:text-slate-400">
-                  {patientSummary || "Trao đổi trực tiếp với bệnh nhân"}
+                  {patientSummary || t("chat.directChat")}
                 </p>
               </div>
             </div>
@@ -1026,7 +1028,7 @@ const ChatPage = ({
             <button
               className="rounded-full p-2 text-gray-500 transition hover:bg-gray-100 dark:text-slate-400 dark:hover:bg-slate-800"
               onClick={onClose}
-              aria-label="Đóng chat nhanh"
+              aria-label={t("chat.closeQuickChat")}
             >
               <X size={20} />
             </button>
@@ -1054,10 +1056,10 @@ const ChatPage = ({
                 </div>
                 <div>
                   <div className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-600 dark:text-amber-300">
-                    Đang xem ngữ cảnh cảnh báo
+                    {t("chat.viewingAlertContext")}
                   </div>
                   <h2 className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                    Tin nhắn bạn gửi sẽ được gắn kèm cảnh báo này
+                    {t("chat.messagesLinkedToAlert")}
                   </h2>
                 </div>
               </div>
@@ -1068,24 +1070,23 @@ const ChatPage = ({
                 className="inline-flex items-center gap-2 rounded-md border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:bg-slate-800"
               >
                 <X size={16} />
-                Bỏ ngữ cảnh
+                {t("chat.removeContext")}
               </button>
             </div>
             <div className="mt-4 rounded-lg bg-amber-50/70 p-4 dark:bg-amber-500/10">
               {alertContextLoading ? (
                 <div className="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-200">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Đang tải chi tiết cảnh báo...
+                  {t("chat.loadingAlertDetails")}
                 </div>
               ) : alertContext ? (
                 <div className="space-y-3">
                   <div className="flex flex-wrap items-center gap-2">
                     <span
-                      className={`inline-flex items-center gap-1 rounded-md px-3 py-1 text-xs font-medium ${
-                        alertContext.severity === "high"
-                          ? "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300"
-                          : "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-200"
-                      }`}
+                      className={`inline-flex items-center gap-1 rounded-md px-3 py-1 text-xs font-medium ${alertContext.severity === "high"
+                        ? "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300"
+                        : "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-200"
+                        }`}
                     >
                       {alertContext.severity === "high" ? (
                         <AlertTriangle size={14} />
@@ -1093,19 +1094,16 @@ const ChatPage = ({
                         <Info size={14} />
                       )}
                       {alertContext.severity === "high"
-                        ? "Nghiêm trọng"
-                        : "Thông tin"}
+                        ? t("chat.severe") : t("alerts.info")}
                     </span>
                     <span
-                      className={`rounded-md px-3 py-1 text-xs font-medium ${
-                        alertContext.status === "ack"
-                          ? "bg-green-100 text-green-700 dark:bg-emerald-500/15 dark:text-emerald-300"
-                          : "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200"
-                      }`}
+                      className={`rounded-md px-3 py-1 text-xs font-medium ${alertContext.status === "ack"
+                        ? "bg-green-100 text-green-700 dark:bg-emerald-500/15 dark:text-emerald-300"
+                        : "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200"
+                        }`}
                     >
                       {alertContext.status === "ack"
-                        ? "Đã xác nhận"
-                        : "Chờ xử lý"}
+                        ? t("chat.acknowledged") : t("chat.pending")}
                     </span>
                     <span className="text-xs text-slate-500 dark:text-slate-400">
                       Đo lúc {formatDateTime(alertContext.createdAt)}
@@ -1119,7 +1117,7 @@ const ChatPage = ({
                         className="rounded-lg border border-white/80 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-950/70"
                       >
                         <div className="text-sm font-medium text-slate-800 dark:text-slate-200">
-                          {getViolationLabel(violation.type)}
+                          {getViolationLabel(violation.type, t)}
                         </div>
                         <div className="mt-1 text-lg font-semibold text-red-600 dark:text-red-300">
                           {violation.observed}
@@ -1134,7 +1132,7 @@ const ChatPage = ({
               ) : (
                 <div className="text-sm text-amber-700 dark:text-amber-200">
                   {alertContextError ||
-                    "Không có dữ liệu chi tiết cho cảnh báo này."}
+                    t("chat.noAlertDetails")}
                 </div>
               )}
             </div>
@@ -1176,59 +1174,53 @@ const ChatPage = ({
                     className="flex items-start gap-3 px-2"
                   >
                     {/* System avatar */}
-                    <div className={`flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center shadow-sm ${
-                      isHighSeverity
-                        ? "bg-red-100 dark:bg-red-500/20"
-                        : "bg-amber-100 dark:bg-amber-500/20"
-                    }`}>
+                    <div className={`flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center shadow-sm ${isHighSeverity
+                      ? "bg-red-100 dark:bg-red-500/20"
+                      : "bg-amber-100 dark:bg-amber-500/20"
+                      }`}>
                       <ShieldAlert size={18} className={isHighSeverity ? "text-red-600 dark:text-red-300" : "text-amber-600 dark:text-amber-300"} />
                     </div>
 
                     <div className="flex-1 min-w-0 max-w-[80%]">
                       {/* System sender label */}
                       <div className="mb-1 flex items-center gap-2">
-                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Hệ thống giám sát</span>
+                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">{t("chat.systemMonitoring")}</span>
                         {cachedAlert && (
-                          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                            isHighSeverity
-                              ? "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300"
-                              : "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300"
-                          }`}>
+                          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${isHighSeverity
+                            ? "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300"
+                            : "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300"
+                            }`}>
                             <AlertTriangle size={9} />
-                            {isHighSeverity ? "Nghiêm trọng" : "Cảnh báo"}
+                            {isHighSeverity ? t("chat.severe") : t("patients.warning")}
                           </span>
                         )}
                       </div>
 
                       {/* Message card */}
-                      <div className={`rounded-2xl rounded-tl-sm border px-4 py-3 shadow-sm ${
-                        isHighSeverity
-                          ? "border-red-200 bg-red-50 dark:border-red-500/20 dark:bg-red-500/8"
-                          : "border-amber-200 bg-amber-50 dark:border-amber-500/20 dark:bg-amber-500/8"
-                      }`}>
+                      <div className={`rounded-2xl rounded-tl-sm border px-4 py-3 shadow-sm ${isHighSeverity
+                        ? "border-red-200 bg-red-50 dark:border-red-500/20 dark:bg-red-500/8"
+                        : "border-amber-200 bg-amber-50 dark:border-amber-500/20 dark:bg-amber-500/8"
+                        }`}>
 
                         {/* Violations grid — shown when alert data is available */}
                         {violations.length > 0 ? (
                           <div className="mb-3">
-                            <div className={`mb-2 text-[11px] font-semibold uppercase tracking-wider ${
-                              isHighSeverity ? "text-red-600 dark:text-red-300" : "text-amber-600 dark:text-amber-300"
-                            }`}>
+                            <div className={`mb-2 text-[11px] font-semibold uppercase tracking-wider ${isHighSeverity ? "text-red-600 dark:text-red-300" : "text-amber-600 dark:text-amber-300"
+                              }`}>
                               {violations.length} chỉ số vượt ngưỡng
                             </div>
                             <div className="grid grid-cols-2 gap-2">
                               {violations.map((v, idx) => (
                                 <div
                                   key={idx}
-                                  className={`rounded-lg border px-3 py-2 ${
-                                    v.severity === "high"
-                                      ? "border-red-200/70 bg-red-100/60 dark:border-red-500/20 dark:bg-red-500/10"
-                                      : "border-amber-200/70 bg-amber-100/60 dark:border-amber-500/20 dark:bg-amber-500/10"
-                                  }`}
+                                  className={`rounded-lg border px-3 py-2 ${v.severity === "high"
+                                    ? "border-red-200/70 bg-red-100/60 dark:border-red-500/20 dark:bg-red-500/10"
+                                    : "border-amber-200/70 bg-amber-100/60 dark:border-amber-500/20 dark:bg-amber-500/10"
+                                    }`}
                                 >
-                                  <div className="text-[11px] font-medium text-slate-600 dark:text-slate-300">{getViolationLabel(v.type)}</div>
-                                  <div className={`text-base font-bold ${
-                                    v.severity === "high" ? "text-red-600 dark:text-red-300" : "text-amber-600 dark:text-amber-300"
-                                  }`}>{v.observed}</div>
+                                  <div className="text-[11px] font-medium text-slate-600 dark:text-slate-300">{getViolationLabel(v.type, t)}</div>
+                                  <div className={`text-base font-bold ${v.severity === "high" ? "text-red-600 dark:text-red-300" : "text-amber-600 dark:text-amber-300"
+                                    }`}>{v.observed}</div>
                                   <div className="text-[10px] text-slate-500 dark:text-slate-400">Ngưỡng: {v.threshold}</div>
                                 </div>
                               ))}
@@ -1237,9 +1229,8 @@ const ChatPage = ({
                         ) : null}
 
                         {/* Message text */}
-                        <p className={`text-sm leading-relaxed ${
-                          isHighSeverity ? "text-red-900 dark:text-red-100" : "text-amber-900 dark:text-amber-100"
-                        }`}>
+                        <p className={`text-sm leading-relaxed ${isHighSeverity ? "text-red-900 dark:text-red-100" : "text-amber-900 dark:text-amber-100"
+                          }`}>
                           {item.message.content}
                         </p>
 
@@ -1248,7 +1239,7 @@ const ChatPage = ({
                           {formatDateTime(item.message.createdAt)}
                           {cachedAlert && (
                             <span className="ml-2">
-                              • {cachedAlert.status === "ack" ? "Đã xác nhận" : "Chờ xử lý"}
+                              • {cachedAlert.status === "ack" ? t("chat.acknowledged") : t("chat.pending")}
                             </span>
                           )}
                         </div>
@@ -1272,9 +1263,7 @@ const ChatPage = ({
                 : null;
               const repliedSenderLabel = repliedMessage
                 ? repliedMessage.senderId === currentUserId
-                  ? "Bạn"
-                  : patient?.name || "Bệnh nhân"
-                : "";
+                  ? t("chat.you") : patient?.name || [t("chat.patient")] : "";
               const isReadByOtherParticipant =
                 isMe &&
                 hasParticipantReachedMessage(
@@ -1289,9 +1278,8 @@ const ChatPage = ({
                   ref={(node) => {
                     messageRefs.current[item.message.id] = node;
                   }}
-                  className={`group flex items-end gap-2.5 ${
-                    isMe ? "flex-row-reverse" : "flex-row"
-                  }`}
+                  className={`group flex items-end gap-2.5 ${isMe ? "flex-row-reverse" : "flex-row"
+                    }`}
                 >
                   {/* Avatar */}
                   {!isMe ? (
@@ -1300,18 +1288,17 @@ const ChatPage = ({
                     </div>
                   ) : (
                     <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-600 dark:bg-blue-500 flex items-center justify-center text-xs font-bold text-white mb-1">
-                      {(user?.name || "BS").split(" ").slice(-2).map((w: string) => w[0]).join("").toUpperCase().slice(0, 2)}
+                      {(user?.username || "BS").split(" ").slice(-2).map((w: string) => w[0]).join("").toUpperCase().slice(0, 2)}
                     </div>
                   )}
                   <div
                     className={`relative flex items-center gap-2 ${isMe ? "flex-row" : "flex-row-reverse"}`}
                   >
                     <div
-                      className={`pointer-events-none flex items-center gap-1 opacity-0 transition duration-150 group-hover:pointer-events-auto group-hover:opacity-100 ${
-                        openMessageMenuId === item.message.id
-                          ? "pointer-events-auto opacity-100"
-                          : ""
-                      }`}
+                      className={`pointer-events-none flex items-center gap-1 opacity-0 transition duration-150 group-hover:pointer-events-auto group-hover:opacity-100 ${openMessageMenuId === item.message.id
+                        ? "pointer-events-auto opacity-100"
+                        : ""
+                        }`}
                     >
                       <button
                         type="button"
@@ -1339,9 +1326,8 @@ const ChatPage = ({
 
                         {openMessageMenuId === item.message.id ? (
                           <div
-                            className={`absolute top-full z-20 mt-2 min-w-42.5 rounded-2xl border border-slate-200 bg-white p-2 text-slate-700 shadow-xl dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 ${
-                              isMe ? "left-0" : "right-0"
-                            }`}
+                            className={`absolute top-full z-20 mt-2 min-w-42.5 rounded-2xl border border-slate-200 bg-white p-2 text-slate-700 shadow-xl dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 ${isMe ? "left-0" : "right-0"
+                              }`}
                           >
                             <button
                               type="button"
@@ -1351,7 +1337,7 @@ const ChatPage = ({
                               }}
                               className="block w-full rounded-xl px-3 py-2 text-left text-sm font-medium transition hover:bg-slate-100 dark:hover:bg-slate-800"
                             >
-                              Sao chép nội dung
+                              {t("chat.copyContent")}
                             </button>
                           </div>
                         ) : null}
@@ -1359,13 +1345,11 @@ const ChatPage = ({
                     </div>
 
                     <div
-                      className={`max-w-[78%] rounded-lg px-4 py-3 text-sm shadow-sm ${
-                        isMe
-                          ? "rounded-tr-sm bg-blue-600 text-white dark:bg-blue-500"
-                          : "rounded-tl-sm border border-gray-100 bg-white text-gray-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-                      } ${isActiveAlertMessage ? "ring-2 ring-amber-300 ring-offset-2 dark:ring-amber-400/70 dark:ring-offset-slate-950" : ""} ${
-                        hasAlertTag ? "cursor-pointer transition hover:ring-2 hover:ring-amber-400/50 hover:shadow-md" : ""
-                      }`}
+                      className={`max-w-[78%] rounded-lg px-4 py-3 text-sm shadow-sm ${isMe
+                        ? "rounded-tr-sm bg-blue-600 text-white dark:bg-blue-500"
+                        : "rounded-tl-sm border border-gray-100 bg-white text-gray-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                        } ${isActiveAlertMessage ? "ring-2 ring-amber-300 ring-offset-2 dark:ring-amber-400/70 dark:ring-offset-slate-950" : ""} ${hasAlertTag ? "cursor-pointer transition hover:ring-2 hover:ring-amber-400/50 hover:shadow-md" : ""
+                        }`}
                       onClick={() => {
                         if (hasAlertTag && item.message.relatedAlertId) {
                           const nextParams = new URLSearchParams(searchParams);
@@ -1376,48 +1360,43 @@ const ChatPage = ({
                     >
                       {hasAlertTag ? (
                         <div
-                          className={`mb-3 inline-flex rounded-md px-2.5 py-1 text-[11px] font-medium ${
-                            isMe
-                              ? "bg-white/15 text-blue-50 dark:bg-white/10 dark:text-blue-100"
-                              : "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-200"
-                          }`}
+                          className={`mb-3 inline-flex rounded-md px-2.5 py-1 text-[11px] font-medium ${isMe
+                            ? "bg-white/15 text-blue-50 dark:bg-white/10 dark:text-blue-100"
+                            : "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-200"
+                            }`}
                         >
                           {isActiveAlertMessage
-                            ? "Đang xem từ cảnh báo này"
-                            : "Tin nhắn có gắn cảnh báo"}
+                            ? t("chat.viewingFromThisAlert") : t("chat.messageLinkedToAlert")}
                         </div>
                       ) : null}
 
                       {hasAlertTag &&
-                      alertMessage?.hasStructuredAlertSummary ? (
+                        alertMessage?.hasStructuredAlertSummary ? (
                         <div className="space-y-3">
                           <div
-                            className={`rounded-lg border px-3 py-3 ${
-                              isMe
-                                ? "border-white/15 bg-white/10 text-blue-50"
-                                : "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-100"
-                            }`}
+                            className={`rounded-lg border px-3 py-3 ${isMe
+                              ? "border-white/15 bg-white/10 text-blue-50"
+                              : "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-100"
+                              }`}
                           >
                             <div
-                              className={`mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] ${
-                                isMe
-                                  ? "text-blue-100"
-                                  : "text-amber-700 dark:text-amber-300"
-                              }`}
+                              className={`mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] ${isMe
+                                ? "text-blue-100"
+                                : "text-amber-700 dark:text-amber-300"
+                                }`}
                             >
                               <AlertTriangle size={14} />
-                              Thông tin cảnh báo
+                              {t("chat.alertInfo")}
                             </div>
                             <p className="whitespace-pre-wrap leading-relaxed">
                               {alertMessage.alertSummary ||
-                                "Tin nhắn này được gửi trong ngữ cảnh một cảnh báo theo dõi sức khỏe."}
+                                t("chat.alertMessage")}
                             </p>
                             <div
-                              className={`mt-3 text-[11px] ${
-                                isMe
-                                  ? "text-blue-100/90"
-                                  : "text-amber-700/80 dark:text-amber-300/80"
-                              }`}
+                              className={`mt-3 text-[11px] ${isMe
+                                ? "text-blue-100/90"
+                                : "text-amber-700/80 dark:text-amber-300/80"
+                                }`}
                             >
                               Alert #{alertMessage.shortAlertId}
                             </div>
@@ -1425,20 +1404,18 @@ const ChatPage = ({
 
                           {alertMessage.note ? (
                             <div
-                              className={`rounded-lg px-3 py-3 ${
-                                isMe
-                                  ? "bg-white/12 text-white"
-                                  : "border border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-200"
-                              }`}
+                              className={`rounded-lg px-3 py-3 ${isMe
+                                ? "bg-white/12 text-white"
+                                : "border border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-200"
+                                }`}
                             >
                               <div
-                                className={`mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] ${
-                                  isMe
-                                    ? "text-blue-100"
-                                    : "text-slate-500 dark:text-slate-400"
-                                }`}
+                                className={`mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] ${isMe
+                                  ? "text-blue-100"
+                                  : "text-slate-500 dark:text-slate-400"
+                                  }`}
                               >
-                                Lời nhắn bác sĩ
+                                {t("chat.doctorNote")}
                               </div>
                               <p className="whitespace-pre-wrap leading-relaxed">
                                 {alertMessage.note}
@@ -1450,23 +1427,21 @@ const ChatPage = ({
                         <>
                           {repliedMessage ? (
                             <div
-                              className={`mb-3 rounded-lg border-l-4 px-3 py-2 ${
-                                isMe
-                                  ? "border-white/55 bg-white/12 text-blue-50"
-                                  : "border-blue-300 bg-slate-50 text-slate-600 dark:border-blue-500/60 dark:bg-slate-900 dark:text-slate-300"
-                              }`}
+                              className={`mb-3 rounded-lg border-l-4 px-3 py-2 ${isMe
+                                ? "border-white/55 bg-white/12 text-blue-50"
+                                : "border-blue-300 bg-slate-50 text-slate-600 dark:border-blue-500/60 dark:bg-slate-900 dark:text-slate-300"
+                                }`}
                             >
                               <div
-                                className={`text-[11px] font-semibold ${
-                                  isMe
-                                    ? "text-blue-100"
-                                    : "text-blue-700 dark:text-blue-300"
-                                }`}
+                                className={`text-[11px] font-semibold ${isMe
+                                  ? "text-blue-100"
+                                  : "text-blue-700 dark:text-blue-300"
+                                  }`}
                               >
                                 {repliedSenderLabel}
                               </div>
                               <div className="mt-1 text-[13px] leading-5 opacity-90">
-                                {getReplyPreviewContent(repliedMessage)}
+                                {getReplyPreviewContent(repliedMessage, t)}
                               </div>
                             </div>
                           ) : null}
@@ -1477,11 +1452,10 @@ const ChatPage = ({
                       )}
 
                       <div
-                        className={`mt-3 flex items-center justify-end gap-1 text-[11px] ${
-                          isMe
-                            ? "text-blue-100"
-                            : "text-gray-400 dark:text-slate-500"
-                        }`}
+                        className={`mt-3 flex items-center justify-end gap-1 text-[11px] ${isMe
+                          ? "text-blue-100"
+                          : "text-gray-400 dark:text-slate-500"
+                          }`}
                       >
                         <span>{formatTime(item.message.createdAt)}</span>
                         {isMe ? (
@@ -1521,15 +1495,14 @@ const ChatPage = ({
               <div className="mb-3 flex items-start justify-between gap-3 rounded-2xl border border-blue-100 bg-white px-3 py-2 dark:border-blue-500/20 dark:bg-slate-900">
                 <div className="min-w-0">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-blue-700 dark:text-blue-300">
-                    Đang trả lời
+                    {t("chat.replyingTo")}
                   </div>
                   <div className="mt-1 text-xs font-medium text-slate-700 dark:text-slate-200">
                     {replyTarget.senderId === currentUserId
-                      ? "Bạn"
-                      : patient?.name || "Bệnh nhân"}
+                      ? t("chat.you") : patient?.name || t("chat.patient")}
                   </div>
                   <div className="mt-1 truncate text-sm text-slate-500 dark:text-slate-400">
-                    {getReplyPreviewContent(replyTarget)}
+                    {getReplyPreviewContent(replyTarget, t)}
                   </div>
                 </div>
                 <button
@@ -1544,8 +1517,7 @@ const ChatPage = ({
             <textarea
               placeholder={
                 activeAlertId
-                  ? "Nhập tư vấn cho bệnh nhân, tin nhắn sẽ gắn với cảnh báo đang mở..."
-                  : "Nhập tư vấn hoặc nhận xét..."
+                  ? t("chat.enterAdviceWithAlert") : t("chat.enterAdvice")
               }
               rows={1}
               value={draft}

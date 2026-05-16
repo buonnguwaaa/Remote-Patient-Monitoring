@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import Pagination from "./Pagination";
 
 export type Column<T> = {
@@ -14,6 +15,7 @@ interface TableProps<T> {
   onRowClick?: (item: T) => void;
   className?: string;
   itemsPerPage?: number;
+  emptyText?: string;
 }
 
 const Table = <T,>({
@@ -22,8 +24,10 @@ const Table = <T,>({
   onRowClick,
   className = "",
   itemsPerPage = 10,
+  emptyText,
 }: TableProps<T>) => {
   const [currentPage, setCurrentPage] = useState(1);
+  const { t } = useTranslation();
 
   const totalPages = Math.ceil(data.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -84,7 +88,7 @@ const Table = <T,>({
                   colSpan={columns.length}
                   className="px-6 py-8 text-center text-gray-400 dark:text-slate-500"
                 >
-                  Không có dữ liệu hiển thị.
+                  {emptyText ?? t("common.noData")}
                 </td>
               </tr>
             )}

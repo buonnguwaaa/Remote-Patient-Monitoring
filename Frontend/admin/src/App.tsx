@@ -22,7 +22,6 @@ const PatientManagementAdmin = lazy(() => import("./pages/PatientManagementAdmin
 const NurseManagement = lazy(() => import("./pages/NurseManagement.tsx"));
 const SystemSettings = lazy(() => import("./pages/SystemSettings.tsx"));
 const ActivityHistory = lazy(() => import("./pages/ActivityHistory.tsx"));
-const CleanupLogs = lazy(() => import("./pages/CleanupLogs.tsx"));
 const DepartmentManagement = lazy(() => import("./pages/DepartmentManagement.tsx"));
 const AssignmentManagement = lazy(() => import("./pages/AssignmentManagement.tsx"));
 
