@@ -4,6 +4,8 @@
  */
 
 import type { AssignmentResponse } from '../../types/patient';
+import i18n from '../../i18n/config';
+const t = i18n.t;
 import {
   createWorkbook,
   addWorksheet,
@@ -187,53 +189,53 @@ export const exportHealthReportToExcel = async (
       'Vượt ngưỡng': '',
     });
 
-    const addStatRow = (label: string, stat: MetricStats, threshold: string) => {
+    const addStatRow = (label: string, stat: MetricStats, thresholdRange: string) => {
       detailedData.push({
         [t("chat.patient")]: '',
         'Chỉ số': label,
         'Min': stat.min || '-',
         'Max': stat.max || '-',
         [t("dashboard.filterMedium")]: stat.avg || '-',
-        'Ngưỡng an toàn': threshold,
+        'Ngưỡng an toàn': thresholdRange,
         'Vượt ngưỡng': stat.violations || 0,
       });
     };
 
-    const t = data.threshold;
+    const threshold = data.threshold;
     addStatRow(
       'HA Tâm thu (mmHg)',
       data.stats.bloodPressure.systolic,
-      t ? `${t.sysMin} - ${t.sysMax}` : '-'
+      threshold ? `${threshold.sysMin} - ${threshold.sysMax}` : '-'
     );
     addStatRow(
       'HA Tâm trương (mmHg)',
       data.stats.bloodPressure.diastolic,
-      t ? `${t.diaMin} - ${t.diaMax}` : '-'
+      threshold ? `${threshold.diaMin} - ${threshold.diaMax}` : '-'
     );
     addStatRow(
       t("thresholds.heartRate"),
       data.stats.heartRate,
-      t ? `${t.heartRateMin} - ${t.heartRateMax}` : '-'
+      threshold ? `${threshold.heartRateMin} - ${threshold.heartRateMax}` : '-'
     );
     addStatRow(
       'Nhiệt độ (°C)',
       data.stats.temperature,
-      t ? `${t.temperatureMin} - ${t.temperatureMax}` : '-'
+      threshold ? `${threshold.temperatureMin} - ${threshold.temperatureMax}` : '-'
     );
     addStatRow(
       'SpO2 (%)',
       data.stats.spo2,
-      t ? `${t.spo2Min} - 100` : '-'
+      threshold ? `${threshold.spo2Min} - 100` : '-'
     );
     addStatRow(
       'Nhịp thở (bpm)',
       data.stats.respiratoryRate,
-      t ? `${t.respiratoryRateMin || 0} - ${t.respiratoryRateMax || 0}` : '-'
+      threshold ? `${threshold.respiratoryRateMin || 0} - ${threshold.respiratoryRateMax || 0}` : '-'
     );
     addStatRow(
       t("thresholds.glucose"),
       data.stats.glucose,
-      t ? `${t.glucoseMin || 0} - ${t.glucoseMax || 0}` : '-'
+      threshold ? `${threshold.glucoseMin || 0} - ${threshold.glucoseMax || 0}` : '-'
     );
 
     detailedData.push({
