@@ -3,7 +3,7 @@ name: Frontend Web CI/CD
 on:
   push:
     branches:
-      - main
+      - master
     paths:
       - 'Frontend/web/**'
       - '.github/workflows/frontend_web_ci_cd.yml'
