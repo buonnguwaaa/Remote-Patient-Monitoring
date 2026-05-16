@@ -27,11 +27,20 @@ jobs:
         working-directory: Frontend/web
         run: npm install
 
+      - name: Create production env
+        working-directory: Frontend/web
+        run: |
+          echo "VITE_API_URL=${{ secrets.VITE_API_URL }}" > .env
+
       - name: Build
         working-directory: Frontend/web
-        env:
-          VITE_API_URL: ${{ secrets.VITE_API_URL }}
         run: npm run build
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-dist
+          path: Frontend/web/dist/
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
