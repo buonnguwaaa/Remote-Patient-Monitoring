@@ -1,0 +1,43 @@
+name: Frontend Web CI/CD
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'Frontend/web/**'
+      - '.github/workflows/frontend_web_ci_cd.yml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: Frontend/web/package-lock.json
+
+      - name: Install deps
+        working-directory: Frontend/web
+        run: npm install
+
+      - name: Build
+        working-directory: Frontend/web
+        run: npm run build
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Deploy to S3
+        run: |
+          aws s3 sync Frontend/web/dist/ s3://${{ secrets.S3_WEB_BUCKET_NAME }} --delete
