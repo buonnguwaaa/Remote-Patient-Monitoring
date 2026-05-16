@@ -3,7 +3,7 @@ import * as Linking from 'expo-linking';
 import Constants from 'expo-constants';
 
 const extras = (Constants?.manifest?.extra) || (Constants?.expoConfig?.extra) || {};
-const BASE_URL = process.env.BASE_URL || extras.BASE_URL || 'http://localhost:8080';
+const BASE_URL = process.env.EXPO_PUBLIC_BASE_URL || extras.BASE_URL || 'http://10.0.2.2:8080';
 
 export async function loginWithGoogle() {
   const url = `${BASE_URL}/auth/google/login`;
