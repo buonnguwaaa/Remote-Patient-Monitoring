@@ -25,6 +25,7 @@ import {
   calculateHealthStatistics,
   type PatientReportData,
 } from "../utils/export/healthReportExporter";
+import { useTranslation } from "react-i18next";
 
 interface KpiDef {
   label: string;
@@ -37,28 +38,14 @@ interface KpiDef {
 const CHART_BUCKETS = 4;
 const MAX_ALERT_FETCH = 1000;
 
-// Violation labels for displaying in UI
-const violationLabel: Record<string, string> = {
-  systolic: "HA tâm thu",
-  diastolic: "HA tâm trương",
-  pulse: "Nhịp tim",
-  glucose: "Đường huyết",
-  temperature: "Nhiệt độ",
-  spo2: "SpO2",
-  respiratoryRate: "Nhịp thở",
-  heart_rate: "Nhịp tim",
-  respiratory_rate: "Nhịp thở",
-  blood_pressure_systolic: "Huyết áp tâm thu",
-  blood_pressure_diastolic: "Huyết áp tâm trương",
-};
+
 
 const Badge: React.FC<{ value: number; up: boolean }> = ({ value, up }) => (
   <span
-    className={`inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[11px] font-semibold ${
-      up
-        ? "bg-teal-50 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400"
-        : "bg-red-50 text-red-500 dark:bg-red-900/30 dark:text-red-400"
-    }`}
+    className={`inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[11px] font-semibold ${up
+      ? "bg-teal-50 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400"
+      : "bg-red-50 text-red-500 dark:bg-red-900/30 dark:text-red-400"
+      }`}
   >
     {up ? <FaArrowTrendUp size={9} /> : <FaArrowTrendDown size={9} />}
     {value}%
@@ -105,11 +92,11 @@ function formatKpiValue(value: number | null | undefined) {
   return new Intl.NumberFormat("vi-VN").format(value);
 }
 
-function ago(ds: string) {
+function ago(ds: string, t: any) {
   const mins = Math.floor((Date.now() - new Date(ds).getTime()) / 60000);
   const hrs = Math.floor(mins / 60);
-  if (mins < 60) return `${mins}p trước`;
-  if (hrs < 24) return `${hrs}h trước`;
+  if (mins < 60) return `${mins}${t("dashboard.minsAgo") || "p trước"}`;
+  if (hrs < 24) return `${hrs}${t("dashboard.hoursAgo") || "h trước"}`;
   return new Date(ds).toLocaleDateString("vi-VN", {
     day: "2-digit",
     month: "2-digit",
@@ -200,6 +187,7 @@ function getPatientCountsAtDate(
 function buildDashboardChartData(
   assignments: AssignmentResponse[],
   alerts: AlertResponse[],
+  t: (key: string) => string
 ) {
   const assignedPatientIds = new Set(assignments.map((item) => item.patientId));
   const alertsByPatient = buildAlertsByPatient(alerts, assignedPatientIds);
@@ -239,19 +227,19 @@ function buildDashboardChartData(
   const chartStats: ChartStatItem[] = [
     {
       id: "all",
-      label: "Hiện tại",
+      label: t("dashboard.chartCurrent"),
       value: assignments.length,
     },
     {
       id: "month",
-      label: "Tháng này",
+      label: t("dashboard.chartThisMonth"),
       value:
         (monthlyChartData[monthlyChartData.length - 1]?.normalPatients ?? 0) +
         (monthlyChartData[monthlyChartData.length - 1]?.warningPatients ?? 0),
     },
     {
       id: "week",
-      label: "Tuần này",
+      label: t("dashboard.chartThisWeek"),
       value:
         (weeklyChartData[weeklyChartData.length - 1]?.normalPatients ?? 0) +
         (weeklyChartData[weeklyChartData.length - 1]?.warningPatients ?? 0),
@@ -269,20 +257,35 @@ const RecentAlerts: React.FC<{
   alerts: AlertResponse[];
   loading: boolean;
 }> = ({ alerts, loading }) => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
+  // Violation labels for displaying in UI
+  const violationLabel: Record<string, string> = {
+    systolic: "HA tâm thu",
+    diastolic: "HA tâm trương",
+    pulse: t("patientDetail.heartRate"),
+    glucose: t("patientDetail.glucose"),
+    temperature: t("patientDetail.temperature"),
+    spo2: "SpO2",
+    respiratoryRate: t("patientDetail.respiratoryRate"),
+    heart_rate: t("patientDetail.heartRate"),
+    respiratory_rate: t("patientDetail.respiratoryRate"),
+    blood_pressure_systolic: t("patientDetail.systolic"),
+    blood_pressure_diastolic: t("patientDetail.diastolic"),
+  };
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white dark:border-slate-700/60 dark:bg-slate-800">
       <div className="px-5 pb-3 pt-5">
         <SectionHeader
           icon={<FaExclamationTriangle size={13} />}
-          title="Cảnh báo gần đây"
+          title={t("dashboard.recentAlerts")}
           aside={
             <button
               onClick={() => navigate("/threshold-alerts")}
               className="text-[11px] font-semibold text-indigo-500 transition-opacity hover:opacity-75 dark:text-indigo-400"
             >
-              Xem tất cả
+              {t("dashboard.viewAll")}
             </button>
           }
         />
@@ -291,11 +294,11 @@ const RecentAlerts: React.FC<{
       <div className="flex-1 overflow-auto border-t border-gray-50 dark:border-slate-700/40">
         {loading ? (
           <p className="py-8 text-center text-xs text-gray-400">
-            Đang tải cảnh báo...
+            {t("dashboard.loadingAlerts")}
           </p>
         ) : alerts.length === 0 ? (
           <p className="py-8 text-center text-xs text-gray-400">
-            Không có cảnh báo
+            {t("dashboard.noAlerts")}
           </p>
         ) : (
           alerts.map((alert, index) => {
@@ -304,19 +307,17 @@ const RecentAlerts: React.FC<{
             return (
               <div
                 key={alert.id}
-                className={`flex cursor-pointer items-start gap-3 px-5 py-3 transition-colors hover:bg-gray-50 dark:hover:bg-slate-700/40 ${
-                  index > 0
-                    ? "border-t border-gray-50 dark:border-slate-700/30"
-                    : ""
-                }`}
+                className={`flex cursor-pointer items-start gap-3 px-5 py-3 transition-colors hover:bg-gray-50 dark:hover:bg-slate-700/40 ${index > 0
+                  ? "border-t border-gray-50 dark:border-slate-700/30"
+                  : ""
+                  }`}
                 onClick={() => navigate("/threshold-alerts")}
               >
                 <div
-                  className={`mt-0.5 shrink-0 rounded-lg p-1.5 ${
-                    isHigh
-                      ? "bg-red-50 text-red-400 dark:bg-red-900/30"
-                      : "bg-amber-50 text-amber-400 dark:bg-amber-900/30"
-                  }`}
+                  className={`mt-0.5 shrink-0 rounded-lg p-1.5 ${isHigh
+                    ? "bg-red-50 text-red-400 dark:bg-red-900/30"
+                    : "bg-amber-50 text-amber-400 dark:bg-amber-900/30"
+                    }`}
                 >
                   {isHigh ? (
                     <FaExclamationTriangle size={10} />
@@ -331,7 +332,7 @@ const RecentAlerts: React.FC<{
                       {alert.patientName || "Không rõ bệnh nhân"}
                     </p>
                     <span className="shrink-0 text-[10px] tabular-nums text-gray-400 dark:text-slate-500">
-                      {ago(alert.createdAt)}
+                      {ago(alert.createdAt, t)}
                     </span>
                   </div>
                   <p className="mt-0.5 truncate text-[11px] text-gray-400 dark:text-slate-500">
@@ -345,9 +346,8 @@ const RecentAlerts: React.FC<{
                 </div>
 
                 <div
-                  className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${
-                    alert.status === "ack" ? "bg-teal-400" : "bg-red-400"
-                  }`}
+                  className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${alert.status === "ack" ? "bg-teal-400" : "bg-red-400"
+                    }`}
                 />
               </div>
             );
@@ -359,11 +359,13 @@ const RecentAlerts: React.FC<{
 };
 
 const DashBoard = () => {
+  const { t } = useTranslation();
+
   const [assignments, setAssignments] = useState<AssignmentResponse[]>([]);
   const [alerts, setAlerts] = useState<AlertResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Date filter state
   const [startDate, setStartDate] = useState<string>(() => {
     const date = new Date();
@@ -374,12 +376,12 @@ const DashBoard = () => {
     return new Date().toISOString().split('T')[0];
   });
   const [showDatePicker, setShowDatePicker] = useState(false);
-  
+
   // Filter state
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [filterStatus, setFilterStatus] = useState<'all' | 'stable' | 'attention'>('all');
   const [filterSeverity, setFilterSeverity] = useState<'all' | 'high' | 'medium'>('all');
-  
+
   // Export menu and health report modal state
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showHealthReportModal, setShowHealthReportModal] = useState(false);
@@ -394,7 +396,7 @@ const DashBoard = () => {
   });
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [reportProgress, setReportProgress] = useState({ current: 0, total: 0 });
-  
+
   const dateRange = `${new Date(startDate).toLocaleDateString("vi-VN", {
     day: "2-digit",
     month: "short",
@@ -424,8 +426,8 @@ const DashBoard = () => {
         console.error("Failed to load doctor dashboard", loadError);
         setError(
           loadError?.response?.data?.error ||
-            loadError?.message ||
-            "Không thể tải dữ liệu dashboard.",
+          loadError?.message ||
+          "Không thể tải dữ liệu dashboard.",
         );
         setAssignments([]);
         setAlerts([]);
@@ -460,7 +462,7 @@ const DashBoard = () => {
   const filteredAlerts = useMemo(
     () => {
       let filtered = alerts.filter((alert) => assignedPatientIds.has(alert.patientId));
-      
+
       // Filter by date range
       filtered = filtered.filter((alert) => {
         const alertDate = new Date(alert.createdAt);
@@ -469,12 +471,12 @@ const DashBoard = () => {
         end.setHours(23, 59, 59, 999);
         return alertDate >= start && alertDate <= end;
       });
-      
+
       // Filter by severity
       if (filterSeverity !== 'all') {
         filtered = filtered.filter((alert) => alert.severity === filterSeverity);
       }
-      
+
       return filtered;
     },
     [alerts, assignedPatientIds, startDate, endDate, filterSeverity],
@@ -532,7 +534,7 @@ const DashBoard = () => {
   );
 
   const chartPayload = useMemo(
-    () => buildDashboardChartData(assignments, filteredAlerts),
+    () => buildDashboardChartData(assignments, filteredAlerts, t),
     [assignments, filteredAlerts],
   );
 
@@ -540,10 +542,10 @@ const DashBoard = () => {
     () =>
       loading
         ? [
-            { id: "all", label: "Tất cả", value: "..." },
-            { id: "month", label: "Tháng", value: "..." },
-            { id: "week", label: "Tuần", value: "..." },
-          ]
+          { id: "all", label: t("dashboard.filterAll"), value: "..." },
+          { id: "month", label: t("patientDetail.month"), value: "..." },
+          { id: "week", label: t("patientDetail.week"), value: "..." },
+        ]
         : chartPayload.chartStats,
     [chartPayload.chartStats, loading],
   );
@@ -551,17 +553,17 @@ const DashBoard = () => {
   const kpis = useMemo<KpiDef[]>(
     () => [
       {
-        label: "Tổng bệnh nhân",
+        label: t("dashboard.totalPatients"),
         value: formatKpiValue(dashboardStats.total),
         Icon: FaUserFriends,
       },
       {
-        label: "Đang ổn định",
+        label: t("dashboard.stablePatients"),
         value: formatKpiValue(dashboardStats.stable),
         Icon: FaHeartbeat,
       },
       {
-        label: "Cần chú ý",
+        label: t("dashboard.needAttention"),
         value: formatKpiValue(dashboardStats.attention),
         Icon: FaEye,
       },
@@ -572,7 +574,7 @@ const DashBoard = () => {
   // Export alerts to Excel
   const handleExportAlerts = () => {
     setShowExportMenu(false);
-    
+
     exportAlertsToExcel({
       assignments,
       latestAlertsByPatient,
@@ -611,7 +613,7 @@ const DashBoard = () => {
   // Generate health report
   const handleGenerateHealthReport = async () => {
     if (selectedPatients.size === 0) {
-      alert('Vui lòng chọn ít nhất một bệnh nhân');
+      alert(t("dashboard.selectAtLeastOne"));
       return;
     }
 
@@ -627,7 +629,7 @@ const DashBoard = () => {
       for (const assignment of selectedAssignments) {
         try {
           const [measurements, thresholds] = await Promise.all([
-            getMeasurements({ 
+            getMeasurements({
               patientId: assignment.patientId,
             }),
             getThresholds({ patientId: assignment.patientId, latest: true }),
@@ -695,19 +697,19 @@ const DashBoard = () => {
       <div className="mx-auto max-w-screen-2xl space-y-4 px-6 py-6">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-            Tổng quan
+            {t("dashboard.title")}
           </h1>
           <div className="flex items-center gap-2">
             {/* Date Picker Button */}
             <div className="relative">
-              <button 
+              <button
                 onClick={() => setShowDatePicker(!showDatePicker)}
                 className="inline-flex items-center gap-1.5 rounded-xl border border-gray-100 bg-white px-3 py-2 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
               >
                 <BsCalendar3 size={11} />
                 {dateRange}
               </button>
-              
+
               {showDatePicker && (
                 <div className="absolute right-0 top-full z-50 mt-2 w-80 rounded-xl border border-gray-100 bg-white p-4 shadow-lg dark:border-slate-700 dark:bg-slate-800">
                   <div className="mb-3 flex items-center justify-between">
@@ -721,11 +723,11 @@ const DashBoard = () => {
                       ✕
                     </button>
                   </div>
-                  
+
                   <div className="space-y-3">
                     <div>
                       <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
-                        Từ ngày
+                        {t("dashboard.from")}
                       </label>
                       <input
                         type="date"
@@ -742,10 +744,10 @@ const DashBoard = () => {
                         className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-white"
                       />
                     </div>
-                    
+
                     <div>
                       <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
-                        Đến ngày
+                        {t("dashboard.to")}
                       </label>
                       <input
                         type="date"
@@ -762,13 +764,13 @@ const DashBoard = () => {
                         className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-white"
                       />
                     </div>
-                    
+
                     <div className="flex gap-2 pt-2">
                       <button
                         onClick={handleApplyDateFilter}
                         className="flex-1 rounded-lg bg-indigo-500 px-3 py-2 text-xs font-medium text-white hover:bg-indigo-600"
                       >
-                        Áp dụng
+                        {t("common.apply")}
                       </button>
                       <button
                         onClick={() => {
@@ -779,7 +781,7 @@ const DashBoard = () => {
                         }}
                         className="rounded-lg border border-gray-200 px-3 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
                       >
-                        Đặt lại
+                        {t("common.reset")}
                       </button>
                     </div>
                   </div>
@@ -789,7 +791,7 @@ const DashBoard = () => {
 
             {/* Filter Button */}
             <div className="relative">
-              <button 
+              <button
                 onClick={() => setShowFilterMenu(!showFilterMenu)}
                 className="inline-flex items-center gap-1.5 rounded-xl border border-gray-100 bg-white px-3 py-2 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
               >
@@ -801,7 +803,7 @@ const DashBoard = () => {
                   </span>
                 )}
               </button>
-              
+
               {showFilterMenu && (
                 <div className="absolute right-0 top-full z-50 mt-2 w-64 rounded-xl border border-gray-100 bg-white p-4 shadow-lg dark:border-slate-700 dark:bg-slate-800">
                   <div className="mb-3 flex items-center justify-between">
@@ -815,7 +817,7 @@ const DashBoard = () => {
                       ✕
                     </button>
                   </div>
-                  
+
                   <div className="space-y-3">
                     <div>
                       <label className="mb-2 block text-xs font-medium text-gray-600 dark:text-slate-400">
@@ -823,9 +825,9 @@ const DashBoard = () => {
                       </label>
                       <div className="space-y-1">
                         {[
-                          { value: 'all', label: 'Tất cả' },
+                          { value: 'all', label: t("dashboard.filterAll") },
                           { value: 'high', label: 'Cao' },
-                          { value: 'medium', label: 'Trung bình' },
+                          { value: 'medium', label: t("dashboard.filterMedium") },
                         ].map((option) => (
                           <label
                             key={option.value}
@@ -846,13 +848,13 @@ const DashBoard = () => {
                         ))}
                       </div>
                     </div>
-                    
+
                     <div className="flex gap-2 border-t border-gray-100 pt-3 dark:border-slate-700">
                       <button
                         onClick={() => setShowFilterMenu(false)}
                         className="flex-1 rounded-lg bg-indigo-500 px-3 py-2 text-xs font-medium text-white hover:bg-indigo-600"
                       >
-                        Áp dụng
+                        {t("common.apply")}
                       </button>
                       <button
                         onClick={handleResetFilters}
@@ -868,15 +870,15 @@ const DashBoard = () => {
 
             {/* Export Button with Dropdown */}
             <div className="relative export-menu-container">
-              <button 
+              <button
                 onClick={() => setShowExportMenu(!showExportMenu)}
                 disabled={loading || assignments.length === 0}
                 className="inline-flex items-center gap-1.5 rounded-xl border border-gray-100 bg-white px-3 py-2 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
               >
                 <FaDownload size={10} />
-                Xuất
+                {t("common.export")}
               </button>
-              
+
               {showExportMenu && (
                 <div className="absolute right-0 top-full z-50 mt-2 w-64 rounded-xl border border-gray-100 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-800">
                   <button
@@ -884,14 +886,14 @@ const DashBoard = () => {
                     className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-50 dark:text-slate-300 dark:hover:bg-slate-700 rounded-t-xl"
                   >
                     <FaDownload size={12} className="text-gray-400" />
-                    <span>Xuất cảnh báo</span>
+                    <span>{t("dashboard.exportAlerts")}</span>
                   </button>
                   <button
                     onClick={handleOpenHealthReportModal}
                     className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-50 dark:text-slate-300 dark:hover:bg-slate-700 rounded-b-xl border-t border-gray-100 dark:border-slate-700"
                   >
                     <FaDownload size={12} className="text-blue-500" />
-                    <span>Xuất báo cáo chỉ số sức khỏe</span>
+                    <span>{t("dashboard.exportHealthReport")}</span>
                   </button>
                 </div>
               )}
@@ -915,7 +917,7 @@ const DashBoard = () => {
           <div className="rounded-2xl border border-gray-100 bg-white p-5 dark:border-slate-700/60 dark:bg-slate-800 lg:col-span-3">
             <SectionHeader
               icon={<span className="text-[13px]">📊</span>}
-              title="Tổng quan bệnh nhân"
+              title={t("dashboard.patientOverview")}
             />
             <Chart
               stats={chartStats}
@@ -938,7 +940,7 @@ const DashBoard = () => {
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-gray-200 dark:border-slate-700 px-6 py-4">
               <h2 className="text-lg font-bold text-gray-900 dark:text-white">
-                Xuất báo cáo chỉ số sức khỏe
+                {t("dashboard.exportHealthReport")}
               </h2>
               <button
                 onClick={() => setShowHealthReportModal(false)}
@@ -954,12 +956,12 @@ const DashBoard = () => {
               {/* Date Range */}
               <div className="mb-6">
                 <h3 className="mb-3 text-sm font-semibold text-gray-900 dark:text-white">
-                  Khoảng thời gian
+                  {t("dashboard.dateRange")}
                 </h3>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
-                      Từ ngày
+                      {t("dashboard.from")}
                     </label>
                     <input
                       type="date"
@@ -979,7 +981,7 @@ const DashBoard = () => {
                   </div>
                   <div>
                     <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
-                      Đến ngày
+                      {t("dashboard.to")}
                     </label>
                     <input
                       type="date"
@@ -1011,7 +1013,7 @@ const DashBoard = () => {
                     disabled={isGeneratingReport}
                     className="text-xs font-medium text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 disabled:opacity-50"
                   >
-                    {selectedPatients.size === assignments.length ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
+                    {selectedPatients.size === assignments.length ? t("dashboard.deselectAll") : t("dashboard.selectAll")}
                   </button>
                 </div>
 
@@ -1067,7 +1069,7 @@ const DashBoard = () => {
                     />
                   </div>
                   <p className="mt-2 text-xs text-indigo-600 dark:text-indigo-400">
-                    Vui lòng đợi, quá trình có thể mất vài giây...
+                    {t("dashboard.pleaseWait")}
                   </p>
                 </div>
               )}
@@ -1080,14 +1082,14 @@ const DashBoard = () => {
                 disabled={isGeneratingReport}
                 className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700 disabled:opacity-50"
               >
-                Hủy
+                {t("common.cancel")}
               </button>
               <button
                 onClick={handleGenerateHealthReport}
                 disabled={isGeneratingReport || selectedPatients.size === 0}
                 className="rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-600 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {isGeneratingReport ? 'Đang xử lý...' : `Xuất báo cáo (${selectedPatients.size})`}
+                {isGeneratingReport ? t("dashboard.generating") : `Xuất báo cáo (${selectedPatients.size})`}
               </button>
             </div>
           </div>

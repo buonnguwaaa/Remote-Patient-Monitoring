@@ -1,11 +1,13 @@
 import { type WarnItem } from "../../types";
 import { mockWarnList } from "../../data/mockData";
+import { useTranslation } from "react-i18next";
 
 interface WarnListProps {
   warns?: WarnItem[];
 }
 
 const WarnList = ({ warns = mockWarnList }: WarnListProps) => {
+  const { t } = useTranslation();
   return (
     <div className="p-4 bg-white rounded-lg shadow-md">
       <h1 className="font-bold text-text text-xl">Danh sách cảnh báo</h1>
@@ -15,22 +17,22 @@ const WarnList = ({ warns = mockWarnList }: WarnListProps) => {
           <thead className=" ">
             <tr className=" font-semibold">
               <th className="px-4 py-3 text-left font-semibold text-text w-1/7">
-                Bệnh nhân
+                {t("chat.patient")}
               </th>
               <th className="px-4 py-3 text-center font-semibold text-text">
-                Huyết áp tâm thu
+                {t("patientDetail.systolic")}
               </th>
               <th className="px-4 py-3 text-center font-semibold text-text">
-                Huyết áp tâm trương
+                {t("patientDetail.diastolic")}
               </th>
               <th className="px-4 py-3 text-center font-semibold text-text">
-                Nhịp tim
+                {t("patientDetail.heartRate")}
               </th>
               <th className="px-4 py-3 text-center font-semibold text-text">
-                Nhịp thở
+                {t("patientDetail.respiratoryRate")}
               </th>
               <th className="px-4 py-3 text-center font-semibold text-text">
-                Đường huyết
+                {t("patientDetail.glucose")}
               </th>
             </tr>
           </thead>

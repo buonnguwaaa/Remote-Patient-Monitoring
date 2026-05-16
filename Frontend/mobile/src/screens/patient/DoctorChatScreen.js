@@ -18,6 +18,7 @@ import { Ionicons, FontAwesome5 } from "@expo/vector-icons";
 import { useIsFocused } from "@react-navigation/native";
 
 import { useAuth } from "../../hooks/useAuth";
+import { useBadge } from "../../context/BadgeContext";
 import {
   buildConversationSocketUrl,
   getConversationMessages,
@@ -309,6 +310,7 @@ function getViolationLabel(type) {
 
 export default function DoctorChatScreen() {
   const { user } = useAuth();
+  const { refreshBadges } = useBadge();
   const currentUserId = user?.id || user?._id;
   const isFocused = useIsFocused();
 
@@ -413,6 +415,13 @@ export default function DoctorChatScreen() {
   useEffect(() => {
     scrollViewRef.current?.scrollToEnd({ animated: true });
   }, [messages]);
+
+  // Refresh badge count when screen is focused
+  useEffect(() => {
+    if (isFocused) {
+      refreshBadges();
+    }
+  }, [isFocused, refreshBadges]);
 
   useEffect(() => {
     if (!isFocused) {
@@ -621,8 +630,14 @@ export default function DoctorChatScreen() {
     if (lastReadSentRef.current !== latestIncomingMessage.id) {
       socketRef.current.send(JSON.stringify(createReadPayload(latestIncomingMessage.id)));
       lastReadSentRef.current = latestIncomingMessage.id;
+      
+      // Refresh badge count after sending READ event
+      // Use setTimeout to allow backend to process the READ event first
+      setTimeout(() => {
+        refreshBadges();
+      }, 300);
     }
-  }, [conversation?.id, currentUserId, isFocused, messages, socketState]);
+  }, [conversation?.id, currentUserId, isFocused, messages, socketState, refreshBadges]);
 
   const handleSend = (nextContent = draft) => {
     const content = String(nextContent || "").trim();

@@ -1,4 +1,5 @@
 import React, { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { FaCamera } from "react-icons/fa";
 
 const DEFAULT_AVATAR = "/avartar.jpg";
@@ -9,6 +10,7 @@ interface AvatarUploaderProps {
 }
 
 const AvatarUploader: React.FC<AvatarUploaderProps> = ({ currentUrl, onFileSelect }) => {
+    const { t } = useTranslation();
     const [localPreview, setLocalPreview] = useState<string>("");
     const [selectedFileName, setSelectedFileName] = useState<string>("");
     const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -39,20 +41,20 @@ const AvatarUploader: React.FC<AvatarUploaderProps> = ({ currentUrl, onFileSelec
                     className="h-20 w-20 rounded-full object-cover border-2 border-gray-200 shadow-sm cursor-pointer transition-all duration-200 group-hover:brightness-75"
                     onError={handleImgError}
                     onClick={() => setLightboxOpen(true)}
-                    title="Nhấn để xem ảnh"
+                    title={t("doctorManagement.clickToViewImage")}
                 />
                 <button
                     type="button"
                     onClick={() => inputRef.current?.click()}
                     className="absolute inset-0 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 cursor-pointer"
-                    title="Cập nhật ảnh đại diện"
+                    title={t("avatarUploader.updateAvatar")}
                 >
                     <FaCamera className="text-white text-xl drop-shadow" />
                 </button>
             </div>
 
             <div className="flex flex-col gap-2">
-                <p className="text-sm font-semibold text-gray-700">Ảnh đại diện</p>
+                <p className="text-sm font-semibold text-gray-700">{t("avatarUploader.title")}</p>
 
                 <button
                     type="button"
@@ -60,7 +62,7 @@ const AvatarUploader: React.FC<AvatarUploaderProps> = ({ currentUrl, onFileSelec
                     className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-blue-500 text-blue-600 text-sm font-medium hover:bg-blue-50 active:scale-95 transition-all duration-150"
                 >
                     <FaCamera className="text-sm" />
-                    Cập nhật ảnh đại diện
+                    {t("avatarUploader.updateAvatar")}
                 </button>
 
                 {selectedFileName ? (
@@ -69,10 +71,10 @@ const AvatarUploader: React.FC<AvatarUploaderProps> = ({ currentUrl, onFileSelec
                         <span className="truncate max-w-[200px]" title={selectedFileName}>
                             {selectedFileName}
                         </span>
-                        <span className="text-gray-400">— sẽ upload khi lưu</span>
+                        <span className="text-gray-400">— {t("avatarUploader.willUploadOnSave")}</span>
                     </p>
                 ) : (
-                    <p className="text-xs text-gray-400">JPG, PNG, WEBP tối đa 5MB</p>
+                    <p className="text-xs text-gray-400">{t("avatarUploader.fileRequirements")}</p>
                 )}
             </div>
 
@@ -103,7 +105,7 @@ const AvatarUploader: React.FC<AvatarUploaderProps> = ({ currentUrl, onFileSelec
                         </button>
                         <img
                             src={displaySrc}
-                            alt="Ảnh đại diện"
+                            alt={t("avatarUploader.title")}
                             className="rounded-2xl shadow-2xl object-contain"
                             style={{ maxWidth: "80vw", maxHeight: "80vh" }}
                             onError={handleImgError}

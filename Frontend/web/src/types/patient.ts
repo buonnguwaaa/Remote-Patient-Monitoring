@@ -1,3 +1,4 @@
+
 export interface AssignmentResponse {
   id: string;
   patientId: string;
@@ -42,5 +43,5 @@ export interface PatientItem {
   name: string;
   patientCode?: string;
   updatedAt?: string;
-  status: "Bình thường" | "Cảnh báo";
+  status: string;
 }

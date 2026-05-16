@@ -30,6 +30,7 @@ export interface MessageResponse {
   content: string;
   replyToMessageId?: string | null;
   relatedAlertId?: string | null;
+  messageSource?: "user" | "system";
   createdAt: string;
   updatedAt: string;
 }

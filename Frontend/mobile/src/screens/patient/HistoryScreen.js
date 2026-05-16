@@ -62,6 +62,9 @@ export default function HistoryScreen({ route, isEmbedded }) {
   const [showMore, setShowMore] = useState(false);
   const [measurements, setMeasurements] = useState([]);
   const [showChartModal, setShowChartModal] = useState(false);
+  const [timeRangeType, setTimeRangeType] = useState("week"); // "week" or "month"
+  const [timeRangeValue, setTimeRangeValue] = useState(1); // number of weeks/months
+  const [selectedDataPoint, setSelectedDataPoint] = useState(null); // For tooltip
 
   const fetchMeasurements = async () => {
     const res = await getMeasurements(patientId);
@@ -84,29 +87,36 @@ export default function HistoryScreen({ route, isEmbedded }) {
 
   // Filter data based on time range
   const now = new Date();
-  const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
-  const fourMonthsAgo = new Date(now.getTime() - 120 * 24 * 60 * 60 * 1000);
+  const cutoffDate = new Date(now);
+  
+  if (timeRangeType === "week") {
+    cutoffDate.setDate(now.getDate() - (timeRangeValue * 7));
+  } else {
+    cutoffDate.setMonth(now.getMonth() - timeRangeValue);
+  }
 
-  // For small chart: show last 2 weeks
+  // For small chart: use selected time range
   const recentMeasurements = activeMeasurements.filter(
-    (m) => new Date(m.createdAt) >= twoWeeksAgo
+    (m) => new Date(m.createdAt) >= cutoffDate
   );
 
-  // For modal chart: show last 4 months
-  const extendedMeasurements = activeMeasurements.filter(
-    (m) => new Date(m.createdAt) >= fourMonthsAgo
-  );
+  // For modal chart: use same data but with better spacing
+  const extendedMeasurements = recentMeasurements;
 
   let chartLabels = [];
   let chartDatasets = [];
   let legend = [];
+  let dynamicChartWidth = chartWidth; // Default width for small chart
 
   if (recentMeasurements.length > 0) {
-    // Show fewer labels to prevent overlap - show every nth label based on data count
-    const labelInterval = recentMeasurements.length > 10 ? Math.ceil(recentMeasurements.length / 6) : 1;
-    chartLabels = recentMeasurements.map((m, idx) => 
-      idx % labelInterval === 0 ? formatShortLabel(m.createdAt) : ""
-    );
+    // Calculate dynamic width based on data points
+    // Minimum 60px per data point for comfortable spacing
+    const minPixelsPerPoint = 60;
+    const calculatedWidth = Math.max(chartWidth, recentMeasurements.length * minPixelsPerPoint);
+    dynamicChartWidth = calculatedWidth;
+    
+    // Show ALL labels since we have horizontal scroll
+    chartLabels = recentMeasurements.map((m) => formatShortLabel(m.createdAt));
 
     if (tab === "bp") { 
       const systolicArr = recentMeasurements.map((m) => m.bloodPressure?.systolic || m.systolic || 0);
@@ -177,16 +187,20 @@ export default function HistoryScreen({ route, isEmbedded }) {
     }
   }
 
-  // Prepare data for modal chart (4 months)
+  // Prepare data for modal chart
   let modalChartLabels = [];
   let modalChartDatasets = [];
+  let modalChartWidth = screenWidth - 40;
 
   if (extendedMeasurements.length > 0) {
-    // Show labels with appropriate spacing for 4 months of data
-    const labelInterval = extendedMeasurements.length > 20 ? Math.ceil(extendedMeasurements.length / 10) : 1;
-    modalChartLabels = extendedMeasurements.map((m, idx) => 
-      idx % labelInterval === 0 ? formatShortLabel(m.createdAt) : ""
-    );
+    // For modal: calculate width based on data points to ensure proper spacing
+    // Minimum 70px per data point for comfortable viewing in fullscreen
+    const minPixelsPerPoint = 70;
+    const calculatedWidth = Math.max(screenWidth - 40, extendedMeasurements.length * minPixelsPerPoint);
+    modalChartWidth = calculatedWidth;
+    
+    // Show ALL labels since we have horizontal scroll
+    modalChartLabels = extendedMeasurements.map((m) => formatShortLabel(m.createdAt));
 
     if (tab === "bp") { 
       const systolicArr = extendedMeasurements.map((m) => m.bloodPressure?.systolic || m.systolic || 0);
@@ -257,6 +271,53 @@ export default function HistoryScreen({ route, isEmbedded }) {
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     )
     .slice(0, showMore ? 5 : 1);
+
+  // Handle data point click (for modal chart)
+  const handleDataPointClick = (data) => {
+    const { index } = data;
+    const measurement = extendedMeasurements[index];
+    if (measurement) {
+      setSelectedDataPoint({
+        measurement,
+        index
+      });
+    }
+  };
+
+  // Format tooltip content
+  const getTooltipContent = () => {
+    if (!selectedDataPoint) return null;
+    const m = selectedDataPoint.measurement;
+    
+    let content = {
+      date: formatDate(m.createdAt),
+      time: formatTime(m.createdAt),
+      values: []
+    };
+
+    if (tab === "bp") {
+      content.values = [
+        { label: "Tâm thu", value: `${m.bloodPressure?.systolic || m.systolic} mmHg` },
+        { label: "Tâm trương", value: `${m.bloodPressure?.diastolic || m.diastolic} mmHg` },
+        { label: "Mạch", value: `${m.heartRate || m.pulse} bpm` }
+      ];
+    } else if (tab === "glucose") {
+      content.values = [
+        { label: "Đường huyết", value: `${m.glucose} mg/dL` },
+        ...(m.timing ? [{ label: "Thời điểm", value: m.timing }] : [])
+      ];
+    } else if (tab === "spo2") {
+      content.values = [{ label: "SpO₂", value: `${m.spo2}%` }];
+    } else if (tab === "temp") {
+      content.values = [{ label: "Nhiệt độ", value: `${m.temperature}°C` }];
+    } else if (tab === "heartRate") {
+      content.values = [{ label: "Nhịp tim", value: `${m.heartRate} bpm` }];
+    } else if (tab === "respiratoryRate") {
+      content.values = [{ label: "Nhịp thở", value: `${m.respiratoryRate} lần/phút` }];
+    }
+
+    return content;
+  };
 
   const Container = isEmbedded ? View : SafeAreaView;
 
@@ -384,6 +445,80 @@ export default function HistoryScreen({ route, isEmbedded }) {
           </View>
         </View>
 
+        {/* TIME RANGE FILTER */}
+        <View style={styles.filterContainer}>
+          <View style={styles.filterTypeSelector}>
+            <TouchableOpacity
+              onPress={() => setTimeRangeType("week")}
+              style={[
+                styles.filterTypeBtn,
+                timeRangeType === "week" && styles.filterTypeBtnActive
+              ]}
+            >
+              <Ionicons
+                name="calendar-outline"
+                size={14}
+                color={timeRangeType === "week" ? "#FFFFFF" : "#6B7280"}
+              />
+              <Text style={[
+                styles.filterTypeText,
+                timeRangeType === "week" && styles.filterTypeTextActive
+              ]}>
+                Tuần
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setTimeRangeType("month")}
+              style={[
+                styles.filterTypeBtn,
+                timeRangeType === "month" && styles.filterTypeBtnActive
+              ]}
+            >
+              <Ionicons
+                name="calendar-outline"
+                size={14}
+                color={timeRangeType === "month" ? "#FFFFFF" : "#6B7280"}
+              />
+              <Text style={[
+                styles.filterTypeText,
+                timeRangeType === "month" && styles.filterTypeTextActive
+              ]}>
+                Tháng
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.filterValueSelector}>
+            <TouchableOpacity
+              onPress={() => setTimeRangeValue(Math.max(1, timeRangeValue - 1))}
+              disabled={timeRangeValue <= 1}
+              style={[styles.filterBtn, timeRangeValue <= 1 && styles.filterBtnDisabled]}
+            >
+              <Ionicons name="remove" size={18} color={timeRangeValue <= 1 ? "#D1D5DB" : "#6B7280"} />
+            </TouchableOpacity>
+            
+            <Text style={styles.filterValueText}>{timeRangeValue}</Text>
+            
+            <TouchableOpacity
+              onPress={() => {
+                const max = timeRangeType === "week" ? 52 : 12;
+                setTimeRangeValue(Math.min(max, timeRangeValue + 1));
+              }}
+              disabled={timeRangeValue >= (timeRangeType === "week" ? 52 : 12)}
+              style={[
+                styles.filterBtn,
+                timeRangeValue >= (timeRangeType === "week" ? 52 : 12) && styles.filterBtnDisabled
+              ]}
+            >
+              <Ionicons
+                name="add"
+                size={18}
+                color={timeRangeValue >= (timeRangeType === "week" ? 52 : 12) ? "#D1D5DB" : "#6B7280"}
+              />
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* TREND CARD */}
         <View style={styles.card}>
           <View style={styles.rowBetween}>
@@ -401,35 +536,39 @@ export default function HistoryScreen({ route, isEmbedded }) {
           ) : recentMeasurements.length === 0 ? (
             <View style={styles.emptyChartBox}>
               <Ionicons name="stats-chart" size={22} color="#9CA3AF" />
-              <Text style={styles.emptyChartText}>Không có dữ liệu trong 2 tuần gần đây</Text>
+              <Text style={styles.emptyChartText}>
+                Không có dữ liệu trong {timeRangeValue} {timeRangeType === "week" ? "tuần" : "tháng"} gần đây
+              </Text>
             </View>
           ) : (
-            <LineChart
-              data={{
-                labels: chartLabels,
-                datasets: chartDatasets,
-                legend,
-              }}
-              width={chartWidth}
-              height={200}
-              yAxisLabel=""
-              chartConfig={{
-                backgroundColor: "#FFFFFF",
-                backgroundGradientFrom: "#FFFFFF",
-                backgroundGradientTo: "#FFFFFF",
-                decimalPlaces: 0,
-                color: (opacity = 1) => `rgba(17, 24, 39, ${opacity})`,
-                labelColor: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
-                propsForDots: {
-                  r: "4",
-                },
-                propsForBackgroundLines: {
-                  strokeDasharray: "4",
-                },
-              }}
-              bezier
-              style={{ marginTop: 12, borderRadius: 12 }}
-            />
+            <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+              <LineChart
+                data={{
+                  labels: chartLabels,
+                  datasets: chartDatasets,
+                  legend,
+                }}
+                width={dynamicChartWidth}
+                height={200}
+                yAxisLabel=""
+                chartConfig={{
+                  backgroundColor: "#FFFFFF",
+                  backgroundGradientFrom: "#FFFFFF",
+                  backgroundGradientTo: "#FFFFFF",
+                  decimalPlaces: 0,
+                  color: (opacity = 1) => `rgba(17, 24, 39, ${opacity})`,
+                  labelColor: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
+                  propsForDots: {
+                    r: "4",
+                  },
+                  propsForBackgroundLines: {
+                    strokeDasharray: "4",
+                  },
+                }}
+                bezier
+                style={{ marginTop: 12, borderRadius: 12 }}
+              />
+            </ScrollView>
           )}
         </View>
 
@@ -578,44 +717,77 @@ export default function HistoryScreen({ route, isEmbedded }) {
               ) : extendedMeasurements.length === 0 ? (
                 <View style={[styles.emptyChartBox, { width: screenWidth - 40 }]}>
                   <Ionicons name="stats-chart" size={32} color="#9CA3AF" />
-                  <Text style={styles.emptyChartText}>Không có dữ liệu trong 4 tháng gần đây</Text>
+                  <Text style={styles.emptyChartText}>
+                    Không có dữ liệu trong {timeRangeValue} {timeRangeType === "week" ? "tuần" : "tháng"} gần đây
+                  </Text>
                 </View>
               ) : (
-                <LineChart
-                  data={{
-                    labels: modalChartLabels,
-                    datasets: modalChartDatasets,
-                    legend,
-                  }}
-                  width={Math.max(screenWidth - 40, extendedMeasurements.length * 40)}
-                  height={400}
-                  yAxisLabel=""
-                  chartConfig={{
-                    backgroundColor: "#FFFFFF",
-                    backgroundGradientFrom: "#FFFFFF",
-                    backgroundGradientTo: "#FFFFFF",
-                    decimalPlaces: 0,
-                    color: (opacity = 1) => `rgba(17, 24, 39, ${opacity})`,
-                    labelColor: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
-                    propsForDots: {
-                      r: "5",
-                    },
-                    propsForBackgroundLines: {
-                      strokeDasharray: "4",
-                    },
-                  }}
-                  bezier
-                  style={{ marginVertical: 8, borderRadius: 12 }}
-                />
+                <>
+                  <LineChart
+                    data={{
+                      labels: modalChartLabels,
+                      datasets: modalChartDatasets,
+                      legend,
+                    }}
+                    width={modalChartWidth}
+                    height={400}
+                    yAxisLabel=""
+                    chartConfig={{
+                      backgroundColor: "#FFFFFF",
+                      backgroundGradientFrom: "#FFFFFF",
+                      backgroundGradientTo: "#FFFFFF",
+                      decimalPlaces: 0,
+                      color: (opacity = 1) => `rgba(17, 24, 39, ${opacity})`,
+                      labelColor: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
+                      propsForDots: {
+                        r: "5",
+                      },
+                      propsForBackgroundLines: {
+                        strokeDasharray: "4",
+                      },
+                    }}
+                    bezier
+                    style={{ marginVertical: 8, borderRadius: 12 }}
+                    onDataPointClick={handleDataPointClick}
+                  />
+                </>
               )}
             </ScrollView>
 
             <View style={styles.modalFooter}>
               <Text style={styles.modalHint}>
                 <Ionicons name="information-circle" size={14} color="#6B7280" />
-                {" "}Hiển thị dữ liệu 4 tháng gần nhất · Vuốt ngang để xem toàn bộ
+                {" "}Hiển thị dữ liệu {timeRangeValue} {timeRangeType === "week" ? "tuần" : "tháng"} gần nhất · Vuốt ngang để xem toàn bộ
               </Text>
             </View>
+
+            {/* Tooltip - Fixed position overlay */}
+            {selectedDataPoint && getTooltipContent() && (
+              <TouchableOpacity
+                style={styles.tooltipOverlay}
+                activeOpacity={1}
+                onPress={() => setSelectedDataPoint(null)}
+              >
+                <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()}>
+                  <View style={styles.tooltip}>
+                    <View style={styles.tooltipHeader}>
+                      <Text style={styles.tooltipDate}>
+                        {getTooltipContent().date} · {getTooltipContent().time}
+                      </Text>
+                      <TouchableOpacity onPress={() => setSelectedDataPoint(null)}>
+                        <Ionicons name="close-circle" size={20} color="#6B7280" />
+                      </TouchableOpacity>
+                    </View>
+                    {getTooltipContent().values.map((item, idx) => (
+                      <View key={idx} style={styles.tooltipRow}>
+                        <Text style={styles.tooltipLabel}>{item.label}:</Text>
+                        <Text style={styles.tooltipValue}>{item.value}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </TouchableOpacity>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </Modal>
@@ -676,6 +848,68 @@ const styles = StyleSheet.create({
   },
   tabText: { color: "#6B7280", fontWeight: "600", fontSize: 13 },
   tabTextActive: { color: "#2563EB" },
+
+  // Filter styles
+  filterContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#E5EDFF",
+    borderRadius: 12,
+    padding: 8,
+    marginBottom: 20,
+  },
+  filterTypeSelector: {
+    flexDirection: "row",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 8,
+    padding: 2,
+  },
+  filterTypeBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    gap: 4,
+  },
+  filterTypeBtnActive: {
+    backgroundColor: "#3B82F6",
+  },
+  filterTypeText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#6B7280",
+  },
+  filterTypeTextActive: {
+    color: "#FFFFFF",
+  },
+  filterValueSelector: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 8,
+    padding: 2,
+  },
+  filterBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 6,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#F9FAFB",
+  },
+  filterBtnDisabled: {
+    opacity: 0.4,
+  },
+  filterValueText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#111827",
+    marginHorizontal: 12,
+    minWidth: 24,
+    textAlign: "center",
+  },
 
   card: {
     backgroundColor: "#FFFFFF",
@@ -894,5 +1128,60 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#6B7280",
     textAlign: "center",
+  },
+  
+  // Tooltip styles
+  tooltipOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.3)",
+  },
+  tooltip: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    padding: 16,
+    width: screenWidth - 80,
+    maxWidth: 320,
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  tooltipHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
+  },
+  tooltipDate: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#111827",
+  },
+  tooltipRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 6,
+  },
+  tooltipLabel: {
+    fontSize: 13,
+    color: "#6B7280",
+  },
+  tooltipValue: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#111827",
   },
 });

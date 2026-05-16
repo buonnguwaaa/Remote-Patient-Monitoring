@@ -295,7 +295,7 @@ const PatientManagementAdmin: React.FC = () => {
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
           <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white p-4 md:p-6 dark:bg-gray-800">
-            <h2 className="mb-4 text-xl font-bold dark:text-white md:text-2xl">{editingPatient ? "Chỉnh sửa bệnh nhân" : "Thêm bệnh nhân mới"}</h2>
+            <h2 className="mb-4 text-xl font-bold dark:text-white md:text-2xl">{editingPatient ? t("patientManagement.editPatient") : t("patientManagement.addNewPatient")}</h2>
             <form className="space-y-4" onSubmit={handleSubmit}>
               <AvatarUploader
                 currentUrl={editingPatient?.profileImageUrl}
@@ -303,45 +303,45 @@ const PatientManagementAdmin: React.FC = () => {
               />
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Họ tên</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t("patientManagement.fields.name")}</label>
                   <input name="name" type="text" required className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" defaultValue={editingPatient?.name} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t("patientManagement.fields.email")}</label>
                   <input name="email" type="email" required className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" defaultValue={editingPatient?.email} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Số điện thoại</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t("patientManagement.fields.phone")}</label>
                   <input name="phone" type="tel" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" defaultValue={editingPatient?.phone} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Giới tính</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t("patientManagement.fields.gender")}</label>
                   <select name="gender" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" defaultValue={editingPatient?.gender}>
-                    <option value="Nam">Nam</option>
-                    <option value="Nữ">Nữ</option>
+                    <option value="Nam">{t("common.male")}</option>
+                    <option value="Nữ">{t("common.female")}</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Ngày sinh</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t("patientManagement.fields.dateOfBirth")}</label>
                   <input name="dateOfBirth" type="date" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" defaultValue={editingPatient?.dateOfBirth} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Trạng thái</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t("patientManagement.fields.status")}</label>
                   <select name="status" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" defaultValue={editingPatient?.status || "active"}>
-                    <option value="active">Hoạt động</option>
-                    <option value="inactive">Không hoạt động</option>
+                    <option value="active">{t("common.active")}</option>
+                    <option value="inactive">{t("common.inactive")}</option>
                   </select>
                 </div>
                 {!editingPatient && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Mật khẩu <span className="text-gray-400 font-normal">(tài khoản đăng nhập)</span></label>
-                    <input name="password" type="password" required minLength={8} placeholder="Tối thiểu 8 ký tự" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" />
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t("patientManagement.fields.password")} <span className="text-gray-400 font-normal">({t("patientManagement.loginAccount")})</span></label>
+                    <input name="password" type="password" required minLength={8} placeholder={t("auth.passwordMinLength")} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" />
                   </div>
                 )}
               </div>
               <div className="mt-6 flex flex-col-reverse gap-3 md:flex-row md:justify-end md:space-x-3">
-                <button type="button" onClick={() => setShowModal(false)} className={`${adminSecondaryButtonClass} w-full md:w-auto`}>Hủy</button>
-                <button type="submit" className={`${adminPrimaryButtonClass} w-full md:w-auto`}>{editingPatient?.id ? "Cập nhật" : "Thêm mới"}</button>
+                <button type="button" onClick={() => setShowModal(false)} className={`${adminSecondaryButtonClass} w-full md:w-auto`}>{t("common.cancel")}</button>
+                <button type="submit" className={`${adminPrimaryButtonClass} w-full md:w-auto`}>{editingPatient?.id ? t("common.update") : t("common.add")}</button>
               </div>
             </form>
           </div>

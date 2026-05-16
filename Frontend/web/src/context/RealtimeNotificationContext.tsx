@@ -11,6 +11,7 @@ import type { ReactNode } from "react";
 import { useAuth } from "./AuthContext";
 import { useToast } from "../hooks/useToast";
 import Toast from "../components/ui/Toast";
+import { useTranslation } from "react-i18next";
 import {
   createRealtimeSocket,
   type RealtimeEvent,
@@ -75,6 +76,7 @@ export const RealtimeNotificationProvider = ({
 }: {
   children: ReactNode;
 }) => {
+  const { t } = useTranslation();
   const { isAuthenticated, user } = useAuth();
   const { toast, showToast, hideToast } = useToast();
 
@@ -173,7 +175,7 @@ export const RealtimeNotificationProvider = ({
 
       showToast(toastMessage, {
         type: "info",
-        title: event.type === "chat.alert_message" ? "Cảnh báo" : "Tin nhắn mới",
+        title: event.type === "chat.alert_message" ? t("patients.warning") : "Tin nhắn mới",
         duration: 5000,
       });
 

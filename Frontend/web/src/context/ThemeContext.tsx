@@ -1,5 +1,6 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import type { ReactNode } from "react";
 
 export type Theme = "light" | "dark";
@@ -26,47 +27,60 @@ const FONT_SIZE_VALUES: Record<FontSize, string> = {
   large: "18px",
 };
 
-export const FONT_FAMILY_OPTIONS: Array<{
-  value: FontFamily;
-  label: string;
-  sample: string;
-  cssValue: string;
-}> = [
-  {
-    value: "system",
-    label: "Mặc định hệ thống",
-    sample: "Sức khỏe bệnh nhân ổn định",
-    cssValue: FONT_FAMILY_VALUES.system,
-  },
-  {
-    value: "sans",
-    label: "Sans Serif",
-    sample: "Nhắc lịch tái khám cho bệnh nhân",
-    cssValue: FONT_FAMILY_VALUES.sans,
-  },
-  {
-    value: "serif",
-    label: "Serif",
-    sample: "Theo dõi chỉ số sinh hiệu mỗi ngày",
-    cssValue: FONT_FAMILY_VALUES.serif,
-  },
-  {
-    value: "mono",
-    label: "Monospace",
-    sample: "Nhiệt độ: 37.1°C | SPO2: 98%",
-    cssValue: FONT_FAMILY_VALUES.mono,
-  },
-];
+// Helper function to get font family options with translations
+export const useFontFamilyOptions = () => {
+  const { t } = useTranslation();
+  
+  return [
+    {
+      value: "system" as FontFamily,
+      label: t("settings.fontFamilyOptions.system"),
+      sample: t("settings.fontFamilySamples.system"),
+      cssValue: FONT_FAMILY_VALUES.system,
+    },
+    {
+      value: "sans" as FontFamily,
+      label: t("settings.fontFamilyOptions.sans"),
+      sample: t("settings.fontFamilySamples.sans"),
+      cssValue: FONT_FAMILY_VALUES.sans,
+    },
+    {
+      value: "serif" as FontFamily,
+      label: t("settings.fontFamilyOptions.serif"),
+      sample: t("settings.fontFamilySamples.serif"),
+      cssValue: FONT_FAMILY_VALUES.serif,
+    },
+    {
+      value: "mono" as FontFamily,
+      label: t("settings.fontFamilyOptions.mono"),
+      sample: t("settings.fontFamilySamples.mono"),
+      cssValue: FONT_FAMILY_VALUES.mono,
+    },
+  ];
+};
 
-export const FONT_SIZE_OPTIONS: Array<{
-  value: FontSize;
-  label: string;
-  description: string;
-}> = [
-  { value: "small", label: "Nhỏ", description: "Hiển thị nhiều nội dung hơn" },
-  { value: "medium", label: "Vừa", description: "Cân bằng giữa đọc và bố cục" },
-  { value: "large", label: "Lớn", description: "Dễ đọc, phù hợp màn hình lớn" },
-];
+// Helper function to get font size options with translations
+export const useFontSizeOptions = () => {
+  const { t } = useTranslation();
+  
+  return [
+    { 
+      value: "small" as FontSize, 
+      label: t("settings.fontSizeOptions.small"), 
+      description: t("settings.fontSizeDescriptions.small") 
+    },
+    { 
+      value: "medium" as FontSize, 
+      label: t("settings.fontSizeOptions.medium"), 
+      description: t("settings.fontSizeDescriptions.medium") 
+    },
+    { 
+      value: "large" as FontSize, 
+      label: t("settings.fontSizeOptions.large"), 
+      description: t("settings.fontSizeDescriptions.large") 
+    },
+  ];
+};
 
 const isTheme = (value: string | null): value is Theme =>
   value === "light" || value === "dark";

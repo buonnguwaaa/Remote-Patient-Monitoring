@@ -4,6 +4,8 @@
  */
 
 import type { AssignmentResponse } from '../../types/patient';
+import i18n from '../../i18n/config';
+const t = i18n.t;
 import {
   createWorkbook,
   addWorksheet,
@@ -149,7 +151,7 @@ export const exportHealthReportToExcel = async (
   // Sheet 1: Overview of all patients
   const overviewData = reportData.map((data, index) => ({
     'STT': index + 1,
-    'Bệnh nhân': data.assignment.patientName || 'Không rõ',
+    [t("chat.patient")]: data.assignment.patientName || 'Không rõ',
     'Mã BN': data.assignment.patientCode || data.assignment.patientPublicId || '-',
     'Số lần đo': data.stats.totalMeasurements,
     'HA TB (mmHg)': data.stats.bloodPressure.systolic.avg > 0
@@ -161,13 +163,13 @@ export const exportHealthReportToExcel = async (
     'Nhịp thở TB (bpm)': data.stats.respiratoryRate.avg || '-',
     'Đường huyết TB (mg/dL)': data.stats.glucose.avg || '-',
     'Số lần vượt ngưỡng': data.stats.totalViolations,
-    'Trạng thái': data.stats.totalViolations > 0 ? 'Cần chú ý' : 'Ổn định',
+    [t("patients.status")]: data.stats.totalViolations > 0 ? t("dashboard.needAttention") : 'Ổn định',
   }));
 
   addWorksheet(
     workbook,
     overviewData,
-    'Tổng quan',
+    t("dashboard.title"),
     [5, 25, 12, 10, 15, 15, 15, 12, 15, 18, 18, 15]
   );
 
@@ -178,70 +180,70 @@ export const exportHealthReportToExcel = async (
     const patientCode = data.assignment.patientCode || data.assignment.patientPublicId || '-';
 
     detailedData.push({
-      'Bệnh nhân': `${patientName} (${patientCode})`,
+      [t("chat.patient")]: `${patientName} (${patientCode})`,
       'Chỉ số': '',
       'Min': '',
       'Max': '',
-      'Trung bình': '',
+      [t("dashboard.filterMedium")]: '',
       'Ngưỡng an toàn': '',
       'Vượt ngưỡng': '',
     });
 
-    const addStatRow = (label: string, stat: MetricStats, threshold: string) => {
+    const addStatRow = (label: string, stat: MetricStats, thresholdRange: string) => {
       detailedData.push({
-        'Bệnh nhân': '',
+        [t("chat.patient")]: '',
         'Chỉ số': label,
         'Min': stat.min || '-',
         'Max': stat.max || '-',
-        'Trung bình': stat.avg || '-',
-        'Ngưỡng an toàn': threshold,
+        [t("dashboard.filterMedium")]: stat.avg || '-',
+        'Ngưỡng an toàn': thresholdRange,
         'Vượt ngưỡng': stat.violations || 0,
       });
     };
 
-    const t = data.threshold;
+    const threshold = data.threshold;
     addStatRow(
       'HA Tâm thu (mmHg)',
       data.stats.bloodPressure.systolic,
-      t ? `${t.sysMin} - ${t.sysMax}` : '-'
+      threshold ? `${threshold.sysMin} - ${threshold.sysMax}` : '-'
     );
     addStatRow(
       'HA Tâm trương (mmHg)',
       data.stats.bloodPressure.diastolic,
-      t ? `${t.diaMin} - ${t.diaMax}` : '-'
+      threshold ? `${threshold.diaMin} - ${threshold.diaMax}` : '-'
     );
     addStatRow(
-      'Nhịp tim (bpm)',
+      t("thresholds.heartRate"),
       data.stats.heartRate,
-      t ? `${t.heartRateMin} - ${t.heartRateMax}` : '-'
+      threshold ? `${threshold.heartRateMin} - ${threshold.heartRateMax}` : '-'
     );
     addStatRow(
       'Nhiệt độ (°C)',
       data.stats.temperature,
-      t ? `${t.temperatureMin} - ${t.temperatureMax}` : '-'
+      threshold ? `${threshold.temperatureMin} - ${threshold.temperatureMax}` : '-'
     );
     addStatRow(
       'SpO2 (%)',
       data.stats.spo2,
-      t ? `${t.spo2Min} - 100` : '-'
+      threshold ? `${threshold.spo2Min} - 100` : '-'
     );
     addStatRow(
       'Nhịp thở (bpm)',
       data.stats.respiratoryRate,
-      t ? `${t.respiratoryRateMin || 0} - ${t.respiratoryRateMax || 0}` : '-'
+      threshold ? `${threshold.respiratoryRateMin || 0} - ${threshold.respiratoryRateMax || 0}` : '-'
     );
     addStatRow(
-      'Đường huyết (mg/dL)',
+      t("thresholds.glucose"),
       data.stats.glucose,
-      t ? `${t.glucoseMin || 0} - ${t.glucoseMax || 0}` : '-'
+      threshold ? `${threshold.glucoseMin || 0} - ${threshold.glucoseMax || 0}` : '-'
     );
 
     detailedData.push({
-      'Bệnh nhân': '',
+      [t("chat.patient")]: '',
       'Chỉ số': '',
       'Min': '',
       'Max': '',
-      'Trung bình': '',
+      [t("dashboard.filterMedium")]: '',
       'Ngưỡng an toàn': '',
       'Vượt ngưỡng': '',
     });
@@ -256,24 +258,24 @@ export const exportHealthReportToExcel = async (
 
   // Sheet 3: Report information
   const infoData = [
-    { 'Thông tin': 'THÔNG TIN BÁO CÁO', 'Giá trị': '' },
-    { 'Thông tin': '', 'Giá trị': '' },
-    { 'Thông tin': 'Số bệnh nhân', 'Giá trị': reportData.length },
+    { [t("alerts.info")]: 'THÔNG TIN BÁO CÁO', 'Giá trị': '' },
+    { [t("alerts.info")]: '', 'Giá trị': '' },
+    { [t("alerts.info")]: 'Số bệnh nhân', 'Giá trị': reportData.length },
     {
-      'Thông tin': 'Khoảng thời gian',
+      [t("alerts.info")]: t("dashboard.dateRange"),
       'Giá trị': `${formatDateVN(startDate)} - ${formatDateVN(endDate)}`,
     },
-    { 'Thông tin': 'Ngày xuất', 'Giá trị': formatDateTimeVN(new Date()) },
+    { [t("alerts.info")]: 'Ngày xuất', 'Giá trị': formatDateTimeVN(new Date()) },
     {
-      'Thông tin': 'Tổng số lần đo',
+      [t("alerts.info")]: 'Tổng số lần đo',
       'Giá trị': reportData.reduce((sum, d) => sum + d.stats.totalMeasurements, 0),
     },
     {
-      'Thông tin': 'Số BN ổn định',
+      [t("alerts.info")]: 'Số BN ổn định',
       'Giá trị': reportData.filter(d => d.stats.totalViolations === 0).length,
     },
     {
-      'Thông tin': 'Số BN cần chú ý',
+      [t("alerts.info")]: 'Số BN cần chú ý',
       'Giá trị': reportData.filter(d => d.stats.totalViolations > 0).length,
     },
   ];

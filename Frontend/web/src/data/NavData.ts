@@ -11,34 +11,34 @@ import {
 
 import React from "react";
 
-export const navData: NavigationItem[] = [
+export const getNavData = (t: (key: string) => string): NavigationItem[] => [
   {
-    label: "Bảng điều khiển",
+    label: t("nav.dashboard"),
     path: "/",
     icon: React.createElement(LuLayoutDashboard),
   },
   {
-    label: "Hồ sơ bệnh nhân",
+    label: t("nav.patients"),
     path: "/patient",
     icon: React.createElement(FaRegUser),
   },
   {
-    label: "Tin nhắn",
+    label: t("nav.messages"),
     path: "/patient/chats",
     icon: React.createElement(TiMessage),
   },
   {
-    label: "Quản lý cảnh báo",
+    label: t("nav.alerts"),
     path: "/threshold-alerts",
     icon: React.createElement(RiErrorWarningLine),
   },
   {
-    label: "Cấu hình ngưỡng",
+    label: t("nav.thresholds"),
     path: "/threshold-settings",
     icon: React.createElement(MdOutlineDataThresholding),
   },
   {
-    label: "Nhắc nhở",
+    label: t("nav.reminders"),
     path: "/reminders",
     icon: React.createElement(MdOutlineNotificationsActive),
   },

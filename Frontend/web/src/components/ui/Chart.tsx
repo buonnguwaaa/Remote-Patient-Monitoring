@@ -11,6 +11,7 @@ import {
 } from "recharts";
 
 import { useTheme } from "../../context/ThemeContext";
+import { useTranslation } from "react-i18next";
 
 export interface ChartDataPoint {
   period: string;
@@ -97,7 +98,7 @@ const StatsHeader: React.FC<StatsHeaderProps> = ({
   );
 };
 
-const makeCustomTooltip = (isDark: boolean) => {
+const makeCustomTooltip = (isDark: boolean, t: any) => {
   const CustomTooltip: React.FC<any> = ({ active, payload, label }) => {
     if (!active || !payload || payload.length === 0) {
       return null;
@@ -120,11 +121,11 @@ const makeCustomTooltip = (isDark: boolean) => {
         </p>
         <div className="space-y-1">
           <p className="text-indigo-500">
-            <span className="font-medium">Bệnh nhân ổn định:</span>{" "}
+            <span className="font-medium">{t("dashboard.stablePatients")}:</span>{" "}
             {payload[0]?.value?.toLocaleString()}
           </p>
           <p className="text-teal-500">
-            <span className="font-medium">Bệnh nhân cần chú ý:</span>{" "}
+            <span className="font-medium">{t("dashboard.needAttention")}:</span>{" "}
             {payload[1]?.value?.toLocaleString()}
           </p>
           <p
@@ -134,7 +135,7 @@ const makeCustomTooltip = (isDark: boolean) => {
                 : "border-gray-100 text-gray-600"
             }`}
           >
-            <span className="font-medium">Tổng:</span>{" "}
+            <span className="font-medium">{t("dashboard.total") || "Tổng:"}</span>{" "}
             {((payload[0]?.value ?? 0) + (payload[1]?.value ?? 0)).toLocaleString()}
           </p>
         </div>
@@ -178,6 +179,7 @@ export const Chart: React.FC<ChartProps> = ({
   loading = false,
 }) => {
   const { isDark } = useTheme();
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<string>("all");
 
   const chartData = activeTab === "week" ? weeklyChartData : monthlyChartData;
@@ -186,7 +188,7 @@ export const Chart: React.FC<ChartProps> = ({
   const summaryText = isDark ? "#cbd5e1" : "#4b5563";
   const gridColor = isDark ? "#334155" : "#f3f4f6";
   const tickColor = isDark ? "#94a3b8" : "#6b7280";
-  const CustomTooltip = makeCustomTooltip(isDark);
+  const CustomTooltip = makeCustomTooltip(isDark, t);
   const renderLegend = makeRenderLegend(isDark);
   const latestPoint = chartData[chartData.length - 1] || {
     normalPatients: 0,
@@ -205,11 +207,11 @@ export const Chart: React.FC<ChartProps> = ({
       <div className="mt-8 h-80">
         {loading ? (
           <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-gray-200 text-sm text-gray-400 dark:border-slate-700 dark:text-slate-500">
-            Đang tải dữ liệu biểu đồ...
+            {t("dashboard.loadingChartData") || "Đang tải dữ liệu biểu đồ..."}
           </div>
         ) : chartData.length === 0 ? (
           <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-gray-200 text-sm text-gray-400 dark:border-slate-700 dark:text-slate-500">
-            Chưa có dữ liệu để hiển thị biểu đồ.
+            {t("dashboard.noChartData") || "Chưa có dữ liệu để hiển thị biểu đồ."}
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
@@ -245,14 +247,14 @@ export const Chart: React.FC<ChartProps> = ({
               <Legend content={renderLegend} />
               <Bar
                 dataKey="normalPatients"
-                name="Bệnh nhân ổn định"
+                name={t("dashboard.stablePatients") || "Bệnh nhân ổn định"}
                 fill="#6366f1"
                 radius={[4, 4, 0, 0]}
                 barSize={36}
               />
               <Bar
                 dataKey="warningPatients"
-                name="Bệnh nhân cần chú ý"
+                name={t("dashboard.needAttention") || "Bệnh nhân cần chú ý"}
                 fill="#14b8a6"
                 radius={[4, 4, 0, 0]}
                 barSize={36}
@@ -270,7 +272,7 @@ export const Chart: React.FC<ChartProps> = ({
           className="mt-4 flex items-center justify-between gap-4 pt-3"
         >
           <div style={{ color: footerText }} className="text-xs">
-            Hiển thị {activeTab === "week" ? "4 tuần gần đây" : "4 tháng gần đây"}
+            {t("dashboard.showing") || "Hiển thị"} {activeTab === "week" ? t("dashboard.last4Weeks") || "4 tuần gần đây" : t("dashboard.last4Months") || "4 tháng gần đây"}
           </div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-1.5">
@@ -279,7 +281,7 @@ export const Chart: React.FC<ChartProps> = ({
                 style={{ backgroundColor: "#6366f1" }}
               />
               <span style={{ color: summaryText }} className="text-xs">
-                Ổn định:{" "}
+                {t("dashboard.stable") || "Ổn định:"}{" "}
                 {latestPoint.normalPatients.toLocaleString()}
               </span>
             </div>
@@ -289,7 +291,7 @@ export const Chart: React.FC<ChartProps> = ({
                 style={{ backgroundColor: "#14b8a6" }}
               />
               <span style={{ color: summaryText }} className="text-xs">
-                Cần chú ý:{" "}
+                {t("dashboard.attention") || "Cần chú ý:"}{" "}
                 {latestPoint.warningPatients.toLocaleString()}
               </span>
             </div>
