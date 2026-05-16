@@ -9,11 +9,9 @@ const resolvedGoogleServicesPath = path.resolve(__dirname, configuredGoogleServi
 const hasGoogleServicesFile = fs.existsSync(resolvedGoogleServicesPath);
 
 const resolvedApiBaseUrl =
-  process.env.EXPO_PUBLIC_API_BASE_URL ||
+  process.env.EXPO_PUBLIC_BASE_URL ||
   process.env.BASE_URL ||
-  expo.extra?.API_BASE_URL ||
-  expo.extra?.BASE_URL ||
-  "http://10.0.2.2:8080";
+  expo.extra?.BASE_URL;
 
 module.exports = () => {
   const androidPermissions = Array.isArray(expo.android?.permissions) ? [...expo.android.permissions] : [];
