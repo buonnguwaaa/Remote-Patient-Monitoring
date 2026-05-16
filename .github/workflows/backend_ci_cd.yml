@@ -146,6 +146,7 @@ jobs:
           cache-from: type=registry,ref=docker.io/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:buildcache
           cache-to: type=registry,ref=docker.io/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
   deploy:
+    name: Deploy to EC2
     needs: build-and-push
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
