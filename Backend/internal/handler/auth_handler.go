@@ -389,7 +389,7 @@ func (h *AuthHandler) setAccessTokenCookie(c *gin.Context, accessToken string) {
 		"/",
 		"",
 		h.isSecure(c),
-		false,
+		true,
 	)
 }
 
