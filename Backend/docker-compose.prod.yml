@@ -48,4 +48,3 @@ services:
       - /etc/letsencrypt:/etc/letsencrypt
     depends_on:
       - server
-  

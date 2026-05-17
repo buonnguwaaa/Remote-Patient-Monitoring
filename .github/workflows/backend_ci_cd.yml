@@ -16,6 +16,7 @@ on:
 env:
   REGISTRY: docker.io
   IMAGE_NAME: rpm-backend
+  NGINX_IMAGE_NAME: rpm-nginx
   GO_VERSION: '1.24'
   GO111MODULE: on
 
@@ -104,7 +105,7 @@ jobs:
   build-and-push:
     needs: lint-and-test
     runs-on: ubuntu-latest
-    name: Build and Push Backend to DockerHub
+    name: Build and Push Images to DockerHub
     if: github.event_name == 'push'
 
     permissions:
@@ -125,8 +126,8 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Extract Docker metadata
-        id: meta
+      - name: Extract Backend Docker metadata
+        id: meta-backend
         uses: docker/metadata-action@v5
         with:
           images: docker.io/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}
@@ -135,16 +136,36 @@ jobs:
             type=sha
             type=raw,value=latest,enable={{is_default_branch}}
 
-      - name: Build and push Docker image
+      - name: Build and push Backend image
         uses: docker/build-push-action@v5
         with:
           context: ./Backend
           file: ./Backend/Dockerfile
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
           cache-from: type=registry,ref=docker.io/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:buildcache
           cache-to: type=registry,ref=docker.io/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
+
+      - name: Extract Nginx Docker metadata
+        id: meta-nginx
+        uses: docker/metadata-action@v5
+        with:
+          images: docker.io/${{ secrets.DOCKERHUB_USERNAME }}/${{ env.NGINX_IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=sha
+            type=raw,value=latest,enable={{is_default_branch}}
+            
+      - name: Build and push Nginx image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./Backend/config/nginx
+          file: ./Backend/config/nginx/Dockerfile
+          push: true
+          tags: ${{ steps.meta-nginx.outputs.tags }}
+          labels: ${{ steps.meta-nginx.outputs.labels }}
+
   deploy:
     name: Deploy to EC2
     needs: build-and-push
@@ -161,8 +182,6 @@ jobs:
           script: |
             cd /home/ubuntu/app
 
-            docker compose pull
-
-            docker compose up -d
+            docker compose up -d --pull always
 
             docker image prune -f
