@@ -359,60 +359,51 @@ func (h *AuthHandler) ResendActivationEmail(c *gin.Context) {
 // }
 
 func (h *AuthHandler) isSecure(c *gin.Context) bool {
-	if gin.Mode() != gin.ReleaseMode {
-		return false
-	}
-
 	if c.Request.TLS != nil {
 		return true
 	}
 
 	// Check X-Forwarded-Proto header for cases behind a proxy
-	if strings.EqualFold(c.GetHeader("X-Forwarded-Proto"), "https") {
-		return true
-	}
-
-	return false
+	return strings.EqualFold(
+		c.GetHeader("X-Forwarded-Proto"),
+		"https",
+	)
 }
 
 func (h *AuthHandler) setAccessTokenCookie(c *gin.Context, accessToken string) {
 	maxAge := int(util.AccessTokenTTL.Seconds())
-	sameSite := http.SameSiteLaxMode
-	if strings.ToLower(os.Getenv("FORCE_SAMESITE_NONE")) == "true" {
-		sameSite = http.SameSiteNoneMode
-	}
-	c.SetSameSite(sameSite)
+	isSecure := h.isSecure(c)
+	h.setSameSite(c, isSecure)
 	c.SetCookie(
 		"accessToken",
 		accessToken,
 		maxAge,
 		"/",
 		"",
-		h.isSecure(c),
+		isSecure,
 		true,
 	)
 }
 
 func (h *AuthHandler) setRefreshTokenCookie(c *gin.Context, refreshToken string) {
 	maxAge := int(util.RefreshTokenTTL.Seconds())
-	sameSite := http.SameSiteLaxMode
-	if strings.ToLower(os.Getenv("FORCE_SAMESITE_NONE")) == "true" {
-		sameSite = http.SameSiteNoneMode
-	}
-	c.SetSameSite(sameSite)
+	isSecure := h.isSecure(c)
+	h.setSameSite(c, isSecure)
 	c.SetCookie(
 		"refreshToken",
 		refreshToken,
 		maxAge,
 		"/",
 		"",
-		h.isSecure(c),
+		isSecure,
 		true,
 	)
 }
 
-// func (h *AuthHandler) clearAuthCookies(c *gin.Context) {
-// 	h.setSameSite(c)
-// 	c.SetCookie("accessToken", "", -1, "/", "", h.isSecure(c), false)
-// 	c.SetCookie("refreshToken", "", -1, "/", "", h.isSecure(c), true)
-// }
+func (h *AuthHandler) setSameSite(c *gin.Context, isSecure bool) {
+	if os.Getenv("GIN_MODE") == "release" && isSecure {
+		c.SetSameSite(http.SameSiteNoneMode)
+	} else {
+		c.SetSameSite(http.SameSiteLaxMode)
+	}
+}
