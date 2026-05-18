@@ -20,8 +20,9 @@ export interface RealtimeEvent {
 }
 
 function getRealtimeWebSocketUrl() {
-  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-  return `${protocol}//${window.location.host}/api/realtime/ws`;
+  const apiUrl = import.meta.env.VITE_API_URL || "";
+  const wsUrl = apiUrl.replace(/^http/, "ws");
+  return `${wsUrl}/api/realtime/ws`;
 }
 
 export function createRealtimeSocket(): WebSocket {
