@@ -73,12 +73,17 @@ func main() {
 	r.Use(gin.Recovery())
 
 	// Configure CORS to allow requests from frontend and allow credentials (cookies)
-	fe := os.Getenv("FE_URL")
-	if fe == "" {
-		fe = "http://localhost:3000"
+	webURL := os.Getenv("FE_WEB_URL")
+	if webURL == "" {
+		webURL = "http://localhost:3000"
 	}
+	adminURL := os.Getenv("FE_ADMIN_URL")
+	if adminURL == "" {
+		adminURL = "http://localhost:3001"
+	}
+
 	corsConfig := cors.Config{
-		AllowOrigins:     []string{fe, "http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001", "http://127.0.0.1:3001", "http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:5174", "http://127.0.0.1:5174", "http://192.168.1.24:3000", "http://192.168.1.24:8080"},
+		AllowOrigins:     []string{webURL, adminURL, "http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001", "http://127.0.0.1:3001", "http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:5174", "http://127.0.0.1:5174", "http://192.168.1.24:3000", "http://192.168.1.24:8080"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
