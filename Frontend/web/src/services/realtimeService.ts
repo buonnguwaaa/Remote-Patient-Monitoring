@@ -22,7 +22,7 @@ export interface RealtimeEvent {
 function getRealtimeWebSocketUrl() {
   const apiUrl = import.meta.env.VITE_API_URL || "";
   const wsUrl = apiUrl.replace(/^http/, "ws");
-  return `${wsUrl}/api/realtime/ws`;
+  return `${wsUrl}/realtime/ws`;
 }
 
 export function createRealtimeSocket(): WebSocket {
