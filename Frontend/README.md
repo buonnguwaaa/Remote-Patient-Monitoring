@@ -7,6 +7,6 @@
  + "ngrok http 8080" để map backend ra ngoài cho mobile.
 
  Lưu ý:
- - Backend đang redirect về FE_URL. Với môi trường local web, đặt `FE_URL=http://localhost:3000` (đã khớp với cấu hình này).
- - Nếu chạy mobile app và muốn quay lại app sau khi Google login, cân nhắc dùng deep link: đặt `FE_URL=rpm://oauth/success` và giữ `"scheme": "rpm"` trong app.json.
+ - Backend đang redirect về FE_WEB_URL. Với môi trường local web, đặt `FE_WEB_URL=http://localhost:3000` (đã khớp với cấu hình này).
+ - Nếu chạy mobile app và muốn quay lại app sau khi Google login, cân nhắc dùng deep link: đặt `FE_WEB_URL=rpm://oauth/success` và giữ `"scheme": "rpm"` trong app.json.
 
