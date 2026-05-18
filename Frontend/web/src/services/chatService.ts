@@ -74,8 +74,8 @@ function normalizeConversationResponse(
 }
 
 function getWebSocketBaseUrl() {
-  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-  return `${protocol}//${window.location.host}/api`;
+  const apiUrl = import.meta.env.VITE_API_URL || "";
+  return apiUrl.replace(/^http/, "ws");
 }
 
 export async function ensureConversation(
