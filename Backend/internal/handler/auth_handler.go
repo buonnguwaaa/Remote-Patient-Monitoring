@@ -236,7 +236,7 @@ func (h *AuthHandler) HandleGoogleOAuth2Callback(c *gin.Context) {
 	h.setAccessTokenCookie(c, resp.AccessToken)
 	h.setRefreshTokenCookie(c, resp.RefreshToken)
 
-	c.Redirect(http.StatusTemporaryRedirect, os.Getenv("FE_URL"))
+	c.Redirect(http.StatusTemporaryRedirect, os.Getenv("FE_WEB_URL"))
 }
 
 // @Summary Forgot Password

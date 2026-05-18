@@ -271,7 +271,7 @@ func (s *authService) ForgotPassword(ctx context.Context, input *usecase.ForgotP
 		return err
 	}
 
-	resetURI := fmt.Sprintf("%s/reset-password?token=%s", os.Getenv("FE_URL"), token)
+	resetURI := fmt.Sprintf("%s/reset-password?token=%s", os.Getenv("FE_WEB_URL"), token)
 	go func() {
 		if err := util.SendEmail(u.Email, constant.SubjectResetPassword,
 			fmt.Sprintf(constant.ResetPasswordEmailTemplate, u.Name, resetURI)); err != nil {
@@ -381,7 +381,7 @@ func (s *authService) sendActivationEmail(ctx context.Context, email, name strin
 		return fmt.Errorf("failed to set activation token: %w", err)
 	}
 
-	activateURI := fmt.Sprintf("%s/activate?token=%s", os.Getenv("FE_URL"), token)
+	activateURI := fmt.Sprintf("%s/activate?token=%s", os.Getenv("FE_WEB_URL"), token)
 	go func() {
 		if err := util.SendEmail(email, constant.SubjectActivateAccount,
 			fmt.Sprintf(constant.ActivateEmailTemplate, name, activateURI)); err != nil {
