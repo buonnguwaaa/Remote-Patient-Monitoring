@@ -1,5 +1,7 @@
 import React, { createContext, useEffect, useState } from "react";
 import * as authApi from "../api/authApi";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import CookieManager from '@react-native-cookies/cookies';
 import {
   attachPushTokenRefreshListener,
   deactivateCurrentDevicePushToken,
@@ -113,6 +115,17 @@ export function AuthProvider({ children }) {
       // noop
     }
 
+    try {
+      await CookieManager.clearAll();
+    } catch (e) {
+      console.warn('Failed to clear cookies', e);
+    }
+
+    try {
+      await AsyncStorage.removeItem('accessToken');
+      await AsyncStorage.removeItem('refreshToken');
+    } catch (e) {}
+
     setUser(null);
   };
 
@@ -139,6 +152,15 @@ export function AuthProvider({ children }) {
     });
   };
 
+  const saveGoogleTokens = async (accessToken, refreshToken) => {
+    try {
+      if (accessToken) await AsyncStorage.setItem('accessToken', accessToken);
+      if (refreshToken) await AsyncStorage.setItem('refreshToken', refreshToken);
+    } catch (e) {
+      console.warn('Failed to save google tokens', e);
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -149,6 +171,7 @@ export function AuthProvider({ children }) {
         logout,
         refreshSession,
         updateUser,
+        saveGoogleTokens,
       }}
     >
       {children}

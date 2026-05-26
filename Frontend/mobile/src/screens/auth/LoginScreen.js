@@ -14,13 +14,14 @@ import styles from '../../styles/login';
 
 import { useAuth } from '../../hooks/useAuth';
 import * as GoogleAuth from '../../api/googleAuth';
+import * as authApi from '../../api/authApi';
 
 export default function LoginScreen({ navigation, onLoginSuccess }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, saveGoogleTokens, updateUser } = useAuth();
 
   const handleSubmit = () => {
     setLoading(true);
@@ -113,14 +114,25 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
                 try {
                   const res = await GoogleAuth.loginWithGoogle();
                   if (!res.ok) {
-                    alert('Google login failed: ' + JSON.stringify(res.error || res));
-                  } else if (res.opened || res.redirected) {
-                    alert('Opening browser for Google sign-in. Complete the flow, then return to the app.');
+                    alert('Đăng nhập Google thất bại: ' + (res.error || 'Lỗi không xác định'));
                   } else {
-                    alert('Google login result: ' + JSON.stringify(res));
+                    const { accessToken, refreshToken } = res.data;
+                    await saveGoogleTokens(accessToken, refreshToken);
+                    
+                    const meRes = await authApi.me();
+                    if (meRes.ok) {
+                      const body = meRes.body;
+                      const meUser = body.data || body.user || body;
+                      updateUser(meUser);
+                      if (onLoginSuccess) {
+                        await onLoginSuccess(meUser);
+                      }
+                    } else {
+                      alert('Lỗi lấy thông tin user: ' + JSON.stringify(meRes.error || meRes.body));
+                    }
                   }
                 } catch (e) {
-                  alert('Google login error: ' + String(e));
+                  alert('Lỗi đăng nhập Google: ' + String(e));
                 } finally {
                   setLoading(false);
                 }
@@ -129,7 +141,7 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
               style={{ flex: 1, marginRight: 8 }}
             >
               <FontAwesome name="google" size={18} color="#000" style={{ marginRight: 8 }} />
-              <Text style={{ color: '#030213', fontWeight: '600' }}>{loading ? 'Signing in...' : 'Google'}</Text>
+              <Text style={{ color: '#030213', fontWeight: '600' }}>{loading ? 'Đang xử lý...' : 'Google'}</Text>
             </ButtonPrimary>
             <ButtonPrimary variant="outline" onPress={() => { }} disabled={loading} style={{ flex: 1, marginLeft: 8 }}>
               <FontAwesome name="apple" size={18} color="#000" style={{ marginRight: 8 }} />
