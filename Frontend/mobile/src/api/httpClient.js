@@ -1,4 +1,5 @@
 import Constants from "expo-constants";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const extras =
   Constants?.manifest?.extra || Constants?.expoConfig?.extra || {};
@@ -23,8 +24,16 @@ export async function request(path, options = {}, canRetry = true) {
   const isFormData =
     typeof FormData !== "undefined" && options.body instanceof FormData;
 
+  let token = null;
+  try {
+    token = await AsyncStorage.getItem("accessToken");
+  } catch (e) {
+    // Ignore async storage errors
+  }
+
   const headers = {
     ...(isFormData ? {} : { "Content-Type": "application/json" }),
+    ...(token ? { "Authorization": `Bearer ${token}` } : {}),
     ...(options.headers || {}),
   };
 
