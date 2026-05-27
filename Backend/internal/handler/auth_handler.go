@@ -197,8 +197,8 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 		sameSite = http.SameSiteNoneMode
 	}
 	c.SetSameSite(sameSite)
-	c.SetCookie("access_token", "", -1, "/", "", h.isSecure(c), false)
-	c.SetCookie("refresh_token", "", -1, "/", "", h.isSecure(c), true)
+	c.SetCookie("accessToken", "", -1, "/", "", h.isSecure(c), true)
+	c.SetCookie("refreshToken", "", -1, "/", "", h.isSecure(c), true)
 
 	c.JSON(http.StatusOK, gin.H{"message": "Logged out successfully"})
 }
