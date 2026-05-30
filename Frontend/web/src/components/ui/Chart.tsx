@@ -106,16 +106,14 @@ const makeCustomTooltip = (isDark: boolean, t: any) => {
 
     return (
       <div
-        className={`rounded-lg border p-3 text-sm shadow-lg ${
-          isDark
+        className={`rounded-lg border p-3 text-sm shadow-lg ${isDark
             ? "border-slate-600 bg-slate-800 text-slate-100"
             : "border-gray-200 bg-white text-gray-800"
-        }`}
+          }`}
       >
         <p
-          className={`mb-1 font-semibold ${
-            isDark ? "text-slate-100" : "text-gray-800"
-          }`}
+          className={`mb-1 font-semibold ${isDark ? "text-slate-100" : "text-gray-800"
+            }`}
         >
           {label}
         </p>
@@ -129,11 +127,10 @@ const makeCustomTooltip = (isDark: boolean, t: any) => {
             {payload[1]?.value?.toLocaleString()}
           </p>
           <p
-            className={`mt-1 border-t pt-1 ${
-              isDark
+            className={`mt-1 border-t pt-1 ${isDark
                 ? "border-slate-600 text-slate-300"
                 : "border-gray-100 text-gray-600"
-            }`}
+              }`}
           >
             <span className="font-medium">{t("dashboard.total") || "Tổng:"}</span>{" "}
             {((payload[0]?.value ?? 0) + (payload[1]?.value ?? 0)).toLocaleString()}
@@ -159,9 +156,8 @@ const makeRenderLegend = (isDark: boolean) => {
               style={{ backgroundColor: entry.color }}
             />
             <span
-              className={`text-sm ${
-                isDark ? "text-slate-300" : "text-gray-600"
-              }`}
+              className={`text-sm ${isDark ? "text-slate-300" : "text-gray-600"
+                }`}
             >
               {entry.value}
             </span>

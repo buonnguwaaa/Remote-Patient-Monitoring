@@ -39,7 +39,9 @@
     "apply": "Áp dụng",
     "filter": "Lọc",
     "export": "Xuất",
-    "actions": "Hành động"
+    "actions": "Hành động",
+    "collapse": "Thu nhỏ",
+    "expand": "Phóng to"
   },
   "auth": {
     "login": "Đăng nhập",
@@ -77,12 +79,28 @@
     "chartThisWeek": "Tuần này",
     "filterAll": "Tất cả",
     "filterHigh": "Cao",
-    "filterMedium": "Trung bình"
+    "filterMedium": "Trung bình",
+    "total": "Tổng:",
+    "loadingChartData": "Đang tải dữ liệu biểu đồ...",
+    "noChartData": "Chưa có dữ liệu để hiển thị biểu đồ.",
+    "showing": "Hiển thị",
+    "last4Weeks": "4 tuần gần đây",
+    "last4Months": "4 tháng gần đây",
+    "stable": "Ổn định:",
+    "attention": "Cần chú ý:",
+    "minsAgo": " phút trước",
+    "hoursAgo": " giờ trước"
   },
   "settings": {
     "title": "Cài đặt hiển thị",
     "description": "Tùy chỉnh giao diện, kiểu chữ và cỡ chữ cho toàn bộ hệ thống.",
     "restoreDefaults": "Khôi phục mặc định",
+    "editMode": "Chế độ chỉnh sửa",
+    "viewMode": "Chế độ xem",
+    "editSettings": "Chỉnh sửa cài đặt",
+    "saveSettings": "Lưu cài đặt",
+    "updateSuccess": "Đã cập nhật cài đặt hiển thị thành công.",
+    "updateSuccessTitle": "Cập nhật thành công",
     "theme": "Theme",
     "light": "Sáng",
     "dark": "Tối",

@@ -39,7 +39,9 @@
     "apply": "Apply",
     "filter": "Filter",
     "export": "Export",
-    "actions": "Actions"
+    "actions": "Actions",
+    "collapse": "Collapse",
+    "expand": "Expand"
   },
   "auth": {
     "login": "Login",
@@ -77,12 +79,28 @@
     "chartThisWeek": "This Week",
     "filterAll": "All",
     "filterHigh": "High",
-    "filterMedium": "Medium"
+    "filterMedium": "Medium",
+    "total": "Total:",
+    "loadingChartData": "Loading chart data...",
+    "noChartData": "No data available for chart.",
+    "showing": "Showing",
+    "last4Weeks": "last 4 weeks",
+    "last4Months": "last 4 months",
+    "stable": "Stable:",
+    "attention": "Need Attention:",
+    "minsAgo": "m ago",
+    "hoursAgo": "h ago"
   },
   "settings": {
     "title": "Display Settings",
     "description": "Customize interface, font family and font size for the entire system.",
     "restoreDefaults": "Restore Defaults",
+    "editMode": "Edit Mode",
+    "viewMode": "View Mode",
+    "editSettings": "Edit Settings",
+    "saveSettings": "Save Settings",
+    "updateSuccess": "Display settings updated successfully.",
+    "updateSuccessTitle": "Update Successful",
     "theme": "Theme",
     "light": "Light",
     "dark": "Dark",
