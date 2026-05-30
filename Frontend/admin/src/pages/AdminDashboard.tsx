@@ -79,11 +79,8 @@ const AdminDashboard: React.FC = () => {
   const fetchRecentActivities = async () => {
     try {
       setLoadingActivities(true);
-      const today = new Date().toISOString().split("T")[0];
       const response = await api.get("/activity-logs", {
         params: {
-          startDate: today,
-          endDate: today,
           pageSize: 5,
         },
       });

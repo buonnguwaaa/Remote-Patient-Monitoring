@@ -2,6 +2,12 @@
   "expo": {
     "name": "RPM Patient",
     "slug": "rpm-patient",
+    "owner": "khoadeptrai1",
+    "extra": {
+      "eas": {
+        "projectId": "b04726d5-2f2c-4ab3-bf2f-25ffc9699852"
+      }
+    },
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
@@ -48,6 +54,11 @@
       ],
       "./plugins/withCleartextTraffic",
       "./plugins/withNotificationSound"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "b04726d5-2f2c-4ab3-bf2f-25ffc9699852"
+      }
+    }
   }
 }
