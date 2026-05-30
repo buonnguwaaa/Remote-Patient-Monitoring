@@ -297,6 +297,17 @@
     "title": "Lịch sử hoạt động",
     "description": "Theo dõi tất cả hoạt động trong hệ thống",
     "selectDate": "Chọn ngày",
+    "startDate": "Từ ngày",
+    "endDate": "Đến ngày",
+    "last30Days": "30 ngày gần nhất",
+    "timeFilter": "Lọc theo thời gian",
+    "modes": {
+      "all": "Tất cả",
+      "range": "Khoảng ngày",
+      "single": "Theo ngày",
+      "allLogs": "Tất cả hoạt động",
+      "allDesc": "Hiển thị toàn bộ lịch sử hoạt động"
+    },
     "activityType": "Loại hoạt động",
     "totalActivity": "Tổng hoạt động",
     "activityList": "Danh sách hoạt động",

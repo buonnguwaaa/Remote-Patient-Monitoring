@@ -81,7 +81,20 @@ export default function NotificationInboxScreen({ isEmbedded }) {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
   const [selectedNotification, setSelectedNotification] = useState(null);
+  const [filterMode, setFilterMode] = useState("all"); // "all" | "measure" | "medicine"
   const handledSelectedIdRef = useRef(null);
+
+  const filteredNotifications = useMemo(() => {
+    if (filterMode === "measure") {
+      return notifications.filter((item) => item?.data?.reminderKind === "measure");
+    }
+    if (filterMode === "medicine") {
+      return notifications.filter(
+        (item) => item?.type === "reminder" && item?.data?.reminderKind !== "measure"
+      );
+    }
+    return notifications;
+  }, [notifications, filterMode]);
 
   const updateNotificationInState = useCallback((nextItem) => {
     setNotifications((current) =>
@@ -206,6 +219,33 @@ export default function NotificationInboxScreen({ isEmbedded }) {
           <Text style={styles.subtitle}>{summary}</Text>
         </View>
 
+        <View style={styles.filterContainer}>
+          <TouchableOpacity
+            style={[styles.filterTab, filterMode === "all" && styles.filterTabActive]}
+            onPress={() => setFilterMode("all")}
+          >
+            <Text style={[styles.filterText, filterMode === "all" && styles.filterTextActive]}>
+              Tất cả
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.filterTab, filterMode === "measure" && styles.filterTabActive]}
+            onPress={() => setFilterMode("measure")}
+          >
+            <Text style={[styles.filterText, filterMode === "measure" && styles.filterTextActive]}>
+              Nhắc đo
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.filterTab, filterMode === "medicine" && styles.filterTabActive]}
+            onPress={() => setFilterMode("medicine")}
+          >
+            <Text style={[styles.filterText, filterMode === "medicine" && styles.filterTextActive]}>
+              Nhắc thuốc
+            </Text>
+          </TouchableOpacity>
+        </View>
+
         {loading ? (
           <View style={styles.stateCard}>
             <ActivityIndicator size="large" color="#2563EB" />
@@ -219,13 +259,19 @@ export default function NotificationInboxScreen({ isEmbedded }) {
               <Text style={styles.retryText}>Thử lại</Text>
             </TouchableOpacity>
           </View>
-        ) : notifications.length === 0 ? (
+        ) : filteredNotifications.length === 0 ? (
           <View style={styles.stateCard}>
             <Ionicons name="notifications-off-outline" size={28} color="#9CA3AF" />
-            <Text style={styles.stateText}>Chưa có thông báo trong hộp thư.</Text>
+            <Text style={styles.stateText}>
+              {filterMode === "all"
+                ? "Chưa có thông báo trong hộp thư."
+                : filterMode === "measure"
+                ? "Không có nhắc nhở đo nào."
+                : "Không có nhắc nhở uống thuốc nào."}
+            </Text>
           </View>
         ) : (
-          notifications.map((item) => {
+          filteredNotifications.map((item) => {
             const meta = buildNotificationMeta(item);
             return (
               <TouchableOpacity
@@ -362,4 +408,34 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   modalButtonText: { color: "#FFFFFF", fontWeight: "700" },
+  filterContainer: {
+    flexDirection: "row",
+    backgroundColor: "#E5EDFF",
+    borderRadius: 12,
+    padding: 3,
+    marginBottom: 16,
+  },
+  filterTab: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 10,
+  },
+  filterTabActive: {
+    backgroundColor: "#FFFFFF",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  filterText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#4B5563",
+  },
+  filterTextActive: {
+    color: "#2563EB",
+  },
 });
