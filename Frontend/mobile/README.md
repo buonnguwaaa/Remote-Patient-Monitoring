@@ -72,7 +72,61 @@ Sử dụng các lệnh sau tùy theo nhu cầu:
 - `App.js`: Điểm vào chính của ứng dụng.
 - `app.json` & `app.config.js`: Cấu hình toàn cầu của Expo.
 
+## 📦 Build ứng dụng với EAS (Expo Application Services)
+
+Để đóng gói và build ứng dụng thành file cài đặt (APK cho Android, IPA cho iOS), chúng ta sử dụng **EAS Build**.
+
+### 1. Cài đặt EAS CLI (Nếu chưa cài)
+Cài đặt công cụ EAS CLI trên máy tính của bạn:
+```bash
+npm install -g eas-cli
+```
+
+### 2. Đăng nhập tài khoản Expo
+```bash
+eas login
+```
+
+### 3. Các lệnh Build
+
+#### 📱 Android
+
+*   **Build bản Development (Chạy với Expo Dev Client):**
+    ```bash
+    eas build --platform android --profile development
+    ```
+    *Dùng cho lập trình viên chạy thử code trực tiếp trên thiết bị hoặc giả lập (hỗ trợ hot-reload và debug).*
+
+*   **Build bản Preview (Tạo file APK để cài đặt và test trực tiếp):**
+    ```bash
+    eas build --platform android --profile preview
+    ```
+    *Tạo file APK hoàn chỉnh, có thể tải về và cài đặt trực tiếp lên điện thoại Android để test độc lập.*
+
+*   **Build bản Production (Chuẩn bị phát hành lên Google Play):**
+    ```bash
+    eas build --platform android --profile production
+    ```
+
+#### 🍎 iOS
+
+*   **Build bản Development:**
+    ```bash
+    eas build --platform ios --profile development
+    ```
+
+*   **Build bản Preview (Cần cấu hình Apple Developer account):**
+    ```bash
+    eas build --platform ios --profile preview
+    ```
+
+*   **Build bản Production (Phát hành lên App Store):**
+    ```bash
+    eas build --platform ios --profile production
+    ```
+
 ## 📝 Lưu ý quan trọng
 
 - Dự án này sử dụng `dotenv-cli` để tải biến môi trường, hãy đảm bảo bạn đã tạo tệp `.env` trước khi chạy.
 - Cổng mặc định được thiết lập là `3000` trong `package.json`. Nếu có xung đột, bạn có thể thay đổi số cổng trong các script của `package.json`.
+

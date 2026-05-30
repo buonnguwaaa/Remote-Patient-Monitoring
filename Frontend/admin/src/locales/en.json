@@ -297,6 +297,17 @@
     "title": "Activity History",
     "description": "Track all system activities",
     "selectDate": "Select Date",
+    "startDate": "Start Date",
+    "endDate": "End Date",
+    "last30Days": "Last 30 days",
+    "timeFilter": "Time Filter",
+    "modes": {
+      "all": "All",
+      "range": "Range",
+      "single": "Single Date",
+      "allLogs": "All Activities",
+      "allDesc": "Displaying all activity history from the database"
+    },
     "activityType": "Activity Type",
     "totalActivity": "Total Activity",
     "activityList": "Activity List",

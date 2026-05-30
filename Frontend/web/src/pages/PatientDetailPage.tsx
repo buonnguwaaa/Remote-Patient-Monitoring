@@ -187,7 +187,7 @@ const PatientDetailPage = () => {
       });
 
     return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [patientId, timeRangeType, timeRangeValue]);
 
   useEffect(() => {
@@ -511,17 +511,16 @@ const PatientDetailPage = () => {
         </div>
 
         {isChartExpanded && (
-          <div 
-            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" 
-            onClick={() => setIsChartExpanded(false)} 
+          <div
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+            onClick={() => setIsChartExpanded(false)}
           />
         )}
-        <section 
-          className={`bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-5 transition-all ${
-            isChartExpanded 
-              ? "fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[95vw] h-[90vh] flex flex-col m-0" 
+        <section
+          className={`bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-5 transition-all ${isChartExpanded
+              ? "fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[95vw] h-[90vh] flex flex-col m-0"
               : "mb-6"
-          }`}
+            }`}
         >
           <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-gray-200 dark:border-slate-700 pb-4 mb-4">
             <h3 className="text-lg font-bold text-gray-800 dark:text-slate-100 flex items-center mb-4 md:mb-0">
@@ -540,51 +539,46 @@ const PatientDetailPage = () => {
               <div className="inline-flex bg-gray-100 dark:bg-slate-700 rounded-lg p-1 flex-wrap">
                 <button
                   onClick={() => setChartType("bp")}
-                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
-                    chartType === "bp"
+                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${chartType === "bp"
                       ? "bg-white dark:bg-slate-600 text-blue-600 dark:text-blue-400 shadow-sm"
                       : "text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200"
-                  }`}
+                    }`}
                 >
                   {t("patientDetail.chartBP")}
                 </button>
                 <button
                   onClick={() => setChartType("glucose")}
-                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
-                    chartType === "glucose"
+                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${chartType === "glucose"
                       ? "bg-white dark:bg-slate-600 text-blue-600 dark:text-blue-400 shadow-sm"
                       : "text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200"
-                  }`}
+                    }`}
                 >
                   {t("patientDetail.chartGlucose")}
                 </button>
                 <button
                   onClick={() => setChartType("temperature")}
-                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
-                    chartType === "temperature"
+                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${chartType === "temperature"
                       ? "bg-white dark:bg-slate-600 text-blue-600 dark:text-blue-400 shadow-sm"
                       : "text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200"
-                  }`}
+                    }`}
                 >
                   {t("patientDetail.chartTemperature")}
                 </button>
                 <button
                   onClick={() => setChartType("spo2")}
-                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
-                    chartType === "spo2"
+                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${chartType === "spo2"
                       ? "bg-white dark:bg-slate-600 text-blue-600 dark:text-blue-400 shadow-sm"
                       : "text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200"
-                  }`}
+                    }`}
                 >
                   {t("patientDetail.chartSpo2")}
                 </button>
                 <button
                   onClick={() => setChartType("respiratory")}
-                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
-                    chartType === "respiratory"
+                  className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${chartType === "respiratory"
                       ? "bg-white dark:bg-slate-600 text-blue-600 dark:text-blue-400 shadow-sm"
                       : "text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200"
-                  }`}
+                    }`}
                 >
                   {t("patientDetail.chartRespiratory")}
                 </button>
@@ -595,21 +589,19 @@ const PatientDetailPage = () => {
                 <div className="inline-flex bg-white dark:bg-slate-600 rounded-md p-0.5 shadow-sm">
                   <button
                     onClick={() => setTimeRangeType("week")}
-                    className={`px-3 py-1.5 text-sm font-medium rounded transition-all flex items-center ${
-                      timeRangeType === "week"
+                    className={`px-3 py-1.5 text-sm font-medium rounded transition-all flex items-center ${timeRangeType === "week"
                         ? "bg-blue-500 text-white shadow-md"
                         : "text-gray-600 dark:text-slate-300 hover:text-gray-800 dark:hover:text-slate-100"
-                    }`}
+                      }`}
                   >
                     <MdDateRange className="mr-1.5" size={16} /> {t("patientDetail.week")}
                   </button>
                   <button
                     onClick={() => setTimeRangeType("month")}
-                    className={`px-3 py-1.5 text-sm font-medium rounded transition-all flex items-center ${
-                      timeRangeType === "month"
+                    className={`px-3 py-1.5 text-sm font-medium rounded transition-all flex items-center ${timeRangeType === "month"
                         ? "bg-blue-500 text-white shadow-md"
                         : "text-gray-600 dark:text-slate-300 hover:text-gray-800 dark:hover:text-slate-100"
-                    }`}
+                      }`}
                   >
                     <MdDateRange className="mr-1.5" size={16} /> {t("patientDetail.month")}
                   </button>
