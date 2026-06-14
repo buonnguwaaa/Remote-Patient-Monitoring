@@ -66,6 +66,12 @@ func main() {
 			log.Printf("[GIN-error] Error disconnecting from Redis: %v", err)
 		}
 	}()
+
+	// Load Firebase credentials from env (Base64) or file
+	if err := config.LoadFirebaseCredentials(); err != nil {
+		log.Fatalf("[GIN-fatal] Could not load Firebase credentials: %v", err)
+	}
+
 	config.InitGoogleOAuth2()
 
 	r := gin.New()

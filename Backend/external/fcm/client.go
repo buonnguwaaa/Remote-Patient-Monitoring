@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/config"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/service"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -80,19 +80,16 @@ type fcmErrorResponse struct {
 }
 
 func NewClientFromEnv() (*Client, error) {
-	credentialsFile := strings.TrimSpace(os.Getenv("FIREBASE_CREDENTIALS_FILE"))
-	if credentialsFile == "" {
-		return nil, fmt.Errorf("FIREBASE_CREDENTIALS_FILE is required")
-	}
-
-	credentialsJSON, err := os.ReadFile(credentialsFile)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read firebase credentials file: %w", err)
+	credentialsJSON := config.FirebaseCredentials
+	if len(credentialsJSON) == 0 {
+		return nil, fmt.Errorf(
+			"firebase credentials not loaded: call config.LoadFirebaseCredentials() before initialising the FCM client",
+		)
 	}
 
 	var serviceAccount serviceAccountConfig
 	if err := json.Unmarshal(credentialsJSON, &serviceAccount); err != nil {
-		return nil, fmt.Errorf("failed to parse firebase credentials file: %w", err)
+		return nil, fmt.Errorf("failed to parse firebase credentials: %w", err)
 	}
 	if strings.TrimSpace(serviceAccount.ProjectID) == "" {
 		return nil, fmt.Errorf("firebase service account missing project_id")
@@ -100,7 +97,7 @@ func NewClientFromEnv() (*Client, error) {
 
 	jwtConfig, err := google.JWTConfigFromJSON(credentialsJSON, firebaseMessagingScope)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create firebase jwt config: %w", err)
+		return nil, fmt.Errorf("failed to create firebase JWT config: %w", err)
 	}
 
 	return &Client{
