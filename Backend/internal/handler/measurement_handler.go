@@ -48,7 +48,7 @@ func (h *MeasurementHandler) CreateMeasurement(c *gin.Context) {
 		SpO2:            req.SpO2,
 		BloodPressure:   req.BloodPressure,
 		Glucose:         req.Glucose,
-		Timing:          req.Timing,
+		MealTiming:      req.MealTiming,
 		Device:          req.Device,
 		Note:            req.Note,
 	}
@@ -95,7 +95,7 @@ func (h *MeasurementHandler) UpdateMeasurement(c *gin.Context) {
 		SpO2:            req.SpO2,
 		BloodPressure:   req.BloodPressure,
 		Glucose:         req.Glucose,
-		Timing:          req.Timing,
+		MealTiming:      req.MealTiming,
 		Device:          req.Device,
 		Note:            req.Note,
 	}
@@ -122,17 +122,17 @@ func (h *MeasurementHandler) UpdateMeasurement(c *gin.Context) {
 // @Produce json
 // @Param patientId query string false "Patient ID"
 // @Param type query string false "Measurement type"
-// @Param timing query string false "Measurement timing"
+// @Param mealTiming query string false "Meal timing (pre_meal, post_meal)"
 // @Param latest query boolean false "Get latest measurement only"
 // @Success 200 {object} map[string]interface{} "Measurements retrieved successfully"
 // @Failure 500 {object} map[string]string "Internal server error"
 // @Router /measurements [get]
 func (h *MeasurementHandler) GetMeasurements(c *gin.Context) {
 	input := &usecase.GetMeasurementsInput{
-		PatientID: c.Query("patientId"),
-		Type:      c.Query("type"),
-		Timing:    c.Query("timing"),
-		IsLatest:  c.Query("latest") == "true",
+		PatientID:  c.Query("patientId"),
+		Type:       c.Query("type"),
+		MealTiming: c.Query("mealTiming"),
+		IsLatest:   c.Query("latest") == "true",
 	}
 
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)

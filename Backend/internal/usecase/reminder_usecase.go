@@ -7,16 +7,18 @@ import (
 )
 
 type CreateReminderInput struct {
-	PatientID  string
-	Kind       domain.Kind
-	Message    string
-	Hour       int
-	Minute     int
-	DaysOfWeek []int
-	Timezone   string
-	StartDate  time.Time
-	EndDate    time.Time
-	CreatedBy  string
+	PatientID      string
+	Kind           domain.Kind
+	Message        string
+	Hour           int
+	Minute         int
+	DaysOfWeek     []int
+	Timezone       string
+	StartDate      time.Time
+	EndDate        time.Time
+	CreatedBy      string
+	PrescriptionID string
+	MealTiming     *domain.MealTiming
 }
 
 type GetRemindersInput struct {

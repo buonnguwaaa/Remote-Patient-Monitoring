@@ -24,10 +24,11 @@ type ReminderRepository interface {
 }
 
 type ReminderFilter struct {
-	PatientID string
-	Status    domain.ReminderStatus
-	Kind      domain.Kind
-	IsLatest  bool
+	PatientID      string
+	PrescriptionID string
+	Status         domain.ReminderStatus
+	Kind           domain.Kind
+	IsLatest       bool
 }
 
 func NewReminderRepository(db *mongo.Database) ReminderRepository {
@@ -59,6 +60,14 @@ func (r *reminderRepository) FindWithFilter(ctx context.Context, filter Reminder
 			return nil, err
 		}
 		bsonFilter["patientId"] = patientID
+	}
+
+	if filter.PrescriptionID != "" {
+		prescriptionID, err := primitive.ObjectIDFromHex(filter.PrescriptionID)
+		if err != nil {
+			return nil, err
+		}
+		bsonFilter["prescriptionId"] = prescriptionID
 	}
 
 	if filter.Status != "" {

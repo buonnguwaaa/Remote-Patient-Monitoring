@@ -53,18 +53,29 @@ func (s *reminderService) CreateReminder(ctx context.Context, input *usecase.Cre
 		return nil, err
 	}
 
+	var prescriptionID *primitive.ObjectID
+	if input.PrescriptionID != "" {
+		id, err := primitive.ObjectIDFromHex(input.PrescriptionID)
+		if err != nil {
+			return nil, errors.New("invalid prescription ID")
+		}
+		prescriptionID = &id
+	}
+
 	reminder := &domain.Reminder{
-		PatientID:  patientID,
-		Kind:       input.Kind,
-		Message:    input.Message,
-		Hour:       input.Hour,
-		Minute:     input.Minute,
-		DaysOfWeek: input.DaysOfWeek,
-		Timezone:   input.Timezone,
-		Status:     domain.StatusActive,
-		StartDate:  input.StartDate,
-		EndDate:    input.EndDate,
-		CreatedBy:  createdByID,
+		PatientID:      patientID,
+		Kind:           input.Kind,
+		Message:        input.Message,
+		Hour:           input.Hour,
+		Minute:         input.Minute,
+		DaysOfWeek:     input.DaysOfWeek,
+		Timezone:       input.Timezone,
+		Status:         domain.ReminderStatusActive,
+		StartDate:      input.StartDate,
+		EndDate:        input.EndDate,
+		PrescriptionID: prescriptionID,
+		MealTiming:     input.MealTiming,
+		CreatedBy:      createdByID,
 	}
 
 	createdReminder, err := s.reminderRepo.Create(ctx, reminder)
@@ -82,20 +93,22 @@ func (s *reminderService) CreateReminder(ctx context.Context, input *usecase.Cre
 	}
 
 	return &dto.ReminderResponse{
-		ID:         createdReminder.ID.Hex(),
-		PatientID:  createdReminder.PatientID.Hex(),
-		Kind:       createdReminder.Kind,
-		Message:    createdReminder.Message,
-		Hour:       createdReminder.Hour,
-		Minute:     createdReminder.Minute,
-		DaysOfWeek: createdReminder.DaysOfWeek,
-		Timezone:   createdReminder.Timezone,
-		Status:     createdReminder.Status,
-		StartDate:  createdReminder.StartDate,
-		EndDate:    createdReminder.EndDate,
-		CreatedBy:  createdReminder.CreatedBy.Hex(),
-		CreatedAt:  createdReminder.CreatedAt,
-		UpdatedAt:  createdReminder.UpdatedAt,
+		ID:             createdReminder.ID.Hex(),
+		PatientID:      createdReminder.PatientID.Hex(),
+		Kind:           createdReminder.Kind,
+		Message:        createdReminder.Message,
+		Hour:           createdReminder.Hour,
+		Minute:         createdReminder.Minute,
+		DaysOfWeek:     createdReminder.DaysOfWeek,
+		Timezone:       createdReminder.Timezone,
+		Status:         createdReminder.Status,
+		StartDate:      createdReminder.StartDate,
+		EndDate:        createdReminder.EndDate,
+		PrescriptionID: objectIDToHex(createdReminder.PrescriptionID),
+		MealTiming:     createdReminder.MealTiming,
+		CreatedBy:      createdReminder.CreatedBy.Hex(),
+		CreatedAt:      createdReminder.CreatedAt,
+		UpdatedAt:      createdReminder.UpdatedAt,
 	}, nil
 }
 
@@ -115,20 +128,22 @@ func (s *reminderService) GetReminders(ctx context.Context, input *usecase.GetRe
 	var responses []dto.ReminderResponse
 	for _, reminder := range reminders {
 		responses = append(responses, dto.ReminderResponse{
-			ID:         reminder.ID.Hex(),
-			PatientID:  reminder.PatientID.Hex(),
-			Kind:       reminder.Kind,
-			Message:    reminder.Message,
-			Hour:       reminder.Hour,
-			Minute:     reminder.Minute,
-			DaysOfWeek: reminder.DaysOfWeek,
-			Timezone:   reminder.Timezone,
-			Status:     reminder.Status,
-			StartDate:  reminder.StartDate,
-			EndDate:    reminder.EndDate,
-			CreatedBy:  reminder.CreatedBy.Hex(),
-			CreatedAt:  reminder.CreatedAt,
-			UpdatedAt:  reminder.UpdatedAt,
+			ID:             reminder.ID.Hex(),
+			PatientID:      reminder.PatientID.Hex(),
+			Kind:           reminder.Kind,
+			Message:        reminder.Message,
+			Hour:           reminder.Hour,
+			Minute:         reminder.Minute,
+			DaysOfWeek:     reminder.DaysOfWeek,
+			Timezone:       reminder.Timezone,
+			Status:         reminder.Status,
+			StartDate:      reminder.StartDate,
+			EndDate:        reminder.EndDate,
+			PrescriptionID: objectIDToHex(reminder.PrescriptionID),
+			MealTiming:     reminder.MealTiming,
+			CreatedBy:      reminder.CreatedBy.Hex(),
+			CreatedAt:      reminder.CreatedAt,
+			UpdatedAt:      reminder.UpdatedAt,
 		})
 	}
 
@@ -176,20 +191,22 @@ func (s *reminderService) UpdateReminderByID(ctx context.Context, input *usecase
 	}
 
 	return &dto.ReminderResponse{
-		ID:         updatedReminder.ID.Hex(),
-		PatientID:  updatedReminder.PatientID.Hex(),
-		Kind:       updatedReminder.Kind,
-		Message:    updatedReminder.Message,
-		Hour:       updatedReminder.Hour,
-		Minute:     updatedReminder.Minute,
-		DaysOfWeek: updatedReminder.DaysOfWeek,
-		Timezone:   updatedReminder.Timezone,
-		Status:     updatedReminder.Status,
-		StartDate:  updatedReminder.StartDate,
-		EndDate:    updatedReminder.EndDate,
-		CreatedBy:  updatedReminder.CreatedBy.Hex(),
-		CreatedAt:  updatedReminder.CreatedAt,
-		UpdatedAt:  updatedReminder.UpdatedAt,
+		ID:             updatedReminder.ID.Hex(),
+		PatientID:      updatedReminder.PatientID.Hex(),
+		Kind:           updatedReminder.Kind,
+		Message:        updatedReminder.Message,
+		Hour:           updatedReminder.Hour,
+		Minute:         updatedReminder.Minute,
+		DaysOfWeek:     updatedReminder.DaysOfWeek,
+		Timezone:       updatedReminder.Timezone,
+		Status:         updatedReminder.Status,
+		StartDate:      updatedReminder.StartDate,
+		EndDate:        updatedReminder.EndDate,
+		PrescriptionID: objectIDToHex(updatedReminder.PrescriptionID),
+		MealTiming:     updatedReminder.MealTiming,
+		CreatedBy:      updatedReminder.CreatedBy.Hex(),
+		CreatedAt:      updatedReminder.CreatedAt,
+		UpdatedAt:      updatedReminder.UpdatedAt,
 	}, nil
 }
 
@@ -224,19 +241,28 @@ func (s *reminderService) UpdateReminderStatus(ctx context.Context, input *useca
 	}
 
 	return &dto.ReminderResponse{
-		ID:         updatedReminder.ID.Hex(),
-		PatientID:  updatedReminder.PatientID.Hex(),
-		Kind:       updatedReminder.Kind,
-		Message:    updatedReminder.Message,
-		Hour:       updatedReminder.Hour,
-		Minute:     updatedReminder.Minute,
-		DaysOfWeek: updatedReminder.DaysOfWeek,
-		Timezone:   updatedReminder.Timezone,
-		Status:     updatedReminder.Status,
-		StartDate:  updatedReminder.StartDate,
-		EndDate:    updatedReminder.EndDate,
-		CreatedBy:  updatedReminder.CreatedBy.Hex(),
-		CreatedAt:  updatedReminder.CreatedAt,
-		UpdatedAt:  updatedReminder.UpdatedAt,
+		ID:             updatedReminder.ID.Hex(),
+		PatientID:      updatedReminder.PatientID.Hex(),
+		Kind:           updatedReminder.Kind,
+		Message:        updatedReminder.Message,
+		Hour:           updatedReminder.Hour,
+		Minute:         updatedReminder.Minute,
+		DaysOfWeek:     updatedReminder.DaysOfWeek,
+		Timezone:       updatedReminder.Timezone,
+		Status:         updatedReminder.Status,
+		StartDate:      updatedReminder.StartDate,
+		EndDate:        updatedReminder.EndDate,
+		PrescriptionID: objectIDToHex(updatedReminder.PrescriptionID),
+		MealTiming:     updatedReminder.MealTiming,
+		CreatedBy:      updatedReminder.CreatedBy.Hex(),
+		CreatedAt:      updatedReminder.CreatedAt,
+		UpdatedAt:      updatedReminder.UpdatedAt,
 	}, nil
+}
+
+func objectIDToHex(id *primitive.ObjectID) string {
+	if id == nil {
+		return ""
+	}
+	return id.Hex()
 }

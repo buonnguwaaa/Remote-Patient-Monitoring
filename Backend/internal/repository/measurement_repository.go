@@ -23,10 +23,10 @@ type MeasurementRepository interface {
 }
 
 type MeasurementFilter struct {
-	PatientID string
-	Type      string
-	Timing    string
-	IsLatest  bool
+	PatientID  string
+	Type       string
+	MealTiming string
+	IsLatest   bool
 }
 
 func NewMeasurementRepository(db *mongo.Database) MeasurementRepository {
@@ -59,7 +59,7 @@ func (r *measurementRepository) Update(ctx context.Context, m *domain.Measuremen
 		"spo2":            m.SpO2,
 		"bloodPressure":   m.BloodPressure,
 		"glucose":         m.Glucose,
-		"timing":          m.Timing,
+		"mealTiming":      m.MealTiming,
 		"device":          m.Device,
 		"note":            m.Note,
 		"updatedAt":       m.UpdatedAt,
@@ -96,8 +96,8 @@ func (r *measurementRepository) FindWithFilter(ctx context.Context, f Measuremen
 		filter["type"] = f.Type
 	}
 
-	if f.Timing != "" {
-		filter["timing"] = f.Timing
+	if f.MealTiming != "" {
+		filter["mealTiming"] = f.MealTiming
 	}
 
 	if f.IsLatest {

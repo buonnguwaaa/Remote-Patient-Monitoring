@@ -1,0 +1,533 @@
+package service
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
+	userDomain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository"
+	userRepository "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository/user"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecase"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/util"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+)
+
+var (
+	ErrPrescriptionNotFound     = errors.New("prescription not found")
+	ErrPrescriptionAccessDenied = errors.New("access denied")
+)
+
+var prescriptionTimeOfDayOrder = []domain.TimeOfDay{
+	domain.TimeOfDayMorning,
+	domain.TimeOfDayNoon,
+	domain.TimeOfDayEvening,
+}
+
+type prescriptionService struct {
+	patientRepo      userRepository.PatientRepository
+	prescriptionRepo repository.PrescriptionRepository
+	reminderRepo     repository.ReminderRepository
+	reminderService  ReminderService
+}
+
+type PrescriptionService interface {
+	CreatePrescription(ctx context.Context, input *usecase.CreatePrescriptionInput) (*dto.PrescriptionResponse, error)
+	GetPrescriptions(ctx context.Context, input *usecase.GetPrescriptionsInput) ([]dto.PrescriptionResponse, error)
+	GetPrescriptionByID(ctx context.Context, input *usecase.GetPrescriptionByIDInput) (*dto.PrescriptionResponse, error)
+	UpdatePrescriptionByID(ctx context.Context, input *usecase.UpdatePrescriptionInput) (*dto.PrescriptionResponse, error)
+	UpdatePrescriptionStatus(ctx context.Context, input *usecase.UpdatePrescriptionStatusInput) (*dto.PrescriptionResponse, error)
+}
+
+func NewPrescriptionService(
+	patientRepo userRepository.PatientRepository,
+	prescriptionRepo repository.PrescriptionRepository,
+	reminderRepo repository.ReminderRepository,
+	reminderService ReminderService,
+) PrescriptionService {
+	return &prescriptionService{
+		patientRepo:      patientRepo,
+		prescriptionRepo: prescriptionRepo,
+		reminderRepo:     reminderRepo,
+		reminderService:  reminderService,
+	}
+}
+
+func (s *prescriptionService) CreatePrescription(ctx context.Context, input *usecase.CreatePrescriptionInput) (*dto.PrescriptionResponse, error) {
+	patientID, err := primitive.ObjectIDFromHex(input.PatientID)
+	if err != nil {
+		return nil, errors.New("invalid patient ID")
+	}
+
+	if err := s.ensurePatient(ctx, patientID); err != nil {
+		return nil, err
+	}
+	if err := validatePrescriptionInput(input.Medications, input.Timezone, input.DaysOfWeek); err != nil {
+		return nil, err
+	}
+
+	prescribedByID, err := primitive.ObjectIDFromHex(input.PrescribedBy)
+	if err != nil {
+		return nil, err
+	}
+
+	created, err := s.prescriptionRepo.Create(ctx, &domain.Prescription{
+		PatientID:    patientID,
+		PrescribedBy: prescribedByID,
+		Medications:  input.Medications,
+		Timezone:     input.Timezone,
+		DaysOfWeek:   input.DaysOfWeek,
+		StartDate:    input.StartDate,
+		EndDate:      input.EndDate,
+		Status:       domain.PrescriptionStatusActive,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	endDate := prescriptionEndDate(input.EndDate, input.StartDate)
+	reminderIDs, err := s.createMedicationReminders(ctx, created, input.PrescribedBy, endDate)
+	if err != nil {
+		s.rollbackPrescriptionCreation(ctx, created.ID, reminderIDs)
+		return nil, fmt.Errorf("failed to create medication reminders: %w", err)
+	}
+
+	return toPrescriptionResponse(created), nil
+}
+
+func (s *prescriptionService) GetPrescriptions(ctx context.Context, input *usecase.GetPrescriptionsInput) ([]dto.PrescriptionResponse, error) {
+	prescriptions, err := s.prescriptionRepo.FindWithFilter(ctx, repository.PrescriptionFilter{
+		PatientID: input.PatientID,
+		Status:    input.Status,
+		IsLatest:  input.IsLatest,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return toPrescriptionResponses(prescriptions), nil
+}
+
+func (s *prescriptionService) GetPrescriptionByID(ctx context.Context, input *usecase.GetPrescriptionByIDInput) (*dto.PrescriptionResponse, error) {
+	prescriptionID, err := util.MustHexToObjectID(input.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	prescription, err := s.requirePrescription(ctx, prescriptionID)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.ensurePatientAccess(input.Role, input.UserID, prescription.PatientID); err != nil {
+		return nil, err
+	}
+
+	return toPrescriptionResponse(prescription), nil
+}
+
+func (s *prescriptionService) UpdatePrescriptionByID(ctx context.Context, input *usecase.UpdatePrescriptionInput) (*dto.PrescriptionResponse, error) {
+	prescriptionID, err := util.MustHexToObjectID(input.ID)
+	if err != nil {
+		return nil, err
+	}
+	if err := validatePrescriptionInput(input.Medications, input.Timezone, input.DaysOfWeek); err != nil {
+		return nil, err
+	}
+
+	existing, err := s.requirePrescription(ctx, prescriptionID)
+	if err != nil {
+		return nil, err
+	}
+
+	statusChanged := existing.Status != input.Status
+	existing.Medications = input.Medications
+	existing.Timezone = input.Timezone
+	existing.DaysOfWeek = input.DaysOfWeek
+	existing.StartDate = input.StartDate
+	existing.EndDate = input.EndDate
+	existing.Status = input.Status
+
+	updated, err := s.prescriptionRepo.Update(ctx, existing)
+	if err != nil {
+		return nil, err
+	}
+	if updated == nil {
+		return nil, ErrPrescriptionNotFound
+	}
+
+	if statusChanged {
+		if err := s.applyPrescriptionStatusToLinkedReminders(ctx, prescriptionID, input.Status); err != nil {
+			return nil, fmt.Errorf("prescription updated but failed to update linked reminders: %w", err)
+		}
+	}
+
+	return toPrescriptionResponse(updated), nil
+}
+
+func (s *prescriptionService) UpdatePrescriptionStatus(ctx context.Context, input *usecase.UpdatePrescriptionStatusInput) (*dto.PrescriptionResponse, error) {
+	prescriptionID, err := util.MustHexToObjectID(input.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	existing, err := s.requirePrescription(ctx, prescriptionID)
+	if err != nil {
+		return nil, err
+	}
+	if existing.Status == input.Status {
+		return toPrescriptionResponse(existing), nil
+	}
+
+	updated, err := s.prescriptionRepo.UpdateStatusByID(ctx, prescriptionID, input.Status)
+	if err != nil {
+		return nil, err
+	}
+	if updated == nil {
+		return nil, ErrPrescriptionNotFound
+	}
+
+	if err := s.applyPrescriptionStatusToLinkedReminders(ctx, prescriptionID, input.Status); err != nil {
+		return nil, fmt.Errorf("prescription status updated but failed to update linked reminders: %w", err)
+	}
+
+	return toPrescriptionResponse(updated), nil
+}
+
+func (s *prescriptionService) ensurePatient(ctx context.Context, patientID primitive.ObjectID) error {
+	exists, err := s.patientRepo.ExistsByIDAndRole(ctx, patientID, userDomain.RolePatient)
+	if err != nil || !exists {
+		return errors.New("user not found or not patient")
+	}
+	return nil
+}
+
+func (s *prescriptionService) requirePrescription(ctx context.Context, id primitive.ObjectID) (*domain.Prescription, error) {
+	prescription, err := s.prescriptionRepo.FindByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if prescription == nil {
+		return nil, ErrPrescriptionNotFound
+	}
+	return prescription, nil
+}
+
+func (s *prescriptionService) ensurePatientAccess(role userDomain.Role, userID string, patientID primitive.ObjectID) error {
+	if role != userDomain.RolePatient {
+		return nil
+	}
+
+	id, err := util.MustHexToObjectID(userID)
+	if err != nil {
+		return err
+	}
+	if patientID != id {
+		return ErrPrescriptionAccessDenied
+	}
+	return nil
+}
+
+func (s *prescriptionService) rollbackPrescriptionCreation(ctx context.Context, prescriptionID primitive.ObjectID, reminderIDs []primitive.ObjectID) {
+	s.cancelReminders(ctx, reminderIDs)
+	_ = s.prescriptionRepo.DeleteByID(ctx, prescriptionID)
+}
+
+func (s *prescriptionService) createMedicationReminders(
+	ctx context.Context,
+	prescription *domain.Prescription,
+	prescribedBy string,
+	endDate time.Time,
+) ([]primitive.ObjectID, error) {
+	var reminderIDs []primitive.ObjectID
+
+	for _, slot := range groupReminderSlots(prescription.Medications) {
+		hour, minute := clockForTimeOfDay(slot.timeOfDay)
+		reminder, err := s.reminderService.CreateReminder(ctx, &usecase.CreateReminderInput{
+			PatientID:      prescription.PatientID.Hex(),
+			Kind:           domain.KindMedication,
+			Message:        strings.Join(slot.messages, "; "),
+			Hour:           hour,
+			Minute:         minute,
+			DaysOfWeek:     prescription.DaysOfWeek,
+			Timezone:       prescription.Timezone,
+			StartDate:      prescription.StartDate,
+			EndDate:        endDate,
+			CreatedBy:      prescribedBy,
+			PrescriptionID: prescription.ID.Hex(),
+			MealTiming:     slot.mealTiming,
+		})
+		if err != nil {
+			return reminderIDs, err
+		}
+
+		reminderID, err := primitive.ObjectIDFromHex(reminder.ID)
+		if err != nil {
+			return reminderIDs, err
+		}
+		reminderIDs = append(reminderIDs, reminderID)
+	}
+
+	return reminderIDs, nil
+}
+
+func (s *prescriptionService) cancelReminders(ctx context.Context, reminderIDs []primitive.ObjectID) {
+	for _, id := range reminderIDs {
+		_, _ = s.reminderService.UpdateReminderStatus(ctx, &usecase.UpdateReminderStatusInput{
+			ID:     id.Hex(),
+			Status: domain.ReminderStatusCanceled,
+		})
+	}
+}
+
+func (s *prescriptionService) applyPrescriptionStatusToLinkedReminders(ctx context.Context, prescriptionID primitive.ObjectID, status domain.PrescriptionStatus) error {
+	reminderStatus, ok := domain.ReminderStatusForPrescription(status)
+	if !ok {
+		return fmt.Errorf("unsupported prescription status: %s", status)
+	}
+
+	reminders, err := s.reminderRepo.FindWithFilter(ctx, repository.ReminderFilter{
+		PrescriptionID: prescriptionID.Hex(),
+		Kind:           domain.KindMedication,
+	})
+	if err != nil {
+		return err
+	}
+
+	for _, reminder := range reminders {
+		if reminder.Status == reminderStatus {
+			continue
+		}
+		if _, err := s.reminderService.UpdateReminderStatus(ctx, &usecase.UpdateReminderStatusInput{
+			ID:     reminder.ID.Hex(),
+			Status: reminderStatus,
+		}); err != nil {
+			return fmt.Errorf("failed to update linked reminder %s: %w", reminder.ID.Hex(), err)
+		}
+	}
+
+	return nil
+}
+
+type reminderSlot struct {
+	timeOfDay  domain.TimeOfDay
+	messages   []string
+	mealTiming *domain.MealTiming
+}
+
+func groupReminderSlots(medications []domain.PrescriptionMedication) []reminderSlot {
+	accumulators := make(map[domain.TimeOfDay]*reminderSlotAccumulator)
+
+	for _, med := range medications {
+		for _, dose := range med.Schedule {
+			acc, ok := accumulators[dose.TimeOfDay]
+			if !ok {
+				acc = &reminderSlotAccumulator{mealTimings: make(map[domain.MealTiming]struct{})}
+				accumulators[dose.TimeOfDay] = acc
+			}
+			acc.add(med, dose)
+		}
+	}
+
+	slots := make([]reminderSlot, 0, len(accumulators))
+	for _, timeOfDay := range prescriptionTimeOfDayOrder {
+		acc, ok := accumulators[timeOfDay]
+		if !ok {
+			continue
+		}
+		slots = append(slots, acc.slot(timeOfDay))
+	}
+
+	return slots
+}
+
+type reminderSlotAccumulator struct {
+	messages    []string
+	mealTimings map[domain.MealTiming]struct{}
+	hasUntimed  bool
+}
+
+func (a *reminderSlotAccumulator) add(med domain.PrescriptionMedication, dose domain.MedicationDose) {
+	a.messages = append(a.messages, formatDoseReminderMessage(med, dose))
+	if dose.MealTiming == "" {
+		a.hasUntimed = true
+		return
+	}
+	a.mealTimings[dose.MealTiming] = struct{}{}
+}
+
+func (a *reminderSlotAccumulator) slot(timeOfDay domain.TimeOfDay) reminderSlot {
+	return reminderSlot{
+		timeOfDay:  timeOfDay,
+		messages:   a.messages,
+		mealTiming: unifyMealTiming(a.mealTimings, a.hasUntimed),
+	}
+}
+
+func unifyMealTiming(mealTimings map[domain.MealTiming]struct{}, hasUntimed bool) *domain.MealTiming {
+	if hasUntimed || len(mealTimings) != 1 {
+		return nil
+	}
+	for timing := range mealTimings {
+		return mealTimingPtr(timing)
+	}
+	return nil
+}
+
+func validatePrescriptionInput(medications []domain.PrescriptionMedication, timezone string, daysOfWeek []int) error {
+	if err := validateMedications(medications); err != nil {
+		return err
+	}
+	return validateSchedule(timezone, daysOfWeek)
+}
+
+func validateSchedule(timezone string, daysOfWeek []int) error {
+	if timezone == "" {
+		return errors.New("timezone is required")
+	}
+	if _, err := time.LoadLocation(timezone); err != nil {
+		return errors.New("invalid timezone")
+	}
+	if len(daysOfWeek) == 0 {
+		return errors.New("at least one day of week is required")
+	}
+	for _, day := range daysOfWeek {
+		if day < 0 || day > 6 {
+			return errors.New("daysOfWeek values must be between 0 (Sunday) and 6 (Saturday)")
+		}
+	}
+	return nil
+}
+
+func validateMedications(medications []domain.PrescriptionMedication) error {
+	if len(medications) == 0 {
+		return errors.New("at least one medication is required")
+	}
+
+	for i, med := range medications {
+		if med.DrugName == "" {
+			return fmt.Errorf("medication[%d]: drug name is required", i)
+		}
+		if len(med.Schedule) == 0 {
+			return fmt.Errorf("medication[%d]: at least one dose schedule is required", i)
+		}
+
+		seen := make(map[string]struct{})
+		for j, dose := range med.Schedule {
+			if dose.PillCount <= 0 {
+				return fmt.Errorf("medication[%d].schedule[%d]: pill count must be greater than 0", i, j)
+			}
+			switch dose.TimeOfDay {
+			case domain.TimeOfDayMorning, domain.TimeOfDayNoon, domain.TimeOfDayEvening:
+			default:
+				return fmt.Errorf("medication[%d].schedule[%d]: invalid time of day", i, j)
+			}
+			switch dose.MealTiming {
+			case "", domain.MealTimingPreMeal, domain.MealTimingPostMeal:
+			default:
+				return fmt.Errorf("medication[%d].schedule[%d]: invalid meal timing", i, j)
+			}
+
+			key := fmt.Sprintf("%s:%s", dose.TimeOfDay, dose.MealTiming)
+			if _, dup := seen[key]; dup {
+				return fmt.Errorf("medication[%d]: duplicate schedule slot (%s, %s)", i, dose.TimeOfDay, dose.MealTiming)
+			}
+			seen[key] = struct{}{}
+		}
+	}
+
+	return nil
+}
+
+func clockForTimeOfDay(timeOfDay domain.TimeOfDay) (hour, minute int) {
+	switch timeOfDay {
+	case domain.TimeOfDayMorning:
+		return 8, 0
+	case domain.TimeOfDayNoon:
+		return 12, 0
+	case domain.TimeOfDayEvening:
+		return 18, 0
+	default:
+		return 8, 0
+	}
+}
+
+func formatDoseReminderMessage(med domain.PrescriptionMedication, dose domain.MedicationDose) string {
+	suffix := ""
+	if label := domain.MealTimingLabel(dose.MealTiming); label != "" {
+		suffix = " " + label
+	}
+	return fmt.Sprintf("Take %s %s (%s)%s", formatPillCount(dose.PillCount), med.DrugName, med.Dosage, suffix)
+}
+
+func mealTimingPtr(m domain.MealTiming) *domain.MealTiming {
+	if m == "" {
+		return nil
+	}
+	return &m
+}
+
+func formatPillCount(count float64) string {
+	if count == float64(int(count)) {
+		return strconv.Itoa(int(count))
+	}
+	return strconv.FormatFloat(count, 'f', -1, 64)
+}
+
+func prescriptionEndDate(end *time.Time, start time.Time) time.Time {
+	if end != nil {
+		return *end
+	}
+	return start.AddDate(1, 0, 0)
+}
+
+func toPrescriptionResponse(p *domain.Prescription) *dto.PrescriptionResponse {
+	return &dto.PrescriptionResponse{
+		ID:           p.ID.Hex(),
+		PatientID:    p.PatientID.Hex(),
+		PrescribedBy: p.PrescribedBy.Hex(),
+		Medications:  toMedicationResponses(p.Medications),
+		Timezone:     p.Timezone,
+		DaysOfWeek:   p.DaysOfWeek,
+		StartDate:    p.StartDate,
+		EndDate:      p.EndDate,
+		Status:       p.Status,
+		CreatedAt:    p.CreatedAt,
+		UpdatedAt:    p.UpdatedAt,
+	}
+}
+
+func toPrescriptionResponses(prescriptions []domain.Prescription) []dto.PrescriptionResponse {
+	responses := make([]dto.PrescriptionResponse, len(prescriptions))
+	for i := range prescriptions {
+		responses[i] = *toPrescriptionResponse(&prescriptions[i])
+	}
+	return responses
+}
+
+func toMedicationResponses(medications []domain.PrescriptionMedication) []dto.PrescriptionMedicationResponse {
+	responses := make([]dto.PrescriptionMedicationResponse, len(medications))
+	for i, med := range medications {
+		schedule := make([]dto.MedicationDoseResponse, len(med.Schedule))
+		for j, dose := range med.Schedule {
+			schedule[j] = dto.MedicationDoseResponse{
+				TimeOfDay:  dose.TimeOfDay,
+				MealTiming: dose.MealTiming,
+				PillCount:  dose.PillCount,
+			}
+		}
+		responses[i] = dto.PrescriptionMedicationResponse{
+			DrugName:     med.DrugName,
+			Dosage:       med.Dosage,
+			Route:        med.Route,
+			Instructions: med.Instructions,
+			Schedule:     schedule,
+		}
+	}
+	return responses
+}

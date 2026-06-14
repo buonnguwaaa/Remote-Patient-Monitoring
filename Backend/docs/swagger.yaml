@@ -17,6 +17,14 @@ definitions:
     x-enum-varnames:
     - KindMeasure
     - KindMedication
+  domain.MealTiming:
+    enum:
+    - pre_meal
+    - post_meal
+    type: string
+    x-enum-varnames:
+    - MealTimingPreMeal
+    - MealTimingPostMeal
   domain.MeasurementType:
     enum:
     - bp
@@ -25,6 +33,18 @@ definitions:
     x-enum-varnames:
     - TypeBloodPressure
     - TypeGlucose
+  domain.PrescriptionStatus:
+    enum:
+    - active
+    - completed
+    - discontinued
+    - expired
+    type: string
+    x-enum-varnames:
+    - PrescriptionStatusActive
+    - PrescriptionStatusCompleted
+    - PrescriptionStatusDiscontinued
+    - PrescriptionStatusExpired
   domain.ReminderStatus:
     enum:
     - active
@@ -33,10 +53,10 @@ definitions:
     - canceled
     type: string
     x-enum-varnames:
-    - StatusActive
-    - StatusPaused
-    - StatusExpired
-    - StatusCanceled
+    - ReminderStatusActive
+    - ReminderStatusPaused
+    - ReminderStatusExpired
+    - ReminderStatusCanceled
   domain.Status:
     enum:
     - open
@@ -45,20 +65,87 @@ definitions:
     x-enum-varnames:
     - StatusOpen
     - StatusAck
-  domain.Timing:
+  domain.TimeOfDay:
     enum:
-    - pre
-    - post
+    - morning
+    - noon
+    - evening
     type: string
     x-enum-varnames:
-    - TimingPre
-    - TimingPost
+    - TimeOfDayMorning
+    - TimeOfDayNoon
+    - TimeOfDayEvening
   dto.ActivateAccountRequest:
     properties:
       activateToken:
         type: string
     required:
     - activateToken
+    type: object
+  dto.ActivityLogListResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/dto.ActivityLogResponse'
+        type: array
+      page:
+        type: integer
+      pageSize:
+        type: integer
+      total:
+        type: integer
+      totalPages:
+        type: integer
+    type: object
+  dto.ActivityLogResponse:
+    properties:
+      action:
+        type: string
+      createdAt:
+        type: string
+      date:
+        description: YYYY-MM-DD format
+        type: string
+      errorMsg:
+        type: string
+      id:
+        type: string
+      ipAddress:
+        type: string
+      metadata:
+        additionalProperties: {}
+        type: object
+      method:
+        type: string
+      path:
+        type: string
+      resource:
+        type: string
+      resourceId:
+        type: string
+      statusCode:
+        type: integer
+      timestamp:
+        description: HH:MM format
+        type: string
+      type:
+        type: string
+      userId:
+        type: string
+      userName:
+        type: string
+      userRole:
+        type: string
+    type: object
+  dto.ActivityLogStatsResponse:
+    properties:
+      byType:
+        additionalProperties:
+          format: int64
+          type: integer
+        type: object
+      total:
+        type: integer
     type: object
   dto.AssignPatientRequest:
     properties:
@@ -93,6 +180,12 @@ definitions:
         type: number
       heartRate:
         type: number
+      mealTiming:
+        allOf:
+        - $ref: '#/definitions/domain.MealTiming'
+        enum:
+        - pre_meal
+        - post_meal
       note:
         type: string
       patientId:
@@ -103,12 +196,6 @@ definitions:
         type: number
       temperature:
         type: number
-      timing:
-        allOf:
-        - $ref: '#/definitions/domain.Timing'
-        enum:
-        - pre
-        - post
       type:
         allOf:
         - $ref: '#/definitions/domain.MeasurementType'
@@ -118,6 +205,32 @@ definitions:
     required:
     - patientId
     - type
+    type: object
+  dto.CreatePrescriptionRequest:
+    properties:
+      daysOfWeek:
+        items:
+          type: integer
+        type: array
+      endDate:
+        type: string
+      medications:
+        items:
+          $ref: '#/definitions/dto.PrescriptionMedicationRequest'
+        minItems: 1
+        type: array
+      patientId:
+        type: string
+      startDate:
+        type: string
+      timezone:
+        type: string
+    required:
+    - daysOfWeek
+    - medications
+    - patientId
+    - startDate
+    - timezone
     type: object
   dto.CreateReminderRequest:
     properties:
@@ -133,6 +246,12 @@ definitions:
         type: integer
       kind:
         $ref: '#/definitions/domain.Kind'
+      mealTiming:
+        allOf:
+        - $ref: '#/definitions/domain.MealTiming'
+        enum:
+        - pre_meal
+        - post_meal
       message:
         type: string
       minute:
@@ -194,6 +313,13 @@ definitions:
     - effectiveFrom
     - patientId
     type: object
+  dto.DeactivateNotificationTokenRequest:
+    properties:
+      deviceId:
+        type: string
+    required:
+    - deviceId
+    type: object
   dto.ForgotPasswordRequest:
     properties:
       email:
@@ -221,12 +347,69 @@ definitions:
     required:
     - refreshToken
     type: object
+  dto.MedicationDoseRequest:
+    properties:
+      mealTiming:
+        allOf:
+        - $ref: '#/definitions/domain.MealTiming'
+        enum:
+        - pre_meal
+        - post_meal
+      pillCount:
+        type: number
+      timeOfDay:
+        allOf:
+        - $ref: '#/definitions/domain.TimeOfDay'
+        enum:
+        - morning
+        - noon
+        - evening
+    required:
+    - pillCount
+    - timeOfDay
+    type: object
+  dto.PrescriptionMedicationRequest:
+    properties:
+      dosage:
+        type: string
+      drugName:
+        type: string
+      instructions:
+        type: string
+      route:
+        type: string
+      schedule:
+        items:
+          $ref: '#/definitions/dto.MedicationDoseRequest'
+        minItems: 1
+        type: array
+    required:
+    - dosage
+    - drugName
+    - schedule
+    type: object
   dto.RefreshRequest:
     properties:
       refreshToken:
         type: string
     required:
     - refreshToken
+    type: object
+  dto.RegisterNotificationTokenRequest:
+    properties:
+      deviceId:
+        type: string
+      platform:
+        type: string
+      provider:
+        type: string
+      token:
+        type: string
+    required:
+    - deviceId
+    - platform
+    - provider
+    - token
     type: object
   dto.RegisterRequest:
     properties:
@@ -297,6 +480,15 @@ definitions:
       phone:
         type: string
     type: object
+  dto.UpdateDepartmentRequest:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+    required:
+    - name
+    type: object
   dto.UpdateDoctorRequest:
     properties:
       departmentId:
@@ -328,6 +520,8 @@ definitions:
         type: number
       heartRate:
         type: number
+      mealTiming:
+        $ref: '#/definitions/domain.MealTiming'
       note:
         type: string
       respiratoryRate:
@@ -336,8 +530,6 @@ definitions:
         type: number
       temperature:
         type: number
-      timing:
-        $ref: '#/definitions/domain.Timing'
       type:
         allOf:
         - $ref: '#/definitions/domain.MeasurementType'
@@ -378,10 +570,10 @@ definitions:
         type: string
       phone:
         type: string
-      ward:
-        type: string
       workplace:
         type: string
+      yearsOfExperience:
+        type: integer
     type: object
   dto.UpdatePatientRequest:
     properties:
@@ -403,6 +595,39 @@ definitions:
         type: string
       phone:
         type: string
+    type: object
+  dto.UpdatePrescriptionRequest:
+    properties:
+      daysOfWeek:
+        items:
+          type: integer
+        type: array
+      endDate:
+        type: string
+      medications:
+        items:
+          $ref: '#/definitions/dto.PrescriptionMedicationRequest'
+        minItems: 1
+        type: array
+      startDate:
+        type: string
+      status:
+        $ref: '#/definitions/domain.PrescriptionStatus'
+      timezone:
+        type: string
+    required:
+    - daysOfWeek
+    - medications
+    - startDate
+    - status
+    - timezone
+    type: object
+  dto.UpdatePrescriptionStatusRequest:
+    properties:
+      status:
+        $ref: '#/definitions/domain.PrescriptionStatus'
+    required:
+    - status
     type: object
   dto.UpdateReminderRequest:
     properties:
@@ -528,6 +753,163 @@ info:
   title: Remote Patient Monitoring API
   version: "1.0"
 paths:
+  /activity-logs:
+    get:
+      consumes:
+      - application/json
+      description: Get activity logs with optional filters
+      parameters:
+      - description: Start date (YYYY-MM-DD)
+        in: query
+        name: startDate
+        type: string
+      - description: End date (YYYY-MM-DD)
+        in: query
+        name: endDate
+        type: string
+      - description: Activity type (login, create, update, delete, system, all)
+        in: query
+        name: type
+        type: string
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 50
+        description: Page size
+        in: query
+        name: pageSize
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ActivityLogListResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get activity logs
+      tags:
+      - activity-logs
+  /activity-logs/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete an activity log by ID
+      parameters:
+      - description: Activity Log ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete a specific activity log
+      tags:
+      - activity-logs
+  /activity-logs/cleanup-access:
+    delete:
+      consumes:
+      - application/json
+      description: Delete all system logs with "Truy cập:" action (GET request logs)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Clean up access logs
+      tags:
+      - activity-logs
+  /activity-logs/stats:
+    get:
+      consumes:
+      - application/json
+      description: Get statistics for activity logs within a date range
+      parameters:
+      - description: Start date (YYYY-MM-DD)
+        in: query
+        name: startDate
+        type: string
+      - description: End date (YYYY-MM-DD)
+        in: query
+        name: endDate
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ActivityLogStatsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get activity log statistics
+      tags:
+      - activity-logs
   /alerts/{id}:
     get:
       consumes:
@@ -647,6 +1029,35 @@ paths:
               type: string
             type: object
       summary: Get doctor patient alerts
+      tags:
+      - alerts
+  /alerts/nurses/me:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all alerts for patients assigned to the authenticated
+        nurse
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Alerts retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get nurse patient alerts
       tags:
       - alerts
   /alerts/patients/me:
@@ -1314,6 +1725,51 @@ paths:
       summary: Create department
       tags:
       - departments
+  /departments/{id}:
+    delete:
+      parameters:
+      - description: Department ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Delete department
+      tags:
+      - departments
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Department ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Department info
+        in: body
+        name: department
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateDepartmentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Update department
+      tags:
+      - departments
   /departments/{id}/members:
     get:
       produces:
@@ -1348,9 +1804,9 @@ paths:
         in: query
         name: type
         type: string
-      - description: Measurement timing
+      - description: Meal timing (pre_meal, post_meal)
         in: query
-        name: timing
+        name: mealTiming
         type: string
       - description: Get latest measurement only
         in: query
@@ -1447,6 +1903,341 @@ paths:
       summary: Update an existing measurement
       tags:
       - measurements
+  /notification-tokens/deactivate:
+    post:
+      consumes:
+      - application/json
+      description: Deactivate the FCM notification token bound to the authenticated
+        user and device during logout/device switch
+      parameters:
+      - description: Notification token deactivate payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/dto.DeactivateNotificationTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Notification token deactivated successfully
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Deactivate notification token
+      tags:
+      - notification-tokens
+  /notification-tokens/register:
+    post:
+      consumes:
+      - application/json
+      description: Register or update an FCM notification token for the authenticated
+        user and device
+      parameters:
+      - description: Notification token payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/dto.RegisterNotificationTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Notification token registered successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Register notification token
+      tags:
+      - notification-tokens
+  /prescriptions:
+    get:
+      consumes:
+      - application/json
+      description: Get prescriptions filtered by patient ID or status (staff use patientId
+        query param)
+      parameters:
+      - description: Patient ID
+        in: query
+        name: patientId
+        type: string
+      - description: Prescription status (active, completed, discontinued, expired)
+        in: query
+        name: status
+        type: string
+      - description: Return only the latest prescription
+        in: query
+        name: latest
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Prescriptions retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get prescriptions
+      tags:
+      - prescriptions
+    post:
+      consumes:
+      - application/json
+      description: Create a new prescription for a patient (doctor only)
+      parameters:
+      - description: Prescription details
+        in: body
+        name: prescription
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreatePrescriptionRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Prescription created successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a prescription
+      tags:
+      - prescriptions
+  /prescriptions/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a prescription by its ID
+      parameters:
+      - description: Prescription ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Prescription retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get prescription by ID
+      tags:
+      - prescriptions
+    patch:
+      consumes:
+      - application/json
+      description: Update prescription details (doctor only)
+      parameters:
+      - description: Prescription ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update fields
+        in: body
+        name: update
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdatePrescriptionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Prescription updated successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update prescription
+      tags:
+      - prescriptions
+  /prescriptions/{id}/status:
+    patch:
+      consumes:
+      - application/json
+      description: Update only the status of a prescription (doctor only)
+      parameters:
+      - description: Prescription ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Status update
+        in: body
+        name: update
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdatePrescriptionStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Prescription status updated successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update prescription status
+      tags:
+      - prescriptions
+  /prescriptions/me:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all prescriptions for the authenticated patient
+      parameters:
+      - description: Prescription status (active, completed, discontinued, expired)
+        in: query
+        name: status
+        type: string
+      - description: Return only the latest prescription
+        in: query
+        name: latest
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Prescriptions retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get my prescriptions
+      tags:
+      - prescriptions
   /reminders:
     get:
       consumes:
@@ -2194,6 +2985,34 @@ paths:
               type: string
             type: object
       summary: Update nurse
+      tags:
+      - nurses
+  /users/nurses/me:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve the full profile of the authenticated nurse
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Nurse profile retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Nurse not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get my nurse profile
       tags:
       - nurses
   /users/patients:

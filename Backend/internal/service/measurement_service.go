@@ -58,7 +58,7 @@ func (s *measurementService) CreateMeasurement(ctx context.Context, input *useca
 		SpO2:            input.SpO2,
 		BloodPressure:   input.BloodPressure,
 		Glucose:         input.Glucose,
-		Timing:          input.Timing,
+		MealTiming:      input.MealTiming,
 		Device:          input.Device,
 		Note:            input.Note,
 	}
@@ -86,7 +86,7 @@ func (s *measurementService) CreateMeasurement(ctx context.Context, input *useca
 		BloodPressure:   inserted.BloodPressure,
 		Type:            inserted.Type,
 		Glucose:         inserted.Glucose,
-		Timing:          inserted.Timing,
+		MealTiming:      inserted.MealTiming,
 		Device:          inserted.Device,
 		Note:            inserted.Note,
 		CreatedAt:       inserted.CreatedAt,
@@ -112,7 +112,7 @@ func (s *measurementService) UpdateMeasurement(ctx context.Context, input *useca
 		SpO2:            input.SpO2,
 		BloodPressure:   input.BloodPressure,
 		Glucose:         input.Glucose,
-		Timing:          input.Timing,
+		MealTiming:      input.MealTiming,
 		Device:          input.Device,
 		Note:            input.Note,
 		UpdatedAt:       time.Now().UTC(),
@@ -133,7 +133,7 @@ func (s *measurementService) UpdateMeasurement(ctx context.Context, input *useca
 		BloodPressure:   updated.BloodPressure,
 		Type:            updated.Type,
 		Glucose:         updated.Glucose,
-		Timing:          updated.Timing,
+		MealTiming:      updated.MealTiming,
 		Device:          updated.Device,
 		Note:            updated.Note,
 		CreatedAt:       updated.CreatedAt,
@@ -143,10 +143,10 @@ func (s *measurementService) UpdateMeasurement(ctx context.Context, input *useca
 
 func (s *measurementService) GetMeasurements(ctx context.Context, input *usecase.GetMeasurementsInput) ([]dto.MeasurementResponse, error) {
 	filter := repository.MeasurementFilter{
-		PatientID: input.PatientID,
-		Type:      input.Type,
-		Timing:    input.Timing,
-		IsLatest:  input.IsLatest,
+		PatientID:  input.PatientID,
+		Type:       input.Type,
+		MealTiming: input.MealTiming,
+		IsLatest:   input.IsLatest,
 	}
 
 	measurements, err := s.measurementRepo.FindWithFilter(ctx, filter)
@@ -166,7 +166,7 @@ func (s *measurementService) GetMeasurements(ctx context.Context, input *usecase
 			SpO2:            m.SpO2,
 			Type:            m.Type,
 			Glucose:         m.Glucose,
-			Timing:          m.Timing,
+			MealTiming:      m.MealTiming,
 			Device:          m.Device,
 			Note:            m.Note,
 			CreatedAt:       m.CreatedAt,
