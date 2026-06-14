@@ -16,10 +16,10 @@ type CreateMeasurementRequest struct {
 	SpO2            float64              `json:"spo2"`
 	BloodPressure   domain.BloodPressure `json:"bloodPressure"`
 
-	Glucose *float64       `json:"glucose,omitempty"`
-	Timing  *domain.Timing `json:"timing,omitempty" validate:"omitempty,oneof=pre post"`
-	Device  *string        `json:"device,omitempty"`
-	Note    *string        `json:"note,omitempty"`
+	Glucose    *float64           `json:"glucose,omitempty"`
+	MealTiming *domain.MealTiming `json:"mealTiming,omitempty" validate:"omitempty,oneof=pre_meal post_meal"`
+	Device     *string            `json:"device,omitempty"`
+	Note       *string            `json:"note,omitempty"`
 }
 
 type UpdateMeasurementRequest struct {
@@ -32,10 +32,10 @@ type UpdateMeasurementRequest struct {
 
 	BloodPressure domain.BloodPressure `json:"bloodPressure,omitempty"`
 
-	Glucose *float64       `json:"glucose,omitempty"`
-	Timing  *domain.Timing `json:"timing,omitempty"`
-	Device  *string        `json:"device,omitempty"`
-	Note    *string        `json:"note,omitempty"`
+	Glucose    *float64           `json:"glucose,omitempty"`
+	MealTiming *domain.MealTiming `json:"mealTiming,omitempty"`
+	Device     *string            `json:"device,omitempty"`
+	Note       *string            `json:"note,omitempty"`
 }
 
 type MeasurementResponse struct {
@@ -48,11 +48,11 @@ type MeasurementResponse struct {
 	SpO2            float64              `json:"spo2"`
 	BloodPressure   domain.BloodPressure `json:"bloodPressure"`
 
-	Type      domain.MeasurementType `json:"type"`
-	Systolic  *float64               `json:"systolic,omitempty"`
-	Diastolic *float64               `json:"diastolic,omitempty"`
-	Glucose   *float64               `json:"glucose,omitempty"`
-	Timing    *domain.Timing         `json:"timing,omitempty"`
+	Type       domain.MeasurementType `json:"type"`
+	Systolic   *float64               `json:"systolic,omitempty"`
+	Diastolic  *float64               `json:"diastolic,omitempty"`
+	Glucose    *float64               `json:"glucose,omitempty"`
+	MealTiming *domain.MealTiming     `json:"mealTiming,omitempty"`
 
 	Device *string `json:"device,omitempty"`
 	Note   *string `json:"note,omitempty"`

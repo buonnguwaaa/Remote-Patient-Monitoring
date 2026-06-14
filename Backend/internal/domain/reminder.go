@@ -16,10 +16,10 @@ const (
 type ReminderStatus string
 
 const (
-	StatusActive   ReminderStatus = "active"
-	StatusPaused   ReminderStatus = "paused"
-	StatusExpired  ReminderStatus = "expired"
-	StatusCanceled ReminderStatus = "canceled"
+	ReminderStatusActive   ReminderStatus = "active"
+	ReminderStatusPaused   ReminderStatus = "paused"
+	ReminderStatusExpired  ReminderStatus = "expired"
+	ReminderStatusCanceled ReminderStatus = "canceled"
 )
 
 type Reminder struct {
@@ -38,6 +38,9 @@ type Reminder struct {
 
 	StartDate time.Time `json:"startDate" bson:"startDate"`
 	EndDate   time.Time `json:"endDate" bson:"endDate"`
+
+	PrescriptionID *primitive.ObjectID `json:"prescriptionId,omitempty" bson:"prescriptionId,omitempty"`
+	MealTiming     *MealTiming         `json:"mealTiming,omitempty" bson:"mealTiming,omitempty"`
 
 	CreatedBy primitive.ObjectID `json:"createdBy" bson:"createdBy"`
 	CreatedAt time.Time          `json:"createdAt" bson:"createdAt"`
