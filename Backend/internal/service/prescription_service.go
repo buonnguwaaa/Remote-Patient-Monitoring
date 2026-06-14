@@ -102,10 +102,18 @@ func (s *prescriptionService) CreatePrescription(ctx context.Context, input *use
 
 func (s *prescriptionService) GetPrescriptions(ctx context.Context, input *usecase.GetPrescriptionsInput) ([]dto.PrescriptionResponse, error) {
 	prescriptions, err := s.prescriptionRepo.FindWithFilter(ctx, repository.PrescriptionFilter{
-		PatientID: input.PatientID,
-		Status:    input.Status,
-		IsLatest:  input.IsLatest,
+		PatientID:    input.PatientID,
+		Status:       input.Status,
+		IsLatest:     input.IsLatest,
+		DoctorID:     input.DoctorID,
+		NurseID:      input.NurseID,
+		PrescribedBy: input.PrescribedBy,
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	prescriptions, err = s.expirePrescriptionsIfNeeded(ctx, prescriptions)
 	if err != nil {
 		return nil, err
 	}
@@ -145,7 +153,7 @@ func (s *prescriptionService) UpdatePrescriptionByID(ctx context.Context, input 
 		return nil, err
 	}
 
-	statusChanged := existing.Status != input.Status
+	previousStatus := existing.Status
 	existing.Medications = input.Medications
 	existing.Timezone = input.Timezone
 	existing.DaysOfWeek = input.DaysOfWeek
@@ -161,8 +169,13 @@ func (s *prescriptionService) UpdatePrescriptionByID(ctx context.Context, input 
 		return nil, ErrPrescriptionNotFound
 	}
 
-	if statusChanged {
-		if err := s.applyPrescriptionStatusToLinkedReminders(ctx, prescriptionID, input.Status); err != nil {
+	updated, err = s.expirePrescriptionIfNeeded(ctx, updated)
+	if err != nil {
+		return nil, err
+	}
+
+	if updated.Status != previousStatus {
+		if err := s.applyPrescriptionStatusToLinkedReminders(ctx, prescriptionID, updated.Status); err != nil {
 			return nil, fmt.Errorf("prescription updated but failed to update linked reminders: %w", err)
 		}
 	}
@@ -184,6 +197,7 @@ func (s *prescriptionService) UpdatePrescriptionStatus(ctx context.Context, inpu
 		return toPrescriptionResponse(existing), nil
 	}
 
+	previousStatus := existing.Status
 	updated, err := s.prescriptionRepo.UpdateStatusByID(ctx, prescriptionID, input.Status)
 	if err != nil {
 		return nil, err
@@ -192,8 +206,15 @@ func (s *prescriptionService) UpdatePrescriptionStatus(ctx context.Context, inpu
 		return nil, ErrPrescriptionNotFound
 	}
 
-	if err := s.applyPrescriptionStatusToLinkedReminders(ctx, prescriptionID, input.Status); err != nil {
-		return nil, fmt.Errorf("prescription status updated but failed to update linked reminders: %w", err)
+	updated, err = s.expirePrescriptionIfNeeded(ctx, updated)
+	if err != nil {
+		return nil, err
+	}
+
+	if updated.Status != previousStatus {
+		if err := s.applyPrescriptionStatusToLinkedReminders(ctx, prescriptionID, updated.Status); err != nil {
+			return nil, fmt.Errorf("prescription status updated but failed to update linked reminders: %w", err)
+		}
 	}
 
 	return toPrescriptionResponse(updated), nil
@@ -215,7 +236,47 @@ func (s *prescriptionService) requirePrescription(ctx context.Context, id primit
 	if prescription == nil {
 		return nil, ErrPrescriptionNotFound
 	}
-	return prescription, nil
+	return s.expirePrescriptionIfNeeded(ctx, prescription)
+}
+
+func (s *prescriptionService) expirePrescriptionsIfNeeded(ctx context.Context, prescriptions []domain.Prescription) ([]domain.Prescription, error) {
+	for i := range prescriptions {
+		updated, err := s.expirePrescriptionIfNeeded(ctx, &prescriptions[i])
+		if err != nil {
+			return nil, err
+		}
+		if updated != nil {
+			prescriptions[i] = *updated
+		}
+	}
+	return prescriptions, nil
+}
+
+func (s *prescriptionService) expirePrescriptionIfNeeded(ctx context.Context, prescription *domain.Prescription) (*domain.Prescription, error) {
+	if prescription.Status != domain.PrescriptionStatusActive {
+		return prescription, nil
+	}
+	if !isPrescriptionPastEnd(prescription, time.Now().UTC()) {
+		return prescription, nil
+	}
+
+	updated, err := s.prescriptionRepo.UpdateStatusByID(ctx, prescription.ID, domain.PrescriptionStatusExpired)
+	if err != nil {
+		return nil, err
+	}
+	if updated == nil {
+		return prescription, nil
+	}
+
+	if err := s.applyPrescriptionStatusToLinkedReminders(ctx, prescription.ID, domain.PrescriptionStatusExpired); err != nil {
+		return nil, err
+	}
+
+	return updated, nil
+}
+
+func isPrescriptionPastEnd(prescription *domain.Prescription, now time.Time) bool {
+	return !now.Before(prescriptionEndDate(prescription.EndDate, prescription.StartDate))
 }
 
 func (s *prescriptionService) ensurePatientAccess(role userDomain.Role, userID string, patientID primitive.ObjectID) error {
