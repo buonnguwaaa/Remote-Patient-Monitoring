@@ -24,6 +24,251 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/activity-logs": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get activity logs with optional filters",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "activity-logs"
+                ],
+                "summary": "Get activity logs",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Start date (YYYY-MM-DD)",
+                        "name": "startDate",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "End date (YYYY-MM-DD)",
+                        "name": "endDate",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Activity type (login, create, update, delete, system, all)",
+                        "name": "type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 50,
+                        "description": "Page size",
+                        "name": "pageSize",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ActivityLogListResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/activity-logs/cleanup-access": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete all system logs with \"Truy cập:\" action (GET request logs)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "activity-logs"
+                ],
+                "summary": "Clean up access logs",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/activity-logs/stats": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get statistics for activity logs within a date range",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "activity-logs"
+                ],
+                "summary": "Get activity log statistics",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Start date (YYYY-MM-DD)",
+                        "name": "startDate",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "End date (YYYY-MM-DD)",
+                        "name": "endDate",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ActivityLogStatsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/activity-logs/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete an activity log by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "activity-logs"
+                ],
+                "summary": "Delete a specific activity log",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Activity Log ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/alerts/ack/{id}": {
             "patch": {
                 "description": "Update the acknowledgement of an alert by its ID",
@@ -106,6 +351,48 @@ const docTemplate = `{
                     "alerts"
                 ],
                 "summary": "Get doctor patient alerts",
+                "responses": {
+                    "200": {
+                        "description": "Alerts retrieved successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/alerts/nurses/me": {
+            "get": {
+                "description": "Retrieve all alerts for patients assigned to the authenticated nurse",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "alerts"
+                ],
+                "summary": "Get nurse patient alerts",
                 "responses": {
                     "200": {
                         "description": "Alerts retrieved successfully",
@@ -1208,6 +1495,74 @@ const docTemplate = `{
                 }
             }
         },
+        "/departments/{id}": {
+            "put": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "departments"
+                ],
+                "summary": "Update department",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Department ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Department info",
+                        "name": "department",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateDepartmentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "departments"
+                ],
+                "summary": "Delete department",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Department ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
         "/departments/{id}/members": {
             "get": {
                 "produces": [
@@ -1261,8 +1616,8 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Measurement timing",
-                        "name": "timing",
+                        "description": "Meal timing (pre_meal, post_meal)",
+                        "name": "mealTiming",
                         "in": "query"
                     },
                     {
@@ -1393,6 +1748,506 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/notification-tokens/deactivate": {
+            "post": {
+                "description": "Deactivate the FCM notification token bound to the authenticated user and device during logout/device switch",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "notification-tokens"
+                ],
+                "summary": "Deactivate notification token",
+                "parameters": [
+                    {
+                        "description": "Notification token deactivate payload",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.DeactivateNotificationTokenRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Notification token deactivated successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/notification-tokens/register": {
+            "post": {
+                "description": "Register or update an FCM notification token for the authenticated user and device",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "notification-tokens"
+                ],
+                "summary": "Register notification token",
+                "parameters": [
+                    {
+                        "description": "Notification token payload",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.RegisterNotificationTokenRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Notification token registered successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/prescriptions": {
+            "get": {
+                "description": "Get prescriptions filtered by patient ID or status (staff use patientId query param)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "prescriptions"
+                ],
+                "summary": "Get prescriptions",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Patient ID",
+                        "name": "patientId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Prescription status (active, completed, discontinued, expired)",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Return only the latest prescription",
+                        "name": "latest",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Prescriptions retrieved successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a new prescription for a patient (doctor only)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "prescriptions"
+                ],
+                "summary": "Create a prescription",
+                "parameters": [
+                    {
+                        "description": "Prescription details",
+                        "name": "prescription",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.CreatePrescriptionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Prescription created successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/prescriptions/me": {
+            "get": {
+                "description": "Retrieve all prescriptions for the authenticated patient",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "prescriptions"
+                ],
+                "summary": "Get my prescriptions",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Prescription status (active, completed, discontinued, expired)",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Return only the latest prescription",
+                        "name": "latest",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Prescriptions retrieved successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/prescriptions/{id}": {
+            "get": {
+                "description": "Retrieve a prescription by its ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "prescriptions"
+                ],
+                "summary": "Get prescription by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Prescription ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Prescription retrieved successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "Update prescription details (doctor only)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "prescriptions"
+                ],
+                "summary": "Update prescription",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Prescription ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Update fields",
+                        "name": "update",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdatePrescriptionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Prescription updated successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/prescriptions/{id}/status": {
+            "patch": {
+                "description": "Update only the status of a prescription (doctor only)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "prescriptions"
+                ],
+                "summary": "Update prescription status",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Prescription ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Status update",
+                        "name": "update",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdatePrescriptionStatusRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Prescription status updated successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -2140,6 +2995,48 @@ const docTemplate = `{
                 }
             }
         },
+        "/users/nurses/me": {
+            "get": {
+                "description": "Retrieve the full profile of the authenticated nurse",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "nurses"
+                ],
+                "summary": "Get my nurse profile",
+                "responses": {
+                    "200": {
+                        "description": "Nurse profile retrieved successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Nurse not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/users/nurses/{id}": {
             "get": {
                 "description": "Retrieve a nurse's information by their ID",
@@ -2836,6 +3733,17 @@ const docTemplate = `{
                 "KindMedication"
             ]
         },
+        "domain.MealTiming": {
+            "type": "string",
+            "enum": [
+                "pre_meal",
+                "post_meal"
+            ],
+            "x-enum-varnames": [
+                "MealTimingPreMeal",
+                "MealTimingPostMeal"
+            ]
+        },
         "domain.MeasurementType": {
             "type": "string",
             "enum": [
@@ -2847,6 +3755,21 @@ const docTemplate = `{
                 "TypeGlucose"
             ]
         },
+        "domain.PrescriptionStatus": {
+            "type": "string",
+            "enum": [
+                "active",
+                "completed",
+                "discontinued",
+                "expired"
+            ],
+            "x-enum-varnames": [
+                "PrescriptionStatusActive",
+                "PrescriptionStatusCompleted",
+                "PrescriptionStatusDiscontinued",
+                "PrescriptionStatusExpired"
+            ]
+        },
         "domain.ReminderStatus": {
             "type": "string",
             "enum": [
@@ -2856,10 +3779,10 @@ const docTemplate = `{
                 "canceled"
             ],
             "x-enum-varnames": [
-                "StatusActive",
-                "StatusPaused",
-                "StatusExpired",
-                "StatusCanceled"
+                "ReminderStatusActive",
+                "ReminderStatusPaused",
+                "ReminderStatusExpired",
+                "ReminderStatusCanceled"
             ]
         },
         "domain.Status": {
@@ -2873,15 +3796,17 @@ const docTemplate = `{
                 "StatusAck"
             ]
         },
-        "domain.Timing": {
+        "domain.TimeOfDay": {
             "type": "string",
             "enum": [
-                "pre",
-                "post"
+                "morning",
+                "noon",
+                "evening"
             ],
             "x-enum-varnames": [
-                "TimingPre",
-                "TimingPost"
+                "TimeOfDayMorning",
+                "TimeOfDayNoon",
+                "TimeOfDayEvening"
             ]
         },
         "dto.ActivateAccountRequest": {
@@ -2892,6 +3817,103 @@ const docTemplate = `{
             "properties": {
                 "activateToken": {
                     "type": "string"
+                }
+            }
+        },
+        "dto.ActivityLogListResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.ActivityLogResponse"
+                    }
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "pageSize": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                },
+                "totalPages": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.ActivityLogResponse": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "date": {
+                    "description": "YYYY-MM-DD format",
+                    "type": "string"
+                },
+                "errorMsg": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "ipAddress": {
+                    "type": "string"
+                },
+                "metadata": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "method": {
+                    "type": "string"
+                },
+                "path": {
+                    "type": "string"
+                },
+                "resource": {
+                    "type": "string"
+                },
+                "resourceId": {
+                    "type": "string"
+                },
+                "statusCode": {
+                    "type": "integer"
+                },
+                "timestamp": {
+                    "description": "HH:MM format",
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "userId": {
+                    "type": "string"
+                },
+                "userName": {
+                    "type": "string"
+                },
+                "userRole": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.ActivityLogStatsResponse": {
+            "type": "object",
+            "properties": {
+                "byType": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                },
+                "total": {
+                    "type": "integer"
                 }
             }
         },
@@ -2948,6 +3970,17 @@ const docTemplate = `{
                 "heartRate": {
                     "type": "number"
                 },
+                "mealTiming": {
+                    "enum": [
+                        "pre_meal",
+                        "post_meal"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/domain.MealTiming"
+                        }
+                    ]
+                },
                 "note": {
                     "type": "string"
                 },
@@ -2963,17 +3996,6 @@ const docTemplate = `{
                 "temperature": {
                     "type": "number"
                 },
-                "timing": {
-                    "enum": [
-                        "pre",
-                        "post"
-                    ],
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/domain.Timing"
-                        }
-                    ]
-                },
                 "type": {
                     "enum": [
                         "bp",
@@ -2984,6 +4006,43 @@ const docTemplate = `{
                             "$ref": "#/definitions/domain.MeasurementType"
                         }
                     ]
+                }
+            }
+        },
+        "dto.CreatePrescriptionRequest": {
+            "type": "object",
+            "required": [
+                "daysOfWeek",
+                "medications",
+                "patientId",
+                "startDate",
+                "timezone"
+            ],
+            "properties": {
+                "daysOfWeek": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "endDate": {
+                    "type": "string"
+                },
+                "medications": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/definitions/dto.PrescriptionMedicationRequest"
+                    }
+                },
+                "patientId": {
+                    "type": "string"
+                },
+                "startDate": {
+                    "type": "string"
+                },
+                "timezone": {
+                    "type": "string"
                 }
             }
         },
@@ -3015,6 +4074,17 @@ const docTemplate = `{
                 },
                 "kind": {
                     "$ref": "#/definitions/domain.Kind"
+                },
+                "mealTiming": {
+                    "enum": [
+                        "pre_meal",
+                        "post_meal"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/domain.MealTiming"
+                        }
+                    ]
                 },
                 "message": {
                     "type": "string"
@@ -3095,6 +4165,17 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.DeactivateNotificationTokenRequest": {
+            "type": "object",
+            "required": [
+                "deviceId"
+            ],
+            "properties": {
+                "deviceId": {
+                    "type": "string"
+                }
+            }
+        },
         "dto.ForgotPasswordRequest": {
             "type": "object",
             "required": [
@@ -3135,6 +4216,70 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.MedicationDoseRequest": {
+            "type": "object",
+            "required": [
+                "pillCount",
+                "timeOfDay"
+            ],
+            "properties": {
+                "mealTiming": {
+                    "enum": [
+                        "pre_meal",
+                        "post_meal"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/domain.MealTiming"
+                        }
+                    ]
+                },
+                "pillCount": {
+                    "type": "number"
+                },
+                "timeOfDay": {
+                    "enum": [
+                        "morning",
+                        "noon",
+                        "evening"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/domain.TimeOfDay"
+                        }
+                    ]
+                }
+            }
+        },
+        "dto.PrescriptionMedicationRequest": {
+            "type": "object",
+            "required": [
+                "dosage",
+                "drugName",
+                "schedule"
+            ],
+            "properties": {
+                "dosage": {
+                    "type": "string"
+                },
+                "drugName": {
+                    "type": "string"
+                },
+                "instructions": {
+                    "type": "string"
+                },
+                "route": {
+                    "type": "string"
+                },
+                "schedule": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/definitions/dto.MedicationDoseRequest"
+                    }
+                }
+            }
+        },
         "dto.RefreshRequest": {
             "type": "object",
             "required": [
@@ -3142,6 +4287,29 @@ const docTemplate = `{
             ],
             "properties": {
                 "refreshToken": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.RegisterNotificationTokenRequest": {
+            "type": "object",
+            "required": [
+                "deviceId",
+                "platform",
+                "provider",
+                "token"
+            ],
+            "properties": {
+                "deviceId": {
+                    "type": "string"
+                },
+                "platform": {
+                    "type": "string"
+                },
+                "provider": {
+                    "type": "string"
+                },
+                "token": {
                     "type": "string"
                 }
             }
@@ -3247,6 +4415,20 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.UpdateDepartmentRequest": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
         "dto.UpdateDoctorRequest": {
             "type": "object",
             "properties": {
@@ -3294,6 +4476,9 @@ const docTemplate = `{
                 "heartRate": {
                     "type": "number"
                 },
+                "mealTiming": {
+                    "$ref": "#/definitions/domain.MealTiming"
+                },
                 "note": {
                     "type": "string"
                 },
@@ -3305,9 +4490,6 @@ const docTemplate = `{
                 },
                 "temperature": {
                     "type": "number"
-                },
-                "timing": {
-                    "$ref": "#/definitions/domain.Timing"
                 },
                 "type": {
                     "enum": [
@@ -3372,11 +4554,11 @@ const docTemplate = `{
                 "phone": {
                     "type": "string"
                 },
-                "ward": {
-                    "type": "string"
-                },
                 "workplace": {
                     "type": "string"
+                },
+                "yearsOfExperience": {
+                    "type": "integer"
                 }
             }
         },
@@ -3409,6 +4591,54 @@ const docTemplate = `{
                 },
                 "phone": {
                     "type": "string"
+                }
+            }
+        },
+        "dto.UpdatePrescriptionRequest": {
+            "type": "object",
+            "required": [
+                "daysOfWeek",
+                "medications",
+                "startDate",
+                "status",
+                "timezone"
+            ],
+            "properties": {
+                "daysOfWeek": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "endDate": {
+                    "type": "string"
+                },
+                "medications": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/definitions/dto.PrescriptionMedicationRequest"
+                    }
+                },
+                "startDate": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/domain.PrescriptionStatus"
+                },
+                "timezone": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.UpdatePrescriptionStatusRequest": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "status": {
+                    "$ref": "#/definitions/domain.PrescriptionStatus"
                 }
             }
         },

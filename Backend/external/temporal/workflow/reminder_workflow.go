@@ -32,16 +32,16 @@ func ReminderWorkflow(ctx workflow.Context, input dto.ReminderWorkflowInput) err
 	}
 
 	for {
-		if reminder.Status == domain.StatusCanceled || reminder.Status == domain.StatusExpired {
+		if reminder.Status == domain.ReminderStatusCanceled || reminder.Status == domain.ReminderStatusExpired {
 			logger.Info("Reminder stopped", "id", reminder.ID.Hex(), "status", reminder.Status)
 			return nil
 		}
 
 		now := workflow.Now(ctx)
 
-		if reminder.Status == domain.StatusPaused {
+		if reminder.Status == domain.ReminderStatusPaused {
 			if now.After(reminder.EndDate) {
-				_ = workflow.ExecuteActivity(ctx, "UpdateReminderStatusActivity", reminder.ID.Hex(), domain.StatusExpired).Get(ctx, nil)
+				_ = workflow.ExecuteActivity(ctx, "UpdateReminderStatusActivity", reminder.ID.Hex(), domain.ReminderStatusExpired).Get(ctx, nil)
 				logger.Info("Reminder expired while paused", "id", reminder.ID.Hex())
 				return nil
 			}
@@ -60,7 +60,7 @@ func ReminderWorkflow(ctx workflow.Context, input dto.ReminderWorkflowInput) err
 
 		nextTime, ok := reminder_helper.CalculateNextReminderTime(now, &reminder)
 		if !ok {
-			_ = workflow.ExecuteActivity(ctx, "UpdateReminderStatusActivity", reminder.ID.Hex(), domain.StatusExpired).Get(ctx, nil)
+			_ = workflow.ExecuteActivity(ctx, "UpdateReminderStatusActivity", reminder.ID.Hex(), domain.ReminderStatusExpired).Get(ctx, nil)
 			logger.Info("Reminder expired", "id", reminder.ID.Hex())
 			return nil
 		}
@@ -83,7 +83,7 @@ func ReminderWorkflow(ctx workflow.Context, input dto.ReminderWorkflowInput) err
 		if !timerFired {
 			continue
 		}
-		if reminder.Status != domain.StatusActive {
+		if reminder.Status != domain.ReminderStatusActive {
 			continue
 		}
 

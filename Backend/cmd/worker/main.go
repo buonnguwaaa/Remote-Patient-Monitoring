@@ -8,10 +8,12 @@ import (
 )
 
 func main() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Println("[Worker-warning] No .env file found")
+	if err := godotenv.Load(); err != nil {
+		log.Println("[GIN-warning] No .env file found")
+	} else {
+		log.Println("[GIN-info] Successfully loaded .env file")
 	}
+
 	if err := worker.Start(); err != nil {
 		log.Fatal("[Worker-error] Failed to start worker:", err)
 	} else {

@@ -31,6 +31,7 @@ type MainServerContainer struct {
 	DepartmentRepo        repository.DepartmentRepository
 	AssignmentRepo        repository.AssignmentRepository
 	ReminderRepo          repository.ReminderRepository
+	PrescriptionRepo      repository.PrescriptionRepository
 	ConversationRepo      chatRepository.ConversationRepository
 	MessageRepo           chatRepository.MessageRepository
 	ActivityLogRepo       *repository.ActivityLogRepository
@@ -43,6 +44,7 @@ type MainServerContainer struct {
 	DepartmentService   service.DepartmentService
 	AssignmentService   service.AssignmentService
 	ReminderService     service.ReminderService
+	PrescriptionService service.PrescriptionService
 	ChatService         service.ChatService
 	NotificationService service.NotificationService
 
@@ -54,6 +56,7 @@ type MainServerContainer struct {
 	DepartmentHandler        *handler.DepartmentHandler
 	AssignmentHandler        *handler.AssignmentHandler
 	ReminderHandler          *handler.ReminderHandler
+	PrescriptionHandler      *handler.PrescriptionHandler
 	ChatHandler              *handler.ChatHandler
 	NotificationTokenHandler *handler.NotificationTokenHandler
 	NotificationHandler      *handler.NotificationHandler
@@ -92,6 +95,7 @@ func NewMainServerContainer() *MainServerContainer {
 	c.DepartmentRepo = repository.NewDepartmentRepository(db)
 	c.AssignmentRepo = repository.NewAssignmentRepository(db)
 	c.ReminderRepo = repository.NewReminderRepository(db)
+	c.PrescriptionRepo = repository.NewPrescriptionRepository(db)
 	c.ConversationRepo = chatRepository.NewConversationRepository(db)
 	c.MessageRepo = chatRepository.NewMessageRepository(db)
 	c.ActivityLogRepo = repository.NewActivityLogRepository(db)
@@ -110,6 +114,7 @@ func NewMainServerContainer() *MainServerContainer {
 	c.DepartmentService = service.NewDepartmentService(c.DepartmentRepo, c.DoctorRepo, c.NurseRepo)
 	c.AssignmentService = service.NewAssignmentService(c.AssignmentRepo, c.BaseUserRepo)
 	c.ReminderService = service.NewReminderService(c.PatientRepo, c.ReminderRepo)
+	c.PrescriptionService = service.NewPrescriptionService(c.PatientRepo, c.PrescriptionRepo, c.ReminderRepo, c.ReminderService)
 	c.ChatService = service.NewChatService(c.ConversationRepo, c.MessageRepo, c.AssignmentRepo)
 	c.NotificationService = service.NewNotificationService(c.NotificationTokenRepo, c.NotificationRepo, nil)
 
@@ -120,6 +125,7 @@ func NewMainServerContainer() *MainServerContainer {
 	c.DepartmentHandler = handler.NewDepartmentHandler(c.DepartmentService)
 	c.AssignmentHandler = handler.NewAssignmentHandler(c.AssignmentService)
 	c.ReminderHandler = handler.NewReminderHandler(c.ReminderService)
+	c.PrescriptionHandler = handler.NewPrescriptionHandler(c.PrescriptionService)
 	c.ChatHandler = handler.NewChatHandler(c.ChatService)
 	c.NotificationTokenHandler = handler.NewNotificationTokenHandler(c.NotificationService)
 	c.NotificationHandler = handler.NewNotificationHandler(c.NotificationService)
