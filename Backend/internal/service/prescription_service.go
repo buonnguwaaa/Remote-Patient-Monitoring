@@ -508,30 +508,37 @@ func validateMedications(medications []domain.PrescriptionMedication) error {
 
 	for i, med := range medications {
 		if med.DrugName == "" {
-			return fmt.Errorf("medication[%d]: drug name is required", i)
+			return fmt.Errorf("Thuốc thứ %d: tên thuốc không được để trống", i+1)
 		}
 		if len(med.Schedule) == 0 {
-			return fmt.Errorf("medication[%d]: at least one dose schedule is required", i)
+			return fmt.Errorf("Thuốc thứ %d: cần ít nhất một lịch uống thuốc", i+1)
 		}
 
 		seen := make(map[string]struct{})
 		for j, dose := range med.Schedule {
 			if dose.PillCount <= 0 {
-				return fmt.Errorf("medication[%d].schedule[%d]: pill count must be greater than 0", i, j)
+				return fmt.Errorf("Thuốc thứ %d, cữ thứ %d: số lượng viên phải lớn hơn 0", i+1, j+1)
 			}
 			if err := domain.ValidateDoseTime(dose); err != nil {
-				return fmt.Errorf("medication[%d].schedule[%d]: %w", i, j, err)
+				return fmt.Errorf("Thuốc thứ %d, cữ thứ %d: %w", i+1, j+1, err)
 			}
 			switch dose.MealTiming {
 			case "", domain.MealTimingPreMeal, domain.MealTimingPostMeal:
 			default:
-				return fmt.Errorf("medication[%d].schedule[%d]: invalid meal timing", i, j)
+				return fmt.Errorf("Thuốc thứ %d, cữ thứ %d: thời điểm ăn không hợp lệ", i+1, j+1)
 			}
 
 			hour, minute := domain.DoseClock(dose)
 			key := fmt.Sprintf("%s:%s:%02d:%02d", dose.TimeOfDay, dose.MealTiming, hour, minute)
 			if _, dup := seen[key]; dup {
-				return fmt.Errorf("medication[%d]: duplicate schedule slot (%s, %s, %s)", i, dose.TimeOfDay, dose.MealTiming, domain.FormatClock(hour, minute))
+				var todVN string
+				switch dose.TimeOfDay {
+				case "morning": todVN = "Sáng"
+				case "noon": todVN = "Trưa"
+				case "evening": todVN = "Tối"
+				default: todVN = string(dose.TimeOfDay)
+				}
+				return fmt.Errorf("Thuốc thứ %d: bị trùng lịch uống thuốc (Buổi %s, %s)", i+1, todVN, domain.FormatClock(hour, minute))
 			}
 			seen[key] = struct{}{}
 		}
@@ -568,6 +575,8 @@ func prescriptionEndDate(end *time.Time, start time.Time) time.Time {
 	}
 	return start.AddDate(1, 0, 0)
 }
+
+
 
 func toPrescriptionResponse(p *domain.Prescription) *dto.PrescriptionResponse {
 	return &dto.PrescriptionResponse{

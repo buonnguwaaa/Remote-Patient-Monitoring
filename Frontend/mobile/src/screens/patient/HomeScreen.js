@@ -16,6 +16,7 @@ import { getMyAlerts } from "../../api/alertApi";
 import { useAuth } from "../../hooks/useAuth";
 import { getMeasurements } from "../../api/measurementApi";
 import { getMyPatientProfile } from "../../api/profileApi";
+import { getMedicationAdherence } from "../../api/prescriptionApi";
 import {
   buildAlertPreviewItems,
   extractData,
@@ -79,10 +80,12 @@ export default function HomeScreen() {
   const [profile, setProfile] = useState(null);
   const [measurements, setMeasurements] = useState([]);
   const [alerts, setAlerts] = useState([]);
+  const [medications, setMedications] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
   const [alertError, setAlertError] = useState("");
+  const [medicationError, setMedicationError] = useState("");
 
   const loadHomeData = useCallback(async (isRefresh = false) => {
     try {
@@ -107,32 +110,58 @@ export default function HomeScreen() {
       setProfile(profileData);
 
       const patientId = profileData.id || user?._id || user?.id;
-      const [measurementResponse, alertResponse] = await Promise.all([
+      const [measurementResult, alertResult, adherenceResult] = await Promise.allSettled([
         patientId ? getMeasurements(patientId) : Promise.resolve(null),
         getMyAlerts(),
+        patientId ? getMedicationAdherence(1) : Promise.resolve(null),
       ]);
 
       let nextError = "";
 
-      if (!patientId) {
-        setMeasurements([]);
-      } else if (!measurementResponse?.ok) {
+      // Handle measurements
+      if (measurementResult.status === "fulfilled") {
+        const measurementResponse = measurementResult.value;
+        if (!patientId) {
+          setMeasurements([]);
+        } else if (!measurementResponse?.ok) {
+          setMeasurements([]);
+          nextError = "Không thể tải dữ liệu đo gần đây.";
+        } else {
+          setMeasurements(extractList(measurementResponse));
+        }
+      } else {
         setMeasurements([]);
         nextError = "Không thể tải dữ liệu đo gần đây.";
-      } else {
-        setMeasurements(extractList(measurementResponse));
       }
 
-      if (!alertResponse?.ok) {
-        setAlerts([]);
-        setAlertError(
-          alertResponse?.body?.error ||
-            alertResponse?.error ||
-            "Không thể tải cảnh báo gần đây."
-        );
+      // Handle alerts
+      if (alertResult.status === "fulfilled") {
+        const alertResponse = alertResult.value;
+        if (!alertResponse?.ok) {
+          setAlerts([]);
+          setAlertError(
+            alertResponse?.body?.error ||
+              alertResponse?.error ||
+              "Không thể tải cảnh báo gần đây."
+          );
+        } else {
+          setAlerts(sortAlertsByCreatedAt(extractList(alertResponse)));
+        }
       } else {
-        setAlerts(sortAlertsByCreatedAt(extractList(alertResponse)));
+        setAlerts([]);
+        setAlertError("Không thể tải cảnh báo gần đây.");
       }
+
+      // Handle medications
+      if (adherenceResult.status === "fulfilled") {
+        setMedications(adherenceResult.value);
+        setMedicationError("");
+      } else {
+        setMedications(null);
+        setMedicationError("Lỗi: " + (adherenceResult.reason?.message || adherenceResult.reason));
+      }
+
+      // (removed to accommodate Promise.allSettled logic above)
 
       if (nextError) {
         throw new Error(nextError);
@@ -249,9 +278,42 @@ export default function HomeScreen() {
           </View>
           <View style={styles.headerBottomRow}>
             <Text style={styles.chipPrimary}>Theo dõi từ xa</Text>
-            <Text style={styles.chipLight}>Đồng bộ dữ liệu thật</Text>
+            <Text style={styles.chipLight}>Đồng bộ thời gian thực</Text>
           </View>
         </View>
+
+        {/* ---- Medication Card ---- */}
+        <TouchableOpacity
+          activeOpacity={0.9}
+          onPress={() => navigation.navigate("PatientMedications")}
+          style={styles.headerCard}
+        >
+          <View style={styles.headerTopRow}>
+            <View style={[styles.headerIcon, { backgroundColor: "#EFF6FF" }]}>
+              <Ionicons name="medical" size={26} color="#2563EB" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.headerTitle}>Thuốc hôm nay</Text>
+              {medicationError ? (
+                <Text style={[styles.headerSub, { color: "#EF4444" }]}>
+                  {medicationError}
+                </Text>
+              ) : (() => {
+                  const todayStr = medications?.to;
+                  const todayData = medications?.days?.find(d => d.date === todayStr);
+                  if (todayData && todayData.expected > 0) {
+                    return (
+                      <Text style={styles.headerSub}>
+                        {todayData.taken} / {todayData.expected} liều đã uống
+                      </Text>
+                    );
+                  }
+                  return <Text style={styles.headerSub}>Không có lịch uống thuốc hôm nay</Text>;
+              })()}
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+          </View>
+        </TouchableOpacity>
 
         <View style={styles.greetingBox}>
           <Text style={styles.greeting}>Xin chào, {displayName}</Text>
@@ -292,11 +354,11 @@ export default function HomeScreen() {
                   {latestVitals.bp ? (
                     <>
                       <Text style={styles.vitalMainValue}>
-                        {latestVitals.bp.bloodPressure?.systolic || 0}/
-                        {latestVitals.bp.bloodPressure?.diastolic || 0}
+                        {Math.round(latestVitals.bp.bloodPressure?.systolic || 0)}/
+                        {Math.round(latestVitals.bp.bloodPressure?.diastolic || 0)}
                       </Text>
                       <Text style={styles.vitalUnit}>
-                        mmHg · {latestVitals.bp.heartRate || 0} bpm
+                        mmHg · {Math.round(latestVitals.bp.heartRate || 0)} bpm
                       </Text>
                       <Text style={styles.vitalMeta}>
                         {formatTimingLabel(latestVitals.bp.timing)} ·{" "}
@@ -315,7 +377,7 @@ export default function HomeScreen() {
                   </View>
                   {latestVitals.glucose ? (
                     <>
-                      <Text style={styles.vitalMainValue}>{latestVitals.glucose.glucose}</Text>
+                      <Text style={styles.vitalMainValue}>{Math.round(latestVitals.glucose.glucose)}</Text>
                       <Text style={styles.vitalUnit}>
                         mg/dL · {formatTimingLabel(latestVitals.glucose.timing)}
                       </Text>
@@ -335,7 +397,7 @@ export default function HomeScreen() {
                   </View>
                   {latestVitals.spo2 ? (
                     <>
-                      <Text style={styles.vitalMainValue}>{latestVitals.spo2.spo2}%</Text>
+                      <Text style={styles.vitalMainValue}>{Math.round(latestVitals.spo2.spo2)}%</Text>
                       <Text style={styles.vitalUnit}>Độ bão hòa oxy</Text>
                       <Text style={styles.vitalMeta}>
                         {formatRelativeTime(latestVitals.spo2.createdAt)}
@@ -353,7 +415,7 @@ export default function HomeScreen() {
                   </View>
                   {latestVitals.temperature ? (
                     <>
-                      <Text style={styles.vitalMainValue}>{latestVitals.temperature.temperature}</Text>
+                      <Text style={styles.vitalMainValue}>{Number(latestVitals.temperature.temperature).toFixed(1)}</Text>
                       <Text style={styles.vitalUnit}>°C</Text>
                       <Text style={styles.vitalMeta}>
                         {formatRelativeTime(latestVitals.temperature.createdAt)}
@@ -375,7 +437,7 @@ export default function HomeScreen() {
                   </View>
                   {latestVitals.heartRate ? (
                     <>
-                      <Text style={styles.vitalMainValue}>{latestVitals.heartRate.heartRate}</Text>
+                      <Text style={styles.vitalMainValue}>{Math.round(latestVitals.heartRate.heartRate)}</Text>
                       <Text style={styles.vitalUnit}>bpm</Text>
                       <Text style={styles.vitalMeta}>
                         {formatRelativeTime(latestVitals.heartRate.createdAt)}
@@ -394,7 +456,7 @@ export default function HomeScreen() {
                   {latestVitals.respiratoryRate ? (
                     <>
                       <Text style={styles.vitalMainValue}>
-                        {latestVitals.respiratoryRate.respiratoryRate}
+                        {Math.round(latestVitals.respiratoryRate.respiratoryRate)}
                       </Text>
                       <Text style={styles.vitalUnit}>lần/phút</Text>
                       <Text style={styles.vitalMeta}>
@@ -487,7 +549,7 @@ export default function HomeScreen() {
                     ) : null}
 
                     <View style={styles.alertRuleRow}>
-                      <Text style={styles.alertRuleText}>Quy tắc: {alert.ruleText}</Text>
+                      <View style={{ flex: 1 }} />
                       <Text
                         style={[
                           styles.alertRuleText,

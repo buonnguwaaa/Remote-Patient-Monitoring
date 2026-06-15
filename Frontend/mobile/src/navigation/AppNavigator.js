@@ -30,6 +30,7 @@ import InputMeasurementPatientScreen from "../screens/patient/InputMeasurementPa
 import NotificationInboxScreen from "../screens/patient/NotificationInboxScreen";
 import TrackingScreen from "../screens/patient/TrackingScreen";
 import NotificationContainerScreen from "../screens/patient/NotificationContainerScreen";
+import MedicationScreen from "../screens/patient/MedicationScreen";
 
 import NursePatientListScreen from "../screens/nurse/NursePatientListScreen";
 import MeasurementInputScreen from "../screens/nurse/MeasurementInputScreen";
@@ -190,6 +191,7 @@ function RootNavigator() {
           <Stack.Screen name="PatientHistory" component={HistoryScreen} />
           <Stack.Screen name="PatientAlerts" component={AlertScreen} />
           <Stack.Screen name="PatientNotifications" component={NotificationInboxScreen} />
+          <Stack.Screen name="PatientMedications" component={MedicationScreen} />
         </>
       )}
     </Stack.Navigator>

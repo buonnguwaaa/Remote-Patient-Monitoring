@@ -1,7 +1,12 @@
 import React, { createContext, useEffect, useState } from "react";
 import * as authApi from "../api/authApi";
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import CookieManager from '@react-native-cookies/cookies';
+import { Platform } from 'react-native';
+
+let CookieManager = null;
+if (Platform.OS !== 'web') {
+  CookieManager = require('@react-native-cookies/cookies').default || require('@react-native-cookies/cookies');
+}
 import {
   attachPushTokenRefreshListener,
   deactivateCurrentDevicePushToken,
@@ -116,7 +121,9 @@ export function AuthProvider({ children }) {
     }
 
     try {
-      await CookieManager.clearAll();
+      if (CookieManager) {
+        await CookieManager.clearAll();
+      }
     } catch (e) {
       console.warn('Failed to clear cookies', e);
     }
