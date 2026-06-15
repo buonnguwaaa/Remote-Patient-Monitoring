@@ -73,22 +73,46 @@ func (h *PrescriptionHandler) CreatePrescription(c *gin.Context) {
 
 // GetPrescriptions retrieves prescriptions based on filters
 // @Summary Get prescriptions
-// @Description Get prescriptions filtered by patient ID or status (staff use patientId query param)
+// @Description Get prescriptions filtered by patient, status, assigned doctor/nurse, or prescriber. Doctors and nurses default to their own assigned patients when doctorId/nurseId is omitted.
 // @Tags prescriptions
 // @Accept json
 // @Produce json
 // @Param patientId query string false "Patient ID"
 // @Param status query string false "Prescription status (active, completed, discontinued, expired)"
 // @Param latest query bool false "Return only the latest prescription"
+// @Param doctorId query string false "Filter prescriptions for patients assigned to this doctor"
+// @Param nurseId query string false "Filter prescriptions for patients assigned to this nurse"
+// @Param prescribedBy query string false "Filter prescriptions written by this doctor"
 // @Success 200 {object} map[string]interface{} "Prescriptions retrieved successfully"
 // @Failure 400 {object} map[string]string "Bad request"
 // @Failure 401 {object} map[string]string "Unauthorized"
 // @Router /prescriptions [get]
 func (h *PrescriptionHandler) GetPrescriptions(c *gin.Context) {
 	input := &usecase.GetPrescriptionsInput{
-		PatientID: c.Query("patientId"),
-		Status:    domain.PrescriptionStatus(c.Query("status")),
-		IsLatest:  c.Query("latest") == "true",
+		PatientID:    c.Query("patientId"),
+		Status:       domain.PrescriptionStatus(c.Query("status")),
+		IsLatest:     c.Query("latest") == "true",
+		DoctorID:     c.Query("doctorId"),
+		NurseID:      c.Query("nurseId"),
+		PrescribedBy: c.Query("prescribedBy"),
+	}
+
+	if roleVal, roleExists := c.Get("role"); roleExists {
+		if role, ok := roleVal.(userDomain.Role); ok {
+			userID, userExists := c.Get("userId")
+			if userExists {
+				switch role {
+				case userDomain.RoleDoctor:
+					if input.DoctorID == "" {
+						input.DoctorID = userID.(string)
+					}
+				case userDomain.RoleNurse:
+					if input.NurseID == "" {
+						input.NurseID = userID.(string)
+					}
+				}
+			}
+		}
 	}
 
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
@@ -283,6 +307,8 @@ func medicationsFromDTO(meds []dto.PrescriptionMedicationRequest) []domain.Presc
 		for j, dose := range med.Schedule {
 			schedule[j] = domain.MedicationDose{
 				TimeOfDay:  dose.TimeOfDay,
+				Hour:       dose.Hour,
+				Minute:     dose.Minute,
 				MealTiming: dose.MealTiming,
 				PillCount:  dose.PillCount,
 			}

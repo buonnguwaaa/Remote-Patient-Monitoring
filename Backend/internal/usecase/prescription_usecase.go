@@ -18,9 +18,12 @@ type CreatePrescriptionInput struct {
 }
 
 type GetPrescriptionsInput struct {
-	PatientID string
-	Status    domain.PrescriptionStatus
-	IsLatest  bool
+	PatientID    string
+	Status       domain.PrescriptionStatus
+	IsLatest     bool
+	DoctorID     string
+	NurseID      string
+	PrescribedBy string
 }
 
 type GetPrescriptionByIDInput struct {

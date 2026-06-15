@@ -206,6 +206,19 @@ definitions:
     - patientId
     - type
     type: object
+  dto.CreateMedicationIntakeRequest:
+    properties:
+      dose:
+        $ref: '#/definitions/dto.MedicationDoseRequest'
+      drugName:
+        type: string
+      prescriptionId:
+        type: string
+    required:
+    - dose
+    - drugName
+    - prescriptionId
+    type: object
   dto.CreatePrescriptionRequest:
     properties:
       daysOfWeek:
@@ -349,12 +362,20 @@ definitions:
     type: object
   dto.MedicationDoseRequest:
     properties:
+      hour:
+        maximum: 23
+        minimum: 0
+        type: integer
       mealTiming:
         allOf:
         - $ref: '#/definitions/domain.MealTiming'
         enum:
         - pre_meal
         - post_meal
+      minute:
+        maximum: 59
+        minimum: 0
+        type: integer
       pillCount:
         type: number
       timeOfDay:
@@ -1903,6 +1924,87 @@ paths:
       summary: Update an existing measurement
       tags:
       - measurements
+  /medication-intakes:
+    post:
+      consumes:
+      - application/json
+      description: Record a medication intake for today's scheduled dose
+      parameters:
+      - description: Intake details
+        in: body
+        name: intake
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateMedicationIntakeRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Medication intake recorded
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Mark medication as taken
+      tags:
+      - medication-intakes
+  /medication-intakes/adherence:
+    get:
+      consumes:
+      - application/json
+      description: Compare prescription schedule against intake log to show taken,
+        missed, and pending doses
+      parameters:
+      - description: Number of days including today (default 7, max 90)
+        in: query
+        name: days
+        type: integer
+      - description: Start date (YYYY-MM-DD)
+        in: query
+        name: from
+        type: string
+      - description: End date (YYYY-MM-DD)
+        in: query
+        name: to
+        type: string
+      - description: Patient ID (staff only)
+        in: query
+        name: patientId
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Adherence retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get medication adherence
+      tags:
+      - medication-intakes
   /notification-tokens/deactivate:
     post:
       consumes:
@@ -1980,8 +2082,9 @@ paths:
     get:
       consumes:
       - application/json
-      description: Get prescriptions filtered by patient ID or status (staff use patientId
-        query param)
+      description: Get prescriptions filtered by patient, status, assigned doctor/nurse,
+        or prescriber. Doctors and nurses default to their own assigned patients when
+        doctorId/nurseId is omitted.
       parameters:
       - description: Patient ID
         in: query
@@ -1995,6 +2098,18 @@ paths:
         in: query
         name: latest
         type: boolean
+      - description: Filter prescriptions for patients assigned to this doctor
+        in: query
+        name: doctorId
+        type: string
+      - description: Filter prescriptions for patients assigned to this nurse
+        in: query
+        name: nurseId
+        type: string
+      - description: Filter prescriptions written by this doctor
+        in: query
+        name: prescribedBy
+        type: string
       produces:
       - application/json
       responses:
@@ -2236,6 +2351,29 @@ paths:
               type: string
             type: object
       summary: Get my prescriptions
+      tags:
+      - prescriptions
+  /prescriptions/me/today:
+    get:
+      consumes:
+      - application/json
+      description: Get today's medication checklist with taken/expected counts per
+        drug
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Today's medications retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get today's medications
       tags:
       - prescriptions
   /reminders:

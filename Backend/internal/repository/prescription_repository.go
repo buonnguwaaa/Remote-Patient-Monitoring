@@ -26,9 +26,12 @@ type PrescriptionRepository interface {
 }
 
 type PrescriptionFilter struct {
-	PatientID string
-	Status    domain.PrescriptionStatus
-	IsLatest  bool
+	PatientID    string
+	Status       domain.PrescriptionStatus
+	IsLatest     bool
+	DoctorID     string
+	NurseID      string
+	PrescribedBy string
 }
 
 func NewPrescriptionRepository(db *mongo.Database) PrescriptionRepository {
@@ -87,6 +90,75 @@ func (r *prescriptionRepository) FindWithFilter(ctx context.Context, filter Pres
 
 	if filter.Status != "" {
 		bsonFilter["status"] = filter.Status
+	}
+
+	if filter.PrescribedBy != "" {
+		prescribedBy, err := primitive.ObjectIDFromHex(filter.PrescribedBy)
+		if err != nil {
+			return nil, err
+		}
+		bsonFilter["prescribedBy"] = prescribedBy
+	}
+
+	if filter.DoctorID != "" || filter.NurseID != "" {
+		pipeline := mongo.Pipeline{{{Key: "$match", Value: bsonFilter}}}
+
+		if filter.DoctorID != "" {
+			doctorID, err := primitive.ObjectIDFromHex(filter.DoctorID)
+			if err != nil {
+				return nil, err
+			}
+			pipeline = append(pipeline,
+				bson.D{{Key: "$lookup", Value: bson.M{
+					"from":         "assignments",
+					"localField":   "patientId",
+					"foreignField": "patientId",
+					"as":           "assignment",
+				}}},
+				bson.D{{Key: "$match", Value: bson.M{
+					"assignment": bson.M{"$elemMatch": bson.M{"doctorId": doctorID}},
+				}}},
+			)
+		}
+
+		if filter.NurseID != "" {
+			nurseID, err := primitive.ObjectIDFromHex(filter.NurseID)
+			if err != nil {
+				return nil, err
+			}
+			pipeline = append(pipeline,
+				bson.D{{Key: "$lookup", Value: bson.M{
+					"from":         "assignments",
+					"localField":   "patientId",
+					"foreignField": "patientId",
+					"as":           "assignment",
+				}}},
+				bson.D{{Key: "$match", Value: bson.M{
+					"assignment": bson.M{"$elemMatch": bson.M{"nurseId": nurseID}},
+				}}},
+			)
+		}
+
+		pipeline = append(pipeline, bson.D{{Key: "$sort", Value: bson.M{"createdAt": -1}}})
+
+		if filter.IsLatest {
+			pipeline = append(pipeline, bson.D{{Key: "$limit", Value: 1}})
+		}
+
+		pipeline = append(pipeline, bson.D{{Key: "$project", Value: bson.M{"assignment": 0}}})
+
+		cursor, err := r.col.Aggregate(ctx, pipeline)
+		if err != nil {
+			return nil, err
+		}
+		defer cursor.Close(ctx)
+
+		var prescriptions []domain.Prescription
+		if err = cursor.All(ctx, &prescriptions); err != nil {
+			return nil, err
+		}
+
+		return prescriptions, nil
 	}
 
 	if filter.IsLatest {

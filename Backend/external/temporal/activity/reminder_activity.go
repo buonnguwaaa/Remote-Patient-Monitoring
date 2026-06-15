@@ -15,11 +15,23 @@ import (
 
 type ReminderActivity struct {
 	reminderRepo        repository.ReminderRepository
+	prescriptionRepo    repository.PrescriptionRepository
+	intakeRepo          repository.MedicationIntakeRepository
 	notificationService service.NotificationService
 }
 
-func NewReminderActivity(repo repository.ReminderRepository, notificationService service.NotificationService) *ReminderActivity {
-	return &ReminderActivity{reminderRepo: repo, notificationService: notificationService}
+func NewReminderActivity(
+	repo repository.ReminderRepository,
+	prescriptionRepo repository.PrescriptionRepository,
+	intakeRepo repository.MedicationIntakeRepository,
+	notificationService service.NotificationService,
+) *ReminderActivity {
+	return &ReminderActivity{
+		reminderRepo:        repo,
+		prescriptionRepo:    prescriptionRepo,
+		intakeRepo:          intakeRepo,
+		notificationService: notificationService,
+	}
 }
 
 func (a *ReminderActivity) GetReminderActivity(ctx context.Context, reminderID string) (*domain.Reminder, error) {
@@ -30,23 +42,31 @@ func (a *ReminderActivity) GetReminderActivity(ctx context.Context, reminderID s
 	return a.reminderRepo.FindByID(ctx, id)
 }
 
-func (a *ReminderActivity) SendReminderActivity(ctx context.Context, reminderID string, scheduledFor string) error {
+func (a *ReminderActivity) SendReminderActivity(ctx context.Context, reminderID string, scheduledFor string) (bool, error) {
 	id, err := util.MustHexToObjectID(reminderID)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	reminder, err := a.reminderRepo.FindByID(ctx, id)
 	if err != nil {
-		return err
+		return false, err
 	}
 	if reminder == nil {
-		return fmt.Errorf("reminder not found")
+		return false, fmt.Errorf("reminder not found")
 	}
 
 	scheduledAt, err := time.Parse(time.RFC3339, scheduledFor)
 	if err != nil {
-		return fmt.Errorf("invalid scheduled reminder time: %w", err)
+		return false, fmt.Errorf("invalid scheduled reminder time: %w", err)
+	}
+
+	skip, err := service.ShouldSkipMedicationReminder(ctx, a.prescriptionRepo, a.intakeRepo, reminder, scheduledAt)
+	if err != nil {
+		return false, err
+	}
+	if skip {
+		return true, nil
 	}
 
 	var title string
@@ -83,10 +103,10 @@ func (a *ReminderActivity) SendReminderActivity(ctx context.Context, reminderID 
 		DedupKey: fmt.Sprintf("reminder:%s:%s", reminder.ID.Hex(), scheduledAt.UTC().Format(time.RFC3339)),
 	})
 	if err != nil {
-		return fmt.Errorf("failed to publish reminder push: %w", err)
+		return false, fmt.Errorf("failed to publish reminder push: %w", err)
 	}
 
-	return nil
+	return false, nil
 }
 
 func (a *ReminderActivity) UpdateReminderStatusActivity(ctx context.Context, reminderID string, status domain.ReminderStatus) error {
