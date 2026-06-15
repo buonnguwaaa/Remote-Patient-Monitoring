@@ -24,10 +24,21 @@ const (
 )
 
 // MedicationDose is one intake slot (e.g. 1 pill in the morning before breakfast).
+// TimeOfDay is required. Hour and Minute are optional custom times within that bucket;
+// when omitted, DefaultClockForTimeOfDay applies (08:00 / 12:00 / 18:00).
 type MedicationDose struct {
 	TimeOfDay  TimeOfDay  `json:"timeOfDay" bson:"timeOfDay"`
+	Hour       *int       `json:"hour,omitempty" bson:"hour,omitempty"`
+	Minute     *int       `json:"minute,omitempty" bson:"minute,omitempty"`
 	MealTiming MealTiming `json:"mealTiming,omitempty" bson:"mealTiming,omitempty"`
 	PillCount  float64    `json:"pillCount" bson:"pillCount"`
+}
+
+func (d MedicationDose) Matches(other MedicationDose) bool {
+	return d.TimeOfDay == other.TimeOfDay &&
+		d.MealTiming == other.MealTiming &&
+		d.PillCount == other.PillCount &&
+		DoseClockMatches(d, other)
 }
 
 // PrescriptionMedication is a single drug within a prescription, with its own schedule.

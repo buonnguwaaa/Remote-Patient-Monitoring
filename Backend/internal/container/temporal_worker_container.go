@@ -12,6 +12,8 @@ type TemporalWorkerContainer struct {
 	ThresholdRepo         repository.ThresholdRepository
 	AlertRepo             repository.AlertRepository
 	ReminderRepo          repository.ReminderRepository
+	PrescriptionRepo      repository.PrescriptionRepository
+	MedicationIntakeRepo  repository.MedicationIntakeRepository
 	AssignmentRepo        repository.AssignmentRepository
 	ConversationRepo      chatRepository.ConversationRepository
 	MessageRepo           chatRepository.MessageRepository
@@ -28,6 +30,8 @@ func NewTemporalWorkerContainer(pushProvider service.PushProvider) *TemporalWork
 	c.ThresholdRepo = repository.NewThresholdRepository(db)
 	c.AlertRepo = repository.NewAlertRepository(db)
 	c.ReminderRepo = repository.NewReminderRepository(db)
+	c.PrescriptionRepo = repository.NewPrescriptionRepository(db)
+	c.MedicationIntakeRepo = repository.NewMedicationIntakeRepository(db)
 	c.NotificationTokenRepo = repository.NewNotificationTokenRepository(db)
 	c.NotificationRepo = repository.NewUserNotificationRepository(db)
 	c.NotificationService = service.NewNotificationService(c.NotificationTokenRepo, c.NotificationRepo, pushProvider)

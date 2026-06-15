@@ -59,7 +59,12 @@ func Start() error {
 		publisher,
 		userEventPublisher,
 	)
-	reminderActs := activity.NewReminderActivity(container.ReminderRepo, container.NotificationService)
+	reminderActs := activity.NewReminderActivity(
+		container.ReminderRepo,
+		container.PrescriptionRepo,
+		container.MedicationIntakeRepo,
+		container.NotificationService,
+	)
 
 	alertWorker := worker.New(c, client.AlertTaskQueue, worker.Options{})
 	reminderWorker := worker.New(c, client.ReminderTaskQueue, worker.Options{})

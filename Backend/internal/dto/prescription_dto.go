@@ -8,6 +8,8 @@ import (
 
 type MedicationDoseRequest struct {
 	TimeOfDay  domain.TimeOfDay  `json:"timeOfDay" binding:"required,oneof=morning noon evening"`
+	Hour       *int              `json:"hour" binding:"omitempty,min=0,max=23"`
+	Minute     *int              `json:"minute" binding:"omitempty,min=0,max=59"`
 	MealTiming domain.MealTiming `json:"mealTiming" binding:"omitempty,oneof=pre_meal post_meal"`
 	PillCount  float64           `json:"pillCount" binding:"required,gt=0"`
 }
@@ -44,6 +46,9 @@ type UpdatePrescriptionStatusRequest struct {
 
 type MedicationDoseResponse struct {
 	TimeOfDay  domain.TimeOfDay  `json:"timeOfDay"`
+	Hour       *int              `json:"hour,omitempty"`
+	Minute     *int              `json:"minute,omitempty"`
+	Time       string            `json:"time"`
 	MealTiming domain.MealTiming `json:"mealTiming,omitempty"`
 	PillCount  float64           `json:"pillCount"`
 }

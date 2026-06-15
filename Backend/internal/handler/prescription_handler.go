@@ -307,6 +307,8 @@ func medicationsFromDTO(meds []dto.PrescriptionMedicationRequest) []domain.Presc
 		for j, dose := range med.Schedule {
 			schedule[j] = domain.MedicationDose{
 				TimeOfDay:  dose.TimeOfDay,
+				Hour:       dose.Hour,
+				Minute:     dose.Minute,
 				MealTiming: dose.MealTiming,
 				PillCount:  dose.PillCount,
 			}

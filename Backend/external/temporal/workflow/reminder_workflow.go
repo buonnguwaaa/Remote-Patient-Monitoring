@@ -11,6 +11,7 @@ import (
 )
 
 const ReminderStatusSignal = "REMINDER-STATUS-SIGNAL"
+const ReminderSkipSignal = "REMINDER-SKIP-SIGNAL"
 
 func ReminderWorkflow(ctx workflow.Context, input dto.ReminderWorkflowInput) error {
 	logger := workflow.GetLogger(ctx)
@@ -25,8 +26,10 @@ func ReminderWorkflow(ctx workflow.Context, input dto.ReminderWorkflowInput) err
 	ctx = workflow.WithActivityOptions(ctx, ao)
 
 	signalCh := workflow.GetSignalChannel(ctx, ReminderStatusSignal)
+	skipCh := workflow.GetSignalChannel(ctx, ReminderSkipSignal)
 
 	var reminder domain.Reminder
+	var skipAfter time.Time
 	if err := workflow.ExecuteActivity(ctx, "GetReminderActivity", input.ReminderID).Get(ctx, &reminder); err != nil {
 		return err
 	}
@@ -58,7 +61,13 @@ func ReminderWorkflow(ctx workflow.Context, input dto.ReminderWorkflowInput) err
 			continue
 		}
 
-		nextTime, ok := reminder_helper.CalculateNextReminderTime(now, &reminder)
+		now = workflow.Now(ctx)
+		searchFrom := now
+		if skipAfter.After(now) {
+			searchFrom = skipAfter
+		}
+
+		nextTime, ok := reminder_helper.CalculateNextReminderTime(searchFrom, &reminder)
 		if !ok {
 			_ = workflow.ExecuteActivity(ctx, "UpdateReminderStatusActivity", reminder.ID.Hex(), domain.ReminderStatusExpired).Get(ctx, nil)
 			logger.Info("Reminder expired", "id", reminder.ID.Hex())
@@ -67,10 +76,16 @@ func ReminderWorkflow(ctx workflow.Context, input dto.ReminderWorkflowInput) err
 
 		timer := workflow.NewTimer(ctx, nextTime.Sub(now))
 		timerFired := false
+		skipOccurrence := false
 		selector := workflow.NewSelector(ctx)
 		selector.AddReceive(signalCh, func(c workflow.ReceiveChannel, more bool) {
 			c.Receive(ctx, nil)
 			timerFired = false
+		})
+		selector.AddReceive(skipCh, func(c workflow.ReceiveChannel, more bool) {
+			c.Receive(ctx, nil)
+			timerFired = false
+			skipOccurrence = true
 		})
 		selector.AddFuture(timer, func(f workflow.Future) {
 			timerFired = true
@@ -80,6 +95,10 @@ func ReminderWorkflow(ctx workflow.Context, input dto.ReminderWorkflowInput) err
 		if err := workflow.ExecuteActivity(ctx, "GetReminderActivity", input.ReminderID).Get(ctx, &reminder); err != nil {
 			return err
 		}
+		if skipOccurrence {
+			skipAfter = nextTime.Add(time.Minute)
+			continue
+		}
 		if !timerFired {
 			continue
 		}
@@ -87,9 +106,14 @@ func ReminderWorkflow(ctx workflow.Context, input dto.ReminderWorkflowInput) err
 			continue
 		}
 
+		skipAfter = time.Time{}
 		scheduledFor := nextTime.UTC().Format(time.RFC3339)
-		if err := workflow.ExecuteActivity(ctx, "SendReminderActivity", reminder.ID.Hex(), scheduledFor).Get(ctx, nil); err != nil {
+		var skipped bool
+		if err := workflow.ExecuteActivity(ctx, "SendReminderActivity", reminder.ID.Hex(), scheduledFor).Get(ctx, &skipped); err != nil {
 			return err
+		}
+		if skipped {
+			skipAfter = nextTime.Add(time.Minute)
 		}
 	}
 }

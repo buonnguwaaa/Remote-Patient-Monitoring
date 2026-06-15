@@ -18,6 +18,7 @@ type CreateReminderInput struct {
 	EndDate        time.Time
 	CreatedBy      string
 	PrescriptionID string
+	TimeOfDay      *domain.TimeOfDay
 	MealTiming     *domain.MealTiming
 }
 

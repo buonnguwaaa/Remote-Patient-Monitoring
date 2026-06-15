@@ -49,3 +49,24 @@ func SignalReminderWorkflow(
 		nil,
 	)
 }
+
+func SignalReminderSkipOccurrence(
+	ctx context.Context,
+	reminderID string,
+) error {
+	c, err := New()
+	if err != nil {
+		return err
+	}
+	defer c.Close()
+
+	workflowID := "reminder-" + reminderID
+
+	return c.SignalWorkflow(
+		ctx,
+		workflowID,
+		"",
+		workflow.ReminderSkipSignal,
+		nil,
+	)
+}
