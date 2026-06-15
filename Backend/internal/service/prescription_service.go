@@ -23,12 +23,6 @@ var (
 	ErrPrescriptionAccessDenied = errors.New("access denied")
 )
 
-var prescriptionTimeOfDayOrder = []domain.TimeOfDay{
-	domain.TimeOfDayMorning,
-	domain.TimeOfDayNoon,
-	domain.TimeOfDayEvening,
-}
-
 type prescriptionService struct {
 	patientRepo      userRepository.PatientRepository
 	prescriptionRepo repository.PrescriptionRepository
@@ -102,10 +96,18 @@ func (s *prescriptionService) CreatePrescription(ctx context.Context, input *use
 
 func (s *prescriptionService) GetPrescriptions(ctx context.Context, input *usecase.GetPrescriptionsInput) ([]dto.PrescriptionResponse, error) {
 	prescriptions, err := s.prescriptionRepo.FindWithFilter(ctx, repository.PrescriptionFilter{
-		PatientID: input.PatientID,
-		Status:    input.Status,
-		IsLatest:  input.IsLatest,
+		PatientID:    input.PatientID,
+		Status:       input.Status,
+		IsLatest:     input.IsLatest,
+		DoctorID:     input.DoctorID,
+		NurseID:      input.NurseID,
+		PrescribedBy: input.PrescribedBy,
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	prescriptions, err = s.expirePrescriptionsIfNeeded(ctx, prescriptions)
 	if err != nil {
 		return nil, err
 	}
@@ -145,7 +147,7 @@ func (s *prescriptionService) UpdatePrescriptionByID(ctx context.Context, input 
 		return nil, err
 	}
 
-	statusChanged := existing.Status != input.Status
+	previousStatus := existing.Status
 	existing.Medications = input.Medications
 	existing.Timezone = input.Timezone
 	existing.DaysOfWeek = input.DaysOfWeek
@@ -161,8 +163,13 @@ func (s *prescriptionService) UpdatePrescriptionByID(ctx context.Context, input 
 		return nil, ErrPrescriptionNotFound
 	}
 
-	if statusChanged {
-		if err := s.applyPrescriptionStatusToLinkedReminders(ctx, prescriptionID, input.Status); err != nil {
+	updated, err = s.expirePrescriptionIfNeeded(ctx, updated)
+	if err != nil {
+		return nil, err
+	}
+
+	if updated.Status != previousStatus {
+		if err := s.applyPrescriptionStatusToLinkedReminders(ctx, prescriptionID, updated.Status); err != nil {
 			return nil, fmt.Errorf("prescription updated but failed to update linked reminders: %w", err)
 		}
 	}
@@ -184,6 +191,7 @@ func (s *prescriptionService) UpdatePrescriptionStatus(ctx context.Context, inpu
 		return toPrescriptionResponse(existing), nil
 	}
 
+	previousStatus := existing.Status
 	updated, err := s.prescriptionRepo.UpdateStatusByID(ctx, prescriptionID, input.Status)
 	if err != nil {
 		return nil, err
@@ -192,8 +200,15 @@ func (s *prescriptionService) UpdatePrescriptionStatus(ctx context.Context, inpu
 		return nil, ErrPrescriptionNotFound
 	}
 
-	if err := s.applyPrescriptionStatusToLinkedReminders(ctx, prescriptionID, input.Status); err != nil {
-		return nil, fmt.Errorf("prescription status updated but failed to update linked reminders: %w", err)
+	updated, err = s.expirePrescriptionIfNeeded(ctx, updated)
+	if err != nil {
+		return nil, err
+	}
+
+	if updated.Status != previousStatus {
+		if err := s.applyPrescriptionStatusToLinkedReminders(ctx, prescriptionID, updated.Status); err != nil {
+			return nil, fmt.Errorf("prescription status updated but failed to update linked reminders: %w", err)
+		}
 	}
 
 	return toPrescriptionResponse(updated), nil
@@ -215,7 +230,47 @@ func (s *prescriptionService) requirePrescription(ctx context.Context, id primit
 	if prescription == nil {
 		return nil, ErrPrescriptionNotFound
 	}
-	return prescription, nil
+	return s.expirePrescriptionIfNeeded(ctx, prescription)
+}
+
+func (s *prescriptionService) expirePrescriptionsIfNeeded(ctx context.Context, prescriptions []domain.Prescription) ([]domain.Prescription, error) {
+	for i := range prescriptions {
+		updated, err := s.expirePrescriptionIfNeeded(ctx, &prescriptions[i])
+		if err != nil {
+			return nil, err
+		}
+		if updated != nil {
+			prescriptions[i] = *updated
+		}
+	}
+	return prescriptions, nil
+}
+
+func (s *prescriptionService) expirePrescriptionIfNeeded(ctx context.Context, prescription *domain.Prescription) (*domain.Prescription, error) {
+	if prescription.Status != domain.PrescriptionStatusActive {
+		return prescription, nil
+	}
+	if !isPrescriptionPastEnd(prescription, time.Now().UTC()) {
+		return prescription, nil
+	}
+
+	updated, err := s.prescriptionRepo.UpdateStatusByID(ctx, prescription.ID, domain.PrescriptionStatusExpired)
+	if err != nil {
+		return nil, err
+	}
+	if updated == nil {
+		return prescription, nil
+	}
+
+	if err := s.applyPrescriptionStatusToLinkedReminders(ctx, prescription.ID, domain.PrescriptionStatusExpired); err != nil {
+		return nil, err
+	}
+
+	return updated, nil
+}
+
+func isPrescriptionPastEnd(prescription *domain.Prescription, now time.Time) bool {
+	return !now.Before(prescriptionEndDate(prescription.EndDate, prescription.StartDate))
 }
 
 func (s *prescriptionService) ensurePatientAccess(role userDomain.Role, userID string, patientID primitive.ObjectID) error {
@@ -247,19 +302,20 @@ func (s *prescriptionService) createMedicationReminders(
 	var reminderIDs []primitive.ObjectID
 
 	for _, slot := range groupReminderSlots(prescription.Medications) {
-		hour, minute := clockForTimeOfDay(slot.timeOfDay)
+		timeOfDay := slot.timeOfDay
 		reminder, err := s.reminderService.CreateReminder(ctx, &usecase.CreateReminderInput{
 			PatientID:      prescription.PatientID.Hex(),
 			Kind:           domain.KindMedication,
 			Message:        strings.Join(slot.messages, "; "),
-			Hour:           hour,
-			Minute:         minute,
+			Hour:           slot.hour,
+			Minute:         slot.minute,
 			DaysOfWeek:     prescription.DaysOfWeek,
 			Timezone:       prescription.Timezone,
 			StartDate:      prescription.StartDate,
 			EndDate:        endDate,
 			CreatedBy:      prescribedBy,
 			PrescriptionID: prescription.ID.Hex(),
+			TimeOfDay:      &timeOfDay,
 			MealTiming:     slot.mealTiming,
 		})
 		if err != nil {
@@ -316,34 +372,73 @@ func (s *prescriptionService) applyPrescriptionStatusToLinkedReminders(ctx conte
 
 type reminderSlot struct {
 	timeOfDay  domain.TimeOfDay
+	hour       int
+	minute     int
 	messages   []string
 	mealTiming *domain.MealTiming
 }
 
+type doseSlotKey struct {
+	timeOfDay domain.TimeOfDay
+	hour      int
+	minute    int
+}
+
 func groupReminderSlots(medications []domain.PrescriptionMedication) []reminderSlot {
-	accumulators := make(map[domain.TimeOfDay]*reminderSlotAccumulator)
+	accumulators := make(map[doseSlotKey]*reminderSlotAccumulator)
 
 	for _, med := range medications {
 		for _, dose := range med.Schedule {
-			acc, ok := accumulators[dose.TimeOfDay]
+			hour, minute := domain.DoseClock(dose)
+			key := doseSlotKey{timeOfDay: dose.TimeOfDay, hour: hour, minute: minute}
+			acc, ok := accumulators[key]
 			if !ok {
 				acc = &reminderSlotAccumulator{mealTimings: make(map[domain.MealTiming]struct{})}
-				accumulators[dose.TimeOfDay] = acc
+				accumulators[key] = acc
 			}
 			acc.add(med, dose)
 		}
 	}
 
 	slots := make([]reminderSlot, 0, len(accumulators))
-	for _, timeOfDay := range prescriptionTimeOfDayOrder {
-		acc, ok := accumulators[timeOfDay]
-		if !ok {
-			continue
-		}
-		slots = append(slots, acc.slot(timeOfDay))
+	keys := make([]doseSlotKey, 0, len(accumulators))
+	for key := range accumulators {
+		keys = append(keys, key)
+	}
+	sortDoseSlotKeys(keys)
+
+	for _, key := range keys {
+		acc := accumulators[key]
+		slots = append(slots, acc.slot(key))
 	}
 
 	return slots
+}
+
+func sortDoseSlotKeys(keys []doseSlotKey) {
+	timeOfDayRank := map[domain.TimeOfDay]int{
+		domain.TimeOfDayMorning: 0,
+		domain.TimeOfDayNoon:    1,
+		domain.TimeOfDayEvening: 2,
+	}
+
+	for i := 0; i < len(keys); i++ {
+		for j := i + 1; j < len(keys); j++ {
+			if doseSlotKeyLess(keys[j], keys[i], timeOfDayRank) {
+				keys[i], keys[j] = keys[j], keys[i]
+			}
+		}
+	}
+}
+
+func doseSlotKeyLess(a, b doseSlotKey, rank map[domain.TimeOfDay]int) bool {
+	if rank[a.timeOfDay] != rank[b.timeOfDay] {
+		return rank[a.timeOfDay] < rank[b.timeOfDay]
+	}
+	if a.hour != b.hour {
+		return a.hour < b.hour
+	}
+	return a.minute < b.minute
 }
 
 type reminderSlotAccumulator struct {
@@ -361,9 +456,11 @@ func (a *reminderSlotAccumulator) add(med domain.PrescriptionMedication, dose do
 	a.mealTimings[dose.MealTiming] = struct{}{}
 }
 
-func (a *reminderSlotAccumulator) slot(timeOfDay domain.TimeOfDay) reminderSlot {
+func (a *reminderSlotAccumulator) slot(key doseSlotKey) reminderSlot {
 	return reminderSlot{
-		timeOfDay:  timeOfDay,
+		timeOfDay:  key.timeOfDay,
+		hour:       key.hour,
+		minute:     key.minute,
 		messages:   a.messages,
 		mealTiming: unifyMealTiming(a.mealTimings, a.hasUntimed),
 	}
@@ -422,10 +519,8 @@ func validateMedications(medications []domain.PrescriptionMedication) error {
 			if dose.PillCount <= 0 {
 				return fmt.Errorf("medication[%d].schedule[%d]: pill count must be greater than 0", i, j)
 			}
-			switch dose.TimeOfDay {
-			case domain.TimeOfDayMorning, domain.TimeOfDayNoon, domain.TimeOfDayEvening:
-			default:
-				return fmt.Errorf("medication[%d].schedule[%d]: invalid time of day", i, j)
+			if err := domain.ValidateDoseTime(dose); err != nil {
+				return fmt.Errorf("medication[%d].schedule[%d]: %w", i, j, err)
 			}
 			switch dose.MealTiming {
 			case "", domain.MealTimingPreMeal, domain.MealTimingPostMeal:
@@ -433,28 +528,16 @@ func validateMedications(medications []domain.PrescriptionMedication) error {
 				return fmt.Errorf("medication[%d].schedule[%d]: invalid meal timing", i, j)
 			}
 
-			key := fmt.Sprintf("%s:%s", dose.TimeOfDay, dose.MealTiming)
+			hour, minute := domain.DoseClock(dose)
+			key := fmt.Sprintf("%s:%s:%02d:%02d", dose.TimeOfDay, dose.MealTiming, hour, minute)
 			if _, dup := seen[key]; dup {
-				return fmt.Errorf("medication[%d]: duplicate schedule slot (%s, %s)", i, dose.TimeOfDay, dose.MealTiming)
+				return fmt.Errorf("medication[%d]: duplicate schedule slot (%s, %s, %s)", i, dose.TimeOfDay, dose.MealTiming, domain.FormatClock(hour, minute))
 			}
 			seen[key] = struct{}{}
 		}
 	}
 
 	return nil
-}
-
-func clockForTimeOfDay(timeOfDay domain.TimeOfDay) (hour, minute int) {
-	switch timeOfDay {
-	case domain.TimeOfDayMorning:
-		return 8, 0
-	case domain.TimeOfDayNoon:
-		return 12, 0
-	case domain.TimeOfDayEvening:
-		return 18, 0
-	default:
-		return 8, 0
-	}
 }
 
 func formatDoseReminderMessage(med domain.PrescriptionMedication, dose domain.MedicationDose) string {
@@ -515,11 +598,7 @@ func toMedicationResponses(medications []domain.PrescriptionMedication) []dto.Pr
 	for i, med := range medications {
 		schedule := make([]dto.MedicationDoseResponse, len(med.Schedule))
 		for j, dose := range med.Schedule {
-			schedule[j] = dto.MedicationDoseResponse{
-				TimeOfDay:  dose.TimeOfDay,
-				MealTiming: dose.MealTiming,
-				PillCount:  dose.PillCount,
-			}
+			schedule[j] = dto.ToMedicationDoseResponse(dose)
 		}
 		responses[i] = dto.PrescriptionMedicationResponse{
 			DrugName:     med.DrugName,

@@ -13,6 +13,7 @@ func RegisterPrescriptionRoutes(r *gin.Engine, c *container.MainServerContainer)
 	{
 		prescriptionGroup.GET("", middleware.RequireRoles(domain.RoleAdmin, domain.RoleDoctor, domain.RoleNurse), c.PrescriptionHandler.GetPrescriptions)
 		prescriptionGroup.GET("/me", middleware.RequireRoles(domain.RolePatient), c.PrescriptionHandler.GetMyPrescriptions)
+		prescriptionGroup.GET("/me/today", middleware.RequireRoles(domain.RolePatient), c.MedicationIntakeHandler.GetTodayMedications)
 		prescriptionGroup.GET("/:id", middleware.RequireRoles(domain.RoleAdmin, domain.RoleDoctor, domain.RoleNurse), c.PrescriptionHandler.GetPrescriptionByID)
 		prescriptionGroup.POST("", middleware.RequireRoles(domain.RoleAdmin, domain.RoleDoctor, domain.RoleNurse), c.PrescriptionHandler.CreatePrescription)
 		prescriptionGroup.PATCH("/:id", middleware.RequireRoles(domain.RoleAdmin, domain.RoleDoctor, domain.RoleNurse), c.PrescriptionHandler.UpdatePrescriptionByID)

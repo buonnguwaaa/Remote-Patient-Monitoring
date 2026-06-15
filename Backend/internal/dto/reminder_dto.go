@@ -47,6 +47,7 @@ type ReminderResponse struct {
 	StartDate      time.Time             `json:"startDate"`
 	EndDate        time.Time             `json:"endDate"`
 	PrescriptionID string                `json:"prescriptionId,omitempty"`
+	TimeOfDay      *domain.TimeOfDay     `json:"timeOfDay,omitempty"`
 	MealTiming     *domain.MealTiming    `json:"mealTiming,omitempty"`
 	CreatedBy      string                `json:"createdBy"`
 	CreatedAt      time.Time             `json:"createdAt"`

@@ -1758,6 +1758,127 @@ const docTemplate = `{
                 }
             }
         },
+        "/medication-intakes": {
+            "post": {
+                "description": "Record a medication intake for today's scheduled dose",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "medication-intakes"
+                ],
+                "summary": "Mark medication as taken",
+                "parameters": [
+                    {
+                        "description": "Intake details",
+                        "name": "intake",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.CreateMedicationIntakeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Medication intake recorded",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/medication-intakes/adherence": {
+            "get": {
+                "description": "Compare prescription schedule against intake log to show taken, missed, and pending doses",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "medication-intakes"
+                ],
+                "summary": "Get medication adherence",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Number of days including today (default 7, max 90)",
+                        "name": "days",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Start date (YYYY-MM-DD)",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "End date (YYYY-MM-DD)",
+                        "name": "to",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Patient ID (staff only)",
+                        "name": "patientId",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Adherence retrieved successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/notification-tokens/deactivate": {
             "post": {
                 "description": "Deactivate the FCM notification token bound to the authenticated user and device during logout/device switch",
@@ -1868,7 +1989,7 @@ const docTemplate = `{
         },
         "/prescriptions": {
             "get": {
-                "description": "Get prescriptions filtered by patient ID or status (staff use patientId query param)",
+                "description": "Get prescriptions filtered by patient, status, assigned doctor/nurse, or prescriber. Doctors and nurses default to their own assigned patients when doctorId/nurseId is omitted.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1896,6 +2017,24 @@ const docTemplate = `{
                         "type": "boolean",
                         "description": "Return only the latest prescription",
                         "name": "latest",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter prescriptions for patients assigned to this doctor",
+                        "name": "doctorId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter prescriptions for patients assigned to this nurse",
+                        "name": "nurseId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter prescriptions written by this doctor",
+                        "name": "prescribedBy",
                         "in": "query"
                     }
                 ],
@@ -2034,6 +2173,39 @@ const docTemplate = `{
                     },
                     "403": {
                         "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/prescriptions/me/today": {
+            "get": {
+                "description": "Get today's medication checklist with taken/expected counts per drug",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "prescriptions"
+                ],
+                "summary": "Get today's medications",
+                "responses": {
+                    "200": {
+                        "description": "Today's medications retrieved successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -4009,6 +4181,25 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.CreateMedicationIntakeRequest": {
+            "type": "object",
+            "required": [
+                "dose",
+                "drugName",
+                "prescriptionId"
+            ],
+            "properties": {
+                "dose": {
+                    "$ref": "#/definitions/dto.MedicationDoseRequest"
+                },
+                "drugName": {
+                    "type": "string"
+                },
+                "prescriptionId": {
+                    "type": "string"
+                }
+            }
+        },
         "dto.CreatePrescriptionRequest": {
             "type": "object",
             "required": [
@@ -4223,6 +4414,11 @@ const docTemplate = `{
                 "timeOfDay"
             ],
             "properties": {
+                "hour": {
+                    "type": "integer",
+                    "maximum": 23,
+                    "minimum": 0
+                },
                 "mealTiming": {
                     "enum": [
                         "pre_meal",
@@ -4233,6 +4429,11 @@ const docTemplate = `{
                             "$ref": "#/definitions/domain.MealTiming"
                         }
                     ]
+                },
+                "minute": {
+                    "type": "integer",
+                    "maximum": 59,
+                    "minimum": 0
                 },
                 "pillCount": {
                     "type": "number"

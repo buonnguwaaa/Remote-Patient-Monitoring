@@ -40,6 +40,7 @@ type Reminder struct {
 	EndDate   time.Time `json:"endDate" bson:"endDate"`
 
 	PrescriptionID *primitive.ObjectID `json:"prescriptionId,omitempty" bson:"prescriptionId,omitempty"`
+	TimeOfDay      *TimeOfDay          `json:"timeOfDay,omitempty" bson:"timeOfDay,omitempty"`
 	MealTiming     *MealTiming         `json:"mealTiming,omitempty" bson:"mealTiming,omitempty"`
 
 	CreatedBy primitive.ObjectID `json:"createdBy" bson:"createdBy"`
