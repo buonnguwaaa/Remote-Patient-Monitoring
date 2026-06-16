@@ -368,15 +368,9 @@ export default function PrescriptionPage() {
           status: statusFilter || undefined,
         });
       } else {
-        const groups = await Promise.all(
-          patientOptions.map((p) =>
-            getPrescriptions({ patientId: p.patientId, status: statusFilter || undefined })
-          )
-        );
-        const merged = groups.flat();
-        results = Array.from(new Map(merged.map((p) => [p.id, p])).values()).sort(
-          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        );
+        results = await getPrescriptions({
+          status: statusFilter || undefined,
+        });
       }
       setPrescriptions(results);
       setCurrentPage(1);
@@ -591,12 +585,12 @@ export default function PrescriptionPage() {
           }
         }
         // Duplicate detection
-        const key = `${dose.timeOfDay}|${dose.mealTiming}|${dose.pillCount}`;
+        const key = `${dose.timeOfDay}|${dose.mealTiming || ""}|${dose.customTime || ""}`;
         if (slotKeys.has(key)) {
           showToast(
             t("prescriptions.duplicateDoseWarning")
               .replace("{{drug}}", med.drugName || `#${i + 1}`)
-              .replace("{{slot}}", `${dose.timeOfDay} ${dose.mealTiming} ${dose.pillCount}v`),
+              .replace("{{slot}}", `${dose.timeOfDay} ${dose.mealTiming || ""} ${dose.customTime || ""}`.trim()),
             "error"
           );
           return false;
@@ -731,7 +725,7 @@ export default function PrescriptionPage() {
               <FaNotesMedical size={20} />
             </div>
             {selectedPatientId 
-              ? `Đơn thuốc của ${patients.find(p => p.patientId === selectedPatientId)?.name || "bệnh nhân"}`
+              ? `Đơn thuốc của ${patientDisplayMap.get(selectedPatientId)?.name || "bệnh nhân"}`
               : "Danh sách đơn thuốc"}
           </h1>
           <p className="mt-2 max-w-2xl text-sm text-slate-500 dark:text-slate-400">

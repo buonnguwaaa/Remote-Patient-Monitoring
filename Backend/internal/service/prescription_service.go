@@ -170,7 +170,11 @@ func (s *prescriptionService) UpdatePrescriptionByID(ctx context.Context, input 
 
 	if updated.Status != previousStatus {
 		if err := s.applyPrescriptionStatusToLinkedReminders(ctx, prescriptionID, updated.Status); err != nil {
-			return nil, fmt.Errorf("prescription updated but failed to update linked reminders: %w", err)
+			return nil, fmt.Errorf("prescription status updated but failed to update linked reminders: %w", err)
+		}
+	} else if updated.Status == domain.PrescriptionStatusActive {
+		if err := s.syncPrescriptionReminders(ctx, updated); err != nil {
+			return nil, fmt.Errorf("prescription updated but failed to sync linked reminders: %w", err)
 		}
 	}
 
@@ -368,6 +372,31 @@ func (s *prescriptionService) applyPrescriptionStatusToLinkedReminders(ctx conte
 	}
 
 	return nil
+}
+
+func (s *prescriptionService) syncPrescriptionReminders(ctx context.Context, prescription *domain.Prescription) error {
+	reminders, err := s.reminderRepo.FindWithFilter(ctx, repository.ReminderFilter{
+		PrescriptionID: prescription.ID.Hex(),
+		Kind:           domain.KindMedication,
+	})
+	if err != nil {
+		return err
+	}
+
+	for _, r := range reminders {
+		if r.Status != domain.ReminderStatusCanceled {
+			if _, err := s.reminderService.UpdateReminderStatus(ctx, &usecase.UpdateReminderStatusInput{
+				ID:     r.ID.Hex(),
+				Status: domain.ReminderStatusCanceled,
+			}); err != nil {
+				return fmt.Errorf("failed to cancel old reminder %s: %w", r.ID.Hex(), err)
+			}
+		}
+	}
+
+	endDate := prescriptionEndDate(prescription.EndDate, prescription.StartDate)
+	_, err = s.createMedicationReminders(ctx, prescription, prescription.PrescribedBy.Hex(), endDate)
+	return err
 }
 
 type reminderSlot struct {
