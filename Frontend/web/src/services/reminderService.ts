@@ -18,6 +18,10 @@ export interface ReminderRecord {
   createdBy: string;
   createdAt: string;
   updatedAt: string;
+  // New fields from prescription-linked reminders
+  prescriptionId?: string;
+  timeOfDay?: "morning" | "noon" | "evening";
+  mealTiming?: "pre_meal" | "post_meal";
 }
 
 export interface ReminderBasePayload {
@@ -51,6 +55,10 @@ interface ReminderApiResponse {
   createdBy: string;
   createdAt: string;
   updatedAt: string;
+  // New fields
+  prescriptionId?: string;
+  timeOfDay?: "morning" | "noon" | "evening";
+  mealTiming?: "pre_meal" | "post_meal";
 }
 
 const mapReminder = (item: ReminderApiResponse): ReminderRecord => ({
@@ -68,6 +76,9 @@ const mapReminder = (item: ReminderApiResponse): ReminderRecord => ({
   createdBy: item.createdBy,
   createdAt: item.createdAt,
   updatedAt: item.updatedAt,
+  prescriptionId: item.prescriptionId,
+  timeOfDay: item.timeOfDay,
+  mealTiming: item.mealTiming,
 });
 
 export const getReminders = async (params?: {

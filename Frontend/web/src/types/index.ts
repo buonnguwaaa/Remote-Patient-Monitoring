@@ -163,3 +163,120 @@ export interface Assignment {
   createdAt: string;
   updatedAt: string;
 }
+
+// ---- Prescription / Medication types ----
+
+export type PrescriptionStatus = "active" | "completed" | "discontinued" | "expired";
+export type TimeOfDay = "morning" | "noon" | "evening";
+export type MealTiming = "pre_meal" | "post_meal";
+
+export interface MedicationDose {
+  timeOfDay: TimeOfDay;
+  hour?: number;
+  minute?: number;
+  time?: string; // "HH:MM" rendered by backend
+  mealTiming?: MealTiming;
+  pillCount: number;
+}
+
+export interface PrescriptionMedication {
+  drugName: string;
+  dosage: string;
+  route?: string;
+  instructions?: string;
+  schedule: MedicationDose[];
+}
+
+export interface Prescription {
+  id: string;
+  patientId: string;
+  prescribedBy: string;
+  medications: PrescriptionMedication[];
+  timezone: string;
+  daysOfWeek: number[];
+  startDate: string;
+  endDate?: string;
+  status: PrescriptionStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TodayMedicationSlot extends MedicationDose {
+  taken: boolean;
+  intakeId?: string;
+}
+
+export interface TodayMedication {
+  prescriptionId: string;
+  drugName: string;
+  dosage: string;
+  expectedToday: number;
+  takenToday: number;
+  slots: TodayMedicationSlot[];
+}
+
+export type AdherenceSlotStatus = "taken" | "missed" | "pending";
+
+export interface MedicationAdherenceSlot extends MedicationDose {
+  status: AdherenceSlotStatus;
+  intakeId?: string;
+  takenAt?: string;
+}
+
+export interface MedicationAdherenceMedication {
+  prescriptionId: string;
+  drugName: string;
+  dosage: string;
+  expected: number;
+  taken: number;
+  missed: number;
+  slots: MedicationAdherenceSlot[];
+}
+
+export interface MedicationAdherenceDay {
+  date: string;
+  expected: number;
+  taken: number;
+  missed: number;
+  medications: MedicationAdherenceMedication[];
+}
+
+export interface MedicationAdherenceSummary {
+  expected: number;
+  taken: number;
+  missed: number;
+  adherenceRate: number; // 0–1 from backend, multiply by 100 for display
+}
+
+export interface MedicationAdherence {
+  from: string;
+  to: string;
+  summary: MedicationAdherenceSummary;
+  days: MedicationAdherenceDay[];
+}
+
+// Payload types for API calls
+export interface CreatePrescriptionPayload {
+  patientId: string;
+  medications: Array<{
+    drugName: string;
+    dosage: string;
+    route?: string;
+    instructions?: string;
+    schedule: Array<{
+      timeOfDay: TimeOfDay;
+      hour?: number;
+      minute?: number;
+      mealTiming?: MealTiming;
+      pillCount: number;
+    }>;
+  }>;
+  timezone: string;
+  daysOfWeek: number[];
+  startDate: string; // ISO string
+  endDate?: string;  // ISO string
+}
+
+export interface UpdatePrescriptionPayload extends CreatePrescriptionPayload {
+  status: PrescriptionStatus;
+}

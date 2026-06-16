@@ -66,7 +66,7 @@ function buildNotificationMeta(item) {
   return {
     iconName: item?.data?.reminderKind === "measure" ? "timer-outline" : "medical-outline",
     iconColor: item?.data?.reminderKind === "measure" ? "#2563EB" : "#7C3AED",
-    pillText: item?.data?.reminderKind === "measure" ? "Nhắc đo" : "Nhắc thuốc",
+    pillText: item?.data?.reminderKind === "measure" ? "Nhắc đo" : "Nhắc uống thuốc",
     title: item?.title || "Nhắc nhở sức khỏe",
     subtitle: item?.body || "Bạn có một nhắc nhở mới.",
   };
@@ -241,7 +241,7 @@ export default function NotificationInboxScreen({ isEmbedded }) {
             onPress={() => setFilterMode("medicine")}
           >
             <Text style={[styles.filterText, filterMode === "medicine" && styles.filterTextActive]}>
-              Nhắc thuốc
+              Nhắc uống thuốc
             </Text>
           </TouchableOpacity>
         </View>

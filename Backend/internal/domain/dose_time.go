@@ -75,15 +75,22 @@ func ValidateDoseTime(dose MedicationDose) error {
 	}
 
 	if *dose.Hour < 0 || *dose.Hour > 23 || *dose.Minute < 0 || *dose.Minute > 59 {
-		return fmt.Errorf("hour must be 0-23 and minute must be 0-59")
+		return fmt.Errorf("giờ (0-23) hoặc phút (0-59) không hợp lệ")
 	}
 
 	bucket, ok := TimeOfDayForClock(*dose.Hour, *dose.Minute)
 	if !ok {
-		return fmt.Errorf("invalid clock time")
+		return fmt.Errorf("thời gian không hợp lệ")
 	}
 	if bucket != dose.TimeOfDay {
-		return fmt.Errorf("clock %s does not match timeOfDay %s", FormatClock(*dose.Hour, *dose.Minute), dose.TimeOfDay)
+		var todVN string
+		switch dose.TimeOfDay {
+		case "morning": todVN = "Sáng"
+		case "noon": todVN = "Trưa"
+		case "evening": todVN = "Tối"
+		default: todVN = string(dose.TimeOfDay)
+		}
+		return fmt.Errorf("giờ %s không nằm trong khoảng thời gian của Buổi %s", FormatClock(*dose.Hour, *dose.Minute), todVN)
 	}
 
 	return nil
