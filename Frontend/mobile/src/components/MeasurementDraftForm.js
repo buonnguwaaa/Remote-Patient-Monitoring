@@ -213,8 +213,8 @@ export default function MeasurementDraftForm({
       <Text style={styles.sectionTitle}>Loại chỉ số cần nhập</Text>
       <View style={styles.card}>
         <Text style={styles.helperText}>
-          Chọn nhóm chỉ số cần nhập. Hoàn tất nhóm nào thì bấm "Lưu thông tin", sau đó có
-          thể chuyển sang nhóm kế tiếp.
+          Chọn nhóm chỉ số cần nhập. Hoàn tất nhóm nào thì bấm "Lưu thông tin". Chỉ cần
+          lưu ít nhất 1 nhóm là có thể gửi — nhập càng nhiều nhóm càng tốt.
         </Text>
         <View style={styles.typeGridRow}>
           {MEASUREMENT_SECTIONS.slice(0, 3).map((item) => (
@@ -279,8 +279,8 @@ export default function MeasurementDraftForm({
       <View style={styles.card}>
         <Text style={styles.progressTitle}>Đã lưu {savedCount}/6 nhóm chỉ số</Text>
         <Text style={styles.progressSub}>
-          Cần lưu đủ 6/6 nhóm chỉ số trước khi gửi bản đo. Sau khi hoàn tất, bạn có thể
-          kiểm tra nhanh danh sách bên dưới rồi gửi một lần.
+          Chỉ cần lưu ít nhất 1 nhóm chỉ số là có thể gửi bản đo. Những nhóm chưa nhập sẽ
+          được ghi nhận là không có dữ liệu.
         </Text>
         <View style={styles.savedChipWrap}>
           {MEASUREMENT_SECTIONS.map((item) => (
@@ -310,8 +310,10 @@ export default function MeasurementDraftForm({
             : "Hiện chưa có nhóm chỉ số nào được lưu."}
         </Text>
         {!allSectionsSaved ? (
-          <Text style={styles.progressWarning}>
-            Bạn cần hoàn tất và lưu đủ tất cả nhóm chỉ số trước khi bấm gửi.
+          <Text style={styles.progressFootnote}>
+            {savedCount === 0
+              ? "Hãy nhập và lưu ít nhất một nhóm chỉ số để có thể gửi."
+              : `Đã sẵn sàng gửi với ${savedCount} nhóm chỉ số. Bạn có thể nhập thêm hoặc gửi ngay.`}
           </Text>
         ) : null}
       </View>

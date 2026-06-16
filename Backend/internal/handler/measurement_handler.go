@@ -16,9 +16,7 @@ type MeasurementHandler struct {
 }
 
 func NewMeasurementHandler(s service.MeasurementService) *MeasurementHandler {
-	return &MeasurementHandler{
-		service: s,
-	}
+	return &MeasurementHandler{service: s}
 }
 
 // CreateMeasurement handles the creation of a new measurement for a patient
@@ -115,8 +113,6 @@ func (h *MeasurementHandler) UpdateMeasurement(c *gin.Context) {
 // GetMeasurements retrieves measurements based on query parameters
 // @Summary Get measurements
 // @Description Retrieve measurements based on query parameters
-// @Description If `patientId` is provided along with `latest=true`, only the latest measurement record for that patient will be returned.
-// @Description   Ví dụ: `/measurements?patientId=123&latest=true`
 // @Tags measurements
 // @Accept json
 // @Produce json

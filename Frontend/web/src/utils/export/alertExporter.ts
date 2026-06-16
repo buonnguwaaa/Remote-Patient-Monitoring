@@ -1,15 +1,11 @@
-/**
- * Alert Exporter
- * Export alert data to Excel
- */
-
 import type { AlertResponse, AssignmentResponse } from '../../types/patient';
 import i18n from "../../i18n/config";
 const t = i18n.t;
 import {
   createWorkbook,
   addWorksheet,
-  styleHeaderRow,
+  addTitleRow,
+  applyTableBorder,
   downloadExcelFile,
   generateFilename,
   formatDateTimeVN,
@@ -30,8 +26,8 @@ const violationLabel: Record<string, string> = {
 };
 
 interface AlertExportData {
+  allAlerts: AlertResponse[];
   assignments: AssignmentResponse[];
-  latestAlertsByPatient: Map<string, AlertResponse>;
   dashboardStats: {
     total: number | null | undefined;
     stable: number | null | undefined;
@@ -40,61 +36,65 @@ interface AlertExportData {
   dateRange: string;
 }
 
-const isAttentionAlert = (alert: AlertResponse) => {
-  return alert.severity === "high" && alert.status === "open";
-};
-
-/**
- * Export alerts to Excel
- */
 export const exportAlertsToExcel = async (data: AlertExportData) => {
-  const { assignments, latestAlertsByPatient, dashboardStats, dateRange } = data;
+  const { allAlerts, assignments, dashboardStats, dateRange } = data;
 
-  // Prepare alert data
-  const alertData = assignments.map((assignment) => {
-    const latestAlert = latestAlertsByPatient.get(assignment.patientId);
-    const status = latestAlert && isAttentionAlert(latestAlert) ? t("dashboard.needAttention") : 'Ổn định';
-    const alertInfo = latestAlert 
-      ? latestAlert.violations.map(v => `${violationLabel[v.type] ?? v.type}: ${v.observed}`).join('; ')
-      : 'Không có';
-    const severity = latestAlert ? (latestAlert.severity === 'high' ? 'Cao' : t("dashboard.filterMedium")) : '-';
-    const time = latestAlert ? formatDateTimeVN(latestAlert.createdAt) : '-';
-    
-    return {
-      [t("chat.patient")]: assignment.patientName || 'Không rõ',
-      'Mã BN': assignment.patientCode || assignment.patientPublicId || '-',
-      [t("patients.status")]: status,
-      'Cảnh báo gần nhất': alertInfo,
-      [t("alerts.severity")]: severity,
-      [t("patientDetail.time")]: time,
-    };
-  });
-
-  // Create workbook
-  const workbook = createWorkbook();
-
-  // Add alerts worksheet
-  const alertSheet = addWorksheet(
-    workbook,
-    alertData,
-    t("patients.warning"),
-    [25, 15, 15, 50, 12, 20]
+  const patientNameById = new Map(
+    assignments.map((a) => [a.patientId, a.patientName || 'Không rõ']),
   );
-  styleHeaderRow(alertSheet);
+  const patientCodeById = new Map(
+    assignments.map((a) => [a.patientId, a.patientCode || a.patientPublicId || '-']),
+  );
 
-  // Add summary worksheet
+  const sortedAlerts = [...allAlerts].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  );
+
+  const alertData = sortedAlerts.map((alert) => ({
+    [t("chat.patient")]: patientNameById.get(alert.patientId) ?? 'Không rõ',
+    'Mã BN': patientCodeById.get(alert.patientId) ?? '-',
+    [t("alerts.severity")]: alert.severity === 'high' ? t("dashboard.filterHigh") : t("dashboard.filterMedium"),
+    [t("patients.status")]: alert.status === 'ack' ? t("dashboard.alertStatusAck") : t("dashboard.alertStatusPending"),
+    'Chỉ số vi phạm': alert.violations
+      .map((v) => `${violationLabel[v.type] ?? v.type}: ${v.observed}`)
+      .join('; '),
+    [t("patientDetail.time")]: formatDateTimeVN(alert.createdAt),
+  }));
+
+  const workbook = createWorkbook();
+  const alertSheet = workbook.addWorksheet(t("patients.warning"));
+
+  addTitleRow(alertSheet, `Danh sách cảnh báo sức khỏe bệnh nhân`, `Khoảng thời gian: ${dateRange} · Xuất lúc: ${formatDateTimeVN(new Date())}`, 6);
+
+  if (alertData.length > 0) {
+    const headers = Object.keys(alertData[0]);
+    const headerRow = alertSheet.addRow(headers);
+    headerRow.eachCell((cell) => {
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F46E5' } };
+      cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    });
+    headerRow.height = 20;
+    alertData.forEach((row) => alertSheet.addRow(Object.values(row)));
+    [25, 15, 12, 18, 55, 20].forEach((w, i) => {
+      alertSheet.getColumn(i + 1).width = w;
+    });
+    applyTableBorder(alertSheet, 4, alertSheet.rowCount, 1, 6);
+  }
+
   const summaryData = [
     { 'Chỉ số': t("dashboard.totalPatients"), 'Giá trị': dashboardStats.total || 0 },
     { 'Chỉ số': t("dashboard.stablePatients"), 'Giá trị': dashboardStats.stable || 0 },
     { 'Chỉ số': t("dashboard.needAttention"), 'Giá trị': dashboardStats.attention || 0 },
+    { 'Chỉ số': t("dashboard.totalExportedAlerts"), 'Giá trị': allAlerts.length },
     { 'Chỉ số': '', 'Giá trị': '' },
     { 'Chỉ số': t("dashboard.dateRange"), 'Giá trị': dateRange },
     { 'Chỉ số': 'Ngày xuất', 'Giá trị': formatDateTimeVN(new Date()) },
   ];
-  
-  addWorksheet(workbook, summaryData, t("dashboard.title"), [20, 30]);
 
-  // Download file
+  const summarySheet = addWorksheet(workbook, summaryData, t("dashboard.title"), [20, 30]);
+  applyTableBorder(summarySheet, 1, summarySheet.rowCount, 1, 2);
+
   const filename = generateFilename('canh_bao');
   await downloadExcelFile(workbook, filename);
 };

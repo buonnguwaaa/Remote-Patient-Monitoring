@@ -90,7 +90,14 @@
     "stable": "Stable:",
     "attention": "Need Attention:",
     "minsAgo": "m ago",
-    "hoursAgo": "h ago"
+    "hoursAgo": "h ago",
+    "filterPatientStatus": "Patient Status",
+    "filterStable": "Stable",
+    "filterAttention": "Need Attention",
+    "clearFilters": "Clear Filters",
+    "totalExportedAlerts": "Total Exported Alerts",
+    "alertStatusAck": "Acknowledged",
+    "alertStatusPending": "Pending"
   },
   "settings": {
     "title": "Display Settings",

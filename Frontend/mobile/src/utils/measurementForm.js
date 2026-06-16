@@ -74,10 +74,14 @@ export function buildMeasurementPayload({
       diastolic: toOptionalNumber(values.diastolic, emptyNumberValue),
     },
     glucose: hasGlucose ? Number(values.glucose) : null,
-    timing: hasGlucose ? values.timing : null,
+    mealTiming: hasGlucose ? (values.timing === "pre" ? "pre_meal" : "post_meal") : null,
     device: toOptionalText(values.device),
     note: toOptionalText(values.note),
   };
+}
+
+export function hasAtLeastOneSavedSection(savedSections) {
+  return MEASUREMENT_SECTIONS.some((item) => savedSections[item.key]);
 }
 
 export function getMeasurementValidationError(sectionKey, values = {}) {

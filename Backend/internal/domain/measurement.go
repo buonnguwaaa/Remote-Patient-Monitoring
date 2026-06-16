@@ -14,8 +14,8 @@ const (
 )
 
 type BloodPressure struct {
-	Systolic  float64  `json:"systolic,omitempty" bson:"systolic,omitempty"`
-	Diastolic float64  `json:"diastolic,omitempty" bson:"diastolic,omitempty"`
+	Systolic  *float64 `json:"systolic,omitempty" bson:"systolic,omitempty"`
+	Diastolic *float64 `json:"diastolic,omitempty" bson:"diastolic,omitempty"`
 	MAP       *float64 `json:"map,omitempty" bson:"map,omitempty"`
 }
 
@@ -23,11 +23,12 @@ type Measurement struct {
 	ID        primitive.ObjectID `json:"id" bson:"_id,omitempty"`
 	PatientID primitive.ObjectID `json:"patientId" bson:"patientId"`
 
-	Temperature     float64       `json:"temperature" bson:"temperature"`         // °C
-	HeartRate       float64       `json:"heartRate" bson:"heartRate"`             // bpm
-	RespiratoryRate float64       `json:"respiratoryRate" bson:"respiratoryRate"` // breaths/min
-	SpO2            float64       `json:"spo2" bson:"spo2"`                       // % oxygen saturation
-	BloodPressure   BloodPressure `json:"bloodPressure" bson:"bloodPressure"`
+	Temperature     *float64 `json:"temperature,omitempty" bson:"temperature,omitempty"`
+	HeartRate       *float64 `json:"heartRate,omitempty" bson:"heartRate,omitempty"`
+	RespiratoryRate *float64 `json:"respiratoryRate,omitempty" bson:"respiratoryRate,omitempty"`
+	SpO2            *float64 `json:"spo2,omitempty" bson:"spo2,omitempty"`
+
+	BloodPressure BloodPressure `json:"bloodPressure,omitempty" bson:"bloodPressure,omitempty"`
 
 	Type       MeasurementType `json:"type" bson:"type"`
 	Glucose    *float64        `json:"glucose,omitempty" bson:"glucose,omitempty"`
