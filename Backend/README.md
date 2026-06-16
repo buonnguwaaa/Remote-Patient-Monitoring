@@ -67,6 +67,8 @@ Temporal provides a web UI for better debugging. After starting Temporal with Do
 
 URL: http://localhost:8233
 
+Workflow state is persisted in PostgreSQL (`temporal-postgres-data` volume). Data survives container restarts.
+
 ## Stopping the Application
 
 ### Stop Application Components
