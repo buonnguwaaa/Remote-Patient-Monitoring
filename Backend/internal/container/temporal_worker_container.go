@@ -8,18 +8,19 @@ import (
 )
 
 type TemporalWorkerContainer struct {
-	MeasurementRepo       repository.MeasurementRepository
-	ThresholdRepo         repository.ThresholdRepository
-	AlertRepo             repository.AlertRepository
-	ReminderRepo          repository.ReminderRepository
-	PrescriptionRepo      repository.PrescriptionRepository
-	MedicationIntakeRepo  repository.MedicationIntakeRepository
-	AssignmentRepo        repository.AssignmentRepository
-	ConversationRepo      chatRepository.ConversationRepository
-	MessageRepo           chatRepository.MessageRepository
-	NotificationTokenRepo repository.NotificationTokenRepository
-	NotificationRepo      repository.UserNotificationRepository
-	NotificationService   service.NotificationService
+	MeasurementRepo         repository.MeasurementRepository
+	ThresholdRepo           repository.ThresholdRepository
+	AlertRepo               repository.AlertRepository
+	ReminderRepo            repository.ReminderRepository
+	PrescriptionRepo        repository.PrescriptionRepository
+	MedicationIntakeRepo    repository.MedicationIntakeRepository
+	FollowUpAppointmentRepo repository.FollowUpAppointmentRepository
+	AssignmentRepo          repository.AssignmentRepository
+	ConversationRepo        chatRepository.ConversationRepository
+	MessageRepo             chatRepository.MessageRepository
+	NotificationTokenRepo   repository.NotificationTokenRepository
+	NotificationRepo        repository.UserNotificationRepository
+	NotificationService     service.NotificationService
 }
 
 func NewTemporalWorkerContainer(pushProvider service.PushProvider) *TemporalWorkerContainer {
@@ -32,6 +33,7 @@ func NewTemporalWorkerContainer(pushProvider service.PushProvider) *TemporalWork
 	c.ReminderRepo = repository.NewReminderRepository(db)
 	c.PrescriptionRepo = repository.NewPrescriptionRepository(db)
 	c.MedicationIntakeRepo = repository.NewMedicationIntakeRepository(db)
+	c.FollowUpAppointmentRepo = repository.NewFollowUpAppointmentRepository(db)
 	c.NotificationTokenRepo = repository.NewNotificationTokenRepository(db)
 	c.NotificationRepo = repository.NewUserNotificationRepository(db)
 	c.NotificationService = service.NewNotificationService(c.NotificationTokenRepo, c.NotificationRepo, pushProvider)

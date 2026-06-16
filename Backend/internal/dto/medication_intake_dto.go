@@ -65,25 +65,25 @@ type MedicationAdherenceMedicationResponse struct {
 }
 
 type MedicationAdherenceDayResponse struct {
-	Date         string                                  `json:"date"`
-	Expected     int                                     `json:"expected"`
-	Taken        int                                     `json:"taken"`
-	Missed       int                                     `json:"missed"`
-	Medications  []MedicationAdherenceMedicationResponse `json:"medications"`
+	Date        string                                  `json:"date"`
+	Expected    int                                     `json:"expected"`
+	Taken       int                                     `json:"taken"`
+	Missed      int                                     `json:"missed"`
+	Medications []MedicationAdherenceMedicationResponse `json:"medications"`
 }
 
 type MedicationAdherenceSummaryResponse struct {
-	Expected       int     `json:"expected"`
-	Taken          int     `json:"taken"`
-	Missed         int     `json:"missed"`
-	AdherenceRate  float64 `json:"adherenceRate"`
+	Expected      int     `json:"expected"`
+	Taken         int     `json:"taken"`
+	Missed        int     `json:"missed"`
+	AdherenceRate float64 `json:"adherenceRate"`
 }
 
 type MedicationAdherenceResponse struct {
-	From    string                           `json:"from"`
-	To      string                           `json:"to"`
+	From    string                             `json:"from"`
+	To      string                             `json:"to"`
 	Summary MedicationAdherenceSummaryResponse `json:"summary"`
-	Days    []MedicationAdherenceDayResponse `json:"days"`
+	Days    []MedicationAdherenceDayResponse   `json:"days"`
 }
 
 func ToMedicationDoseResponse(dose domain.MedicationDose) MedicationDoseResponse {

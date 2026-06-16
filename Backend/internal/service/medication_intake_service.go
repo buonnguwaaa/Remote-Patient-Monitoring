@@ -17,9 +17,9 @@ import (
 )
 
 var (
-	ErrMedicationIntakeNotFound    = errors.New("medication intake not found")
-	ErrMedicationSlotNotFound      = errors.New("medication dose slot not found in prescription")
-	ErrPrescriptionNotActiveToday  = errors.New("prescription is not active for today")
+	ErrMedicationIntakeNotFound     = errors.New("medication intake not found")
+	ErrMedicationSlotNotFound       = errors.New("medication dose slot not found in prescription")
+	ErrPrescriptionNotActiveToday   = errors.New("prescription is not active for today")
 	ErrMedicationIntakeAccessDenied = errors.New("access denied")
 )
 
@@ -404,7 +404,7 @@ func resolveAdherenceRange(input *usecase.GetMedicationAdherenceInput, timezone 
 	if err != nil {
 		return time.Time{}, time.Time{}, err
 	}
-	from := to.AddDate(0, 0, -(days-1))
+	from := to.AddDate(0, 0, -(days - 1))
 	return from, to, nil
 }
 
