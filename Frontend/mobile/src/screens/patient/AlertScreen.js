@@ -50,17 +50,39 @@ function formatNumber(value) {
   return Number.isInteger(value) ? `${value}` : value.toFixed(1);
 }
 
+const VIOLATION_LABELS = {
+  temperature: "Nhiệt độ",
+  heart_rate: "Nhịp tim",
+  respiratory_rate: "Nhịp thở",
+  spo2: "SpO2",
+  blood_pressure_systolic: "Huyết áp tâm thu",
+  blood_pressure_diastolic: "Huyết áp tâm trương",
+  bloodPressure: "Huyết áp",
+  glucose: "Đường huyết",
+  sys_max: "Huyết áp tâm thu",
+  sys_min: "Huyết áp tâm thu",
+  bp_diastolic_min: "Huyết áp tâm trương",
+  bp_diastolic_max: "Huyết áp tâm trương",
+  temperature_max: "Nhiệt độ",
+  temperature_min: "Nhiệt độ",
+  heart_rate_max: "Nhịp tim",
+  heart_rate_min: "Nhịp tim",
+  spo2_min: "SpO2",
+  glucose_min: "Đường huyết",
+  glucose_max: "Đường huyết",
+};
+
 function getViolationLabel(type) {
-  const labels = {
-    temperature: "Nhiệt độ",
-    heart_rate: "Nhịp tim",
-    respiratory_rate: "Nhịp thở",
-    spo2: "SpO2",
-    blood_pressure_systolic: "Huyết áp tâm thu",
-    blood_pressure_diastolic: "Huyết áp tâm trương",
-    glucose: "Đường huyết",
-  };
-  return labels[type] || type || "Chỉ số";
+  return VIOLATION_LABELS[type] || type || "Chỉ số";
+}
+
+function getViolationDirection(violation) {
+  const rule = violation?.rule || "";
+  const observed = violation?.observed ?? 0;
+  const threshold = violation?.threshold ?? 0;
+  if (rule.includes("_max") || rule.includes("_high") || observed > threshold) return "Cao";
+  if (rule.includes("_min") || rule.includes("_low") || observed < threshold) return "Thấp";
+  return "Cảnh báo";
 }
 
 function getViolationIcon(type) {
@@ -361,8 +383,9 @@ export default function AlertScreen({ isEmbedded }) {
                         activeOpacity={0.92}
                         style={[
                           styles.alertCard,
-                          isHigh ? styles.alertCardHigh : styles.alertCardInfo,
-                          !statusMeta.isOpen && styles.alertCardAck,
+                          statusMeta.isOpen 
+                            ? (isHigh ? styles.alertCardHigh : styles.alertCardInfo) 
+                            : styles.alertCardAck,
                         ]}
                         onPress={() => setSelectedAlert(alert)}
                       >
@@ -371,13 +394,15 @@ export default function AlertScreen({ isEmbedded }) {
                             <View
                               style={[
                                 styles.iconBadge,
-                                isHigh ? styles.iconBadgeHigh : styles.iconBadgeInfo,
+                                statusMeta.isOpen 
+                                  ? (isHigh ? styles.iconBadgeHigh : styles.iconBadgeInfo) 
+                                  : styles.iconBadgeAck,
                               ]}
                             >
                               <Ionicons
                                 name={summary.iconName}
                                 size={18}
-                                color={isHigh ? "#DC2626" : "#1D4ED8"}
+                                color={statusMeta.isOpen ? (isHigh ? "#DC2626" : "#1D4ED8") : "#6B7280"}
                               />
                             </View>
                             <View style={styles.alertTextWrap}>
@@ -389,9 +414,9 @@ export default function AlertScreen({ isEmbedded }) {
                           <View style={styles.alertRight}>
                             <Text style={styles.timePill}>{formatClockTime(alert.createdAt)}</Text>
                             <View
-                              style={isHigh ? styles.levelPillHigh : styles.levelPillInfo}
+                              style={statusMeta.isOpen ? (isHigh ? styles.levelPillHigh : styles.levelPillInfo) : styles.levelPillAck}
                             >
-                              <Text style={isHigh ? styles.levelTextHigh : styles.levelTextInfo}>
+                              <Text style={statusMeta.isOpen ? (isHigh ? styles.levelTextHigh : styles.levelTextInfo) : styles.levelTextAck}>
                                 {isHigh ? "Nguy hiểm" : "Thông tin"}
                               </Text>
                             </View>
@@ -409,24 +434,27 @@ export default function AlertScreen({ isEmbedded }) {
                         ) : null}
 
                         <View style={styles.violationList}>
-                          {getViolations(alert).map((violation, index) => (
-                            <View key={`${alert.id}-${violation.type}-${index}`} style={styles.violationRow}>
-                              <View style={styles.violationInfo}>
-                                <Text style={styles.violationLabel}>{getViolationLabel(violation.type)}</Text>
-                                <Text style={styles.violationRule}>
-                                  Quy tắc: {violation.rule || "Vượt ngưỡng đã cấu hình"}
-                                </Text>
+                          {getViolations(alert).map((violation, index) => {
+                            const dir = getViolationDirection(violation);
+                            const isOver = dir === "Cao";
+                            return (
+                              <View key={`${alert.id}-${violation.type}-${index}`} style={styles.violationRow}>
+                                <View style={styles.violationInfo}>
+                                  <Text style={styles.violationLabel}>{getViolationLabel(violation.type)}</Text>
+                                  <Text style={styles.violationThresholdInline}>
+                                    Ngưỡng: {formatViolationReading(violation, "threshold")}
+                                  </Text>
+                                </View>
+                                <View style={styles.violationSide}>
+                                  <View style={[styles.violationDirBadge, isOver ? styles.violationDirHigh : styles.violationDirLow]}>
+                                    <Text style={[styles.violationDirText, isOver ? styles.violationDirTextHigh : styles.violationDirTextLow]}>
+                                      {dir}: {formatViolationReading(violation, "observed")}
+                                    </Text>
+                                  </View>
+                                </View>
                               </View>
-                              <View style={styles.violationSide}>
-                                <Text style={styles.violationValue}>
-                                  {formatViolationReading(violation, "observed")}
-                                </Text>
-                                <Text style={styles.violationThreshold}>
-                                  Ngưỡng {formatViolationReading(violation, "threshold")}
-                                </Text>
-                              </View>
-                            </View>
-                          ))}
+                            );
+                          })}
                         </View>
 
                         <View style={styles.cardFooter}>
@@ -493,24 +521,31 @@ export default function AlertScreen({ isEmbedded }) {
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Các chỉ số vi phạm</Text>
                 <View style={styles.modalViolationList}>
-                  {getViolations(selectedAlert).map((violation, index) => (
-                    <View key={`${selectedAlert?.id}-${violation.type}-${index}`} style={styles.modalViolationCard}>
-                      <View style={styles.modalViolationTop}>
-                        <View style={styles.modalViolationTitleWrap}>
-                          <Ionicons name={getViolationIcon(violation.type)} size={16} color="#DC2626" />
-                          <Text style={styles.modalViolationTitle}>{getViolationLabel(violation.type)}</Text>
+                  {getViolations(selectedAlert).map((violation, index) => {
+                    const dir = getViolationDirection(violation);
+                    const isOver = dir === "Cao";
+                    return (
+                      <View key={`${selectedAlert?.id}-${violation.type}-${index}`} style={styles.modalViolationCard}>
+                        <View style={styles.modalViolationTop}>
+                          <View style={styles.modalViolationTitleWrap}>
+                            <Ionicons name={getViolationIcon(violation.type)} size={16} color="#DC2626" />
+                            <Text style={styles.modalViolationTitle}>{getViolationLabel(violation.type)}</Text>
+                          </View>
+                          <View style={[styles.violationDirBadge, isOver ? styles.violationDirHigh : styles.violationDirLow]}>
+                            <Text style={[styles.violationDirText, isOver ? styles.violationDirTextHigh : styles.violationDirTextLow]}>
+                              {dir}: {formatViolationReading(violation, "observed")}
+                            </Text>
+                          </View>
                         </View>
-                        <Text style={styles.modalObserved}>{formatViolationReading(violation, "observed")}</Text>
+                        <View style={styles.modalViolationBottom}>
+                          <Text style={styles.modalThreshold}>Ngưỡng: {formatViolationReading(violation, "threshold")}</Text>
+                          <Text style={[styles.modalSeverity, violation.severity === "high" ? styles.metaHigh : styles.metaInfo]}>
+                            {isOver ? "Quá cao" : "Quá thấp"}
+                          </Text>
+                        </View>
                       </View>
-                      <Text style={styles.modalRule}>Quy tắc: {violation.rule || "Vượt ngưỡng đã cấu hình"}</Text>
-                      <View style={styles.modalViolationBottom}>
-                        <Text style={styles.modalThreshold}>Ngưỡng tham chiếu: {formatViolationReading(violation, "threshold")}</Text>
-                        <Text style={[styles.modalSeverity, violation.severity === "high" ? styles.metaHigh : styles.metaInfo]}>
-                          {violation.severity === "high" ? "Mức cao" : "Thông tin"}
-                        </Text>
-                      </View>
-                    </View>
-                  ))}
+                    );
+                  })}
                 </View>
               </View>
             </ScrollView>
@@ -553,12 +588,13 @@ const styles = StyleSheet.create({
   alertCard: { backgroundColor: "#FFFFFF", borderRadius: 18, padding: 14, borderWidth: 1, borderColor: "#E5E7EB", shadowColor: "#000", shadowOpacity: 0.03, shadowRadius: 8, shadowOffset: { width: 0, height: 3 } },
   alertCardHigh: { borderColor: "#FECACA", backgroundColor: "#FFF6F6" },
   alertCardInfo: { borderColor: "#BFDBFE", backgroundColor: "#F8FAFF" },
-  alertCardAck: { opacity: 0.94 },
+  alertCardAck: { borderColor: "#E5E7EB", backgroundColor: "#F9FAFB", opacity: 0.94 },
   alertHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12 },
   alertTitleWrap: { flexDirection: "row", gap: 10, flex: 1 },
   iconBadge: { width: 36, height: 36, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   iconBadgeHigh: { backgroundColor: "#FEE2E2" },
   iconBadgeInfo: { backgroundColor: "#DBEAFE" },
+  iconBadgeAck: { backgroundColor: "#F3F4F6" },
   alertTextWrap: { flex: 1 },
   alertTitle: { fontSize: 15, fontWeight: "700", color: "#111827" },
   alertDesc: { marginTop: 3, fontSize: 12, lineHeight: 18, color: "#6B7280" },
@@ -566,8 +602,10 @@ const styles = StyleSheet.create({
   timePill: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999, backgroundColor: "rgba(255,255,255,0.88)", fontSize: 12, fontWeight: "700", color: "#111827" },
   levelPillHigh: { backgroundColor: "#FEE2E2", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
   levelPillInfo: { backgroundColor: "#DBEAFE", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
+  levelPillAck: { backgroundColor: "#E5E7EB", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
   levelTextHigh: { color: "#B91C1C", fontWeight: "700", fontSize: 11 },
   levelTextInfo: { color: "#1D4ED8", fontWeight: "700", fontSize: 11 },
+  levelTextAck: { color: "#6B7280", fontWeight: "700", fontSize: 11 },
   fieldWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 12 },
   fieldChip: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6, backgroundColor: "rgba(255,255,255,0.92)", borderWidth: 1, borderColor: "rgba(148,163,184,0.18)" },
   fieldChipText: { fontSize: 11, fontWeight: "700", color: "#374151" },
@@ -575,10 +613,14 @@ const styles = StyleSheet.create({
   violationRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12, borderRadius: 14, backgroundColor: "rgba(255,255,255,0.82)", paddingHorizontal: 12, paddingVertical: 10 },
   violationInfo: { flex: 1 },
   violationLabel: { fontSize: 12, fontWeight: "700", color: "#374151" },
-  violationRule: { marginTop: 3, fontSize: 11, color: "#6B7280" },
+  violationThresholdInline: { marginTop: 3, fontSize: 11, color: "#6B7280" },
   violationSide: { alignItems: "flex-end" },
-  violationValue: { fontSize: 12, fontWeight: "700", color: "#111827" },
-  violationThreshold: { marginTop: 2, fontSize: 11, color: "#6B7280" },
+  violationDirBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
+  violationDirHigh: { backgroundColor: "#FEE2E2" },
+  violationDirLow: { backgroundColor: "#DBEAFE" },
+  violationDirText: { fontSize: 12, fontWeight: "700" },
+  violationDirTextHigh: { color: "#B91C1C" },
+  violationDirTextLow: { color: "#1D4ED8" },
   cardFooter: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10, marginTop: 12 },
   statusPillOpen: { backgroundColor: "#FEF3C7", paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999 },
   statusPillAck: { backgroundColor: "#DCFCE7", paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999 },

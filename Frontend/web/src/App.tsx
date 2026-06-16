@@ -32,6 +32,7 @@ const PatientDetailPage = lazy(() => import("./pages/PatientDetailPage.tsx"));
 const ChatListPage = lazy(() => import("./pages/ChatListPage.tsx"));
 const ChatPage = lazy(() => import("./pages/ChatPage.tsx"));
 const DocterProfile = lazy(() => import("./pages/DocterProfile.tsx"));
+const PrescriptionPage = lazy(() => import("./pages/PrescriptionPage.tsx"));
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -80,6 +81,7 @@ function App() {
                   element={<ThresholdSettingsPage />}
                 />
                 <Route path="/settings" element={<SettingPage />} />
+                <Route path="/prescriptions" element={<PrescriptionPage />} />
               </Route>
 
               <Route path="*" element={<NotFound />} />

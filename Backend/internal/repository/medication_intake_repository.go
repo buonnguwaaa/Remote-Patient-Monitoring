@@ -136,13 +136,13 @@ func (r *medicationIntakeRepository) FindBySlot(
 	scheduledDate time.Time,
 ) (*domain.MedicationIntake, error) {
 	filter := bson.M{
-		"patientId":          patientID,
-		"prescriptionId":     prescriptionID,
-		"drugName":           drugName,
-		"dose.timeOfDay":     dose.TimeOfDay,
-		"dose.mealTiming":    dose.MealTiming,
-		"dose.pillCount":     dose.PillCount,
-		"scheduledDate":      scheduledDate,
+		"patientId":       patientID,
+		"prescriptionId":  prescriptionID,
+		"drugName":        drugName,
+		"dose.timeOfDay":  dose.TimeOfDay,
+		"dose.mealTiming": dose.MealTiming,
+		"dose.pillCount":  dose.PillCount,
+		"scheduledDate":   scheduledDate,
 	}
 
 	var intake domain.MedicationIntake

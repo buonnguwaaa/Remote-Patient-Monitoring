@@ -19,6 +19,7 @@ func RegisterRoutes(r *gin.Engine, c *container.MainServerContainer) {
 	RegisterReminderRoutes(r, c)
 	RegisterPrescriptionRoutes(r, c)
 	RegisterMedicationIntakeRoutes(r, c)
+	RegisterFollowUpAppointmentRoutes(r, c)
 	RegisterChatRoutes(r, c)
 	RegisterNotificationTokenRoutes(r, c)
 	RegisterNotificationRoutes(r, c)

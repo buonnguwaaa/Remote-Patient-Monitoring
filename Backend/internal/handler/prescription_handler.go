@@ -300,6 +300,7 @@ func (h *PrescriptionHandler) UpdatePrescriptionStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": prescription, "message": "Prescription status updated successfully"})
 }
 
+
 func medicationsFromDTO(meds []dto.PrescriptionMedicationRequest) []domain.PrescriptionMedication {
 	result := make([]domain.PrescriptionMedication, len(meds))
 	for i, med := range meds {

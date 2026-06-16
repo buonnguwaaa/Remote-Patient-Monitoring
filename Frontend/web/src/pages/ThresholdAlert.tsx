@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   FaCheckCircle,
@@ -21,6 +21,8 @@ import type { AlertResponse, AssignmentResponse } from "../types/patient";
 
 const ThresholdAlert = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const filterPatientId = searchParams.get("patientId");
   const { t } = useTranslation();
   const [alerts, setAlerts] = useState<AlertResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,7 +31,7 @@ const ThresholdAlert = () => {
   const [currentAlert, setCurrentAlert] = useState<AlertResponse | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 8;
+  const itemsPerPage = 5;
   const { toast, showToast, hideToast } = useToast();
 
   // Pagination calculations
@@ -69,7 +71,12 @@ const ThresholdAlert = () => {
         };
       });
 
-      setAlerts(scopedAlerts);
+      let finalAlerts = scopedAlerts;
+      if (filterPatientId) {
+        finalAlerts = finalAlerts.filter(a => a.patientId === filterPatientId);
+      }
+
+      setAlerts(finalAlerts);
       setLastUpdated(new Date().toISOString());
     } catch (error) {
       console.error("Failed to load alerts", error);
@@ -301,7 +308,7 @@ const ThresholdAlert = () => {
 
   return (
     <>
-      <div className="min-h-screen bg-gray-50 p-4 dark:bg-slate-950 sm:p-6">
+      <div className="min-h-screen bg-gray-50 p-4 pb-24 dark:bg-slate-950 sm:p-6 sm:pb-24">
         <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-800 dark:text-slate-100 sm:text-3xl">{t("alerts.title")}</h1>
@@ -478,7 +485,7 @@ const ThresholdAlert = () => {
         {!loading && filteredAlerts.length > 0 && (
           <div className="mt-6 flex flex-col items-center justify-between gap-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none sm:flex-row">
             <div className="text-sm text-slate-600 dark:text-slate-400">
-              t("common.showing") + " " + (startIndex + 1) + "-" + Math.min(endIndex, filteredAlerts.length) + " " + t("common.of") + " " + filteredAlerts.length + " " + t("nav.alerts").toLowerCase()
+              {t("common.showing") + " " + (startIndex + 1) + "-" + Math.min(endIndex, alerts.length) + " " + t("common.of") + " " + alerts.length + " " + t("nav.alerts").toLowerCase()}
             </div>
 
             <div className="flex items-center gap-2">

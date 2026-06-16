@@ -9,8 +9,9 @@ import (
 type NotificationType string
 
 const (
-	NotificationTypeAlert    NotificationType = "alert"
-	NotificationTypeReminder NotificationType = "reminder"
+	NotificationTypeAlert       NotificationType = "alert"
+	NotificationTypeReminder    NotificationType = "reminder"
+	NotificationTypeAppointment NotificationType = "appointment"
 )
 
 type NotificationDeliveryStatus string
