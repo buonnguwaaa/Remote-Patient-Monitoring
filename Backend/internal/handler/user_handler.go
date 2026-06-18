@@ -368,6 +368,7 @@ func (h *UserHandler) UpdateMyPatientProfile(c *gin.Context) {
 			EmergencyContactName:  req.EmergencyContactName,
 			EmergencyContactPhone: req.EmergencyContactPhone,
 			MedicalHistory:        req.MedicalHistory,
+			MonitoringTypes:       req.MonitoringTypes,
 		},
 	})
 	if err != nil {
@@ -505,6 +506,7 @@ func (h *UserHandler) UpdatePatientByID(c *gin.Context) {
 			EmergencyContactName:  req.EmergencyContactName,
 			EmergencyContactPhone: req.EmergencyContactPhone,
 			MedicalHistory:        req.MedicalHistory,
+			MonitoringTypes:       req.MonitoringTypes,
 		},
 	}
 

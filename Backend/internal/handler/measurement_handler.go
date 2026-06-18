@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"time"
 
@@ -47,6 +48,8 @@ func (h *MeasurementHandler) CreateMeasurement(c *gin.Context) {
 		RespiratoryRate: req.RespiratoryRate,
 		SpO2:            req.SpO2,
 		BloodPressure:   req.BloodPressure,
+		Height:          req.Height,
+		Weight:          req.Weight,
 		Glucose:         req.Glucose,
 		MealTiming:      req.MealTiming,
 		Device:          req.Device,
@@ -58,6 +61,11 @@ func (h *MeasurementHandler) CreateMeasurement(c *gin.Context) {
 
 	resp, err := h.service.CreateMeasurement(ctx, input)
 	if err != nil {
+		var validationErr *service.ValidationError
+		if errors.As(err, &validationErr) {
+			c.JSON(http.StatusBadRequest, gin.H{"field": validationErr.Field, "error": validationErr.Message})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -94,6 +102,8 @@ func (h *MeasurementHandler) UpdateMeasurement(c *gin.Context) {
 		RespiratoryRate: req.RespiratoryRate,
 		SpO2:            req.SpO2,
 		BloodPressure:   req.BloodPressure,
+		Height:          req.Height,
+		Weight:          req.Weight,
 		Glucose:         req.Glucose,
 		MealTiming:      req.MealTiming,
 		Device:          req.Device,
@@ -105,6 +115,11 @@ func (h *MeasurementHandler) UpdateMeasurement(c *gin.Context) {
 
 	resp, err := h.service.UpdateMeasurement(ctx, input)
 	if err != nil {
+		var validationErr *service.ValidationError
+		if errors.As(err, &validationErr) {
+			c.JSON(http.StatusBadRequest, gin.H{"field": validationErr.Field, "error": validationErr.Message})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

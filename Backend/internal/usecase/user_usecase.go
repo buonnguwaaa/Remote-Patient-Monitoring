@@ -39,6 +39,7 @@ type PatientProfileFieldsInput struct {
 	EmergencyContactName  string
 	EmergencyContactPhone string
 	MedicalHistory        string
+	MonitoringTypes       []domain.MonitoringType
 }
 
 type UpdateUserInfoInput struct {

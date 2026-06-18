@@ -120,22 +120,22 @@ func EvaluateMeasurementAgainstThreshold(m *domain.Measurement, t *domain.Thresh
 	}
 
 	// Glucose
-	if t.GlucoseMax != nil && m.Glucose != nil && *m.Glucose > *t.GlucoseMax {
+	if t.GlucoseMax != nil && m.Glucose.BloodGlucose != nil && *m.Glucose.BloodGlucose > *t.GlucoseMax {
 		violations = append(violations, domain.ThresholdViolation{
 			Type:      "glucose",
 			Rule:      "glucose_max",
-			Observed:  *m.Glucose,
+			Observed:  *m.Glucose.BloodGlucose,
 			Threshold: *t.GlucoseMax,
-			Severity:  calculateSeverity(*m.Glucose, *t.GlucoseMax),
+			Severity:  calculateSeverity(*m.Glucose.BloodGlucose, *t.GlucoseMax),
 		})
 	}
-	if t.GlucoseMin != nil && m.Glucose != nil && *m.Glucose < *t.GlucoseMin {
+	if t.GlucoseMin != nil && m.Glucose.BloodGlucose != nil && *m.Glucose.BloodGlucose < *t.GlucoseMin {
 		violations = append(violations, domain.ThresholdViolation{
 			Type:      "glucose",
 			Rule:      "glucose_min",
-			Observed:  *m.Glucose,
+			Observed:  *m.Glucose.BloodGlucose,
 			Threshold: *t.GlucoseMin,
-			Severity:  calculateSeverity(*m.Glucose, *t.GlucoseMin),
+			Severity:  calculateSeverity(*m.Glucose.BloodGlucose, *t.GlucoseMin),
 		})
 	}
 

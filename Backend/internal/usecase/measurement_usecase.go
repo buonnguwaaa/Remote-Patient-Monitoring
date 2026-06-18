@@ -12,9 +12,12 @@ type CreateMeasurementInput struct {
 	SpO2            float64
 	BloodPressure   domain.BloodPressure
 
+	Height *float64
+	Weight *float64
+
 	Systolic   *float64
 	Diastolic  *float64
-	Glucose    *float64
+	Glucose    domain.Glucose
 	MealTiming *domain.MealTiming
 
 	Device *string
@@ -30,9 +33,11 @@ type UpdateMeasurementInput struct {
 	RespiratoryRate float64
 	BloodPressure   domain.BloodPressure
 	SpO2            float64
+	Height          *float64
+	Weight          *float64
 	Systolic        *float64
 	Diastolic       *float64
-	Glucose         *float64
+	Glucose         domain.Glucose
 	MealTiming      *domain.MealTiming
 
 	Device *string

@@ -22,11 +22,12 @@ type BaseUserInfoResponse struct {
 
 type PatientInfoResponse struct {
 	BaseUserInfoResponse
-	InsuranceNumber       string `json:"insuranceNumber,omitempty"`
-	CCCD                  string `json:"cccd,omitempty"`
-	EmergencyContactName  string `json:"emergencyContactName,omitempty"`
-	EmergencyContactPhone string `json:"emergencyContactPhone,omitempty"`
-	MedicalHistory        string `json:"medicalHistory,omitempty"`
+	InsuranceNumber       string                 `json:"insuranceNumber,omitempty"`
+	CCCD                  string                 `json:"cccd,omitempty"`
+	EmergencyContactName  string                 `json:"emergencyContactName,omitempty"`
+	EmergencyContactPhone string                 `json:"emergencyContactPhone,omitempty"`
+	MedicalHistory        string                 `json:"medicalHistory,omitempty"`
+	MonitoringTypes       []domain.MonitoringType `json:"monitoringTypes,omitempty"`
 }
 
 type StaffInfoResponse struct {
@@ -58,11 +59,12 @@ type UpdateUserStatusRequest struct {
 }
 
 type PatientProfileFieldsRequest struct {
-	InsuranceNumber       string `json:"insuranceNumber"`
-	CCCD                  string `json:"cccd"`
-	EmergencyContactName  string `json:"emergencyContactName"`
-	EmergencyContactPhone string `json:"emergencyContactPhone"`
-	MedicalHistory        string `json:"medicalHistory"`
+	InsuranceNumber       string                  `json:"insuranceNumber"`
+	CCCD                  string                  `json:"cccd"`
+	EmergencyContactName  string                  `json:"emergencyContactName"`
+	EmergencyContactPhone string                  `json:"emergencyContactPhone"`
+	MedicalHistory        string                  `json:"medicalHistory"`
+	MonitoringTypes       []domain.MonitoringType `json:"monitoringTypes,omitempty" validate:"omitempty,dive,oneof=bp glucose"`
 }
 
 type UpdatePatientRequest struct {
