@@ -274,7 +274,7 @@ func (s *authService) ForgotPassword(ctx context.Context, input *usecase.ForgotP
 	resetURI := fmt.Sprintf("%s/reset-password?token=%s", os.Getenv("FE_WEB_URL"), token)
 	go func() {
 		if err := util.SendEmail(u.Email, constant.SubjectResetPassword,
-			fmt.Sprintf(constant.ResetPasswordEmailTemplate, u.Name, resetURI)); err != nil {
+			fmt.Sprintf(constant.ResetPasswordEmailTemplate, u.Name, token, resetURI)); err != nil {
 			log.Printf("failed to send reset password email: %v", err)
 		}
 	}()

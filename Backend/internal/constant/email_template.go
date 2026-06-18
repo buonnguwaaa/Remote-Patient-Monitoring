@@ -126,6 +126,26 @@ const ResetPasswordEmailTemplate = `
 		margin: 20px 0;
 		font-weight: 500;
 		}
+		.token-box {
+		background-color: #f0f4ff;
+		border: 1px dashed #007bff;
+		border-radius: 8px;
+		padding: 14px 18px;
+		margin: 20px 0;
+		text-align: center;
+		}
+		.token-label {
+		font-size: 13px;
+		color: #555;
+		margin-bottom: 6px;
+		}
+		.token-value {
+		font-family: monospace;
+		font-size: 14px;
+		font-weight: 700;
+		color: #0a0a0a;
+		word-break: break-all;
+		}
 		.footer {
 		text-align: center;
 		font-size: 13px;
@@ -141,13 +161,22 @@ const ResetPasswordEmailTemplate = `
 		</div>
 		<h1>Reset Your Password</h1>
 		<p>Hello %s,</p>
-		<p>We received a request to reset your password for your <strong>Remote Patient Monitoring</strong> account. Click the button below to create a new password.</p>
+		<p>We received a request to reset your password for your <strong>Remote Patient Monitoring</strong> account.</p>
+
+		<p><strong>Nếu dùng ứng dụng mobile:</strong> sao chép token bên dưới rồi dán vào màn hình "Đặt lại mật khẩu" trong app.</p>
+
+		<div class="token-box">
+		<div class="token-label">Reset Token (copy token này vào app)</div>
+		<div class="token-value">%s</div>
+		</div>
+
+		<p><strong>Nếu dùng trình duyệt:</strong> nhấn nút bên dưới.</p>
 
 		<div style="text-align: center;">
 		<a href="%s" class="button">Reset My Password</a>
 		</div>
 
-		<p>This link will expire in <strong>15 minutes</strong>. If you did not request a password reset, you can safely ignore this email.</p>
+		<p>Token và link sẽ hết hạn sau <strong>15 phút</strong>. Nếu bạn không yêu cầu đặt lại mật khẩu, hãy bỏ qua email này.</p>
 	</div>
 	</body>
 	</html>
