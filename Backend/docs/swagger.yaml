@@ -19,6 +19,12 @@ definitions:
     - FollowUpAppointmentStatusScheduled
     - FollowUpAppointmentStatusCompleted
     - FollowUpAppointmentStatusCanceled
+  domain.Glucose:
+    properties:
+      bloodGlucose:
+        description: mg/dL
+        type: number
+    type: object
   domain.Kind:
     enum:
     - measure
@@ -35,14 +41,6 @@ definitions:
     x-enum-varnames:
     - MealTimingPreMeal
     - MealTimingPostMeal
-  domain.MeasurementType:
-    enum:
-    - bp
-    - glucose
-    type: string
-    x-enum-varnames:
-    - TypeBloodPressure
-    - TypeGlucose
   domain.PrescriptionStatus:
     enum:
     - active
@@ -206,8 +204,10 @@ definitions:
       device:
         type: string
       glucose:
-        type: number
+        $ref: '#/definitions/domain.Glucose'
       heartRate:
+        type: number
+      height:
         type: number
       mealTiming:
         allOf:
@@ -225,15 +225,10 @@ definitions:
         type: number
       temperature:
         type: number
-      type:
-        allOf:
-        - $ref: '#/definitions/domain.MeasurementType'
-        enum:
-        - bp
-        - glucose
+      weight:
+        type: number
     required:
     - patientId
-    - type
     type: object
   dto.CreateMedicationIntakeRequest:
     properties:
@@ -590,8 +585,10 @@ definitions:
       device:
         type: string
       glucose:
-        type: number
+        $ref: '#/definitions/domain.Glucose'
       heartRate:
+        type: number
+      height:
         type: number
       mealTiming:
         $ref: '#/definitions/domain.MealTiming'
@@ -603,17 +600,15 @@ definitions:
         type: number
       temperature:
         type: number
-      type:
-        allOf:
-        - $ref: '#/definitions/domain.MeasurementType'
-        enum:
-        - bp
-        - glucose
+      weight:
+        type: number
     type: object
   dto.UpdateMyPatientProfileRequest:
     properties:
       cccd:
         type: string
+      diseaseTypes:
+        $ref: '#/definitions/user.DiseaseTypes'
       emergencyContactName:
         type: string
       emergencyContactPhone:
@@ -652,6 +647,8 @@ definitions:
     properties:
       cccd:
         type: string
+      diseaseTypes:
+        $ref: '#/definitions/user.DiseaseTypes'
       email:
         type: string
       emergencyContactName:
@@ -789,6 +786,13 @@ definitions:
         type: string
     required:
     - name
+    type: object
+  user.DiseaseTypes:
+    properties:
+      bloodPressure:
+        type: boolean
+      glucose:
+        type: boolean
     type: object
   user.Gender:
     enum:
@@ -2107,10 +2111,6 @@ paths:
       - description: Patient ID
         in: query
         name: patientId
-        type: string
-      - description: Measurement type
-        in: query
-        name: type
         type: string
       - description: Meal timing (pre_meal, post_meal)
         in: query
@@ -3458,6 +3458,14 @@ paths:
         in: query
         name: gender
         type: string
+      - description: Filter by blood pressure disease (true/false)
+        in: query
+        name: bloodPressure
+        type: boolean
+      - description: Filter by glucose disease (true/false)
+        in: query
+        name: glucose
+        type: boolean
       - description: Page number, default 1
         in: query
         name: page

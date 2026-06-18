@@ -1960,12 +1960,6 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Measurement type",
-                        "name": "type",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
                         "description": "Meal timing (pre_meal, post_meal)",
                         "name": "mealTiming",
                         "in": "query"
@@ -3710,6 +3704,18 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "boolean",
+                        "description": "Filter by blood pressure disease (true/false)",
+                        "name": "bloodPressure",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Filter by glucose disease (true/false)",
+                        "name": "glucose",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
                         "description": "Page number, default 1",
                         "name": "page",
@@ -4257,6 +4263,15 @@ const docTemplate = `{
                 "FollowUpAppointmentStatusCanceled"
             ]
         },
+        "domain.Glucose": {
+            "type": "object",
+            "properties": {
+                "bloodGlucose": {
+                    "description": "mg/dL",
+                    "type": "number"
+                }
+            }
+        },
         "domain.Kind": {
             "type": "string",
             "enum": [
@@ -4277,17 +4292,6 @@ const docTemplate = `{
             "x-enum-varnames": [
                 "MealTimingPreMeal",
                 "MealTimingPostMeal"
-            ]
-        },
-        "domain.MeasurementType": {
-            "type": "string",
-            "enum": [
-                "bp",
-                "glucose"
-            ],
-            "x-enum-varnames": [
-                "TypeBloodPressure",
-                "TypeGlucose"
             ]
         },
         "domain.PrescriptionStatus": {
@@ -4517,8 +4521,7 @@ const docTemplate = `{
         "dto.CreateMeasurementRequest": {
             "type": "object",
             "required": [
-                "patientId",
-                "type"
+                "patientId"
             ],
             "properties": {
                 "bloodPressure": {
@@ -4528,9 +4531,12 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "glucose": {
-                    "type": "number"
+                    "$ref": "#/definitions/domain.Glucose"
                 },
                 "heartRate": {
+                    "type": "number"
+                },
+                "height": {
                     "type": "number"
                 },
                 "mealTiming": {
@@ -4559,16 +4565,8 @@ const docTemplate = `{
                 "temperature": {
                     "type": "number"
                 },
-                "type": {
-                    "enum": [
-                        "bp",
-                        "glucose"
-                    ],
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/domain.MeasurementType"
-                        }
-                    ]
+                "weight": {
+                    "type": "number"
                 }
             }
         },
@@ -5100,9 +5098,12 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "glucose": {
-                    "type": "number"
+                    "$ref": "#/definitions/domain.Glucose"
                 },
                 "heartRate": {
+                    "type": "number"
+                },
+                "height": {
                     "type": "number"
                 },
                 "mealTiming": {
@@ -5120,16 +5121,8 @@ const docTemplate = `{
                 "temperature": {
                     "type": "number"
                 },
-                "type": {
-                    "enum": [
-                        "bp",
-                        "glucose"
-                    ],
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/domain.MeasurementType"
-                        }
-                    ]
+                "weight": {
+                    "type": "number"
                 }
             }
         },
@@ -5141,6 +5134,9 @@ const docTemplate = `{
             "properties": {
                 "cccd": {
                     "type": "string"
+                },
+                "diseaseTypes": {
+                    "$ref": "#/definitions/user.DiseaseTypes"
                 },
                 "emergencyContactName": {
                     "type": "string"
@@ -5196,6 +5192,9 @@ const docTemplate = `{
             "properties": {
                 "cccd": {
                     "type": "string"
+                },
+                "diseaseTypes": {
+                    "$ref": "#/definitions/user.DiseaseTypes"
                 },
                 "email": {
                     "type": "string"
@@ -5398,6 +5397,17 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
+                }
+            }
+        },
+        "user.DiseaseTypes": {
+            "type": "object",
+            "properties": {
+                "bloodPressure": {
+                    "type": "boolean"
+                },
+                "glucose": {
+                    "type": "boolean"
                 }
             }
         },
