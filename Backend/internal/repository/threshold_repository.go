@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"log"
 	"time"
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
@@ -30,9 +31,34 @@ type ThresholdFilter struct {
 }
 
 func NewThresholdRepository(db *mongo.Database) ThresholdRepository {
-	return &thresholdRepository{
+	repo := &thresholdRepository{
 		col: db.Collection("thresholds"),
 	}
+	if err := repo.ensureIndexes(context.Background()); err != nil {
+		log.Printf("[WARN] failed to ensure threshold indexes: %v", err)
+	}
+	return repo
+}
+
+func (r *thresholdRepository) ensureIndexes(ctx context.Context) error {
+	models := []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				{Key: "patientId", Value: 1},
+				{Key: "effectiveFrom", Value: -1},
+			},
+			Options: options.Index().SetName("idx_threshold_patient_effective_from"),
+		},
+		{
+			Keys: bson.D{
+				{Key: "doctorId", Value: 1},
+				{Key: "effectiveFrom", Value: -1},
+			},
+			Options: options.Index().SetName("idx_threshold_doctor_effective_from"),
+		},
+	}
+	_, err := r.col.Indexes().CreateMany(ctx, models)
+	return err
 }
 
 func (r *thresholdRepository) Create(ctx context.Context, t *domain.Threshold) (*domain.Threshold, error) {

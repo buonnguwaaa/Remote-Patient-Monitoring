@@ -46,6 +46,10 @@ func (r *notificationTokenRepository) ensureIndexes(ctx context.Context) error {
 			Options: options.Index().
 				SetName("idx_notification_token_user_active_updated"),
 		},
+		{
+			Keys:    bson.D{{Key: "token", Value: 1}},
+			Options: options.Index().SetName("idx_notification_token_token"),
+		},
 	}
 
 	_, err := r.col.Indexes().CreateMany(ctx, models)

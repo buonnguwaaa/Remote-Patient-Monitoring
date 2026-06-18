@@ -71,6 +71,28 @@ func (r *alertRepository) ensureIndexes(ctx context.Context) error {
 				SetUnique(true).
 				SetName("ux_alert_measurement_id"),
 		},
+		{
+			Keys: bson.D{
+				{Key: "patientId", Value: 1},
+				{Key: "createdAt", Value: -1},
+			},
+			Options: options.Index().SetName("idx_alert_patient_created"),
+		},
+		{
+			Keys: bson.D{
+				{Key: "patientId", Value: 1},
+				{Key: "status", Value: 1},
+				{Key: "createdAt", Value: -1},
+			},
+			Options: options.Index().SetName("idx_alert_patient_status_created"),
+		},
+		{
+			Keys: bson.D{
+				{Key: "severity", Value: 1},
+				{Key: "createdAt", Value: -1},
+			},
+			Options: options.Index().SetName("idx_alert_severity_created"),
+		},
 	}
 
 	_, err := r.col.Indexes().CreateMany(ctx, models)

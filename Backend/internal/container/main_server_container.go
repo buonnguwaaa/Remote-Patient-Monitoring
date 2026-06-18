@@ -107,6 +107,10 @@ func NewMainServerContainer() *MainServerContainer {
 	c.ConversationRepo = chatRepository.NewConversationRepository(db)
 	c.MessageRepo = chatRepository.NewMessageRepository(db)
 	c.ActivityLogRepo = repository.NewActivityLogRepository(db)
+
+	if err := c.BaseUserRepo.EnsureIndexes(context.Background()); err != nil {
+		log.Printf("[WARN] failed to ensure user indexes: %v", err)
+	}
 	if err := c.ConversationRepo.EnsureIndexes(context.Background()); err != nil {
 		log.Printf("[WARN] failed to ensure conversation indexes: %v", err)
 	}
