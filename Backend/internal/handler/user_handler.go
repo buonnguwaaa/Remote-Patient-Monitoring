@@ -368,6 +368,7 @@ func (h *UserHandler) UpdateMyPatientProfile(c *gin.Context) {
 			EmergencyContactName:  req.EmergencyContactName,
 			EmergencyContactPhone: req.EmergencyContactPhone,
 			MedicalHistory:        req.MedicalHistory,
+			DiseaseTypes:          req.DiseaseTypes,
 		},
 	})
 	if err != nil {
@@ -404,6 +405,8 @@ func (h *UserHandler) UpdateMyPatientProfile(c *gin.Context) {
 // @Param name query string false "Filter by patients' name"
 // @Param email query string false "Filter by patients' email"
 // @Param gender query string false "Filter by patients' gender"
+// @Param bloodPressure query bool false "Filter by blood pressure disease (true/false)"
+// @Param glucose query bool false "Filter by glucose disease (true/false)"
 // @Param page query int false "Page number, default 1"
 // @Param limit query int false "Number of items per page, default 10"
 // @Param sortOrder query string false "Sort order, asc or desc, default asc"
@@ -425,13 +428,15 @@ func (h *UserHandler) GetPatients(c *gin.Context) {
 	defer cancel()
 
 	input := &usecase.GetUsersInput{
-		Name:      c.Query("name"),
-		Email:     c.Query("email"),
-		Gender:    domain.Gender(c.Query("gender")),
-		Page:      page,
-		Limit:     limit,
-		Offset:    offset,
-		SortOrder: c.DefaultQuery("sortOrder", "asc"),
+		Name:                 c.Query("name"),
+		Email:                c.Query("email"),
+		Gender:               domain.Gender(c.Query("gender")),
+		Page:                 page,
+		Limit:                limit,
+		Offset:               offset,
+		SortOrder:            c.DefaultQuery("sortOrder", "asc"),
+		DiseaseBloodPressure: parseOptionalBoolQuery(c, "bloodPressure"),
+		DiseaseGlucose:       parseOptionalBoolQuery(c, "glucose"),
 	}
 
 	patients, err := h.service.GetPatients(ctx, input)
@@ -505,6 +510,7 @@ func (h *UserHandler) UpdatePatientByID(c *gin.Context) {
 			EmergencyContactName:  req.EmergencyContactName,
 			EmergencyContactPhone: req.EmergencyContactPhone,
 			MedicalHistory:        req.MedicalHistory,
+			DiseaseTypes:          req.DiseaseTypes,
 		},
 	}
 
@@ -789,4 +795,16 @@ func (h *UserHandler) UpdateNurseByID(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Nurse updated successfully"})
+}
+
+func parseOptionalBoolQuery(c *gin.Context, key string) *bool {
+	raw := c.Query(key)
+	if raw == "" {
+		return nil
+	}
+	parsed, err := strconv.ParseBool(raw)
+	if err != nil {
+		return nil
+	}
+	return &parsed
 }

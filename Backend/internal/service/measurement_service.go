@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
-	userDomain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/client"
 	edto "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/dto"
@@ -41,22 +40,24 @@ func (s *measurementService) CreateMeasurement(ctx context.Context, input *useca
 		return nil, err
 	}
 
-	existedPatient, err := s.patientRepo.ExistsByIDAndRole(ctx, patientId, userDomain.RolePatient)
-	if err != nil || !existedPatient {
+	if _, err := s.patientRepo.FindPatientByID(ctx, patientId); err != nil {
 		return nil, fmt.Errorf("user not found or not patient")
 	}
 
 	mapValue := calculateMAP(input.BloodPressure.Systolic, input.BloodPressure.Diastolic)
 	input.BloodPressure.MAP = &mapValue
+	bmi := calculateBMI(input.Height, input.Weight)
 
 	measurement := &domain.Measurement{
 		PatientID:       patientId,
-		Type:            input.Type,
 		Temperature:     input.Temperature,
 		HeartRate:       input.HeartRate,
 		RespiratoryRate: input.RespiratoryRate,
 		SpO2:            input.SpO2,
 		BloodPressure:   input.BloodPressure,
+		Height:          input.Height,
+		Weight:          input.Weight,
+		BMI:             bmi,
 		Glucose:         input.Glucose,
 		MealTiming:      input.MealTiming,
 		Device:          input.Device,
@@ -76,22 +77,7 @@ func (s *measurementService) CreateMeasurement(ctx context.Context, input *useca
 		return nil, err
 	}
 
-	return &dto.MeasurementResponse{
-		ID:              inserted.ID.Hex(),
-		PatientID:       inserted.PatientID.Hex(),
-		Temperature:     inserted.Temperature,
-		HeartRate:       inserted.HeartRate,
-		RespiratoryRate: inserted.RespiratoryRate,
-		SpO2:            inserted.SpO2,
-		BloodPressure:   inserted.BloodPressure,
-		Type:            inserted.Type,
-		Glucose:         inserted.Glucose,
-		MealTiming:      inserted.MealTiming,
-		Device:          inserted.Device,
-		Note:            inserted.Note,
-		CreatedAt:       inserted.CreatedAt,
-		UpdatedAt:       inserted.UpdatedAt,
-	}, nil
+	return mapMeasurementResponse(inserted), nil
 }
 
 func (s *measurementService) UpdateMeasurement(ctx context.Context, input *usecase.UpdateMeasurementInput) (*dto.MeasurementResponse, error) {
@@ -100,17 +86,34 @@ func (s *measurementService) UpdateMeasurement(ctx context.Context, input *useca
 		return nil, err
 	}
 
+	existing, err := s.measurementRepo.FindByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("measurement not found")
+	}
+
 	mapValue := calculateMAP(input.BloodPressure.Systolic, input.BloodPressure.Diastolic)
 	input.BloodPressure.MAP = &mapValue
 
+	height := input.Height
+	if height == nil {
+		height = existing.Height
+	}
+	weight := input.Weight
+	if weight == nil {
+		weight = existing.Weight
+	}
+	bmi := calculateBMI(height, weight)
+
 	newMeasurement := &domain.Measurement{
 		ID:              id,
-		Type:            input.Type,
 		Temperature:     input.Temperature,
 		HeartRate:       input.HeartRate,
 		RespiratoryRate: input.RespiratoryRate,
 		SpO2:            input.SpO2,
 		BloodPressure:   input.BloodPressure,
+		Height:          input.Height,
+		Weight:          input.Weight,
+		BMI:             bmi,
 		Glucose:         input.Glucose,
 		MealTiming:      input.MealTiming,
 		Device:          input.Device,
@@ -123,28 +126,12 @@ func (s *measurementService) UpdateMeasurement(ctx context.Context, input *useca
 		return nil, err
 	}
 
-	return &dto.MeasurementResponse{
-		ID:              updated.ID.Hex(),
-		PatientID:       updated.PatientID.Hex(),
-		Temperature:     updated.Temperature,
-		HeartRate:       updated.HeartRate,
-		RespiratoryRate: updated.RespiratoryRate,
-		SpO2:            updated.SpO2,
-		BloodPressure:   updated.BloodPressure,
-		Type:            updated.Type,
-		Glucose:         updated.Glucose,
-		MealTiming:      updated.MealTiming,
-		Device:          updated.Device,
-		Note:            updated.Note,
-		CreatedAt:       updated.CreatedAt,
-		UpdatedAt:       updated.UpdatedAt,
-	}, nil
+	return mapMeasurementResponse(updated), nil
 }
 
 func (s *measurementService) GetMeasurements(ctx context.Context, input *usecase.GetMeasurementsInput) ([]dto.MeasurementResponse, error) {
 	filter := repository.MeasurementFilter{
 		PatientID:  input.PatientID,
-		Type:       input.Type,
 		MealTiming: input.MealTiming,
 		IsLatest:   input.IsLatest,
 	}
@@ -156,27 +143,42 @@ func (s *measurementService) GetMeasurements(ctx context.Context, input *usecase
 
 	var resp []dto.MeasurementResponse
 	for _, m := range measurements {
-		resp = append(resp, dto.MeasurementResponse{
-			ID:              m.ID.Hex(),
-			PatientID:       m.PatientID.Hex(),
-			Temperature:     m.Temperature,
-			HeartRate:       m.HeartRate,
-			RespiratoryRate: m.RespiratoryRate,
-			BloodPressure:   m.BloodPressure,
-			SpO2:            m.SpO2,
-			Type:            m.Type,
-			Glucose:         m.Glucose,
-			MealTiming:      m.MealTiming,
-			Device:          m.Device,
-			Note:            m.Note,
-			CreatedAt:       m.CreatedAt,
-			UpdatedAt:       m.UpdatedAt,
-		})
+		resp = append(resp, *mapMeasurementResponse(&m))
 	}
 
 	return resp, nil
 }
 
+func mapMeasurementResponse(m *domain.Measurement) *dto.MeasurementResponse {
+	return &dto.MeasurementResponse{
+		ID:              m.ID.Hex(),
+		PatientID:       m.PatientID.Hex(),
+		Temperature:     m.Temperature,
+		HeartRate:       m.HeartRate,
+		RespiratoryRate: m.RespiratoryRate,
+		SpO2:            m.SpO2,
+		BloodPressure:   m.BloodPressure,
+		Height:          m.Height,
+		Weight:          m.Weight,
+		BMI:             m.BMI,
+		Glucose:         m.Glucose,
+		MealTiming:      m.MealTiming,
+		Device:          m.Device,
+		Note:            m.Note,
+		CreatedAt:       m.CreatedAt,
+		UpdatedAt:       m.UpdatedAt,
+	}
+}
+
 func calculateMAP(sys, dias float64) float64 {
 	return (sys + 2*dias) / 3
+}
+
+func calculateBMI(height, weight *float64) *float64 {
+	if height == nil || weight == nil || *height <= 0 {
+		return nil
+	}
+	heightM := *height / 100
+	calculated := *weight / (heightM * heightM)
+	return &calculated
 }

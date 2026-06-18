@@ -144,9 +144,12 @@ func (a *ProcessingAlertActivity) SendAlertPushActivity(ctx context.Context, ale
 		violationType = humanizeViolationType(alert.Violations[0].Type)
 	}
 
-	body := fmt.Sprintf("Chỉ số %s vượt ngưỡng an toàn (%s). Vui lòng kiểm tra ngay.", violationType, strings.ToUpper(string(alert.Severity)))
-	if alert.Severity == domain.SeverityInfo {
-		body = fmt.Sprintf("Có chỉ số %s vượt ngưỡng an toàn. Vui lòng theo dõi thêm.", violationType)
+	body := fmt.Sprintf("Chỉ số %s vượt ngưỡng an toàn nghiêm trọng (%s). Vui lòng kiểm tra ngay.", violationType, strings.ToUpper(string(alert.Severity)))
+	switch alert.Severity {
+	case domain.SeverityLow:
+		body = fmt.Sprintf("Có chỉ số %s vượt ngưỡng nhẹ. Vui lòng theo dõi thêm.", violationType)
+	case domain.SeverityMedium:
+		body = fmt.Sprintf("Có chỉ số %s vượt ngưỡng ở mức trung bình. Vui lòng kiểm tra sớm.", violationType)
 	}
 
 	payload := map[string]string{

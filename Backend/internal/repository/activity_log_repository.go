@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"log"
 	"time"
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
@@ -16,9 +17,38 @@ type ActivityLogRepository struct {
 }
 
 func NewActivityLogRepository(db *mongo.Database) *ActivityLogRepository {
-	return &ActivityLogRepository{
+	repo := &ActivityLogRepository{
 		collection: db.Collection("activity_logs"),
 	}
+	if err := repo.EnsureIndexes(context.Background()); err != nil {
+		log.Printf("[WARN] failed to ensure activity log indexes: %v", err)
+	}
+	return repo
+}
+
+func (r *ActivityLogRepository) EnsureIndexes(ctx context.Context) error {
+	models := []mongo.IndexModel{
+		{
+			Keys:    bson.D{{Key: "createdAt", Value: -1}},
+			Options: options.Index().SetName("idx_activity_log_created"),
+		},
+		{
+			Keys: bson.D{
+				{Key: "userId", Value: 1},
+				{Key: "createdAt", Value: -1},
+			},
+			Options: options.Index().SetName("idx_activity_log_user_created"),
+		},
+		{
+			Keys: bson.D{
+				{Key: "type", Value: 1},
+				{Key: "createdAt", Value: -1},
+			},
+			Options: options.Index().SetName("idx_activity_log_type_created"),
+		},
+	}
+	_, err := r.collection.Indexes().CreateMany(ctx, models)
+	return err
 }
 
 // Create creates a new activity log entry

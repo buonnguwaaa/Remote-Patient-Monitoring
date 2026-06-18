@@ -28,6 +28,8 @@ type BaseUserRepository interface {
 	SetActivationToken(ctx context.Context, email, hash string, expires time.Time) error
 	FindByActivationHash(ctx context.Context, hash string) (*domain.BaseUser, error)
 	ActivateUserByEmail(ctx context.Context, email string) error
+
+	EnsureIndexes(ctx context.Context) error
 }
 
 type baseUserRepository struct {
@@ -49,6 +51,9 @@ type UserFilter struct {
 	Limit     int
 	Offset    int
 	SortOrder string
+
+	DiseaseBloodPressure *bool
+	DiseaseGlucose       *bool
 }
 
 func (r *baseUserRepository) FindByID(ctx context.Context, id primitive.ObjectID) (*domain.BaseUser, error) {
@@ -195,4 +200,40 @@ func buildFilterAndOptions(f UserFilter) (bson.M, *options.FindOptions) {
 	}
 
 	return bsonFilter, opts
+}
+
+func (r *baseUserRepository) EnsureIndexes(ctx context.Context) error {
+	models := []mongo.IndexModel{
+		{
+			Keys:    bson.D{{Key: "email", Value: 1}},
+			Options: options.Index().SetUnique(true).SetName("ux_user_email"),
+		},
+		{
+			Keys:    bson.D{{Key: "role", Value: 1}, {Key: "createdAt", Value: -1}},
+			Options: options.Index().SetName("idx_user_role_created"),
+		},
+		{
+			Keys:    bson.D{{Key: "role", Value: 1}, {Key: "diseaseTypes.bloodPressure", Value: 1}},
+			Options: options.Index().SetName("idx_patient_disease_bp"),
+		},
+		{
+			Keys:    bson.D{{Key: "role", Value: 1}, {Key: "diseaseTypes.glucose", Value: 1}},
+			Options: options.Index().SetName("idx_patient_disease_glucose"),
+		},
+		{
+			Keys:    bson.D{{Key: "departmentId", Value: 1}, {Key: "role", Value: 1}},
+			Options: options.Index().SetName("idx_user_department_role"),
+		},
+		{
+			Keys:    bson.D{{Key: "resetToken", Value: 1}},
+			Options: options.Index().SetSparse(true).SetName("idx_user_reset_token"),
+		},
+		{
+			Keys:    bson.D{{Key: "activationTokenHash", Value: 1}},
+			Options: options.Index().SetSparse(true).SetName("idx_user_activation_token"),
+		},
+	}
+
+	_, err := r.col.Indexes().CreateMany(ctx, models)
+	return err
 }

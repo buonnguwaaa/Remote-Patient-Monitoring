@@ -201,6 +201,13 @@ func (r *conversationRepository) EnsureIndexes(ctx context.Context) error {
 		{
 			Keys: bson.D{{Key: "updatedAt", Value: -1}},
 		},
+		{
+			Keys: bson.D{
+				{Key: "participants.userId", Value: 1},
+				{Key: "updatedAt", Value: -1},
+			},
+			Options: options.Index().SetName("idx_conversation_participant_updated"),
+		},
 	})
 	return err
 }

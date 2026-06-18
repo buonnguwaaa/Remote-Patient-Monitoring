@@ -1958,12 +1958,6 @@
                     },
                     {
                         "type": "string",
-                        "description": "Measurement type",
-                        "name": "type",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
                         "description": "Meal timing (pre_meal, post_meal)",
                         "name": "mealTiming",
                         "in": "query"
@@ -3708,6 +3702,18 @@
                         "in": "query"
                     },
                     {
+                        "type": "boolean",
+                        "description": "Filter by blood pressure disease (true/false)",
+                        "name": "bloodPressure",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Filter by glucose disease (true/false)",
+                        "name": "glucose",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
                         "description": "Page number, default 1",
                         "name": "page",
@@ -4255,6 +4261,15 @@
                 "FollowUpAppointmentStatusCanceled"
             ]
         },
+        "domain.Glucose": {
+            "type": "object",
+            "properties": {
+                "bloodGlucose": {
+                    "description": "mg/dL",
+                    "type": "number"
+                }
+            }
+        },
         "domain.Kind": {
             "type": "string",
             "enum": [
@@ -4275,17 +4290,6 @@
             "x-enum-varnames": [
                 "MealTimingPreMeal",
                 "MealTimingPostMeal"
-            ]
-        },
-        "domain.MeasurementType": {
-            "type": "string",
-            "enum": [
-                "bp",
-                "glucose"
-            ],
-            "x-enum-varnames": [
-                "TypeBloodPressure",
-                "TypeGlucose"
             ]
         },
         "domain.PrescriptionStatus": {
@@ -4515,8 +4519,7 @@
         "dto.CreateMeasurementRequest": {
             "type": "object",
             "required": [
-                "patientId",
-                "type"
+                "patientId"
             ],
             "properties": {
                 "bloodPressure": {
@@ -4526,9 +4529,12 @@
                     "type": "string"
                 },
                 "glucose": {
-                    "type": "number"
+                    "$ref": "#/definitions/domain.Glucose"
                 },
                 "heartRate": {
+                    "type": "number"
+                },
+                "height": {
                     "type": "number"
                 },
                 "mealTiming": {
@@ -4557,16 +4563,8 @@
                 "temperature": {
                     "type": "number"
                 },
-                "type": {
-                    "enum": [
-                        "bp",
-                        "glucose"
-                    ],
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/domain.MeasurementType"
-                        }
-                    ]
+                "weight": {
+                    "type": "number"
                 }
             }
         },
@@ -5098,9 +5096,12 @@
                     "type": "string"
                 },
                 "glucose": {
-                    "type": "number"
+                    "$ref": "#/definitions/domain.Glucose"
                 },
                 "heartRate": {
+                    "type": "number"
+                },
+                "height": {
                     "type": "number"
                 },
                 "mealTiming": {
@@ -5118,16 +5119,8 @@
                 "temperature": {
                     "type": "number"
                 },
-                "type": {
-                    "enum": [
-                        "bp",
-                        "glucose"
-                    ],
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/domain.MeasurementType"
-                        }
-                    ]
+                "weight": {
+                    "type": "number"
                 }
             }
         },
@@ -5139,6 +5132,9 @@
             "properties": {
                 "cccd": {
                     "type": "string"
+                },
+                "diseaseTypes": {
+                    "$ref": "#/definitions/user.DiseaseTypes"
                 },
                 "emergencyContactName": {
                     "type": "string"
@@ -5194,6 +5190,9 @@
             "properties": {
                 "cccd": {
                     "type": "string"
+                },
+                "diseaseTypes": {
+                    "$ref": "#/definitions/user.DiseaseTypes"
                 },
                 "email": {
                     "type": "string"
@@ -5396,6 +5395,17 @@
                 },
                 "name": {
                     "type": "string"
+                }
+            }
+        },
+        "user.DiseaseTypes": {
+            "type": "object",
+            "properties": {
+                "bloodPressure": {
+                    "type": "boolean"
+                },
+                "glucose": {
+                    "type": "boolean"
                 }
             }
         },

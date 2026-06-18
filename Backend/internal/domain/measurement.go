@@ -6,17 +6,14 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-type MeasurementType string
-
-const (
-	TypeBloodPressure MeasurementType = "bp"
-	TypeGlucose       MeasurementType = "glucose"
-)
-
 type BloodPressure struct {
 	Systolic  float64  `json:"systolic,omitempty" bson:"systolic,omitempty"`
 	Diastolic float64  `json:"diastolic,omitempty" bson:"diastolic,omitempty"`
 	MAP       *float64 `json:"map,omitempty" bson:"map,omitempty"`
+}
+
+type Glucose struct {
+	BloodGlucose *float64 `json:"bloodGlucose,omitempty" bson:"bloodGlucose,omitempty"` // mg/dL
 }
 
 type Measurement struct {
@@ -29,11 +26,14 @@ type Measurement struct {
 	SpO2            float64       `json:"spo2" bson:"spo2"`                       // % oxygen saturation
 	BloodPressure   BloodPressure `json:"bloodPressure" bson:"bloodPressure"`
 
-	Type       MeasurementType `json:"type" bson:"type"`
-	Glucose    *float64        `json:"glucose,omitempty" bson:"glucose,omitempty"`
-	MealTiming *MealTiming     `json:"mealTiming,omitempty" bson:"mealTiming,omitempty"`
-	Device     *string         `json:"device,omitempty" bson:"device,omitempty"`
-	Note       *string         `json:"note,omitempty" bson:"note,omitempty"`
-	CreatedAt  time.Time       `json:"createdAt" bson:"createdAt"`
-	UpdatedAt  time.Time       `json:"updatedAt" bson:"updatedAt"`
+	Height *float64 `json:"height,omitempty" bson:"height,omitempty"` // cm
+	Weight *float64 `json:"weight,omitempty" bson:"weight,omitempty"` // kg
+	BMI    *float64 `json:"bmi,omitempty" bson:"bmi,omitempty"`
+
+	Glucose    Glucose     `json:"glucose,omitempty" bson:"glucose,omitempty"`
+	MealTiming *MealTiming `json:"mealTiming,omitempty" bson:"mealTiming,omitempty"`
+	Device     *string     `json:"device,omitempty" bson:"device,omitempty"`
+	Note       *string     `json:"note,omitempty" bson:"note,omitempty"`
+	CreatedAt  time.Time   `json:"createdAt" bson:"createdAt"`
+	UpdatedAt  time.Time   `json:"updatedAt" bson:"updatedAt"`
 }
