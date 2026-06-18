@@ -90,7 +90,7 @@ const PatientList = () => {
     {
       header: t("patients.index"),
       render: (patient) => <span className="font-bold">{filteredPatients.indexOf(patient) + 1}</span>,
-      className: "w-10",
+      className: "w-10 px-3",
     },
     {
       header: t("patients.patientCode"),
