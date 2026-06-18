@@ -7,6 +7,7 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  StyleSheet,
 } from 'react-native';
 import ButtonPrimary from '../../components/ButtonPrimary';
 import { Feather, FontAwesome } from '@expo/vector-icons';
@@ -15,6 +16,25 @@ import styles from '../../styles/login';
 import { useAuth } from '../../hooks/useAuth';
 import * as GoogleAuth from '../../api/googleAuth';
 import * as authApi from '../../api/authApi';
+
+const biometricStyle = StyleSheet.create({
+  btn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e6e6e8',
+    backgroundColor: '#f3f3f5',
+  },
+  text: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#030213',
+  },
+});
 
 export default function LoginScreen({ navigation, onLoginSuccess }) {
   const [email, setEmail] = useState('');
@@ -99,6 +119,15 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
             disabled={loading}
             style={{ marginTop: 10 }}
           />
+
+          <TouchableOpacity
+            style={biometricStyle.btn}
+            onPress={() => {}}
+            activeOpacity={0.8}
+          >
+            <Feather name="unlock" size={18} color="#030213" style={{ marginRight: 8 }} />
+            <Text style={biometricStyle.text}>Sign in with Biometrics</Text>
+          </TouchableOpacity>
 
           <View style={styles.dividerWrap}>
             <View style={styles.divider} />

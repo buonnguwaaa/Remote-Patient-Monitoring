@@ -10,12 +10,13 @@ import {
   Platform,
   ScrollView,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../context/AuthContext";
 
 export default function LoginScreen() {
   const { login } = useAuth();
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -37,7 +38,7 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <View style={[styles.safe, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -116,6 +117,17 @@ export default function LoginScreen() {
                 </>
               )}
             </TouchableOpacity>
+
+            <View style={styles.dividerRow}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>hoặc</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            <TouchableOpacity style={styles.biometricBtn} onPress={() => {}} activeOpacity={0.8}>
+              <Ionicons name="scan-outline" size={22} color="#2563EB" />
+              <Text style={styles.biometricText}>Đăng nhập sinh trắc học</Text>
+            </TouchableOpacity>
           </View>
 
           <Text style={styles.footer}>
@@ -123,7 +135,7 @@ export default function LoginScreen() {
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -133,9 +145,9 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: "center",
     paddingHorizontal: 24,
-    paddingVertical: 40,
+    paddingVertical: 20,
   },
-  header: { alignItems: "center", marginBottom: 32 },
+  header: { alignItems: "center", marginBottom: 20 },
   logoCircle: {
     width: 80,
     height: 80,
@@ -204,6 +216,26 @@ const styles = StyleSheet.create({
   },
   loginBtnDisabled: { opacity: 0.7 },
   loginBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  dividerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 16,
+    gap: 10,
+  },
+  dividerLine: { flex: 1, height: 1, backgroundColor: "#E5E7EB" },
+  dividerText: { fontSize: 12, color: "#9CA3AF" },
+  biometricBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1.5,
+    borderColor: "#BFDBFE",
+    borderRadius: 12,
+    paddingVertical: 13,
+    backgroundColor: "#EFF6FF",
+    gap: 8,
+  },
+  biometricText: { fontSize: 15, fontWeight: "600", color: "#2563EB" },
   footer: {
     textAlign: "center",
     marginTop: 24,

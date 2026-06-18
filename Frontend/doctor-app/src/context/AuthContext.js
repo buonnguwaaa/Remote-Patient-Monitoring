@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import CookieManager from "@react-native-cookies/cookies";
 import * as authApi from "../api/authApi";
 
 const AuthContext = createContext(null);
@@ -20,7 +19,6 @@ export function AuthProvider({ children }) {
       try {
         const res = await authApi.me();
         const u = extractUser(res);
-        // Chỉ cho phép role bác sĩ
         if (u && (u.role === "user.doctor" || u.role === "doctor")) {
           setUser(u);
         } else {
@@ -40,11 +38,17 @@ export function AuthProvider({ children }) {
       return { ok: false, error: res.body?.error || "Đăng nhập thất bại" };
     }
 
+    const token = res.body?.data?.accessToken || res.body?.accessToken;
+    if (token) {
+      await AsyncStorage.setItem("doctor_accessToken", token);
+    }
+
     const meRes = await authApi.me();
     const u = extractUser(meRes);
 
     if (!u) return { ok: false, error: "Không lấy được thông tin tài khoản" };
     if (u.role !== "user.doctor" && u.role !== "doctor") {
+      await AsyncStorage.removeItem("doctor_accessToken");
       return { ok: false, error: "Tài khoản này không phải bác sĩ" };
     }
 
@@ -54,7 +58,6 @@ export function AuthProvider({ children }) {
 
   const logout = async () => {
     try { await authApi.logout(); } catch {}
-    try { await CookieManager.clearAll(); } catch {}
     try {
       await AsyncStorage.removeItem("doctor_accessToken");
       await AsyncStorage.removeItem("doctor_refreshToken");

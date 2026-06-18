@@ -338,7 +338,7 @@ export default function MeasurementInputScreen() {
     const payload = buildMeasurementPayload({
       patientId: selectedPatient.patientId,
       values: measurementValues,
-      emptyNumberValue: 0,
+      emptyNumberValue: null,
     });
     try {
       setSubmitting(true);
