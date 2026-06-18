@@ -347,8 +347,8 @@ func buildPatientUpdateData(input *usecase.PatientProfileFieldsInput) map[string
 	if value := strings.TrimSpace(input.MedicalHistory); value != "" {
 		updateData["medicalHistory"] = value
 	}
-	if len(input.MonitoringTypes) > 0 {
-		updateData["monitoringTypes"] = input.MonitoringTypes
+	if input.DiseaseTypes != nil {
+		updateData["diseaseTypes"] = *input.DiseaseTypes
 	}
 
 	return updateData
@@ -425,7 +425,7 @@ func mapPatient(user *domain.Patient) *dto.PatientInfoResponse {
 		EmergencyContactName:  user.EmergencyContactName,
 		EmergencyContactPhone: user.EmergencyContactPhone,
 		MedicalHistory:        user.MedicalHistory,
-		MonitoringTypes:       user.MonitoringTypes,
+		DiseaseTypes:          user.DiseaseTypes,
 	}
 }
 

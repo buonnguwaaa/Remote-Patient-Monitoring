@@ -7,8 +7,7 @@ import (
 )
 
 type CreateMeasurementRequest struct {
-	PatientID string                 `json:"patientId" validate:"required"`
-	Type      domain.MeasurementType `json:"type" validate:"required,oneof=bp glucose"`
+	PatientID string `json:"patientId" validate:"required"`
 
 	Temperature     float64              `json:"temperature"`
 	HeartRate       float64              `json:"heartRate"`
@@ -26,8 +25,6 @@ type CreateMeasurementRequest struct {
 }
 
 type UpdateMeasurementRequest struct {
-	Type domain.MeasurementType `json:"type,omitempty" validate:"omitempty,oneof=bp glucose"`
-
 	Temperature     float64 `json:"temperature,omitempty"`
 	HeartRate       float64 `json:"heartRate,omitempty"`
 	RespiratoryRate float64 `json:"respiratoryRate,omitempty"`
@@ -58,7 +55,6 @@ type MeasurementResponse struct {
 	Weight *float64 `json:"weight,omitempty"`
 	BMI    *float64 `json:"bmi,omitempty"`
 
-	Type       domain.MeasurementType `json:"type"`
 	Glucose    domain.Glucose         `json:"glucose"`
 	MealTiming *domain.MealTiming     `json:"mealTiming,omitempty"`
 

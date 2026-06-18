@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"log"
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
 	"go.mongodb.org/mongo-driver/bson"
@@ -31,9 +32,13 @@ type assignmentRepository struct {
 }
 
 func NewAssignmentRepository(db *mongo.Database) AssignmentRepository {
-	return &assignmentRepository{
+	repo := &assignmentRepository{
 		collection: db.Collection("assignments"),
 	}
+	if err := repo.EnsureIndexes(context.Background()); err != nil {
+		log.Printf("[WARN] failed to ensure assignment indexes: %v", err)
+	}
+	return repo
 }
 
 func (r *assignmentRepository) Create(ctx context.Context, assignment *domain.Assignment) (*domain.Assignment, error) {
@@ -230,6 +235,10 @@ func (r *assignmentRepository) EnsureIndexes(ctx context.Context) error {
 		{Keys: bson.D{{Key: "patientId", Value: 1}}, Options: options.Index().SetUnique(true)},
 		{Keys: bson.D{{Key: "doctorId", Value: 1}}},
 		{Keys: bson.D{{Key: "nurseId", Value: 1}}},
+		{
+			Keys: bson.D{{Key: "patientId", Value: 1}, {Key: "doctorId", Value: 1}},
+			Options: options.Index().SetName("idx_assignment_patient_doctor"),
+		},
 	})
 	return err
 }

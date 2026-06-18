@@ -12,6 +12,9 @@ type GetUsersInput struct {
 	Limit     int
 	Offset    int
 	SortOrder string
+
+	DiseaseBloodPressure *bool
+	DiseaseGlucose       *bool
 }
 
 type GetUserByIDInput struct {
@@ -39,7 +42,7 @@ type PatientProfileFieldsInput struct {
 	EmergencyContactName  string
 	EmergencyContactPhone string
 	MedicalHistory        string
-	MonitoringTypes       []domain.MonitoringType
+	DiseaseTypes          *domain.DiseaseTypes
 }
 
 type UpdateUserInfoInput struct {

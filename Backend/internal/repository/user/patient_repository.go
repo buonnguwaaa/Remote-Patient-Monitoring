@@ -59,8 +59,14 @@ func (r *patientRepository) Create(ctx context.Context, u *domain.Patient) (*dom
 
 func (r *patientRepository) FindPatients(ctx context.Context, f UserFilter) ([]domain.Patient, error) {
 	bsonFilter, opts := buildFilterAndOptions(f)
-	// Ensure we only query patients
 	bsonFilter["role"] = domain.RolePatient
+
+	if f.DiseaseBloodPressure != nil {
+		bsonFilter["diseaseTypes.bloodPressure"] = *f.DiseaseBloodPressure
+	}
+	if f.DiseaseGlucose != nil {
+		bsonFilter["diseaseTypes.glucose"] = *f.DiseaseGlucose
+	}
 
 	cursor, err := r.col.Find(ctx, bsonFilter, opts)
 	if err != nil {

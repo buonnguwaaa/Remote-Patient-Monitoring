@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"log"
 	"time"
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
@@ -32,9 +33,42 @@ type ReminderFilter struct {
 }
 
 func NewReminderRepository(db *mongo.Database) ReminderRepository {
-	return &reminderRepository{
+	repo := &reminderRepository{
 		col: db.Collection("reminders"),
 	}
+	if err := repo.ensureIndexes(context.Background()); err != nil {
+		log.Printf("[WARN] failed to ensure reminder indexes: %v", err)
+	}
+	return repo
+}
+
+func (r *reminderRepository) ensureIndexes(ctx context.Context) error {
+	models := []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				{Key: "patientId", Value: 1},
+				{Key: "createdAt", Value: -1},
+			},
+			Options: options.Index().SetName("idx_reminder_patient_created"),
+		},
+		{
+			Keys: bson.D{
+				{Key: "prescriptionId", Value: 1},
+				{Key: "createdAt", Value: -1},
+			},
+			Options: options.Index().SetName("idx_reminder_prescription_created"),
+		},
+		{
+			Keys: bson.D{
+				{Key: "patientId", Value: 1},
+				{Key: "status", Value: 1},
+				{Key: "createdAt", Value: -1},
+			},
+			Options: options.Index().SetName("idx_reminder_patient_status_created"),
+		},
+	}
+	_, err := r.col.Indexes().CreateMany(ctx, models)
+	return err
 }
 
 func (r *reminderRepository) Create(ctx context.Context, reminder *domain.Reminder) (*domain.Reminder, error) {

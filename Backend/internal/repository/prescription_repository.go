@@ -57,6 +57,21 @@ func (r *prescriptionRepository) ensureIndexes(ctx context.Context) error {
 				{Key: "createdAt", Value: -1},
 			},
 		},
+		{
+			Keys: bson.D{
+				{Key: "prescribedBy", Value: 1},
+				{Key: "createdAt", Value: -1},
+			},
+			Options: options.Index().SetName("idx_prescription_prescribed_by_created"),
+		},
+		{
+			Keys: bson.D{
+				{Key: "patientId", Value: 1},
+				{Key: "status", Value: 1},
+				{Key: "createdAt", Value: -1},
+			},
+			Options: options.Index().SetName("idx_prescription_patient_status_created"),
+		},
 	}
 
 	_, err := r.col.Indexes().CreateMany(ctx, models)

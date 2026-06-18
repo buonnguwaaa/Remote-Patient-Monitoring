@@ -40,13 +40,8 @@ func (s *measurementService) CreateMeasurement(ctx context.Context, input *useca
 		return nil, err
 	}
 
-	patient, err := s.patientRepo.FindPatientByID(ctx, patientId)
-	if err != nil {
+	if _, err := s.patientRepo.FindPatientByID(ctx, patientId); err != nil {
 		return nil, fmt.Errorf("user not found or not patient")
-	}
-
-	if err := validateMeasurementForPatient(patient, input.Type, input.BloodPressure, input.Glucose, input.MealTiming); err != nil {
-		return nil, err
 	}
 
 	mapValue := calculateMAP(input.BloodPressure.Systolic, input.BloodPressure.Diastolic)
@@ -55,7 +50,6 @@ func (s *measurementService) CreateMeasurement(ctx context.Context, input *useca
 
 	measurement := &domain.Measurement{
 		PatientID:       patientId,
-		Type:            input.Type,
 		Temperature:     input.Temperature,
 		HeartRate:       input.HeartRate,
 		RespiratoryRate: input.RespiratoryRate,
@@ -83,25 +77,7 @@ func (s *measurementService) CreateMeasurement(ctx context.Context, input *useca
 		return nil, err
 	}
 
-	return &dto.MeasurementResponse{
-		ID:              inserted.ID.Hex(),
-		PatientID:       inserted.PatientID.Hex(),
-		Temperature:     inserted.Temperature,
-		HeartRate:       inserted.HeartRate,
-		RespiratoryRate: inserted.RespiratoryRate,
-		SpO2:            inserted.SpO2,
-		BloodPressure:   inserted.BloodPressure,
-		Height:          inserted.Height,
-		Weight:          inserted.Weight,
-		BMI:             inserted.BMI,
-		Type:            inserted.Type,
-		Glucose:         inserted.Glucose,
-		MealTiming:      inserted.MealTiming,
-		Device:          inserted.Device,
-		Note:            inserted.Note,
-		CreatedAt:       inserted.CreatedAt,
-		UpdatedAt:       inserted.UpdatedAt,
-	}, nil
+	return mapMeasurementResponse(inserted), nil
 }
 
 func (s *measurementService) UpdateMeasurement(ctx context.Context, input *usecase.UpdateMeasurementInput) (*dto.MeasurementResponse, error) {
@@ -113,20 +89,6 @@ func (s *measurementService) UpdateMeasurement(ctx context.Context, input *useca
 	existing, err := s.measurementRepo.FindByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("measurement not found")
-	}
-
-	measurementType := input.Type
-	if measurementType == "" {
-		measurementType = existing.Type
-	}
-
-	patient, err := s.patientRepo.FindPatientByID(ctx, existing.PatientID)
-	if err != nil {
-		return nil, fmt.Errorf("user not found or not patient")
-	}
-
-	if err := validateMeasurementForPatient(patient, measurementType, input.BloodPressure, input.Glucose, input.MealTiming); err != nil {
-		return nil, err
 	}
 
 	mapValue := calculateMAP(input.BloodPressure.Systolic, input.BloodPressure.Diastolic)
@@ -144,7 +106,6 @@ func (s *measurementService) UpdateMeasurement(ctx context.Context, input *useca
 
 	newMeasurement := &domain.Measurement{
 		ID:              id,
-		Type:            measurementType,
 		Temperature:     input.Temperature,
 		HeartRate:       input.HeartRate,
 		RespiratoryRate: input.RespiratoryRate,
@@ -165,31 +126,12 @@ func (s *measurementService) UpdateMeasurement(ctx context.Context, input *useca
 		return nil, err
 	}
 
-	return &dto.MeasurementResponse{
-		ID:              updated.ID.Hex(),
-		PatientID:       updated.PatientID.Hex(),
-		Temperature:     updated.Temperature,
-		HeartRate:       updated.HeartRate,
-		RespiratoryRate: updated.RespiratoryRate,
-		SpO2:            updated.SpO2,
-		BloodPressure:   updated.BloodPressure,
-		Height:          updated.Height,
-		Weight:          updated.Weight,
-		BMI:             updated.BMI,
-		Type:            updated.Type,
-		Glucose:         updated.Glucose,
-		MealTiming:      updated.MealTiming,
-		Device:          updated.Device,
-		Note:            updated.Note,
-		CreatedAt:       updated.CreatedAt,
-		UpdatedAt:       updated.UpdatedAt,
-	}, nil
+	return mapMeasurementResponse(updated), nil
 }
 
 func (s *measurementService) GetMeasurements(ctx context.Context, input *usecase.GetMeasurementsInput) ([]dto.MeasurementResponse, error) {
 	filter := repository.MeasurementFilter{
 		PatientID:  input.PatientID,
-		Type:       input.Type,
 		MealTiming: input.MealTiming,
 		IsLatest:   input.IsLatest,
 	}
@@ -201,28 +143,31 @@ func (s *measurementService) GetMeasurements(ctx context.Context, input *usecase
 
 	var resp []dto.MeasurementResponse
 	for _, m := range measurements {
-		resp = append(resp, dto.MeasurementResponse{
-			ID:              m.ID.Hex(),
-			PatientID:       m.PatientID.Hex(),
-			Temperature:     m.Temperature,
-			HeartRate:       m.HeartRate,
-			RespiratoryRate: m.RespiratoryRate,
-			BloodPressure:   m.BloodPressure,
-			SpO2:            m.SpO2,
-			Height:          m.Height,
-			Weight:          m.Weight,
-			BMI:             m.BMI,
-			Type:            m.Type,
-			Glucose:         m.Glucose,
-			MealTiming:      m.MealTiming,
-			Device:          m.Device,
-			Note:            m.Note,
-			CreatedAt:       m.CreatedAt,
-			UpdatedAt:       m.UpdatedAt,
-		})
+		resp = append(resp, *mapMeasurementResponse(&m))
 	}
 
 	return resp, nil
+}
+
+func mapMeasurementResponse(m *domain.Measurement) *dto.MeasurementResponse {
+	return &dto.MeasurementResponse{
+		ID:              m.ID.Hex(),
+		PatientID:       m.PatientID.Hex(),
+		Temperature:     m.Temperature,
+		HeartRate:       m.HeartRate,
+		RespiratoryRate: m.RespiratoryRate,
+		SpO2:            m.SpO2,
+		BloodPressure:   m.BloodPressure,
+		Height:          m.Height,
+		Weight:          m.Weight,
+		BMI:             m.BMI,
+		Glucose:         m.Glucose,
+		MealTiming:      m.MealTiming,
+		Device:          m.Device,
+		Note:            m.Note,
+		CreatedAt:       m.CreatedAt,
+		UpdatedAt:       m.UpdatedAt,
+	}
 }
 
 func calculateMAP(sys, dias float64) float64 {

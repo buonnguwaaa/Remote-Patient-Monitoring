@@ -42,7 +42,6 @@ func (h *MeasurementHandler) CreateMeasurement(c *gin.Context) {
 
 	input := &usecase.CreateMeasurementInput{
 		PatientID:       req.PatientID,
-		Type:            req.Type,
 		Temperature:     req.Temperature,
 		HeartRate:       req.HeartRate,
 		RespiratoryRate: req.RespiratoryRate,
@@ -96,7 +95,6 @@ func (h *MeasurementHandler) UpdateMeasurement(c *gin.Context) {
 
 	input := &usecase.UpdateMeasurementInput{
 		ID:              id,
-		Type:            req.Type,
 		Temperature:     req.Temperature,
 		HeartRate:       req.HeartRate,
 		RespiratoryRate: req.RespiratoryRate,
@@ -136,7 +134,6 @@ func (h *MeasurementHandler) UpdateMeasurement(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param patientId query string false "Patient ID"
-// @Param type query string false "Measurement type"
 // @Param mealTiming query string false "Meal timing (pre_meal, post_meal)"
 // @Param latest query boolean false "Get latest measurement only"
 // @Success 200 {object} map[string]interface{} "Measurements retrieved successfully"
@@ -145,7 +142,6 @@ func (h *MeasurementHandler) UpdateMeasurement(c *gin.Context) {
 func (h *MeasurementHandler) GetMeasurements(c *gin.Context) {
 	input := &usecase.GetMeasurementsInput{
 		PatientID:  c.Query("patientId"),
-		Type:       c.Query("type"),
 		MealTiming: c.Query("mealTiming"),
 		IsLatest:   c.Query("latest") == "true",
 	}

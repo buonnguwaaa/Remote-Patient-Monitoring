@@ -2,12 +2,14 @@ package repository
 
 import (
 	"context"
+	"log"
 	"time"
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type TokenRepository interface {
@@ -22,7 +24,33 @@ type tokenRepository struct {
 }
 
 func NewTokenRepository(db *mongo.Database) TokenRepository {
-	return &tokenRepository{col: db.Collection("refresh_tokens")}
+	repo := &tokenRepository{col: db.Collection("refresh_tokens")}
+	if err := repo.ensureIndexes(context.Background()); err != nil {
+		log.Printf("[WARN] failed to ensure refresh token indexes: %v", err)
+	}
+	return repo
+}
+
+func (r *tokenRepository) ensureIndexes(ctx context.Context) error {
+	models := []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				{Key: "userId", Value: 1},
+				{Key: "tokenHash", Value: 1},
+			},
+			Options: options.Index().SetName("idx_refresh_token_user_hash"),
+		},
+		{
+			Keys: bson.D{
+				{Key: "userId", Value: 1},
+				{Key: "revokedAt", Value: 1},
+				{Key: "expiresAt", Value: -1},
+			},
+			Options: options.Index().SetName("idx_refresh_token_user_active"),
+		},
+	}
+	_, err := r.col.Indexes().CreateMany(ctx, models)
+	return err
 }
 
 func (r *tokenRepository) Save(ctx context.Context, userIDHex string, tokenHash string, expiresAt time.Time) error {
