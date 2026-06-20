@@ -6,7 +6,9 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"log"
+	"math/big"
 	"strings"
 
 	domain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
@@ -47,6 +49,21 @@ func GenerateRandomToken(n int) (string, error) {
 		return "", err
 	}
 	return base64.RawURLEncoding.EncodeToString(b), nil
+}
+
+func GenerateNumericOTP(length int) (string, error) {
+	if length <= 0 {
+		return "", errors.New("invalid OTP length")
+	}
+
+	max := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(length)), nil)
+	n, err := rand.Int(rand.Reader, max)
+	if err != nil {
+		return "", err
+	}
+
+	format := fmt.Sprintf("%%0%dd", length)
+	return fmt.Sprintf(format, n.Int64()), nil
 }
 
 func GenerateUserPublicID(id primitive.ObjectID, role domain.Role) string {
