@@ -26,7 +26,8 @@ const (
 	LocalProvider  = "local"
 	GoogleProvider = "google"
 
-	ActivationTokenTTL    = 24 * time.Hour
+	ActivationOTPLength = 6
+	ActivationOTPTTL      = 15 * time.Minute
 	ResetPasswordTokenTTL = 15 * time.Minute
 )
 
@@ -106,6 +107,11 @@ func (s *authService) Register(ctx context.Context, input *usecase.RegisterInput
 		return nil, err
 	}
 
+	status := domain.StatusActive
+	if input.Role == domain.RolePatient {
+		status = domain.StatusInactive
+	}
+
 	base := domain.BaseUser{
 		Name:     input.Name,
 		Email:    email,
@@ -114,8 +120,7 @@ func (s *authService) Register(ctx context.Context, input *usecase.RegisterInput
 		Role:     input.Role,
 		Gender:   input.Gender,
 		Dob:      input.Dob,
-		// Status: domain.StatusInactive, // Change to this in production
-		Status: domain.StatusActive, // Temporarily auto-activate all accounts for testing; change to above line in production
+		Status:   status,
 	}
 
 	insertedBase, err := s.createUserByRole(ctx, base)
@@ -123,12 +128,11 @@ func (s *authService) Register(ctx context.Context, input *usecase.RegisterInput
 		return nil, err
 	}
 
-	// Temporarily skip activation email for all roles
-	// if input.Role == domain.RolePatient {
-	// 	if err := s.sendActivationEmail(ctx, email, insertedBase.Name); err != nil {
-	// 		return nil, err
-	// 	}
-	// }
+	if input.Role == domain.RolePatient {
+		if err := s.sendActivationOTP(ctx, email, insertedBase.Name); err != nil {
+			return nil, err
+		}
+	}
 
 	return mapBaseUserToResponse(insertedBase), nil
 }
@@ -305,14 +309,19 @@ func (s *authService) ResetPassword(ctx context.Context, input *usecase.ResetPas
 }
 
 func (s *authService) ActivateAccount(ctx context.Context, input *usecase.ActivateAccountInput) error {
-	if strings.TrimSpace(input.Token) == "" {
-		return errors.New("missing token")
+	email := strings.ToLower(strings.TrimSpace(input.Email))
+	otp := strings.TrimSpace(input.OTP)
+	if email == "" {
+		return errors.New("missing email")
+	}
+	if otp == "" {
+		return errors.New("missing otp")
 	}
 
-	hashedToken := util.HashTokenSHA256(input.Token)
-	u, err := s.baseUserRepo.FindByActivationHash(ctx, hashedToken)
+	hashedOTP := util.HashTokenSHA256(otp)
+	u, err := s.baseUserRepo.FindByEmailAndActivationHash(ctx, email, hashedOTP)
 	if err != nil {
-		return errors.New("invalid or expired token")
+		return errors.New("invalid or expired otp")
 	}
 	if u.Status == domain.StatusActive {
 		return nil
@@ -332,7 +341,7 @@ func (s *authService) ResendActivationEmail(ctx context.Context, input *usecase.
 		return errors.New("account already activated")
 	}
 
-	return s.sendActivationEmail(ctx, email, u.Name)
+	return s.sendActivationOTP(ctx, email, u.Name)
 }
 
 // ========================================================
@@ -368,23 +377,22 @@ func (s *authService) createUserByRole(ctx context.Context, base domain.BaseUser
 	}
 }
 
-func (s *authService) sendActivationEmail(ctx context.Context, email, name string) error {
-	token, err := util.GenerateRandomToken(32)
+func (s *authService) sendActivationOTP(ctx context.Context, email, name string) error {
+	otp, err := util.GenerateNumericOTP(ActivationOTPLength)
 	if err != nil {
-		return fmt.Errorf("failed to generate activation token: %w", err)
+		return fmt.Errorf("failed to generate activation otp: %w", err)
 	}
 
-	hashedToken := util.HashTokenSHA256(token)
-	expires := time.Now().Add(ActivationTokenTTL)
+	hashedOTP := util.HashTokenSHA256(otp)
+	expires := time.Now().Add(ActivationOTPTTL)
 
-	if err := s.baseUserRepo.SetActivationToken(ctx, email, hashedToken, expires); err != nil {
-		return fmt.Errorf("failed to set activation token: %w", err)
+	if err := s.baseUserRepo.SetActivationOTP(ctx, email, hashedOTP, expires); err != nil {
+		return fmt.Errorf("failed to set activation otp: %w", err)
 	}
 
-	activateURI := fmt.Sprintf("%s/activate?token=%s", os.Getenv("FE_WEB_URL"), token)
 	go func() {
 		if err := util.SendEmail(email, constant.SubjectActivateAccount,
-			fmt.Sprintf(constant.ActivateEmailTemplate, name, activateURI)); err != nil {
+			fmt.Sprintf(constant.ActivateOTPEmailTemplate, name, otp, int(ActivationOTPTTL.Minutes()))); err != nil {
 			log.Printf("failed to send activation email: %v", err)
 		}
 	}()

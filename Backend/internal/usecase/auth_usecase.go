@@ -48,7 +48,8 @@ type ResetPasswordInput struct {
 }
 
 type ActivateAccountInput struct {
-	Token string
+	Email string
+	OTP   string
 }
 
 type ResendActivationEmailInput struct {

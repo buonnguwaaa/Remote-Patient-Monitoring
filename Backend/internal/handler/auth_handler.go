@@ -297,10 +297,11 @@ func (h *AuthHandler) ResetPassword(c *gin.Context) {
 }
 
 // @Summary Activate account
-// @Description Activate user account created from local strategy using token from email link
+// @Description Activate user account using OTP sent to email
 // @Tags auth
+// @Accept json
 // @Produce json
-// @Param data body dto.ActivateAccountRequest true "Activation token"
+// @Param data body dto.ActivateAccountRequest true "Email and OTP"
 // @Success 200 {object} map[string]string "Account activated successfully"
 // @Failure 400 {object} map[string]string "Bad request"
 // @Router /auth/activate [post]
@@ -314,7 +315,10 @@ func (h *AuthHandler) ActivateAccount(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
-	if err := h.service.ActivateAccount(ctx, &usecase.ActivateAccountInput{Token: req.ActivateToken}); err != nil {
+	if err := h.service.ActivateAccount(ctx, &usecase.ActivateAccountInput{
+		Email: req.Email,
+		OTP:   req.OTP,
+	}); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -322,7 +326,7 @@ func (h *AuthHandler) ActivateAccount(c *gin.Context) {
 }
 
 // @Summary Resend Activation Email
-// @Description Resend account activation email to user
+// @Description Resend account activation OTP to user email
 // @Tags auth
 // @Accept json
 // @Produce json

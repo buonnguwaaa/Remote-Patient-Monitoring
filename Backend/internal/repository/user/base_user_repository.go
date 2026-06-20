@@ -25,8 +25,8 @@ type BaseUserRepository interface {
 	FindByResetToken(ctx context.Context, tokenHash string) (*domain.BaseUser, error)
 	ResetPassword(ctx context.Context, id primitive.ObjectID, hashed string) error
 
-	SetActivationToken(ctx context.Context, email, hash string, expires time.Time) error
-	FindByActivationHash(ctx context.Context, hash string) (*domain.BaseUser, error)
+	SetActivationOTP(ctx context.Context, email, hash string, expires time.Time) error
+	FindByEmailAndActivationHash(ctx context.Context, email, hash string) (*domain.BaseUser, error)
 	ActivateUserByEmail(ctx context.Context, email string) error
 
 	EnsureIndexes(ctx context.Context) error
@@ -140,7 +140,7 @@ func (r *baseUserRepository) ResetPassword(ctx context.Context, id primitive.Obj
 	return err
 }
 
-func (r *baseUserRepository) SetActivationToken(ctx context.Context, email, hash string, expires time.Time) error {
+func (r *baseUserRepository) SetActivationOTP(ctx context.Context, email, hash string, expires time.Time) error {
 	_, err := r.col.UpdateOne(ctx, bson.M{"email": email}, bson.M{
 		"$set": bson.M{
 			"activationTokenHash":   hash,
@@ -151,9 +151,10 @@ func (r *baseUserRepository) SetActivationToken(ctx context.Context, email, hash
 	return err
 }
 
-func (r *baseUserRepository) FindByActivationHash(ctx context.Context, hash string) (*domain.BaseUser, error) {
+func (r *baseUserRepository) FindByEmailAndActivationHash(ctx context.Context, email, hash string) (*domain.BaseUser, error) {
 	var u domain.BaseUser
 	err := r.col.FindOne(ctx, bson.M{
+		"email":                 email,
 		"activationTokenHash":   hash,
 		"activationTokenExpiry": bson.M{"$gt": time.Now()},
 	}).Decode(&u)
