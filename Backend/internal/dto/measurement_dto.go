@@ -25,8 +25,6 @@ type CreateMeasurementRequest struct {
 }
 
 type UpdateMeasurementRequest struct {
-	Type domain.MeasurementType `json:"type,omitempty" validate:"omitempty,oneof=bp glucose"`
-
 	Temperature     *float64 `json:"temperature,omitempty"`
 	HeartRate       *float64 `json:"heartRate,omitempty"`
 	RespiratoryRate *float64 `json:"respiratoryRate,omitempty"`

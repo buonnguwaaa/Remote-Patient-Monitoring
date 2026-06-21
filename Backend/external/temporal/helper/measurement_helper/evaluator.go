@@ -9,22 +9,24 @@ import (
 func EvaluateMeasurementAgainstThreshold(m *domain.Measurement, t *domain.Threshold) []domain.ThresholdViolation {
 	violations := []domain.ThresholdViolation{}
 
+	appendViolation := func(vitalType, rule string, observed, threshold float64) {
+		violations = append(violations, domain.ThresholdViolation{
+			Type:      vitalType,
+			Rule:      rule,
+			Observed:  observed,
+			Threshold: threshold,
+			Severity:  calculateViolationSeverity(vitalType, observed, threshold),
+		})
+	}
+
 	// Temperature
 	if m.Temperature != nil {
 		v := *m.Temperature
 		if t.TemperatureMax != 0 && v > t.TemperatureMax {
-			violations = append(violations, domain.ThresholdViolation{
-				Type: "temperature", Rule: "temperature_max",
-				Observed: v, Threshold: t.TemperatureMax,
-				Severity: calculateSeverity(v, t.TemperatureMax),
-			})
+			appendViolation("temperature", "temperature_max", v, t.TemperatureMax)
 		}
 		if t.TemperatureMin != 0 && v < t.TemperatureMin {
-			violations = append(violations, domain.ThresholdViolation{
-				Type: "temperature", Rule: "temperature_min",
-				Observed: v, Threshold: t.TemperatureMin,
-				Severity: calculateSeverity(v, t.TemperatureMin),
-			})
+			appendViolation("temperature", "temperature_min", v, t.TemperatureMin)
 		}
 	}
 
@@ -32,18 +34,10 @@ func EvaluateMeasurementAgainstThreshold(m *domain.Measurement, t *domain.Thresh
 	if m.HeartRate != nil {
 		v := *m.HeartRate
 		if t.HeartRateMax != 0 && v > t.HeartRateMax {
-			violations = append(violations, domain.ThresholdViolation{
-				Type: "heart_rate", Rule: "heart_rate_max",
-				Observed: v, Threshold: t.HeartRateMax,
-				Severity: calculateSeverity(v, t.HeartRateMax),
-			})
+			appendViolation("heart_rate", "heart_rate_max", v, t.HeartRateMax)
 		}
 		if t.HeartRateMin != 0 && v < t.HeartRateMin {
-			violations = append(violations, domain.ThresholdViolation{
-				Type: "heart_rate", Rule: "heart_rate_min",
-				Observed: v, Threshold: t.HeartRateMin,
-				Severity: calculateSeverity(v, t.HeartRateMin),
-			})
+			appendViolation("heart_rate", "heart_rate_min", v, t.HeartRateMin)
 		}
 	}
 
@@ -51,18 +45,10 @@ func EvaluateMeasurementAgainstThreshold(m *domain.Measurement, t *domain.Thresh
 	if m.RespiratoryRate != nil {
 		v := *m.RespiratoryRate
 		if t.RespiratoryRateMax != 0 && v > t.RespiratoryRateMax {
-			violations = append(violations, domain.ThresholdViolation{
-				Type: "respiratory_rate", Rule: "respiratory_rate_max",
-				Observed: v, Threshold: t.RespiratoryRateMax,
-				Severity: calculateSeverity(v, t.RespiratoryRateMax),
-			})
+			appendViolation("respiratory_rate", "respiratory_rate_max", v, t.RespiratoryRateMax)
 		}
 		if t.RespiratoryRateMin != 0 && v < t.RespiratoryRateMin {
-			violations = append(violations, domain.ThresholdViolation{
-				Type: "respiratory_rate", Rule: "respiratory_rate_min",
-				Observed: v, Threshold: t.RespiratoryRateMin,
-				Severity: calculateSeverity(v, t.RespiratoryRateMin),
-			})
+			appendViolation("respiratory_rate", "respiratory_rate_min", v, t.RespiratoryRateMin)
 		}
 	}
 
@@ -70,11 +56,7 @@ func EvaluateMeasurementAgainstThreshold(m *domain.Measurement, t *domain.Thresh
 	if m.SpO2 != nil {
 		v := *m.SpO2
 		if t.SpO2Min != 0 && v < t.SpO2Min {
-			violations = append(violations, domain.ThresholdViolation{
-				Type: "spo2", Rule: "spo2_min",
-				Observed: v, Threshold: t.SpO2Min,
-				Severity: calculateSeverity(v, t.SpO2Min),
-			})
+			appendViolation("spo2", "spo2_min", v, t.SpO2Min)
 		}
 	}
 
@@ -82,18 +64,10 @@ func EvaluateMeasurementAgainstThreshold(m *domain.Measurement, t *domain.Thresh
 	if m.BloodPressure.Systolic != nil {
 		v := *m.BloodPressure.Systolic
 		if t.SysMax != 0 && v > t.SysMax {
-			violations = append(violations, domain.ThresholdViolation{
-				Type: "blood_pressure_systolic", Rule: "bp_systolic_max",
-				Observed: v, Threshold: t.SysMax,
-				Severity: calculateSeverity(v, t.SysMax),
-			})
+			appendViolation("blood_pressure_systolic", "bp_systolic_max", v, t.SysMax)
 		}
 		if t.SysMin != 0 && v < t.SysMin {
-			violations = append(violations, domain.ThresholdViolation{
-				Type: "blood_pressure_systolic", Rule: "bp_systolic_min",
-				Observed: v, Threshold: t.SysMin,
-				Severity: calculateSeverity(v, t.SysMin),
-			})
+			appendViolation("blood_pressure_systolic", "bp_systolic_min", v, t.SysMin)
 		}
 	}
 
@@ -101,35 +75,19 @@ func EvaluateMeasurementAgainstThreshold(m *domain.Measurement, t *domain.Thresh
 	if m.BloodPressure.Diastolic != nil {
 		v := *m.BloodPressure.Diastolic
 		if t.DiaMax != 0 && v > t.DiaMax {
-			violations = append(violations, domain.ThresholdViolation{
-				Type: "blood_pressure_diastolic", Rule: "bp_diastolic_max",
-				Observed: v, Threshold: t.DiaMax,
-				Severity: calculateSeverity(v, t.DiaMax),
-			})
+			appendViolation("blood_pressure_diastolic", "bp_diastolic_max", v, t.DiaMax)
 		}
 		if t.DiaMin != 0 && v < t.DiaMin {
-			violations = append(violations, domain.ThresholdViolation{
-				Type: "blood_pressure_diastolic", Rule: "bp_diastolic_min",
-				Observed: v, Threshold: t.DiaMin,
-				Severity: calculateSeverity(v, t.DiaMin),
-			})
+			appendViolation("blood_pressure_diastolic", "bp_diastolic_min", v, t.DiaMin)
 		}
 	}
 
 	// Glucose
-	if t.GlucoseMax != nil && m.Glucose != nil && *m.Glucose > *t.GlucoseMax {
-		violations = append(violations, domain.ThresholdViolation{
-			Type: "glucose", Rule: "glucose_max",
-			Observed: *m.Glucose, Threshold: *t.GlucoseMax,
-			Severity: calculateSeverity(*m.Glucose, *t.GlucoseMax),
-		})
+	if t.GlucoseMax != nil && m.Glucose.BloodGlucose != nil && *m.Glucose.BloodGlucose > *t.GlucoseMax {
+		appendViolation("glucose", "glucose_max", *m.Glucose.BloodGlucose, *t.GlucoseMax)
 	}
-	if t.GlucoseMin != nil && m.Glucose != nil && *m.Glucose < *t.GlucoseMin {
-		violations = append(violations, domain.ThresholdViolation{
-			Type: "glucose", Rule: "glucose_min",
-			Observed: *m.Glucose, Threshold: *t.GlucoseMin,
-			Severity: calculateSeverity(*m.Glucose, *t.GlucoseMin),
-		})
+	if t.GlucoseMin != nil && m.Glucose.BloodGlucose != nil && *m.Glucose.BloodGlucose < *t.GlucoseMin {
+		appendViolation("glucose", "glucose_min", *m.Glucose.BloodGlucose, *t.GlucoseMin)
 	}
 
 	return violations

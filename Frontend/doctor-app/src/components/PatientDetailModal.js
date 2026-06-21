@@ -166,8 +166,17 @@ export default function PatientDetailModal({
     }
 
     const key = type === "heartRate" ? "pulse" : type === "respiratoryRate" ? "respiratoryRate" : type;
-    const found = sorted.find((m) => m[key] !== undefined && m[key] !== null);
-    return found ? found[key] : null;
+    const found = sorted.find((m) => {
+      if (key === "glucose") {
+        return m.glucose !== undefined && m.glucose !== null;
+      }
+      return m[key] !== undefined && m[key] !== null;
+    });
+    if (!found) return null;
+    if (key === "glucose") {
+      return typeof found.glucose === "object" ? found.glucose.bloodGlucose : found.glucose;
+    }
+    return found[key];
   };
 
   const renderLatestVitalCard = (type, icon, label, unit, bg, color) => {
@@ -237,7 +246,7 @@ export default function PatientDetailModal({
     const rrVal = item.respiratoryRate || null;
     const rrStatus = checkVitalStatus("respiratoryRate", rrVal);
 
-    const glucVal = item.glucose || null;
+    const glucVal = item.glucose ? (typeof item.glucose === "object" ? item.glucose.bloodGlucose : item.glucose) : null;
     const glucStatus = checkVitalStatus("glucose", glucVal);
 
     const hasAbnormal = bpStatus || hrStatus.isOut || tempStatus.isOut || spo2Status.isOut || rrStatus.isOut || glucStatus.isOut;
@@ -555,7 +564,7 @@ export default function PatientDetailModal({
                     checkVitalStatus("temperature", m.temperature).isOut ||
                     checkVitalStatus("spo2", m.spo2).isOut ||
                     checkVitalStatus("respiratoryRate", m.respiratoryRate).isOut ||
-                    checkVitalStatus("glucose", m.glucose).isOut;
+                    checkVitalStatus("glucose", m.glucose ? (typeof m.glucose === "object" ? m.glucose.bloodGlucose : m.glucose) : null).isOut;
                 }).length === 0 && (
                   <Text style={styles.emptyText}>Không tìm thấy chỉ số bất thường nào</Text>
                 )}

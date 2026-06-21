@@ -31,7 +31,6 @@ type UpdateMeasurementInput struct {
 	RespiratoryRate *float64
 	SpO2            *float64
 	BloodPressure   domain.BloodPressure
-	SpO2            float64
 	Height          *float64
 	Weight          *float64
 	Systolic        *float64

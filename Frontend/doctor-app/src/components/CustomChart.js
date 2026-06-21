@@ -86,7 +86,7 @@ export default function CustomChart({ chartType, measurements, threshold, startD
       } else if (chartType === "respiratory") {
         value = m.respiratoryRate || null;
       } else if (chartType === "glucose") {
-        value = m.glucose || null;
+        value = m.glucose ? (typeof m.glucose === "object" ? m.glucose.bloodGlucose : m.glucose) : null;
       }
 
       if (value !== null) {
