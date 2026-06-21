@@ -5,9 +5,13 @@ import { Platform } from "react-native";
 
 let CookieManager = null;
 if (Platform.OS !== "web") {
-  CookieManager =
-    require("@react-native-cookies/cookies").default ||
-    require("@react-native-cookies/cookies");
+  try {
+    CookieManager =
+      require("@react-native-cookies/cookies").default ||
+      require("@react-native-cookies/cookies");
+  } catch (e) {
+    console.warn("CookieManager is not supported in this environment (e.g. Expo Go):", e.message);
+  }
 }
 import {
   attachPushTokenRefreshListener,

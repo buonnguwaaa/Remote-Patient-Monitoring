@@ -90,7 +90,14 @@
     "stable": "Ổn định:",
     "attention": "Cần chú ý:",
     "minsAgo": " phút trước",
-    "hoursAgo": " giờ trước"
+    "hoursAgo": " giờ trước",
+    "filterPatientStatus": "Trạng thái bệnh nhân",
+    "filterStable": "Ổn định",
+    "filterAttention": "Cần chú ý",
+    "clearFilters": "Xóa bộ lọc",
+    "totalExportedAlerts": "Tổng cảnh báo xuất",
+    "alertStatusAck": "Đã xác nhận",
+    "alertStatusPending": "Chưa xử lý"
   },
   "settings": {
     "title": "Cài đặt hiển thị",

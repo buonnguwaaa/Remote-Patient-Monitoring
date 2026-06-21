@@ -91,9 +91,12 @@ function buildLastMeasurements(measurement) {
           pulse: hasPositiveNumber(measurement?.heartRate) ? measurement.heartRate : null,
         }
       : null,
-    glucose: hasPositiveNumber(measurement?.glucose)
-      ? { value: measurement.glucose, timing: measurement?.timing || "" }
-      : null,
+    glucose: (() => {
+      const glucVal = measurement?.glucose ? (typeof measurement.glucose === "object" ? measurement.glucose.bloodGlucose : measurement.glucose) : null;
+      return hasPositiveNumber(glucVal)
+        ? { value: glucVal, timing: measurement?.timing || "" }
+        : null;
+    })(),
     spo2: hasPositiveNumber(measurement?.spo2) ? { value: measurement.spo2 } : null,
     temp: hasPositiveNumber(measurement?.temperature)
       ? { value: measurement.temperature }

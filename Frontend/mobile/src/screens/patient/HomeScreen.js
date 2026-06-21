@@ -199,8 +199,11 @@ export default function HomeScreen() {
       if (!latest.bp && hasBloodPressure(measurement)) {
         latest.bp = measurement;
       }
-      if (!latest.glucose && hasPositiveNumber(measurement?.glucose)) {
-        latest.glucose = measurement;
+      if (!latest.glucose) {
+        const glucVal = measurement?.glucose ? (typeof measurement.glucose === "object" ? measurement.glucose.bloodGlucose : measurement.glucose) : null;
+        if (hasPositiveNumber(glucVal)) {
+          latest.glucose = measurement;
+        }
       }
       if (!latest.spo2 && hasPositiveNumber(measurement?.spo2)) {
         latest.spo2 = measurement;
@@ -377,7 +380,9 @@ export default function HomeScreen() {
                   </View>
                   {latestVitals.glucose ? (
                     <>
-                      <Text style={styles.vitalMainValue}>{Math.round(latestVitals.glucose.glucose)}</Text>
+                      <Text style={styles.vitalMainValue}>
+                        {Math.round(latestVitals.glucose.glucose ? (typeof latestVitals.glucose.glucose === "object" ? latestVitals.glucose.glucose.bloodGlucose : latestVitals.glucose.glucose) : 0)}
+                      </Text>
                       <Text style={styles.vitalUnit}>
                         mg/dL · {formatTimingLabel(latestVitals.glucose.timing)}
                       </Text>

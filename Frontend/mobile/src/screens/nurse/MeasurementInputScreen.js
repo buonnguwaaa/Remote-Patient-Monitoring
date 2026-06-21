@@ -29,6 +29,7 @@ import {
   getMeasurementValidationError,
   hasMeasurementSectionValue,
   hasMeasurementValue,
+  hasAtLeastOneSavedSection,
   MEASUREMENT_SECTIONS,
 } from "../../utils/measurementForm";
 
@@ -312,11 +313,14 @@ export default function MeasurementInputScreen() {
 
   const submitMeasurement = async () => {
     if (!ensureSelectedPatient()) return;
-    const missingSections = MEASUREMENT_SECTIONS.filter((item) => !savedSections[item.key]);
-    if (missingSections.length > 0) {
-      showWarning(`Bạn cần nhập và lưu đủ tất cả chỉ số trước khi gửi. Còn thiếu: ${missingSections.map((item) => item.label).join(", ")}.`);
+
+    // Logic mới: chỉ cần ít nhất 1 nhóm đã được lưu
+    if (!hasAtLeastOneSavedSection(savedSections)) {
+      showWarning("Bạn cần nhập và lưu ít nhất một nhóm chỉ số trước khi gửi.");
       return;
     }
+
+    // Kiểm tra nếu đang nhập dở một nhóm mà chưa bấm lưu
     const unsavedSections = MEASUREMENT_SECTIONS.filter(
       (item) => hasMeasurementSectionValue(item.key, measurementValues) && !savedSections[item.key]
     );
@@ -324,13 +328,17 @@ export default function MeasurementInputScreen() {
       showWarning(`Bạn còn ${unsavedSections.length} nhóm chỉ số đang nhập nhưng chưa bấm "Lưu thông tin".`);
       return;
     }
-    for (const section of MEASUREMENT_SECTIONS) {
-      if (!validateSection(section.key)) return;
+
+    // Validate các nhóm đã lưu
+    const savedSectionKeys = MEASUREMENT_SECTIONS.filter((item) => savedSections[item.key]).map((item) => item.key);
+    for (const key of savedSectionKeys) {
+      if (!validateSection(key)) return;
     }
+
     const payload = buildMeasurementPayload({
       patientId: selectedPatient.patientId,
       values: measurementValues,
-      emptyNumberValue: 0,
+      emptyNumberValue: null,
     });
     try {
       setSubmitting(true);

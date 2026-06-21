@@ -213,8 +213,7 @@ export default function MeasurementDraftForm({
       <Text style={styles.sectionTitle}>Loại chỉ số cần nhập</Text>
       <View style={styles.card}>
         <Text style={styles.helperText}>
-          Chọn nhóm chỉ số cần nhập. Hoàn tất nhóm nào thì bấm "Lưu thông tin", sau đó có
-          thể chuyển sang nhóm kế tiếp.
+          Chọn nhóm chỉ số cần ghi nhận. Hoàn tất từng nhóm và bấm "Lưu" — chỉ cần ít nhất 1 nhóm để gửi bản đo.
         </Text>
         <View style={styles.typeGridRow}>
           {MEASUREMENT_SECTIONS.slice(0, 3).map((item) => (
@@ -277,10 +276,9 @@ export default function MeasurementDraftForm({
 
       <Text style={styles.sectionTitle}>Thông tin đã chuẩn bị</Text>
       <View style={styles.card}>
-        <Text style={styles.progressTitle}>Đã lưu {savedCount}/6 nhóm chỉ số</Text>
+        <Text style={styles.progressTitle}>{savedCount}/6 nhóm đã ghi nhận</Text>
         <Text style={styles.progressSub}>
-          Cần lưu đủ 6/6 nhóm chỉ số trước khi gửi bản đo. Sau khi hoàn tất, bạn có thể
-          kiểm tra nhanh danh sách bên dưới rồi gửi một lần.
+          Cần ít nhất 1 nhóm để gửi bản đo. Nhóm không nhập sẽ không được ghi vào hồ sơ.
         </Text>
         <View style={styles.savedChipWrap}>
           {MEASUREMENT_SECTIONS.map((item) => (
@@ -306,12 +304,14 @@ export default function MeasurementDraftForm({
         </View>
         <Text style={styles.progressFootnote}>
           {savedLabels.length > 0
-            ? `Hiện đã có: ${savedLabels.join(", ")}.`
-            : "Hiện chưa có nhóm chỉ số nào được lưu."}
+            ? `Đã ghi nhận: ${savedLabels.join(", ")}.`
+            : "Chưa có nhóm nào được ghi nhận."}
         </Text>
         {!allSectionsSaved ? (
-          <Text style={styles.progressWarning}>
-            Bạn cần hoàn tất và lưu đủ tất cả nhóm chỉ số trước khi bấm gửi.
+          <Text style={styles.progressFootnote}>
+            {savedCount === 0
+              ? "Vui lòng ghi nhận ít nhất một nhóm chỉ số trước khi gửi."
+              : `Có thể gửi ngay với ${savedCount} nhóm hiện tại, hoặc tiếp tục bổ sung.`}
           </Text>
         ) : null}
       </View>

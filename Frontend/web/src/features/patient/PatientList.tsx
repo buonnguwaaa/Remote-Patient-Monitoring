@@ -272,7 +272,7 @@ const PatientList = () => {
       </div>
 
       <div className="hidden md:block">
-        <Table data={filteredPatients} columns={columns} onRowClick={clickedRow} itemsPerPage={8} />
+        <Table data={filteredPatients} columns={columns} onRowClick={clickedRow} itemsPerPage={20} />
       </div>
     </div>
   );

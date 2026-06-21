@@ -60,7 +60,7 @@ const ThresholdAlert = () => {
       setRefreshing(true);
       const [patientAssignments, alertList] = await Promise.all([
         getMyPatients(),
-        getAlerts(),
+        getAlerts({ limit: 200 }),
       ]);
 
       const assignmentMap = new Map<string, AssignmentResponse>();

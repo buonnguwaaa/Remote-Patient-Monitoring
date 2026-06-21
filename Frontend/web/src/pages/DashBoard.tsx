@@ -5,7 +5,6 @@ import {
   FaDownload,
   FaExclamationTriangle,
   FaEye,
-  FaFilter,
   FaHeartbeat,
   FaInfoCircle,
   FaUserFriends,
@@ -377,11 +376,6 @@ const DashBoard = () => {
   });
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  // Filter state
-  const [showFilterMenu, setShowFilterMenu] = useState(false);
-  const [filterStatus, setFilterStatus] = useState<'all' | 'stable' | 'attention'>('all');
-  const [filterSeverity, setFilterSeverity] = useState<'all' | 'high' | 'medium'>('all');
-
   // Export menu and health report modal state
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showHealthReportModal, setShowHealthReportModal] = useState(false);
@@ -463,7 +457,6 @@ const DashBoard = () => {
     () => {
       let filtered = alerts.filter((alert) => assignedPatientIds.has(alert.patientId));
 
-      // Filter by date range
       filtered = filtered.filter((alert) => {
         const alertDate = new Date(alert.createdAt);
         const start = new Date(startDate);
@@ -472,14 +465,9 @@ const DashBoard = () => {
         return alertDate >= start && alertDate <= end;
       });
 
-      // Filter by severity
-      if (filterSeverity !== 'all') {
-        filtered = filtered.filter((alert) => alert.severity === filterSeverity);
-      }
-
       return filtered;
     },
-    [alerts, assignedPatientIds, startDate, endDate, filterSeverity],
+    [alerts, assignedPatientIds, startDate, endDate],
   );
 
   const latestAlertsByPatient = useMemo(() => {
@@ -515,8 +503,12 @@ const DashBoard = () => {
     }
 
     const total = assignments.length;
-    const attention = Array.from(latestAlertsByPatient.values()).filter(isAttentionAlert)
-      .length;
+
+    const attention = new Set(
+      Array.from(latestAlertsByPatient.values())
+        .filter(isAttentionAlert)
+        .map((a) => a.patientId),
+    ).size;
 
     return {
       total,
@@ -576,8 +568,8 @@ const DashBoard = () => {
     setShowExportMenu(false);
 
     exportAlertsToExcel({
+      allAlerts: filteredAlerts,
       assignments,
-      latestAlertsByPatient,
       dashboardStats,
       dateRange,
     });
@@ -681,17 +673,6 @@ const DashBoard = () => {
     // Data will be automatically filtered by useMemo
   };
 
-  // Reset filters
-  const handleResetFilters = () => {
-    const date = new Date();
-    date.setDate(1);
-    setStartDate(date.toISOString().split('T')[0]);
-    setEndDate(new Date().toISOString().split('T')[0]);
-    setFilterStatus('all');
-    setFilterSeverity('all');
-    setShowFilterMenu(false);
-  };
-
   return (
     <div className="min-h-screen bg-[#f5f6fa] font-sans dark:bg-slate-900">
       <div className="mx-auto max-w-screen-2xl space-y-4 px-6 py-6">
@@ -782,85 +763,6 @@ const DashBoard = () => {
                         className="rounded-lg border border-gray-200 px-3 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
                       >
                         {t("common.reset")}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Filter Button */}
-            <div className="relative">
-              <button
-                onClick={() => setShowFilterMenu(!showFilterMenu)}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-gray-100 bg-white px-3 py-2 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-              >
-                <FaFilter size={10} />
-                Lọc
-                {(filterStatus !== 'all' || filterSeverity !== 'all') && (
-                  <span className="ml-1 flex h-4 w-4 items-center justify-center rounded-full bg-indigo-500 text-[9px] text-white">
-                    {(filterStatus !== 'all' ? 1 : 0) + (filterSeverity !== 'all' ? 1 : 0)}
-                  </span>
-                )}
-              </button>
-
-              {showFilterMenu && (
-                <div className="absolute right-0 top-full z-50 mt-2 w-64 rounded-xl border border-gray-100 bg-white p-4 shadow-lg dark:border-slate-700 dark:bg-slate-800">
-                  <div className="mb-3 flex items-center justify-between">
-                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
-                      Bộ lọc
-                    </h3>
-                    <button
-                      onClick={() => setShowFilterMenu(false)}
-                      className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                    >
-                      ✕
-                    </button>
-                  </div>
-
-                  <div className="space-y-3">
-                    <div>
-                      <label className="mb-2 block text-xs font-medium text-gray-600 dark:text-slate-400">
-                        Mức độ cảnh báo
-                      </label>
-                      <div className="space-y-1">
-                        {[
-                          { value: 'all', label: t("dashboard.filterAll") },
-                          { value: 'high', label: 'Cao' },
-                          { value: 'medium', label: t("dashboard.filterMedium") },
-                        ].map((option) => (
-                          <label
-                            key={option.value}
-                            className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-gray-50 dark:hover:bg-slate-700"
-                          >
-                            <input
-                              type="radio"
-                              name="severity"
-                              value={option.value}
-                              checked={filterSeverity === option.value}
-                              onChange={(e) => setFilterSeverity(e.target.value as any)}
-                              className="h-3 w-3"
-                            />
-                            <span className="text-xs text-gray-700 dark:text-slate-300">
-                              {option.label}
-                            </span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="flex gap-2 border-t border-gray-100 pt-3 dark:border-slate-700">
-                      <button
-                        onClick={() => setShowFilterMenu(false)}
-                        className="flex-1 rounded-lg bg-indigo-500 px-3 py-2 text-xs font-medium text-white hover:bg-indigo-600"
-                      >
-                        {t("common.apply")}
-                      </button>
-                      <button
-                        onClick={handleResetFilters}
-                        className="rounded-lg border border-gray-200 px-3 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
-                      >
-                        Xóa bộ lọc
                       </button>
                     </div>
                   </div>

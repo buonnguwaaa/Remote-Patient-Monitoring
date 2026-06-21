@@ -39,7 +39,10 @@ function matchesTab(measurement, tab) {
       Number(measurement?.bloodPressure?.diastolic) > 0
     );
   }
-  if (tab === "glucose") return Number(measurement?.glucose) > 0;
+  if (tab === "glucose") {
+    const glucVal = measurement?.glucose ? (typeof measurement.glucose === "object" ? measurement.glucose.bloodGlucose : measurement.glucose) : null;
+    return Number(glucVal) > 0;
+  }
   if (tab === "spo2") return Number(measurement?.spo2) > 0;
   if (tab === "temp") return Number(measurement?.temperature) > 0;
   if (tab === "heartRate") return Number(measurement?.heartRate) > 0;
@@ -135,7 +138,10 @@ export default function HistoryScreen({ route, isEmbedded }) {
       ];
       legend = ["Tâm thu", "Tâm trương"];
     } else if (tab === "glucose") {
-      const glucoseArr = recentMeasurements.map((m) => m.glucose || 0);
+      const glucoseArr = recentMeasurements.map((m) => {
+        const glucVal = m.glucose ? (typeof m.glucose === "object" ? m.glucose.bloodGlucose : m.glucose) : null;
+        return glucVal || 0;
+      });
       chartDatasets = [
         {
           data: glucoseArr,
@@ -218,7 +224,10 @@ export default function HistoryScreen({ route, isEmbedded }) {
         },
       ];
     } else if (tab === "glucose") {
-      const glucoseArr = extendedMeasurements.map((m) => m.glucose || 0);
+      const glucoseArr = extendedMeasurements.map((m) => {
+        const glucVal = m.glucose ? (typeof m.glucose === "object" ? m.glucose.bloodGlucose : m.glucose) : null;
+        return glucVal || 0;
+      });
       modalChartDatasets = [
         {
           data: glucoseArr,
@@ -303,7 +312,7 @@ export default function HistoryScreen({ route, isEmbedded }) {
       ];
     } else if (tab === "glucose") {
       content.values = [
-        { label: "Đường huyết", value: `${m.glucose} mg/dL` },
+        { label: "Đường huyết", value: `${m.glucose ? (typeof m.glucose === "object" ? m.glucose.bloodGlucose : m.glucose) : 0} mg/dL` },
         ...(m.timing ? [{ label: "Thời điểm", value: m.timing }] : [])
       ];
     } else if (tab === "spo2") {
@@ -630,7 +639,9 @@ export default function HistoryScreen({ route, isEmbedded }) {
 
                 {tab === "glucose" && (
                   <View style={styles.recordValueBox}>
-                    <Text style={styles.recordValueNumber}>{m.glucose}</Text>
+                    <Text style={styles.recordValueNumber}>
+                      {m.glucose ? (typeof m.glucose === "object" ? m.glucose.bloodGlucose : m.glucose) : "--"}
+                    </Text>
                     <Text style={styles.recordValueUnit}>mg/dL</Text>
                     <Text style={styles.recordValueLabel}>Đường huyết</Text>
                   </View>
