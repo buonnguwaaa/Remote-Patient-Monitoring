@@ -371,6 +371,8 @@
     "historyConfigs": "History Versions Ready to Reuse",
     "filterByPatient": "Filter by Patient",
     "selectPatient": "-- Select patient --",
+    "searchPatient": "Search patient...",
+    "noPatientFound": "No patient found",
     "loadingPatients": "-- Loading patients --",
     "configList": "Threshold Configuration List",
     "configListDesc": "Track active configurations, quick edit, and view change history.",

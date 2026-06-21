@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   FaCheckCircle,
+  FaChevronUp,
   FaCommentDots,
   FaExclamationTriangle,
   FaInfoCircle,
@@ -11,6 +12,8 @@ import {
 } from "react-icons/fa";
 
 import Toast from "../components/ui/Toast";
+import Table from "../components/ui/Table";
+import type { Column } from "../components/ui/Table";
 import { useToast } from "../hooks/useToast";
 import {
   acknowledgeAlert,
@@ -30,15 +33,18 @@ const ThresholdAlert = () => {
   const [showResolveModal, setShowResolveModal] = useState(false);
   const [currentAlert, setCurrentAlert] = useState<AlertResponse | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const [expandedAlerts, setExpandedAlerts] = useState<Set<string>>(new Set());
+
   const { toast, showToast, hideToast } = useToast();
 
-  // Pagination calculations
-  const totalPages = Math.ceil(alerts.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const filteredAlerts = alerts.slice(startIndex, endIndex);
+  const toggleExpanded = (alertId: string) => {
+    setExpandedAlerts((prev) => {
+      const next = new Set(prev);
+      if (next.has(alertId)) next.delete(alertId);
+      else next.add(alertId);
+      return next;
+    });
+  };
 
   const stats = useMemo(() => {
     return {
@@ -97,11 +103,8 @@ const ThresholdAlert = () => {
 
   const navigateToChat = (alert: AlertResponse) => {
     const query = new URLSearchParams({ alertId: alert.id });
-
     navigate(`/patient/chat/${alert.patientId}?${query.toString()}`, {
-      state: {
-        alertSnapshot: alert,
-      },
+      state: { alertSnapshot: alert },
     });
   };
 
@@ -117,7 +120,6 @@ const ThresholdAlert = () => {
 
   const handleConfirmAcknowledge = async () => {
     if (!currentAlert) return;
-
     try {
       const updated =
         currentAlert.status === "ack"
@@ -139,9 +141,7 @@ const ThresholdAlert = () => {
       );
 
       setLastUpdated(new Date().toISOString());
-
       closeResolveModal();
-
       showToast(t("alerts.acknowledgeSuccess"), "success", {
         title: t("alerts.processSuccess"),
       });
@@ -150,9 +150,7 @@ const ThresholdAlert = () => {
       showToast(
         error?.response?.data?.error || t("alerts.acknowledgeError"),
         "error",
-        {
-          title: t("alerts.processFailed"),
-        },
+        { title: t("alerts.processFailed") },
       );
     }
   };
@@ -170,22 +168,18 @@ const ThresholdAlert = () => {
     return labels[type] || type;
   };
 
-  const formatDate = (value: string) => {
-    return new Date(value).toLocaleString("vi-VN", {
+  const formatDate = (value: string) =>
+    new Date(value).toLocaleString("vi-VN", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
       hour: "2-digit",
       minute: "2-digit",
     });
-  };
 
-  const getPrimaryViolations = (alert: AlertResponse) =>
-    alert.violations.slice(0, 2);
-
+  // ─── Mobile card renderer ──────────────────────────────────────────────────
   const renderAlertCard = (alert: AlertResponse) => {
-    const primaryViolations = getPrimaryViolations(alert);
-
+    const primaryViolations = alert.violations.slice(0, 2);
     return (
       <div
         key={alert.id}
@@ -193,23 +187,18 @@ const ThresholdAlert = () => {
       >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="truncate text-base font-semibold text-gray-900 dark:text-slate-100">
-                {alert.patientName || t("alerts.patient")}
-              </h3>
-            </div>
-
+            <h3 className="truncate text-base font-semibold text-gray-900 dark:text-slate-100">
+              {alert.patientName || t("alerts.patient")}
+            </h3>
             <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
               {formatDate(alert.createdAt)}
             </div>
-
-            {alert.acknowledgedAt ? (
+            {alert.acknowledgedAt && (
               <div className="mt-1 text-xs text-green-600 dark:text-emerald-300">
                 {t("alerts.acknowledgedAt")} {formatDate(alert.acknowledgedAt)}
               </div>
-            ) : null}
+            )}
           </div>
-
           <div className="shrink-0">{renderStatusBadge(alert)}</div>
         </div>
 
@@ -217,18 +206,13 @@ const ThresholdAlert = () => {
           <span
             className={`inline-flex whitespace-nowrap items-center gap-1 rounded-md px-3 py-1 text-xs font-medium ${
               alert.severity === "high"
-                ? "bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300 dark:ring-1 dark:ring-red-500/25"
-                : "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-200 dark:ring-1 dark:ring-amber-500/25"
+                ? "bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300"
+                : "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-200"
             }`}
           >
-            {alert.severity === "high" ? (
-              <FaExclamationTriangle />
-            ) : (
-              <FaInfoCircle />
-            )}
+            {alert.severity === "high" ? <FaExclamationTriangle /> : <FaInfoCircle />}
             {alert.severity === "high" ? t("alerts.severe") : t("alerts.info")}
           </span>
-
           <span className="text-xs text-slate-500 dark:text-slate-400">
             {alert.status === "ack" ? t("alerts.processed") : t("alerts.pending")}
           </span>
@@ -236,27 +220,21 @@ const ThresholdAlert = () => {
 
         <div className="mt-4 space-y-2 rounded-md bg-slate-50 p-3 dark:bg-slate-950/70">
           {primaryViolations.map((violation, index) => (
-            <div
-              key={`${alert.id}-mobile-${index}`}
-              className="text-sm leading-6 text-gray-700 dark:text-slate-300"
-            >
+            <div key={`${alert.id}-mobile-${index}`} className="text-sm leading-6 text-gray-700 dark:text-slate-300">
               <span className="font-medium text-gray-800 dark:text-slate-100">
                 {getViolationLabel(violation.type)}:
               </span>{" "}
-              <span className="font-semibold text-red-600 dark:text-red-300">
-                {violation.observed}
-              </span>
+              <span className="font-semibold text-red-600 dark:text-red-300">{violation.observed}</span>
               <span className="ml-1 text-xs text-gray-500 dark:text-slate-400">
                 ({t("alerts.threshold")} {violation.threshold})
               </span>
             </div>
           ))}
-
-          {alert.violations.length > 2 ? (
+          {alert.violations.length > 2 && (
             <div className="text-xs text-slate-500 dark:text-slate-400">
               {t("alerts.moreViolations").replace("{{count}}", String(alert.violations.length - 2))}
             </div>
-          ) : null}
+          )}
         </div>
 
         <div className="mt-4 grid grid-cols-2 gap-2">
@@ -266,22 +244,20 @@ const ThresholdAlert = () => {
               onClick={() => handleOpenResolveModal(alert)}
               className="inline-flex items-center justify-center gap-1.5 rounded-md bg-blue-600 px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-blue-700"
             >
-              <FaCheckCircle />{t("alerts.process")}</button>
+              <FaCheckCircle />{t("alerts.process")}
+            </button>
           ) : (
-            <button
-              type="button"
-              disabled
-              className="inline-flex items-center justify-center gap-1.5 rounded-md bg-slate-200 px-3 py-2 text-xs font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400"
-            >
-              <FaCheckCircle />{t("alerts.processed")}</button>
+            <button type="button" disabled className="inline-flex items-center justify-center gap-1.5 rounded-md bg-slate-200 px-3 py-2 text-xs font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+              <FaCheckCircle />{t("alerts.processed")}
+            </button>
           )}
-
           <button
             type="button"
             onClick={() => navigateToChat(alert)}
-            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 dark:border-slate-600 dark:bg-slate-700/70 dark:text-slate-100 dark:hover:border-blue-400/40 dark:hover:bg-slate-700 dark:hover:text-blue-200"
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 dark:border-slate-600 dark:bg-slate-700/70 dark:text-slate-100 dark:hover:bg-slate-700 dark:hover:text-blue-200"
           >
-            <FaCommentDots />{t("alerts.message")}</button>
+            <FaCommentDots />{t("alerts.message")}
+          </button>
         </div>
       </div>
     );
@@ -290,277 +266,255 @@ const ThresholdAlert = () => {
   const renderStatusBadge = (alert: AlertResponse) => {
     if (alert.status === "ack") {
       return (
-        <div className="inline-flex min-w-[140px] flex-col items-center">
+        <div className="inline-flex flex-col items-center">
           <span className="inline-flex whitespace-nowrap items-center gap-1 rounded-md bg-green-100 px-3 py-1 text-xs font-medium text-green-800 dark:bg-emerald-500/15 dark:text-emerald-300 dark:ring-1 dark:ring-emerald-500/25">
-            <FaCheckCircle />{t("alerts.acknowledged")}</span>
+            <FaCheckCircle />{t("alerts.acknowledged")}
+          </span>
           <div className="mt-1 whitespace-nowrap text-xs text-gray-500 dark:text-slate-400">
             {alert.acknowledgedByName || alert.acknowledgedBy || t("alerts.processed")}
           </div>
         </div>
       );
     }
-
     return (
       <span className="inline-flex whitespace-nowrap items-center gap-1 rounded-md bg-gray-100 px-3 py-1 text-xs font-medium text-gray-800 dark:bg-slate-700/80 dark:text-slate-200 dark:ring-1 dark:ring-slate-600">
-        <FaRegClock />{t("alerts.pending")}</span>
+        <FaRegClock />{t("alerts.pending")}
+      </span>
     );
   };
+
+  // ─── Desktop table columns ─────────────────────────────────────────────────
+  const columns: Column<AlertResponse>[] = [
+    {
+      header: <div className="flex justify-center pl-8 pr-3">{t("alerts.patient")}</div>,
+      className: "min-w-[180px] pl-8 pr-3",
+      cellClassName: "text-center",
+      render: (alert) => (
+        <div className="text-sm font-medium text-gray-900 dark:text-slate-100">
+          {alert.patientName || t("alerts.patient")}
+        </div>
+      ),
+    },
+    {
+      header: "Chỉ số vượt ngưỡng",
+      render: (alert) => {
+        // Sắp xếp theo độ ưu tiên lâm sàng
+        const PRIORITY: Record<string, number> = {
+          blood_pressure_systolic: 0,
+          blood_pressure_diastolic: 1,
+          glucose: 2,
+          heart_rate: 3,
+          spo2: 4,
+          temperature: 5,
+          respiratory_rate: 6,
+        };
+        const sorted = [...alert.violations].sort(
+          (a, b) => (PRIORITY[a.type] ?? 99) - (PRIORITY[b.type] ?? 99),
+        );
+        const isExpanded = expandedAlerts.has(alert.id);
+        const shown = isExpanded ? sorted : sorted.slice(0, 3);
+        const hasMore = sorted.length > 3;
+        return (
+          <div className="space-y-1">
+            {shown.map((violation, index) => (
+              <div key={`${alert.id}-${index}`} className="text-sm">
+                <span className="font-medium text-gray-700 dark:text-slate-200">
+                  {getViolationLabel(violation.type)}:
+                </span>{" "}
+                <span className="font-semibold text-red-600 dark:text-red-300">
+                  {violation.observed}
+                </span>
+                <span className="ml-1 text-xs text-gray-400 dark:text-slate-500">
+                  ({violation.threshold})
+                </span>
+              </div>
+            ))}
+            {hasMore && (
+              <button
+                type="button"
+                onClick={() => toggleExpanded(alert.id)}
+                title={isExpanded ? "Thu gọn" : `+${sorted.length - 3} chỉ số khác`}
+                className="mt-0.5 inline-flex h-5 w-8 items-center justify-center rounded bg-slate-100 text-xs font-bold text-slate-500 transition hover:bg-slate-200 hover:text-slate-700 dark:bg-slate-700 dark:text-slate-400 dark:hover:bg-slate-600 dark:hover:text-slate-200"
+              >
+                {isExpanded ? <FaChevronUp className="h-2.5 w-2.5" /> : "..."}
+              </button>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      header: <div className="flex justify-center">{t("alerts.severity")}</div>,
+      className: "min-w-[110px]",
+      cellClassName: "text-center",
+      render: (alert) =>
+        alert.severity === "high" ? (
+          <span className="inline-flex whitespace-nowrap items-center gap-1 rounded-full bg-red-100 px-2.5 py-1 text-sm font-medium text-red-800 dark:bg-red-500/15 dark:text-red-300 dark:ring-1 dark:ring-red-500/25">
+            <FaExclamationTriangle className="h-3 w-3" />
+            {t("alerts.severe")}
+          </span>
+        ) : (
+          <span className="inline-flex whitespace-nowrap items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-sm font-medium text-amber-800 dark:bg-amber-500/15 dark:text-amber-200 dark:ring-1 dark:ring-amber-500/25">
+            <FaInfoCircle className="h-3 w-3" />
+            {t("alerts.info")}
+          </span>
+        ),
+    },
+    {
+      header: <div className="flex justify-center">{t("alerts.status")}</div>,
+      className: "min-w-[130px]",
+      cellClassName: "text-center",
+      render: (alert) => renderStatusBadge(alert),
+    },
+    {
+      header: <div className="flex justify-center">{t("alerts.time")}</div>,
+      className: "min-w-[160px] whitespace-nowrap",
+      cellClassName: "text-center text-sm text-gray-600 dark:text-slate-300",
+      render: (alert) => (
+        <>
+          <div>{formatDate(alert.createdAt)}</div>
+          {alert.acknowledgedAt && (
+            <div className="mt-0.5 text-xs text-green-600 dark:text-emerald-300">
+              {t("alerts.acknowledgedAt")} {formatDate(alert.acknowledgedAt)}
+            </div>
+          )}
+        </>
+      ),
+    },
+    {
+      header: <div className="flex justify-center">{t("alerts.actions")}</div>,
+      className: "min-w-[160px]",
+      cellClassName: "text-center",
+      render: (alert) => (
+        <div className="flex items-center justify-center gap-1.5">
+          {alert.status === "open" ? (
+            <button
+              type="button"
+              onClick={() => handleOpenResolveModal(alert)}
+              className="inline-flex items-center gap-1 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+            >
+              <FaCheckCircle className="h-3 w-3" />
+              {t("alerts.process")}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => navigateToChat(alert)}
+              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-blue-50 hover:text-blue-700 dark:border-slate-600 dark:bg-slate-700/70 dark:text-slate-100 dark:hover:bg-slate-700 dark:hover:text-blue-200"
+            >
+              <FaCommentDots className="h-3 w-3" />
+              {t("alerts.message")}
+            </button>
+          )}
+        </div>
+      ),
+    },
+  ];
 
   return (
     <>
       <div className="min-h-screen bg-gray-50 p-4 pb-24 dark:bg-slate-950 sm:p-6 sm:pb-24">
         <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-800 dark:text-slate-100 sm:text-3xl">{t("alerts.title")}</h1>
-            <p className="mt-2 max-w-3xl text-sm text-gray-600 dark:text-slate-400 sm:text-base">{t("alerts.description")}</p>
+            <h1 className="text-2xl font-bold text-gray-800 dark:text-slate-100 sm:text-3xl">
+              {t("alerts.title")}
+            </h1>
+            <p className="mt-2 max-w-3xl text-sm text-gray-600 dark:text-slate-400 sm:text-base">
+              {t("alerts.description")}
+            </p>
           </div>
-
           <button
             type="button"
             onClick={() => void loadAlerts(true)}
             disabled={refreshing}
             className="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
           >
-            <FaSyncAlt className={`mr-2 ${refreshing ? "animate-spin" : ""}`} />{t("common.refreshData")}</button>
+            <FaSyncAlt className={`mr-2 ${refreshing ? "animate-spin" : ""}`} />
+            {t("common.refreshData")}
+          </button>
         </div>
 
+        {/* Stats cards */}
         <div className="mb-6 grid gap-4 md:grid-cols-4">
           <div className="rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
             <div className="text-sm text-slate-500 dark:text-slate-400">{t("alerts.totalAlerts")}</div>
-            <div className="mt-2 text-3xl font-bold text-slate-900 dark:text-slate-100">
-              {stats.total}
-            </div>
+            <div className="mt-2 text-3xl font-bold text-slate-900 dark:text-slate-100">{stats.total}</div>
             <div className="mt-4 text-xs text-slate-500 dark:text-slate-400">
-              {lastUpdated
-                ? `${t("alerts.lastUpdated")} ${formatDate(lastUpdated)}`
-                : t("alerts.notSynced")}
+              {lastUpdated ? `${t("alerts.lastUpdated")} ${formatDate(lastUpdated)}` : t("alerts.notSynced")}
             </div>
           </div>
           <div className="rounded-lg border border-red-100 bg-red-50/70 p-5 dark:border-red-900/60 dark:bg-slate-900">
             <div className="text-sm text-red-600 dark:text-red-400">{t("alerts.highSeverity")}</div>
-            <div className="mt-2 text-3xl font-bold text-red-700 dark:text-red-300">
-              {stats.high}
-            </div>
+            <div className="mt-2 text-3xl font-bold text-red-700 dark:text-red-300">{stats.high}</div>
             <div className="mt-4 text-xs text-red-500 dark:text-red-400">{t("alerts.prioritize")}</div>
           </div>
           <div className="rounded-lg border border-amber-100 bg-amber-50/70 p-5 dark:border-amber-900/60 dark:bg-slate-900">
             <div className="text-sm text-amber-700 dark:text-amber-300">{t("alerts.pending")}</div>
-            <div className="mt-2 text-3xl font-bold text-amber-800 dark:text-amber-200">
-              {stats.open}
-            </div>
+            <div className="mt-2 text-3xl font-bold text-amber-800 dark:text-amber-200">{stats.open}</div>
             <div className="mt-4 text-xs text-amber-600 dark:text-amber-400">{t("alerts.notAcknowledged")}</div>
           </div>
           <div className="rounded-lg border border-green-100 bg-green-50/70 p-5 dark:border-emerald-900/60 dark:bg-slate-900">
             <div className="text-sm text-green-700 dark:text-green-300">{t("alerts.acknowledged")}</div>
-            <div className="mt-2 text-3xl font-bold text-green-800 dark:text-green-200">
-              {stats.ack}
-            </div>
+            <div className="mt-2 text-3xl font-bold text-green-800 dark:text-green-200">{stats.ack}</div>
             <div className="mt-4 text-xs text-green-600 dark:text-green-400">{t("alerts.acknowledgedBy")}</div>
           </div>
         </div>
 
+        {/* Mobile cards */}
         <div className="space-y-3 md:hidden">
           {loading ? (
-            <div className="rounded-lg border border-slate-200 bg-white p-6 text-center text-gray-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">{t("alerts.loadingAlerts")}</div>
+            <div className="rounded-lg border border-slate-200 bg-white p-6 text-center text-gray-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
+              {t("alerts.loadingAlerts")}
+            </div>
           ) : alerts.length === 0 ? (
-            <div className="rounded-lg border border-slate-200 bg-white p-6 text-center text-gray-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">{t("alerts.noAlerts")}</div>
+            <div className="rounded-lg border border-slate-200 bg-white p-6 text-center text-gray-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
+              {t("alerts.noAlerts")}
+            </div>
           ) : (
-            filteredAlerts.map((alert) => renderAlertCard(alert))
+            alerts.map((alert) => renderAlertCard(alert))
           )}
         </div>
 
+        {/* Desktop table */}
         <div className="hidden md:block">
-          <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none">
-            <div className="overflow-x-scroll">
-              <table className="w-full min-w-[1450px] divide-y divide-gray-200 dark:divide-slate-700">
-                <thead className="bg-gray-50 dark:bg-slate-800">
-                  <tr>
-                    <th className="whitespace-nowrap px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-300">{t("alerts.patient")}</th>
-                    <th className="whitespace-nowrap px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-300">{t("alerts.violations")}</th>
-                    <th className="min-w-[150px] whitespace-nowrap px-6 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-300">{t("alerts.severity")}</th>
-                    <th className="min-w-[170px] whitespace-nowrap px-6 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-300">{t("alerts.status")}</th>
-                    <th className="min-w-[210px] whitespace-nowrap px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-300">{t("alerts.time")}</th>
-                    <th className="min-w-[220px] whitespace-nowrap px-6 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-slate-300">{t("alerts.actions")}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 bg-white dark:divide-slate-800 dark:bg-slate-900">
-                  {loading ? (
-                    <tr>
-                      <td colSpan={6} className="px-6 py-10 text-center text-gray-500 dark:text-slate-400">{t("alerts.loadingAlerts")}</td>
-                    </tr>
-                  ) : filteredAlerts.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="px-6 py-10 text-center text-gray-500 dark:text-slate-400">{t("alerts.noAlerts")}</td>
-                    </tr>
-                  ) : (
-                    filteredAlerts.map((alert) => (
-                      <tr key={alert.id} className="transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/70">
-                        <td className="whitespace-nowrap px-6 py-4">
-                          <div className="flex items-center">
-                            <div className="mr-3 flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-blue-100 text-sm font-semibold text-blue-700 dark:bg-blue-500/15 dark:text-blue-200">
-                              {alert.patientAvatarUrl ? (
-                                <img
-                                  src={alert.patientAvatarUrl}
-                                  alt={alert.patientName || alert.patientId}
-                                  className="h-full w-full object-cover"
-                                />
-                              ) : (
-                                (alert.patientName || "P").slice(0, 1).toUpperCase()
-                              )}
-                            </div>
-                            <div>
-                              <div className="text-sm font-medium text-gray-900 dark:text-slate-100">
-                                {alert.patientName || alert.patientId}
-                              </div>
-                              <div className="text-xs text-gray-500 dark:text-slate-400">ID: {alert.patientId}</div>
-                            </div>
-                          </div>
-                        </td>
-
-                        <td className="px-6 py-4">
-                          <div className="space-y-1.5">
-                            {alert.violations.map((violation, index) => (
-                              <div key={`${alert.id}-${index}`} className="text-sm">
-                                <span className="font-medium text-gray-700 dark:text-slate-200">
-                                  {getViolationLabel(violation.type)}:
-                                </span>{" "}
-                                <span className="font-semibold text-red-600 dark:text-red-300">{violation.observed}</span>
-                                <span className="ml-1 text-xs text-gray-500 dark:text-slate-400">
-                                  ({t("alerts.threshold")} {violation.threshold})
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        </td>
-
-                        <td className="px-6 py-4 text-center">
-                          {alert.severity === "high" ? (
-                            <span className="inline-flex whitespace-nowrap items-center gap-1 rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-800 dark:bg-red-500/15 dark:text-red-300 dark:ring-1 dark:ring-red-500/25">
-                              <FaExclamationTriangle />{t("alerts.severe")}</span>
-                          ) : (
-                            <span className="inline-flex whitespace-nowrap items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800 dark:bg-amber-500/15 dark:text-amber-200 dark:ring-1 dark:ring-amber-500/25">
-                              <FaInfoCircle />{t("alerts.info")}</span>
-                          )}
-                        </td>
-
-                        <td className="px-6 py-4 text-center">{renderStatusBadge(alert)}</td>
-
-                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-600 dark:text-slate-300">
-                          <div>{formatDate(alert.createdAt)}</div>
-                          {alert.acknowledgedAt && (
-                            <div className="mt-1 text-xs text-green-600 dark:text-emerald-300">
-                              {t("alerts.acknowledgedAt")} {formatDate(alert.acknowledgedAt)}
-                            </div>
-                          )}
-                        </td>
-
-                        <td className="px-6 py-4 text-center">
-                          <div className="flex min-w-[180px] flex-col items-center gap-2">
-                            {alert.status === "open" ? (
-                              <button
-                                type="button"
-                                onClick={() => handleOpenResolveModal(alert)}
-                                className="w-full rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
-                              >{t("alerts.process")}</button>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => navigateToChat(alert)}
-                                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 dark:border-slate-600 dark:bg-slate-700/70 dark:text-slate-100 dark:hover:border-blue-400/40 dark:hover:bg-slate-700 dark:hover:text-blue-200"
-                              >
-                                <FaCommentDots />{t("alerts.message")}</button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <Table<AlertResponse>
+            data={alerts}
+            columns={columns}
+            rowKey={(alert) => alert.id}
+            loading={loading}
+            paginated={true}
+            itemsPerPage={8}
+            emptyText={t("alerts.noAlerts")}
+          />
         </div>
-
-        {/* Pagination Controls */}
-        {!loading && filteredAlerts.length > 0 && (
-          <div className="mt-6 flex flex-col items-center justify-between gap-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:shadow-none sm:flex-row">
-            <div className="text-sm text-slate-600 dark:text-slate-400">
-              {t("common.showing") + " " + (startIndex + 1) + "-" + Math.min(endIndex, alerts.length) + " " + t("common.of") + " " + alerts.length + " " + t("nav.alerts").toLowerCase()}
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                disabled={currentPage === 1}
-                className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-              >{t("common.previous")}</button>
-
-              <div className="flex items-center gap-1">
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
-                  // Show first page, last page, current page, and pages around current
-                  const showPage =
-                    page === 1 ||
-                    page === totalPages ||
-                    (page >= currentPage - 1 && page <= currentPage + 1);
-
-                  if (!showPage) {
-                    // Show ellipsis
-                    if (page === currentPage - 2 || page === currentPage + 2) {
-                      return (
-                        <span
-                          key={page}
-                          className="px-2 text-slate-400 dark:text-slate-500"
-                        >
-                          ...
-                        </span>
-                      );
-                    }
-                    return null;
-                  }
-
-                  return (
-                    <button
-                      key={page}
-                      onClick={() => setCurrentPage(page)}
-                      className={`min-w-[40px] rounded-xl px-3 py-2 text-sm font-medium transition ${
-                        currentPage === page
-                          ? "bg-blue-600 text-white"
-                          : "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-                      }`}
-                    >
-                      {page}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <button
-                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-                disabled={currentPage === totalPages}
-                className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-              >
-                Sau
-              </button>
-            </div>
-          </div>
-        )}
 
         {showResolveModal && currentAlert && (
           <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 pt-10 sm:pt-14">
             <div className="w-full max-w-sm rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
-              <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">{t("alerts.confirmAcknowledge")}</h3>
-              <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">{t("alerts.confirmAcknowledgeDesc").replace("{{patientName}}", currentAlert.patientName || t("alerts.patient"))}</p>
+              <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                {t("alerts.confirmAcknowledge")}
+              </h3>
+              <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+                {t("alerts.confirmAcknowledgeDesc").replace(
+                  "{{patientName}}",
+                  currentAlert.patientName || t("alerts.patient"),
+                )}
+              </p>
               <div className="mt-4 flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={closeResolveModal}
                   className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-                >{t("common.cancel")}</button>
+                >
+                  {t("common.cancel")}
+                </button>
                 <button
                   type="button"
                   onClick={() => void handleConfirmAcknowledge()}
                   className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-blue-700"
-                >{t("common.confirm")}</button>
+                >
+                  {t("common.confirm")}
+                </button>
               </div>
             </div>
           </div>

@@ -4,6 +4,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { useSearchParams } from "react-router-dom";
@@ -58,12 +59,6 @@ const WEEKDAY_OPTIONS = [
   { value: 0, labelKey: "prescriptions.sun" },
 ];
 
-const TIMEZONE_OPTIONS = [
-  { value: "Asia/Saigon", label: "Asia/Saigon (Khuyến nghị)" },
-  { value: "UTC", label: "UTC" },
-  { value: "Asia/Bangkok", label: "Asia/Bangkok" },
-];
-
 const STATUS_OPTIONS: Array<{ value: PrescriptionStatus | ""; labelKey: string }> = [
   { value: "", labelKey: "prescriptions.allStatuses" },
   { value: "active", labelKey: "prescriptions.active" },
@@ -80,12 +75,124 @@ const ADHERENCE_RANGES = [
 
 const ITEMS_PER_PAGE = 5;
 
+interface DrugSuggestion {
+  name: string;
+  dosage?: string;
+  schedule?: Partial<Record<"morning" | "noon" | "evening", {
+    customTime: string;
+    mealTiming: MealTiming | "";
+    pillCount: number;
+  }>>;
+}
+
+const drug = (
+  name: string,
+  dosage?: string,
+  schedule?: DrugSuggestion["schedule"]
+): DrugSuggestion => ({ name, dosage, schedule });
+
+const DRUG_SUGGESTIONS: DrugSuggestion[] = [
+  drug("Paracetamol", "500mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, noon: { customTime: "12:00", mealTiming: "post_meal", pillCount: 1 }, evening: { customTime: "20:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Ibuprofen", "400mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, noon: { customTime: "12:00", mealTiming: "post_meal", pillCount: 1 }, evening: { customTime: "20:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Aspirin", "500mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, noon: { customTime: "12:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Diclofenac", "50mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, evening: { customTime: "20:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Meloxicam", "7.5mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Amoxicillin", "500mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, noon: { customTime: "14:00", mealTiming: "post_meal", pillCount: 1 }, evening: { customTime: "20:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Ampicillin", "500mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, noon: { customTime: "14:00", mealTiming: "post_meal", pillCount: 1 }, evening: { customTime: "20:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Azithromycin", "500mg", { morning: { customTime: "08:00", mealTiming: "", pillCount: 1 } }),
+  drug("Clarithromycin", "500mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, evening: { customTime: "20:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Ciprofloxacin", "500mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, evening: { customTime: "20:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Metronidazole", "500mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, noon: { customTime: "14:00", mealTiming: "post_meal", pillCount: 1 }, evening: { customTime: "20:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Doxycycline", "100mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, evening: { customTime: "20:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Cefuroxime", "500mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, evening: { customTime: "20:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Ceftriaxone", "1g"),
+  drug("Cephalexin", "500mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, noon: { customTime: "14:00", mealTiming: "post_meal", pillCount: 1 }, evening: { customTime: "20:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Omeprazole", "20mg", { morning: { customTime: "07:00", mealTiming: "pre_meal", pillCount: 1 } }),
+  drug("Pantoprazole", "40mg", { morning: { customTime: "07:00", mealTiming: "pre_meal", pillCount: 1 } }),
+  drug("Esomeprazole", "40mg", { morning: { customTime: "07:00", mealTiming: "pre_meal", pillCount: 1 } }),
+  drug("Ranitidine", "150mg", { morning: { customTime: "08:00", mealTiming: "pre_meal", pillCount: 1 }, evening: { customTime: "20:00", mealTiming: "pre_meal", pillCount: 1 } }),
+  drug("Antacid", "1 gói", { morning: { customTime: "08:30", mealTiming: "post_meal", pillCount: 1 }, noon: { customTime: "12:30", mealTiming: "post_meal", pillCount: 1 }, evening: { customTime: "20:30", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Metformin", "500mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, noon: { customTime: "12:00", mealTiming: "post_meal", pillCount: 1 }, evening: { customTime: "20:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Glibenclamide", "5mg", { morning: { customTime: "07:30", mealTiming: "pre_meal", pillCount: 1 } }),
+  drug("Gliclazide", "80mg", { morning: { customTime: "07:30", mealTiming: "pre_meal", pillCount: 1 } }),
+  drug("Insulin Aspart"),
+  drug("Insulin Glargine", "", { evening: { customTime: "22:00", mealTiming: "", pillCount: 1 } }),
+  drug("Amlodipine", "5mg", { morning: { customTime: "08:00", mealTiming: "", pillCount: 1 } }),
+  drug("Nifedipine", "30mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Atenolol", "50mg", { morning: { customTime: "08:00", mealTiming: "", pillCount: 1 } }),
+  drug("Metoprolol", "50mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, evening: { customTime: "20:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Bisoprolol", "5mg", { morning: { customTime: "08:00", mealTiming: "", pillCount: 1 } }),
+  drug("Losartan", "50mg", { morning: { customTime: "08:00", mealTiming: "", pillCount: 1 } }),
+  drug("Valsartan", "80mg", { morning: { customTime: "08:00", mealTiming: "", pillCount: 1 } }),
+  drug("Lisinopril", "10mg", { morning: { customTime: "08:00", mealTiming: "", pillCount: 1 } }),
+  drug("Enalapril", "10mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Ramipril", "5mg", { morning: { customTime: "08:00", mealTiming: "", pillCount: 1 } }),
+  drug("Atorvastatin", "20mg", { evening: { customTime: "21:00", mealTiming: "", pillCount: 1 } }),
+  drug("Rosuvastatin", "10mg", { evening: { customTime: "21:00", mealTiming: "", pillCount: 1 } }),
+  drug("Simvastatin", "20mg", { evening: { customTime: "21:00", mealTiming: "", pillCount: 1 } }),
+  drug("Aspirin 81mg", "81mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Clopidogrel", "75mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Warfarin", "5mg", { evening: { customTime: "18:00", mealTiming: "", pillCount: 1 } }),
+  drug("Furosemide", "40mg", { morning: { customTime: "07:00", mealTiming: "", pillCount: 1 } }),
+  drug("Hydrochlorothiazide", "25mg", { morning: { customTime: "07:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Spironolactone", "25mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Prednisolone", "5mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Dexamethasone", "0.5mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Methylprednisolone", "4mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, noon: { customTime: "12:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Cetirizine", "10mg", { evening: { customTime: "21:00", mealTiming: "", pillCount: 1 } }),
+  drug("Loratadine", "10mg", { morning: { customTime: "08:00", mealTiming: "", pillCount: 1 } }),
+  drug("Fexofenadine", "120mg", { morning: { customTime: "08:00", mealTiming: "", pillCount: 1 } }),
+  drug("Salbutamol", "4mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, noon: { customTime: "12:00", mealTiming: "post_meal", pillCount: 1 }, evening: { customTime: "20:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Montelukast", "10mg", { evening: { customTime: "21:00", mealTiming: "", pillCount: 1 } }),
+  drug("Fluticasone"),
+  drug("Levothyroxine", "50mcg", { morning: { customTime: "07:00", mealTiming: "pre_meal", pillCount: 1 } }),
+  drug("Methimazole", "10mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, noon: { customTime: "14:00", mealTiming: "post_meal", pillCount: 1 }, evening: { customTime: "20:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Diazepam", "5mg", { evening: { customTime: "21:00", mealTiming: "", pillCount: 1 } }),
+  drug("Alprazolam", "0.25mg", { evening: { customTime: "21:00", mealTiming: "", pillCount: 1 } }),
+  drug("Clonazepam", "0.5mg", { evening: { customTime: "21:00", mealTiming: "", pillCount: 1 } }),
+  drug("Vitamin B1", "10mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Vitamin B6", "10mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Vitamin B12", "500mcg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Vitamin C", "500mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Vitamin D3", "1000IU", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Sắt (II) sulfate", "60mg", { morning: { customTime: "07:30", mealTiming: "pre_meal", pillCount: 1 } }),
+  drug("Acid folic", "5mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Canxi carbonat", "500mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, evening: { customTime: "20:00", mealTiming: "post_meal", pillCount: 1 } }),
+];
+
+const ROUTE_OPTIONS = [
+  "Uống",
+  "Tiêm tĩnh mạch",
+  "Tiêm bắp",
+  "Tiêm dưới da",
+  "Bôi ngoài da",
+  "Nhỏ mắt",
+  "Nhỏ tai",
+  "Nhỏ mũi",
+  "Đặt dưới lưỡi",
+  "Hít",
+  "Đặt trực tràng",
+];
+
 // ---- Form Types ----
-interface DoseFormData {
-  timeOfDay: TimeOfDay;
-  customTime: string; // "HH:MM"
+interface SlotFormData {
+  enabled: boolean;
+  customTime: string;
   mealTiming: MealTiming | "";
   pillCount: number;
+}
+
+interface ExtraSlotFormData {
+  customTime: string;
+  mealTiming: MealTiming | "";
+  pillCount: number;
+}
+
+interface MedScheduleForm {
+  morning: SlotFormData;
+  noon: SlotFormData;
+  evening: SlotFormData;
+  extras: ExtraSlotFormData[];
 }
 
 interface MedicationFormData {
@@ -93,7 +200,7 @@ interface MedicationFormData {
   dosage: string;
   route: string;
   instructions: string;
-  schedule: DoseFormData[];
+  schedule: MedScheduleForm;
 }
 
 interface PrescriptionFormData {
@@ -105,11 +212,18 @@ interface PrescriptionFormData {
   endDate: string;
 }
 
-const createDefaultDose = (): DoseFormData => ({
-  timeOfDay: "morning",
+const createDefaultSlot = (enabled = false): SlotFormData => ({
+  enabled,
   customTime: "",
   mealTiming: "",
   pillCount: 1,
+});
+
+const createDefaultSchedule = (): MedScheduleForm => ({
+  morning: createDefaultSlot(true),
+  noon: createDefaultSlot(true),
+  evening: createDefaultSlot(true),
+  extras: [],
 });
 
 const createDefaultMedication = (): MedicationFormData => ({
@@ -117,7 +231,7 @@ const createDefaultMedication = (): MedicationFormData => ({
   dosage: "",
   route: "",
   instructions: "",
-  schedule: [createDefaultDose()],
+  schedule: createDefaultSchedule(),
 });
 
 const createDefaultFormData = (patientId = ""): PrescriptionFormData => {
@@ -163,31 +277,52 @@ const buildWeekdaySummary = (days: number[], t: (key: string) => string) => {
     .join(" • ");
 };
 
+const slotToDosePayload = (
+  timeOfDay: TimeOfDay,
+  customTime: string,
+  mealTiming: MealTiming | "",
+  pillCount: number
+) => {
+  const payload: {
+    timeOfDay: TimeOfDay;
+    hour?: number;
+    minute?: number;
+    mealTiming?: MealTiming;
+    pillCount: number;
+  } = { timeOfDay, pillCount };
+  if (customTime) {
+    const [h, m] = customTime.split(":").map(Number);
+    if (!Number.isNaN(h) && !Number.isNaN(m)) { payload.hour = h; payload.minute = m; }
+  }
+  if (mealTiming) payload.mealTiming = mealTiming as MealTiming;
+  return payload;
+};
+
+const extraTimeOfDay = (customTime: string): TimeOfDay => {
+  if (!customTime) return "morning";
+  const h = Number(customTime.split(":")[0]);
+  if (h < 12) return "morning";
+  if (h < 18) return "noon";
+  return "evening";
+};
+
 const prescriptionFromForm = (form: PrescriptionFormData) => {
   const meds = form.medications.map((med) => {
-    const schedule = med.schedule.map((dose) => {
-      const dosePayload: {
-        timeOfDay: TimeOfDay;
-        hour?: number;
-        minute?: number;
-        mealTiming?: MealTiming;
-        pillCount: number;
-      } = {
-        timeOfDay: dose.timeOfDay,
-        pillCount: dose.pillCount,
-      };
-      if (dose.customTime) {
-        const [h, m] = dose.customTime.split(":").map(Number);
-        if (!Number.isNaN(h) && !Number.isNaN(m)) {
-          dosePayload.hour = h;
-          dosePayload.minute = m;
-        }
+    const schedule: ReturnType<typeof slotToDosePayload>[] = [];
+    for (const tod of ["morning", "noon", "evening"] as const) {
+      const slot = med.schedule[tod];
+      if (slot.enabled) {
+        schedule.push(slotToDosePayload(tod, slot.customTime, slot.mealTiming, slot.pillCount));
       }
-      if (dose.mealTiming) {
-        dosePayload.mealTiming = dose.mealTiming as MealTiming;
-      }
-      return dosePayload;
-    });
+    }
+    for (const extra of med.schedule.extras) {
+      schedule.push(slotToDosePayload(
+        extraTimeOfDay(extra.customTime),
+        extra.customTime,
+        extra.mealTiming,
+        extra.pillCount
+      ));
+    }
     return {
       drugName: med.drugName.trim(),
       dosage: med.dosage.trim(),
@@ -209,21 +344,24 @@ const prescriptionFromForm = (form: PrescriptionFormData) => {
 
 // Pre-fill form from existing prescription
 const formFromPrescription = (p: Prescription): PrescriptionFormData => {
-  const meds: MedicationFormData[] = p.medications.map((med) => ({
-    drugName: med.drugName,
-    dosage: med.dosage,
-    route: med.route ?? "",
-    instructions: med.instructions ?? "",
-    schedule: med.schedule.map((dose) => ({
-      timeOfDay: dose.timeOfDay,
-      customTime:
+  const meds: MedicationFormData[] = p.medications.map((med) => {
+    const schedule = createDefaultSchedule();
+    const usedSlots = { morning: false, noon: false, evening: false };
+    for (const dose of med.schedule) {
+      const tod = dose.timeOfDay as "morning" | "noon" | "evening";
+      const ct =
         dose.hour !== undefined && dose.minute !== undefined
           ? formatTime(dose.hour, dose.minute)
-          : "",
-      mealTiming: (dose.mealTiming as MealTiming | "") ?? "",
-      pillCount: dose.pillCount,
-    })),
-  }));
+          : (dose as any).time ?? "";
+      if (!usedSlots[tod]) {
+        usedSlots[tod] = true;
+        schedule[tod] = { enabled: true, customTime: ct, mealTiming: (dose.mealTiming as MealTiming | "") ?? "", pillCount: dose.pillCount };
+      } else {
+        schedule.extras.push({ customTime: ct, mealTiming: (dose.mealTiming as MealTiming | "") ?? "", pillCount: dose.pillCount });
+      }
+    }
+    return { drugName: med.drugName, dosage: med.dosage, route: med.route ?? "", instructions: med.instructions ?? "", schedule };
+  });
 
   return {
     patientId: p.patientId,
@@ -459,16 +597,30 @@ export default function PrescriptionPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleToggleWeekday = (day: number) => {
+  // Medication handlers
+  const handleDrugSelect = (medIdx: number, suggestion: DrugSuggestion) => {
     setFormData((prev) => ({
       ...prev,
-      daysOfWeek: prev.daysOfWeek.includes(day)
-        ? prev.daysOfWeek.filter((d) => d !== day)
-        : [...prev.daysOfWeek, day],
+      medications: prev.medications.map((med, i) => {
+        if (i !== medIdx) return med;
+        const updated = { ...med, drugName: suggestion.name };
+        if (suggestion.dosage) updated.dosage = suggestion.dosage;
+        if (suggestion.schedule) {
+          const s = createDefaultSchedule();
+          s.morning.enabled = false;
+          s.noon.enabled = false;
+          s.evening.enabled = false;
+          for (const tod of ["morning", "noon", "evening"] as const) {
+            const slot = suggestion.schedule[tod];
+            if (slot) s[tod] = { enabled: true, ...slot };
+          }
+          updated.schedule = s;
+        }
+        return updated;
+      }),
     }));
   };
 
-  // Medication handlers
   const handleAddMedication = () => {
     setFormData((prev) => ({
       ...prev,
@@ -496,33 +648,60 @@ export default function PrescriptionPage() {
     }));
   };
 
-  // Dose handlers
-  const handleAddDose = (medIdx: number) => {
+  // Schedule slot handlers
+  const handleToggleSlot = (medIdx: number, tod: "morning" | "noon" | "evening") => {
     setFormData((prev) => ({
       ...prev,
       medications: prev.medications.map((med, i) =>
         i === medIdx
-          ? { ...med, schedule: [...med.schedule, createDefaultDose()] }
+          ? { ...med, schedule: { ...med.schedule, [tod]: { ...med.schedule[tod], enabled: !med.schedule[tod].enabled } } }
           : med
       ),
     }));
   };
 
-  const handleRemoveDose = (medIdx: number, doseIdx: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      medications: prev.medications.map((med, i) =>
-        i === medIdx
-          ? { ...med, schedule: med.schedule.filter((_, j) => j !== doseIdx) }
-          : med
-      ),
-    }));
-  };
-
-  const handleDoseChange = (
+  const handleSlotChange = (
     medIdx: number,
-    doseIdx: number,
-    field: keyof DoseFormData,
+    tod: "morning" | "noon" | "evening",
+    field: keyof Omit<SlotFormData, "enabled">,
+    value: string | number
+  ) => {
+    setFormData((prev) => ({
+      ...prev,
+      medications: prev.medications.map((med, i) =>
+        i === medIdx
+          ? { ...med, schedule: { ...med.schedule, [tod]: { ...med.schedule[tod], [field]: value } } }
+          : med
+      ),
+    }));
+  };
+
+  const handleAddExtra = (medIdx: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      medications: prev.medications.map((med, i) =>
+        i === medIdx
+          ? { ...med, schedule: { ...med.schedule, extras: [...med.schedule.extras, { customTime: "", mealTiming: "", pillCount: 1 }] } }
+          : med
+      ),
+    }));
+  };
+
+  const handleRemoveExtra = (medIdx: number, extraIdx: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      medications: prev.medications.map((med, i) =>
+        i === medIdx
+          ? { ...med, schedule: { ...med.schedule, extras: med.schedule.extras.filter((_, j) => j !== extraIdx) } }
+          : med
+      ),
+    }));
+  };
+
+  const handleExtraChange = (
+    medIdx: number,
+    extraIdx: number,
+    field: keyof ExtraSlotFormData,
     value: string | number
   ) => {
     setFormData((prev) => ({
@@ -531,9 +710,10 @@ export default function PrescriptionPage() {
         i === medIdx
           ? {
               ...med,
-              schedule: med.schedule.map((dose, j) =>
-                j === doseIdx ? { ...dose, [field]: value } : dose
-              ),
+              schedule: {
+                ...med.schedule,
+                extras: med.schedule.extras.map((ex, j) => j === extraIdx ? { ...ex, [field]: value } : ex),
+              },
             }
           : med
       ),
@@ -565,37 +745,29 @@ export default function PrescriptionPage() {
         showToast(`Thuốc #${i + 1}: ${t("prescriptions.dosageRequired")}`, "error");
         return false;
       }
-      if (med.schedule.length === 0) {
+      const { morning, noon, evening, extras } = med.schedule;
+      const enabledCount = [morning, noon, evening].filter((s) => s.enabled).length + extras.length;
+      if (enabledCount === 0) {
         showToast(`Thuốc #${i + 1}: ${t("prescriptions.scheduleRequired")}`, "error");
         return false;
       }
-
-      const slotKeys = new Set<string>();
-      for (let j = 0; j < med.schedule.length; j++) {
-        const dose = med.schedule[j];
-        if (dose.pillCount <= 0) {
-          showToast(`Thuốc #${i + 1}, lịch #${j + 1}: ${t("prescriptions.pillCountRequired")}`, "error");
+      for (const [label, slot] of [["Sáng", morning], ["Trưa", noon], ["Tối", evening]] as const) {
+        if (!slot.enabled) continue;
+        if (slot.pillCount <= 0) {
+          showToast(`Thuốc #${i + 1} (${label}): ${t("prescriptions.pillCountRequired")}`, "error");
           return false;
         }
-        if (dose.customTime) {
-          const [h, m] = dose.customTime.split(":").map(Number);
-          if (Number.isNaN(h) || Number.isNaN(m) || h < 0 || h > 23 || m < 0 || m > 59) {
-            showToast(`Thuốc #${i + 1}, lịch #${j + 1}: ${t("prescriptions.invalidHourMinute")}`, "error");
-            return false;
-          }
-        }
-        // Duplicate detection
-        const key = `${dose.timeOfDay}|${dose.mealTiming || ""}|${dose.customTime || ""}`;
-        if (slotKeys.has(key)) {
-          showToast(
-            t("prescriptions.duplicateDoseWarning")
-              .replace("{{drug}}", med.drugName || `#${i + 1}`)
-              .replace("{{slot}}", `${dose.timeOfDay} ${dose.mealTiming || ""} ${dose.customTime || ""}`.trim()),
-            "error"
-          );
+      }
+      for (let j = 0; j < extras.length; j++) {
+        const extra = extras[j];
+        if (!extra.customTime) {
+          showToast(`Thuốc #${i + 1}, giờ khác #${j + 1}: Vui lòng chọn giờ uống.`, "error");
           return false;
         }
-        slotKeys.add(key);
+        if (extra.pillCount <= 0) {
+          showToast(`Thuốc #${i + 1}, giờ khác #${j + 1}: ${t("prescriptions.pillCountRequired")}`, "error");
+          return false;
+        }
       }
     }
 
@@ -762,22 +934,14 @@ export default function PrescriptionPage() {
             <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
               {t("prescriptions.filterByPatient")}
             </label>
-            <select
+            <PatientSearchSelect
               value={selectedPatientId}
-              onChange={(e) => setSelectedPatientId(e.target.value)}
+              onChange={setSelectedPatientId}
+              patients={patientOptions}
               disabled={loadingPatients}
-              className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">
-                {loadingPatients ? t("prescriptions.loadingPatients") : t("prescriptions.allPatients")}
-              </option>
-              {patientOptions.map((p) => (
-                <option key={p.patientId} value={p.patientId}>
-                  {p.patientName || p.patientId}
-                  {p.patientCode ? ` • ${p.patientCode}` : ""}
-                </option>
-              ))}
-            </select>
+              placeholderEmpty={t("prescriptions.allPatients")}
+              placeholderSearch={loadingPatients ? t("prescriptions.loadingPatients") : "Tìm theo tên hoặc mã bệnh nhân..."}
+            />
           </div>
 
           <div className="lg:w-56">
@@ -930,7 +1094,7 @@ export default function PrescriptionPage() {
                           <div key={mi} className="rounded-lg bg-slate-50 dark:bg-slate-800 p-3">
                             <div className="flex flex-wrap items-center gap-2">
                               <span className="font-semibold text-gray-900 dark:text-slate-100">
-                                💊 {med.drugName}
+                                {med.drugName}
                               </span>
                               <span className="text-sm text-slate-600 dark:text-slate-300">
                                 {med.dosage}
@@ -1195,7 +1359,7 @@ export default function PrescriptionPage() {
                           {day.medications.map((med, mi) => (
                             <div key={mi}>
                               <div className="mb-1 text-xs font-semibold text-slate-700 dark:text-slate-300">
-                                💊 {med.drugName} {med.dosage}
+                                {med.drugName} {med.dosage}
                               </div>
                               <div className="flex flex-wrap gap-2">
                                 {med.slots.map((slot, si) => (
@@ -1265,42 +1429,18 @@ export default function PrescriptionPage() {
                 <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-slate-300">
                   {t("prescriptions.patientLabel")} *
                 </label>
-                <select
-                  name="patientId"
+                <PatientSearchSelect
                   value={formData.patientId}
-                  onChange={handleFormChange}
+                  onChange={(id) => setFormData((prev) => ({ ...prev, patientId: id }))}
+                  patients={patientOptions}
                   disabled={!!editingPrescriptionId}
-                  className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60"
-                >
-                  <option value="">{t("prescriptions.selectPatient")}</option>
-                  {patientOptions.map((p) => (
-                    <option key={p.patientId} value={p.patientId}>
-                      {p.patientName || p.patientId}
-                      {p.patientCode ? ` • ${p.patientCode}` : ""}
-                    </option>
-                  ))}
-                </select>
+                  placeholderEmpty={t("prescriptions.selectPatient")}
+                  placeholderSearch="Tìm theo tên hoặc mã bệnh nhân..."
+                />
               </div>
 
-              {/* Timezone + Dates */}
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-slate-300">
-                    {t("prescriptions.timezoneLabel")}
-                  </label>
-                  <select
-                    name="timezone"
-                    value={formData.timezone}
-                    onChange={handleFormChange}
-                    className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    {TIMEZONE_OPTIONS.map((tz) => (
-                      <option key={tz.value} value={tz.value}>
-                        {tz.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              {/* Dates */}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-slate-300">
                     {t("prescriptions.startDateLabel")} *
@@ -1327,43 +1467,12 @@ export default function PrescriptionPage() {
                 </div>
               </div>
 
-              {/* Days of week */}
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
-                  {t("prescriptions.repeatOn")} *
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {WEEKDAY_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => handleToggleWeekday(opt.value)}
-                      className={`rounded-full px-3 py-1 text-sm font-medium transition ${
-                        formData.daysOfWeek.includes(opt.value)
-                          ? "bg-blue-600 text-white"
-                          : "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600"
-                      }`}
-                    >
-                      {t(opt.labelKey)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               {/* Medications */}
               <div>
-                <div className="mb-3 flex items-center justify-between">
+                <div className="mb-3">
                   <label className="text-sm font-semibold text-gray-700 dark:text-slate-300">
                     {t("prescriptions.medications")} *
                   </label>
-                  <button
-                    type="button"
-                    onClick={handleAddMedication}
-                    className="inline-flex items-center text-xs text-blue-600 dark:text-blue-400 hover:underline"
-                  >
-                    <FaPlus className="mr-1" />
-                    {t("prescriptions.addMedication")}
-                  </button>
                 </div>
 
                 <div className="space-y-4">
@@ -1374,7 +1483,7 @@ export default function PrescriptionPage() {
                     >
                       <div className="mb-3 flex items-center justify-between">
                         <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                          💊 {t("prescriptions.medications")} #{mi + 1}
+                          {t("prescriptions.medications")} #{mi + 1}
                         </span>
                         {formData.medications.length > 1 && (
                           <button
@@ -1393,12 +1502,12 @@ export default function PrescriptionPage() {
                           <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
                             {t("prescriptions.drugName")} *
                           </label>
-                          <input
-                            type="text"
+                          <DrugNameCombobox
                             value={med.drugName}
-                            onChange={(e) => handleMedChange(mi, "drugName", e.target.value)}
+                            onChange={(v) => handleMedChange(mi, "drugName", v)}
+                            onSelect={(s) => handleDrugSelect(mi, s)}
+                            suggestions={DRUG_SUGGESTIONS}
                             placeholder="VD: Amlodipine"
-                            className="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                           />
                         </div>
                         <div>
@@ -1417,13 +1526,16 @@ export default function PrescriptionPage() {
                           <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
                             {t("prescriptions.route")}
                           </label>
-                          <input
-                            type="text"
+                          <select
                             value={med.route}
                             onChange={(e) => handleMedChange(mi, "route", e.target.value)}
-                            placeholder="VD: oral"
                             className="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
+                          >
+                            <option value="">-- Chọn đường dùng --</option>
+                            {ROUTE_OPTIONS.map((r) => (
+                              <option key={r} value={r}>{r}</option>
+                            ))}
+                          </select>
                         </div>
                         <div>
                           <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
@@ -1441,90 +1553,150 @@ export default function PrescriptionPage() {
 
                       {/* Schedule */}
                       <div className="mt-4">
-                        <div className="mb-2 flex items-center justify-between">
-                          <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">
-                            {t("prescriptions.schedule")} *
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => handleAddDose(mi)}
-                            className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
-                          >
-                            <FaPlus className="mr-1 inline" />
-                            {t("prescriptions.addDose")}
-                          </button>
+                        <span className="mb-2 block text-xs font-semibold text-slate-600 dark:text-slate-400">
+                          {t("prescriptions.schedule")} *
+                        </span>
+
+                        {/* Preset slots: Sáng / Trưa / Tối */}
+                        <div className="grid grid-cols-3 gap-2 mb-3">
+                          {(
+                            [
+                              { tod: "morning", label: t("prescriptions.morning") },
+                              { tod: "noon",    label: t("prescriptions.noon") },
+                              { tod: "evening", label: t("prescriptions.evening") },
+                            ] as const
+                          ).map(({ tod, label }) => {
+                            const slot = med.schedule[tod];
+                            return (
+                              <div
+                                key={tod}
+                                className={`rounded-lg border p-3 transition-all ${
+                                  slot.enabled
+                                    ? "border-slate-300 dark:border-slate-500 bg-white dark:bg-slate-700"
+                                    : "border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+                                }`}
+                              >
+                                <div
+                                  className="flex cursor-pointer items-center justify-between"
+                                  onClick={() => handleToggleSlot(mi, tod)}
+                                >
+                                  <span className={`text-xs font-medium ${slot.enabled ? "text-slate-700 dark:text-slate-200" : "text-slate-400 dark:text-slate-500"}`}>
+                                    {label}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); handleToggleSlot(mi, tod); }}
+                                    className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${
+                                      slot.enabled ? "bg-slate-600 dark:bg-slate-400" : "bg-slate-200 dark:bg-slate-600"
+                                    }`}
+                                  >
+                                    <span
+                                      className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
+                                        slot.enabled ? "translate-x-4" : "translate-x-1"
+                                      }`}
+                                    />
+                                  </button>
+                                </div>
+
+                                {slot.enabled && (
+                                  <div className="mt-2.5 space-y-1.5">
+                                    <input
+                                      type="time"
+                                      value={slot.customTime}
+                                      onChange={(e) => handleSlotChange(mi, tod, "customTime", e.target.value)}
+                                      className="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1 text-xs text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-400"
+                                    />
+                                    <div className="flex items-center gap-1.5">
+                                      <input
+                                        type="number"
+                                        value={slot.pillCount}
+                                        min={0.5}
+                                        step={0.5}
+                                        onChange={(e) => handleSlotChange(mi, tod, "pillCount", Number(e.target.value))}
+                                        className="w-14 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1 text-center text-xs text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-400"
+                                      />
+                                      <span className="text-xs text-slate-400">{t("prescriptions.pillCount")}</span>
+                                    </div>
+                                    <select
+                                      value={slot.mealTiming}
+                                      onChange={(e) => handleSlotChange(mi, tod, "mealTiming", e.target.value)}
+                                      className="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1 text-xs text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-400"
+                                    >
+                                      <option value="">{t("prescriptions.noMealTiming")}</option>
+                                      <option value="pre_meal">{t("prescriptions.preMeal")}</option>
+                                      <option value="post_meal">{t("prescriptions.postMeal")}</option>
+                                    </select>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
 
-                        <div className="space-y-2">
-                          {med.schedule.map((dose, di) => (
-                            <div
-                              key={di}
-                              className="flex flex-wrap items-center gap-2 rounded-lg bg-white dark:bg-slate-700 p-2.5"
-                            >
-                              <select
-                                value={dose.timeOfDay}
-                                onChange={(e) =>
-                                  handleDoseChange(mi, di, "timeOfDay", e.target.value)
-                                }
-                                className="rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-xs text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              >
-                                <option value="morning">{t("prescriptions.morning")}</option>
-                                <option value="noon">{t("prescriptions.noon")}</option>
-                                <option value="evening">{t("prescriptions.evening")}</option>
-                              </select>
-
-                              <input
-                                type="time"
-                                value={dose.customTime}
-                                onChange={(e) =>
-                                  handleDoseChange(mi, di, "customTime", e.target.value)
-                                }
-                                placeholder="HH:MM"
-                                className="w-24 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-xs text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              />
-
-                              <select
-                                value={dose.mealTiming}
-                                onChange={(e) =>
-                                  handleDoseChange(mi, di, "mealTiming", e.target.value)
-                                }
-                                className="rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-xs text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              >
-                                <option value="">{t("prescriptions.noMealTiming")}</option>
-                                <option value="pre_meal">{t("prescriptions.preMeal")}</option>
-                                <option value="post_meal">{t("prescriptions.postMeal")}</option>
-                              </select>
-
-                              <div className="flex items-center gap-1">
+                        {/* Extra custom-time slots */}
+                        {med.schedule.extras.length > 0 && (
+                          <div className="mb-2 space-y-2">
+                            {med.schedule.extras.map((extra, ei) => (
+                              <div key={ei} className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 p-2.5">
+                                <span className="text-xs text-slate-500 dark:text-slate-400 shrink-0">Giờ khác</span>
                                 <input
-                                  type="number"
-                                  value={dose.pillCount}
-                                  min={0.5}
-                                  step={0.5}
-                                  onChange={(e) =>
-                                    handleDoseChange(mi, di, "pillCount", Number(e.target.value))
-                                  }
-                                  className="w-16 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-center text-xs text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  type="time"
+                                  value={extra.customTime}
+                                  onChange={(e) => handleExtraChange(mi, ei, "customTime", e.target.value)}
+                                  className="w-24 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-xs text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 />
-                                <span className="text-xs text-slate-400">{t("prescriptions.pillCount")}</span>
-                              </div>
-
-                              {med.schedule.length > 1 && (
+                                <select
+                                  value={extra.mealTiming}
+                                  onChange={(e) => handleExtraChange(mi, ei, "mealTiming", e.target.value)}
+                                  className="rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-xs text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                                  <option value="">{t("prescriptions.noMealTiming")}</option>
+                                  <option value="pre_meal">{t("prescriptions.preMeal")}</option>
+                                  <option value="post_meal">{t("prescriptions.postMeal")}</option>
+                                </select>
+                                <div className="flex items-center gap-1">
+                                  <input
+                                    type="number"
+                                    value={extra.pillCount}
+                                    min={0.5}
+                                    step={0.5}
+                                    onChange={(e) => handleExtraChange(mi, ei, "pillCount", Number(e.target.value))}
+                                    className="w-14 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-center text-xs text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  />
+                                  <span className="text-xs text-slate-400">{t("prescriptions.pillCount")}</span>
+                                </div>
                                 <button
                                   type="button"
-                                  onClick={() => handleRemoveDose(mi, di)}
+                                  onClick={() => handleRemoveExtra(mi, ei)}
                                   className="ml-auto text-rose-400 hover:text-rose-600"
                                 >
                                   <FaTimes size={12} />
                                 </button>
-                              )}
-                            </div>
-                          ))}
-                        </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => handleAddExtra(mi)}
+                          className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                        >
+                          <FaPlus className="mr-1 inline" />
+                          Thêm giờ khác
+                        </button>
                       </div>
                     </div>
                   ))}
                 </div>
+
+                <button
+                  type="button"
+                  onClick={handleAddMedication}
+                  className="mt-3 flex w-full items-center justify-center rounded-lg border border-dashed border-slate-300 dark:border-slate-600 py-2 text-slate-500 dark:text-slate-400 hover:border-slate-400 dark:hover:border-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition"
+                >
+                  <FaPlus size={12} />
+                </button>
               </div>
 
               {/* Submit */}
@@ -1583,6 +1755,166 @@ function ReminderRow({
         </div>
       </div>
       {renderReminderStatusBadge(reminder.status)}
+    </div>
+  );
+}
+
+function DrugNameCombobox({
+  value,
+  onChange,
+  onSelect,
+  suggestions,
+  placeholder,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onSelect?: (s: DrugSuggestion) => void;
+  suggestions: DrugSuggestion[];
+  placeholder?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const filtered = suggestions.filter((s) =>
+    value ? s.name.toLowerCase().includes(value.toLowerCase()) : true
+  );
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => { onChange(e.target.value); setOpen(true); }}
+        onFocus={() => setOpen(true)}
+        placeholder={placeholder}
+        className="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+      {open && filtered.length > 0 && (
+        <div className="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 shadow-lg">
+          {filtered.map((s) => (
+            <div
+              key={s.name}
+              onMouseDown={() => { onChange(s.name); onSelect?.(s); setOpen(false); }}
+              className={`flex cursor-pointer items-center justify-between px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 ${
+                s.name === value
+                  ? "font-medium text-slate-900 dark:text-slate-100"
+                  : "text-gray-900 dark:text-slate-100"
+              }`}
+            >
+              <span>{s.name}</span>
+              {s.dosage && (
+                <span className="ml-2 shrink-0 text-xs text-slate-400">{s.dosage}</span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PatientSearchSelect({
+  value,
+  onChange,
+  patients,
+  disabled,
+  placeholderEmpty,
+  placeholderSearch,
+}: {
+  value: string;
+  onChange: (id: string) => void;
+  patients: AssignmentResponse[];
+  disabled?: boolean;
+  placeholderEmpty: string;
+  placeholderSearch: string;
+}) {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const selectedPatient = patients.find((p) => p.patientId === value);
+  const inputDisplayValue = open
+    ? query
+    : selectedPatient
+    ? `${selectedPatient.patientName || selectedPatient.patientId}${selectedPatient.patientCode ? ` • ${selectedPatient.patientCode}` : ""}`
+    : "";
+
+  const filtered = patients.filter((p) => {
+    if (!query) return true;
+    const q = query.toLowerCase();
+    return (
+      (p.patientName || "").toLowerCase().includes(q) ||
+      (p.patientCode || "").toLowerCase().includes(q) ||
+      (p.patientPublicId || "").toLowerCase().includes(q)
+    );
+  });
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+        setQuery("");
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleSelect = (id: string) => {
+    onChange(id);
+    setOpen(false);
+    setQuery("");
+  };
+
+  return (
+    <div ref={ref} className="relative">
+      <input
+        type="text"
+        value={inputDisplayValue}
+        onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
+        onClick={() => { if (!disabled) setOpen(true); }}
+        disabled={disabled}
+        placeholder={placeholderSearch}
+        className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60"
+      />
+      {open && !disabled && (
+        <div className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 shadow-lg">
+          <div
+            onMouseDown={() => handleSelect("")}
+            className="cursor-pointer px-4 py-2.5 text-sm text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700"
+          >
+            {placeholderEmpty}
+          </div>
+          {filtered.length === 0 ? (
+            <div className="px-4 py-2.5 text-sm text-slate-400">Không tìm thấy bệnh nhân</div>
+          ) : (
+            filtered.map((p) => (
+              <div
+                key={p.patientId}
+                onMouseDown={() => handleSelect(p.patientId)}
+                className={`cursor-pointer px-4 py-2.5 text-sm hover:bg-blue-50 dark:hover:bg-slate-700 ${
+                  p.patientId === value
+                    ? "bg-blue-50 dark:bg-blue-900/20 font-medium text-blue-700 dark:text-blue-300"
+                    : "text-gray-900 dark:text-slate-100"
+                }`}
+              >
+                {p.patientName || p.patientId}
+                {p.patientCode && (
+                  <span className="ml-1.5 text-xs text-slate-400">• {p.patientCode}</span>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 }

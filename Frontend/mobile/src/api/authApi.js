@@ -26,4 +26,18 @@ export async function logout() {
   return request("/auth/logout", { method: "POST" });
 }
 
-export default { register, login, refresh, me, logout };
+export async function forgotPassword(email) {
+  return request("/auth/forgot-password", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+}
+
+export async function resetPassword(payload) {
+  return request("/auth/reset-password", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export default { register, login, refresh, me, logout, forgotPassword, resetPassword };
