@@ -195,20 +195,75 @@ function AppHeader({ title, onOpenSidebar, onOpenProfile }) {
   );
 }
 
-function ScreenContainer({ name, onOpenSidebar, children }) {
+function ScreenContainer({ name, children }) {
   const navigation = useNavigation();
+  const { openSidebar } = useSidebar();
   const openProfile = () => navigation.navigate("Profile");
   return (
     <View style={{ flex: 1, backgroundColor: "#F2F6FF" }}>
       <AppHeader
         title={SCREEN_TITLES[name]}
-        onOpenSidebar={onOpenSidebar}
+        onOpenSidebar={openSidebar}
         onOpenProfile={openProfile}
       />
       {children}
     </View>
   );
 }
+
+const HomeScreenWrapper = () => (
+  <ScreenContainer name="Home">
+    <HomeScreen />
+  </ScreenContainer>
+);
+
+const ProfileScreenWrapper = () => (
+  <ScreenContainer name="Profile">
+    <ProfileScreen />
+  </ScreenContainer>
+);
+
+const PatientsScreenWrapper = () => (
+  <ScreenContainer name="Patients">
+    <PatientsScreen />
+  </ScreenContainer>
+);
+
+const AlertsScreenWrapper = () => (
+  <ScreenContainer name="Alerts">
+    <AlertsScreen />
+  </ScreenContainer>
+);
+
+const ChatScreenWrapper = (props) => (
+  <ScreenContainer name="Chat">
+    <ChatScreen {...props} />
+  </ScreenContainer>
+);
+
+const ThresholdsScreenWrapper = (props) => (
+  <ScreenContainer name="Thresholds">
+    <ThresholdsScreen {...props} />
+  </ScreenContainer>
+);
+
+const RemindersScreenWrapper = (props) => (
+  <ScreenContainer name="Reminders">
+    <RemindersScreen {...props} />
+  </ScreenContainer>
+);
+
+const PrescriptionsScreenWrapper = (props) => (
+  <ScreenContainer name="Prescriptions">
+    <PrescriptionsScreen {...props} />
+  </ScreenContainer>
+);
+
+const SettingsScreenWrapper = (props) => (
+  <ScreenContainer name="Settings">
+    <SettingsScreen {...props} />
+  </ScreenContainer>
+);
 
 function MainNavigator() {
   const [sidebarVisible, setSidebarVisible] = useState(false);
@@ -249,70 +304,16 @@ function MainNavigator() {
         onClose={closeSidebar}
       />
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="Home">
-          {() => (
-            <ScreenContainer name="Home" onOpenSidebar={openSidebar}>
-              <HomeScreen />
-            </ScreenContainer>
-          )}
-        </Stack.Screen>
-        <Stack.Screen name="Profile">
-          {() => (
-            <ScreenContainer name="Profile" onOpenSidebar={openSidebar}>
-              <ProfileScreen />
-            </ScreenContainer>
-          )}
-        </Stack.Screen>
-        <Stack.Screen name="Patients">
-          {() => (
-            <ScreenContainer name="Patients" onOpenSidebar={openSidebar}>
-              <PatientsScreen />
-            </ScreenContainer>
-          )}
-        </Stack.Screen>
-        <Stack.Screen name="Alerts">
-          {() => (
-            <ScreenContainer name="Alerts" onOpenSidebar={openSidebar}>
-              <AlertsScreen />
-            </ScreenContainer>
-          )}
-        </Stack.Screen>
-        <Stack.Screen name="Chat">
-          {(props) => (
-            <ScreenContainer name="Chat" onOpenSidebar={openSidebar}>
-              <ChatScreen {...props} />
-            </ScreenContainer>
-          )}
-        </Stack.Screen>
+        <Stack.Screen name="Home" component={HomeScreenWrapper} />
+        <Stack.Screen name="Profile" component={ProfileScreenWrapper} />
+        <Stack.Screen name="Patients" component={PatientsScreenWrapper} />
+        <Stack.Screen name="Alerts" component={AlertsScreenWrapper} />
+        <Stack.Screen name="Chat" component={ChatScreenWrapper} />
         <Stack.Screen name="ChatDetail" component={ChatDetailScreen} />
-        <Stack.Screen name="Thresholds">
-          {(props) => (
-            <ScreenContainer name="Thresholds" onOpenSidebar={openSidebar}>
-              <ThresholdsScreen {...props} />
-            </ScreenContainer>
-          )}
-        </Stack.Screen>
-        <Stack.Screen name="Reminders">
-          {(props) => (
-            <ScreenContainer name="Reminders" onOpenSidebar={openSidebar}>
-              <RemindersScreen {...props} />
-            </ScreenContainer>
-          )}
-        </Stack.Screen>
-        <Stack.Screen name="Prescriptions">
-          {(props) => (
-            <ScreenContainer name="Prescriptions" onOpenSidebar={openSidebar}>
-              <PrescriptionsScreen {...props} />
-            </ScreenContainer>
-          )}
-        </Stack.Screen>
-        <Stack.Screen name="Settings">
-          {(props) => (
-            <ScreenContainer name="Settings" onOpenSidebar={openSidebar}>
-              <SettingsScreen {...props} />
-            </ScreenContainer>
-          )}
-        </Stack.Screen>
+        <Stack.Screen name="Thresholds" component={ThresholdsScreenWrapper} />
+        <Stack.Screen name="Reminders" component={RemindersScreenWrapper} />
+        <Stack.Screen name="Prescriptions" component={PrescriptionsScreenWrapper} />
+        <Stack.Screen name="Settings" component={SettingsScreenWrapper} />
       </Stack.Navigator>
     </SidebarContext.Provider>
   );
