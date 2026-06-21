@@ -1,11 +1,13 @@
 import React, { createContext, useEffect, useState } from "react";
 import * as authApi from "../api/authApi";
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Platform } from 'react-native';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Platform } from "react-native";
 
 let CookieManager = null;
-if (Platform.OS !== 'web') {
-  CookieManager = require('@react-native-cookies/cookies').default || require('@react-native-cookies/cookies');
+if (Platform.OS !== "web") {
+  CookieManager =
+    require("@react-native-cookies/cookies").default ||
+    require("@react-native-cookies/cookies");
 }
 import {
   attachPushTokenRefreshListener,
@@ -107,7 +109,7 @@ export function AuthProvider({ children }) {
       if (!deactivateResult?.ok && !deactivateResult?.skipped) {
         console.warn(
           "[push] failed to deactivate device token before logout",
-          deactivateResult?.error
+          deactivateResult?.error,
         );
       }
     } catch (error) {
@@ -125,12 +127,12 @@ export function AuthProvider({ children }) {
         await CookieManager.clearAll();
       }
     } catch (e) {
-      console.warn('Failed to clear cookies', e);
+      console.warn("Failed to clear cookies", e);
     }
 
     try {
-      await AsyncStorage.removeItem('accessToken');
-      await AsyncStorage.removeItem('refreshToken');
+      await AsyncStorage.removeItem("accessToken");
+      await AsyncStorage.removeItem("refreshToken");
     } catch (e) {}
 
     setUser(null);
@@ -161,10 +163,11 @@ export function AuthProvider({ children }) {
 
   const saveGoogleTokens = async (accessToken, refreshToken) => {
     try {
-      if (accessToken) await AsyncStorage.setItem('accessToken', accessToken);
-      if (refreshToken) await AsyncStorage.setItem('refreshToken', refreshToken);
+      if (accessToken) await AsyncStorage.setItem("accessToken", accessToken);
+      if (refreshToken)
+        await AsyncStorage.setItem("refreshToken", refreshToken);
     } catch (e) {
-      console.warn('Failed to save google tokens', e);
+      console.warn("Failed to save google tokens", e);
     }
   };
 
