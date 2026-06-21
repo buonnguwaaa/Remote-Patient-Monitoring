@@ -73,7 +73,7 @@ export function buildMeasurementPayload({
       systolic: toOptionalNumber(values.systolic, emptyNumberValue),
       diastolic: toOptionalNumber(values.diastolic, emptyNumberValue),
     },
-    glucose: hasGlucose ? Number(values.glucose) : null,
+    glucose: hasGlucose ? { bloodGlucose: Number(values.glucose) } : null,
     mealTiming: hasGlucose ? (values.timing === "pre" ? "pre_meal" : "post_meal") : null,
     device: toOptionalText(values.device),
     note: toOptionalText(values.note),

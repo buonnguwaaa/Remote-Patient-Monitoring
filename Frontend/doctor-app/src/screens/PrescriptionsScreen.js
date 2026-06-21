@@ -971,78 +971,113 @@ export default function PrescriptionsScreen() {
                       </View>
 
                       {med.schedule.map((dose, doseIdx) => (
-                        <View key={doseIdx} style={styles.doseFormRow}>
-                          {/* TimeOfDay picker: Morning, Noon, Evening */}
-                          <View style={{ width: 80 }}>
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                              {["morning", "noon", "evening"].map((tod) => {
-                                const selected = dose.timeOfDay === tod;
-                                return (
-                                  <TouchableOpacity
-                                    key={tod}
-                                    style={[styles.todBtn, selected && styles.todBtnActive]}
-                                    onPress={() => handleDoseFieldChange(medIdx, doseIdx, "timeOfDay", tod)}
-                                  >
-                                    <Text style={[styles.todBtnText, selected && styles.todBtnTextActive]}>
-                                      {renderTimeOfDay(tod)}
-                                    </Text>
-                                  </TouchableOpacity>
-                                );
-                              })}
-                            </ScrollView>
+                        <View key={doseIdx} style={styles.doseFormCard}>
+                          {/* Header of Dose */}
+                          <View style={styles.doseCardHeader}>
+                            <View style={styles.doseCardHeaderLeft}>
+                              <Ionicons name="time-outline" size={14} color="#64748B" />
+                              <Text style={styles.doseCardTitle}>Lần uống #{doseIdx + 1}</Text>
+                            </View>
+                            {med.schedule.length > 1 && (
+                              <TouchableOpacity
+                                onPress={() => handleRemoveDose(medIdx, doseIdx)}
+                                style={styles.removeDoseBtn}
+                              >
+                                <Ionicons name="trash-outline" size={14} color="#EF4444" />
+                                <Text style={styles.removeDoseText}>Xóa</Text>
+                              </TouchableOpacity>
+                            )}
                           </View>
 
-                          {/* Custom Time */}
-                          <View style={{ flex: 1.2 }}>
-                            <TextInput
-                              style={[styles.input, { paddingVertical: 4 }]}
-                              placeholder="HH:mm"
-                              value={dose.customTime}
-                              onChangeText={(val) => handleDoseFieldChange(medIdx, doseIdx, "customTime", val)}
-                            />
+                          {/* Time of Day Segment & Time Input */}
+                          <View style={styles.doseRow}>
+                            {/* Segment selector for Sáng / Trưa / Tối */}
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.doseFieldLabel}>Thời điểm</Text>
+                              <View style={styles.todSegmentContainer}>
+                                {["morning", "noon", "evening"].map((tod) => {
+                                  const selected = dose.timeOfDay === tod;
+                                  return (
+                                    <TouchableOpacity
+                                      key={tod}
+                                      style={[styles.todSegmentBtn, selected && styles.todSegmentBtnActive]}
+                                      onPress={() => handleDoseFieldChange(medIdx, doseIdx, "timeOfDay", tod)}
+                                    >
+                                      <Text style={[styles.todSegmentText, selected && styles.todSegmentTextActive]}>
+                                        {renderTimeOfDay(tod)}
+                                      </Text>
+                                    </TouchableOpacity>
+                                  );
+                                })}
+                              </View>
+                            </View>
+
+                            {/* HH:mm input */}
+                            <View style={styles.timeInputContainer}>
+                              <Text style={styles.doseFieldLabel}>Giờ uống</Text>
+                              <TextInput
+                                style={styles.timeInput}
+                                placeholder="08:00"
+                                placeholderTextColor="#9CA3AF"
+                                value={dose.customTime}
+                                onChangeText={(val) => handleDoseFieldChange(medIdx, doseIdx, "customTime", val)}
+                              />
+                            </View>
                           </View>
 
-                          {/* Meal Timing */}
-                          <View style={{ flex: 1.5 }}>
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                              {[
-                                { val: "pre_meal", lbl: "Trước ăn" },
-                                { val: "post_meal", lbl: "Sau ăn" },
-                              ].map((item) => {
-                                const selected = dose.mealTiming === item.val;
-                                return (
-                                  <TouchableOpacity
-                                    key={item.val}
-                                    style={[styles.mealBtn, selected && styles.mealBtnActive]}
-                                    onPress={() => handleDoseFieldChange(medIdx, doseIdx, "mealTiming", selected ? "" : item.val)}
-                                  >
-                                    <Text style={[styles.mealBtnText, selected && styles.mealBtnTextActive]}>
-                                      {item.lbl}
-                                    </Text>
-                                  </TouchableOpacity>
-                                );
-                              })}
-                            </ScrollView>
-                          </View>
+                          {/* Pill Count & Meal Timing */}
+                          <View style={styles.doseRow}>
+                            {/* Pill Counter with - / + buttons */}
+                            <View style={styles.pillCounterContainer}>
+                              <Text style={styles.doseFieldLabel}>Số viên</Text>
+                              <View style={styles.counterRow}>
+                                <TouchableOpacity
+                                  style={styles.counterBtn}
+                                  onPress={() => {
+                                    const nextVal = Math.max(0.5, Number(dose.pillCount || 0) - 0.5);
+                                    handleDoseFieldChange(medIdx, doseIdx, "pillCount", nextVal);
+                                  }}
+                                >
+                                  <Text style={styles.counterBtnText}>-</Text>
+                                </TouchableOpacity>
+                                <Text style={styles.counterValueText}>{dose.pillCount}</Text>
+                                <TouchableOpacity
+                                  style={styles.counterBtn}
+                                  onPress={() => {
+                                    const nextVal = Number(dose.pillCount || 0) + 0.5;
+                                    handleDoseFieldChange(medIdx, doseIdx, "pillCount", nextVal);
+                                  }}
+                                >
+                                  <Text style={styles.counterBtnText}>+</Text>
+                                </TouchableOpacity>
+                              </View>
+                            </View>
 
-                          {/* Pill Count */}
-                          <View style={{ width: 50 }}>
-                            <TextInput
-                              style={[styles.input, { paddingVertical: 4, textAlign: "center" }]}
-                              keyboardType="numeric"
-                              value={String(dose.pillCount)}
-                              onChangeText={(val) => handleDoseFieldChange(medIdx, doseIdx, "pillCount", parseFloat(val || "0"))}
-                            />
+                            {/* Meal Timing Button group */}
+                            <View style={styles.mealTimingContainer}>
+                              <Text style={styles.doseFieldLabel}>Thời điểm ăn</Text>
+                              <View style={styles.mealTimingRow}>
+                                {[
+                                  { val: "", lbl: "K.hạn" },
+                                  { val: "pre_meal", lbl: "Trước ăn" },
+                                  { val: "post_meal", lbl: "Sau ăn" },
+                                ].map((item) => {
+                                  const selected = dose.mealTiming === item.val;
+                                  return (
+                                    <TouchableOpacity
+                                      key={item.val}
+                                      style={[styles.mealTimingBtn, selected && styles.mealTimingBtnActive]}
+                                      onPress={() => handleDoseFieldChange(medIdx, doseIdx, "mealTiming", item.val)}
+                                    >
+                                      <Text style={[styles.mealTimingText, selected && styles.mealTimingTextActive]}>
+                                        {item.lbl}
+                                      </Text>
+                                    </TouchableOpacity>
+                                  );
+                                })}
+                              </View>
+                            </View>
                           </View>
-
-                          {med.schedule.length > 1 && (
-                            <TouchableOpacity
-                              onPress={() => handleRemoveDose(medIdx, doseIdx)}
-                              style={{ padding: 4 }}
-                            >
-                              <Ionicons name="close-circle-outline" size={18} color="#EF4444" />
-                            </TouchableOpacity>
-                          )}
                         </View>
                       ))}
                     </View>
@@ -1544,47 +1579,157 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#2563EB",
   },
-  doseFormRow: {
+  doseFormCard: {
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 10,
+  },
+  doseCardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
+    paddingBottom: 6,
+  },
+  doseCardHeaderLeft: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: 4,
+  },
+  doseCardTitle: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#64748B",
+  },
+  removeDoseBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+  },
+  removeDoseText: {
+    fontSize: 11,
+    color: "#EF4444",
+    fontWeight: "600",
+  },
+  doseRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    gap: 10,
     marginBottom: 8,
   },
-  todBtn: {
-    backgroundColor: "#E2E8F0",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    marginRight: 4,
+  todSegmentContainer: {
+    flex: 1,
+    flexDirection: "row",
+    backgroundColor: "#F1F5F9",
+    borderRadius: 8,
+    padding: 2,
+    height: 38,
+    alignItems: "center",
   },
-  todBtnActive: {
+  todSegmentBtn: {
+    flex: 1,
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+    borderRadius: 6,
+  },
+  todSegmentBtnActive: {
     backgroundColor: "#2563EB",
   },
-  todBtnText: {
-    fontSize: 10,
-    color: "#475569",
+  todSegmentText: {
+    fontSize: 11,
+    color: "#64748B",
+    fontWeight: "500",
   },
-  todBtnTextActive: {
-    color: "#FFF",
+  todSegmentTextActive: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+  },
+  timeInputContainer: {
+    width: 90,
+  },
+  doseFieldLabel: {
+    fontSize: 10,
+    color: "#64748B",
+    marginBottom: 4,
     fontWeight: "600",
   },
-  mealBtn: {
-    backgroundColor: "#E2E8F0",
+  timeInput: {
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+    borderRadius: 8,
     paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    marginRight: 4,
+    height: 38,
+    fontSize: 14,
+    color: "#1F2937",
+    textAlign: "center",
   },
-  mealBtnActive: {
+  pillCounterContainer: {
+    width: 100,
+  },
+  counterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+    borderRadius: 8,
+    backgroundColor: "#F8FAFC",
+    height: 38,
+  },
+  counterBtn: {
+    width: 30,
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  counterBtnText: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#64748B",
+  },
+  counterValueText: {
+    flex: 1,
+    textAlign: "center",
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#1F2937",
+  },
+  mealTimingContainer: {
+    flex: 1,
+  },
+  mealTimingRow: {
+    flexDirection: "row",
+    backgroundColor: "#F1F5F9",
+    borderRadius: 8,
+    padding: 2,
+    height: 38,
+    alignItems: "center",
+  },
+  mealTimingBtn: {
+    flex: 1,
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+    borderRadius: 6,
+  },
+  mealTimingBtnActive: {
     backgroundColor: "#10B981",
   },
-  mealBtnText: {
+  mealTimingText: {
     fontSize: 10,
-    color: "#475569",
+    color: "#64748B",
+    fontWeight: "500",
   },
-  mealBtnTextActive: {
-    color: "#FFF",
-    fontWeight: "600",
+  mealTimingTextActive: {
+    color: "#FFFFFF",
+    fontWeight: "700",
   },
 
   formActions: {

@@ -76,7 +76,13 @@ export const calculateHealthStatistics = (measurements: any[], threshold: any): 
   const temp = measurements.map((m) => m.temperature || 0).filter((v) => v > 0);
   const spo2 = measurements.map((m) => m.spo2 || 0).filter((v) => v > 0);
   const rr = measurements.map((m) => m.respiratoryRate || 0).filter((v) => v > 0);
-  const gluc = measurements.map((m) => m.glucose || 0).filter((v) => v > 0);
+  const gluc = measurements
+    .map((m) => {
+      const g = m.glucose;
+      if (!g) return 0;
+      return typeof g === 'object' ? g.bloodGlucose || 0 : g;
+    })
+    .filter((v) => v > 0);
 
   const stats: HealthStatistics = {
     totalMeasurements: measurements.length,
@@ -243,7 +249,7 @@ export const exportHealthReportToExcel = async (
         m.temperature || '-',
         m.spo2 || '-',
         m.respiratoryRate || '-',
-        m.glucose || '-',
+        m.glucose ? (typeof m.glucose === 'object' ? m.glucose.bloodGlucose || '-' : m.glucose) : '-',
         formatDateTimeVN(m.createdAt),
       ]);
     }

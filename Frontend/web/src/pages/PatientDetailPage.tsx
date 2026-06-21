@@ -58,7 +58,11 @@ const normalizeMeasurements = (data: MeasurementResponse[]): ChartRow[] =>
     systolic: m.bloodPressure?.systolic ?? m.systolic ?? null,
     diastolic: m.bloodPressure?.diastolic ?? m.diastolic ?? null,
     pulse: m.heartRate ?? null,
-    glucose: m.glucose ?? null,
+    glucose: m.glucose
+      ? typeof m.glucose === "object"
+        ? (m.glucose as any).bloodGlucose ?? null
+        : m.glucose
+      : null,
     spo2: m.spo2 ?? null,
     temperature: m.temperature ?? null,
     respiratoryRate: m.respiratoryRate ?? null,

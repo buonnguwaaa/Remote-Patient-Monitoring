@@ -238,7 +238,7 @@ const createDefaultFormData = (patientId = ""): PrescriptionFormData => {
   const today = new Date();
   const endDate = new Date(today);
   endDate.setDate(endDate.getDate() + 30);
-  
+
   const todayStr = new Date(today.getTime() - today.getTimezoneOffset() * 60000).toISOString().split("T")[0];
   const endDateStr = new Date(endDate.getTime() - endDate.getTimezoneOffset() * 60000).toISOString().split("T")[0];
 
@@ -256,10 +256,10 @@ const createDefaultFormData = (patientId = ""): PrescriptionFormData => {
 const formatDate = (value: string) =>
   value
     ? new Date(value).toLocaleDateString("vi-VN", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      })
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    })
     : "";
 
 const formatTime = (h: number, m: number) =>
@@ -709,12 +709,12 @@ export default function PrescriptionPage() {
       medications: prev.medications.map((med, i) =>
         i === medIdx
           ? {
-              ...med,
-              schedule: {
-                ...med.schedule,
-                extras: med.schedule.extras.map((ex, j) => j === extraIdx ? { ...ex, [field]: value } : ex),
-              },
-            }
+            ...med,
+            schedule: {
+              ...med.schedule,
+              extras: med.schedule.extras.map((ex, j) => j === extraIdx ? { ...ex, [field]: value } : ex),
+            },
+          }
           : med
       ),
     }));
@@ -875,8 +875,8 @@ export default function PrescriptionPage() {
       status === "active"
         ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
         : status === "paused"
-        ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
-        : "bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400";
+          ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
+          : "bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400";
     return (
       <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${cls}`}>
         {status}
@@ -896,12 +896,12 @@ export default function PrescriptionPage() {
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
               <FaNotesMedical size={20} />
             </div>
-            {selectedPatientId 
+            {selectedPatientId
               ? `Đơn thuốc của ${patientDisplayMap.get(selectedPatientId)?.name || "bệnh nhân"}`
               : "Danh sách đơn thuốc"}
           </h1>
           <p className="mt-2 max-w-2xl text-sm text-slate-500 dark:text-slate-400">
-            {selectedPatientId 
+            {selectedPatientId
               ? "Theo dõi các đơn thuốc, lịch uống và trạng thái điều trị của bệnh nhân này."
               : "Các đơn thuốc được kê cho bệnh nhân trong phạm vi quản lý của bạn."}
           </p>
@@ -1010,7 +1010,7 @@ export default function PrescriptionPage() {
             {currentPrescriptions.map((pres) => {
               const patientInfo = patientDisplayMap.get(pres.patientId);
               const isExpanded = expandedCards.has(pres.id);
-              
+
               let medTitle = "Đơn thuốc chưa có tên thuốc";
               if (pres.medications && pres.medications.length > 0) {
                 if (pres.medications.length === 1) {
@@ -1562,7 +1562,7 @@ export default function PrescriptionPage() {
                           {(
                             [
                               { tod: "morning", label: t("prescriptions.morning") },
-                              { tod: "noon",    label: t("prescriptions.noon") },
+                              { tod: "noon", label: t("prescriptions.noon") },
                               { tod: "evening", label: t("prescriptions.evening") },
                             ] as const
                           ).map(({ tod, label }) => {
@@ -1570,11 +1570,10 @@ export default function PrescriptionPage() {
                             return (
                               <div
                                 key={tod}
-                                className={`rounded-lg border p-3 transition-all ${
-                                  slot.enabled
+                                className={`rounded-lg border p-3 transition-all ${slot.enabled
                                     ? "border-slate-300 dark:border-slate-500 bg-white dark:bg-slate-700"
                                     : "border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
-                                }`}
+                                  }`}
                               >
                                 <div
                                   className="flex cursor-pointer items-center justify-between"
@@ -1586,14 +1585,12 @@ export default function PrescriptionPage() {
                                   <button
                                     type="button"
                                     onClick={(e) => { e.stopPropagation(); handleToggleSlot(mi, tod); }}
-                                    className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${
-                                      slot.enabled ? "bg-slate-600 dark:bg-slate-400" : "bg-slate-200 dark:bg-slate-600"
-                                    }`}
+                                    className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${slot.enabled ? "bg-slate-600 dark:bg-slate-400" : "bg-slate-200 dark:bg-slate-600"
+                                      }`}
                                   >
                                     <span
-                                      className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${
-                                        slot.enabled ? "translate-x-4" : "translate-x-1"
-                                      }`}
+                                      className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${slot.enabled ? "translate-x-4" : "translate-x-1"
+                                        }`}
                                     />
                                   </button>
                                 </div>
@@ -1716,8 +1713,8 @@ export default function PrescriptionPage() {
                   {saving
                     ? t("prescriptions.saving")
                     : editingPrescriptionId
-                    ? t("prescriptions.updatePrescription")
-                    : t("prescriptions.savePrescription")}
+                      ? t("prescriptions.updatePrescription")
+                      : t("prescriptions.savePrescription")}
                 </button>
               </div>
             </form>
@@ -1803,11 +1800,10 @@ function DrugNameCombobox({
             <div
               key={s.name}
               onMouseDown={() => { onChange(s.name); onSelect?.(s); setOpen(false); }}
-              className={`flex cursor-pointer items-center justify-between px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 ${
-                s.name === value
+              className={`flex cursor-pointer items-center justify-between px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 ${s.name === value
                   ? "font-medium text-slate-900 dark:text-slate-100"
                   : "text-gray-900 dark:text-slate-100"
-              }`}
+                }`}
             >
               <span>{s.name}</span>
               {s.dosage && (
@@ -1844,8 +1840,8 @@ function PatientSearchSelect({
   const inputDisplayValue = open
     ? query
     : selectedPatient
-    ? `${selectedPatient.patientName || selectedPatient.patientId}${selectedPatient.patientCode ? ` • ${selectedPatient.patientCode}` : ""}`
-    : "";
+      ? `${selectedPatient.patientName || selectedPatient.patientId}${selectedPatient.patientCode ? ` • ${selectedPatient.patientCode}` : ""}`
+      : "";
 
   const filtered = patients.filter((p) => {
     if (!query) return true;
@@ -1900,11 +1896,10 @@ function PatientSearchSelect({
               <div
                 key={p.patientId}
                 onMouseDown={() => handleSelect(p.patientId)}
-                className={`cursor-pointer px-4 py-2.5 text-sm hover:bg-blue-50 dark:hover:bg-slate-700 ${
-                  p.patientId === value
+                className={`cursor-pointer px-4 py-2.5 text-sm hover:bg-blue-50 dark:hover:bg-slate-700 ${p.patientId === value
                     ? "bg-blue-50 dark:bg-blue-900/20 font-medium text-blue-700 dark:text-blue-300"
                     : "text-gray-900 dark:text-slate-100"
-                }`}
+                  }`}
               >
                 {p.patientName || p.patientId}
                 {p.patientCode && (
