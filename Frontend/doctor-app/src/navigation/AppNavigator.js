@@ -24,6 +24,12 @@ import ProfileScreen from "../screens/ProfileScreen";
 import PlaceholderScreen from "../screens/PlaceholderScreen";
 import PatientsScreen from "../screens/PatientsScreen";
 import AlertsScreen from "../screens/AlertsScreen";
+import ChatScreen from "../screens/ChatScreen";
+import ChatDetailScreen from "../screens/ChatDetailScreen";
+import ThresholdsScreen from "../screens/ThresholdsScreen";
+import RemindersScreen from "../screens/RemindersScreen";
+import PrescriptionsScreen from "../screens/PrescriptionsScreen";
+import SettingsScreen from "../screens/SettingsScreen";
 
 const SIDEBAR_WIDTH = 280;
 const Stack = createNativeStackNavigator();
@@ -271,15 +277,42 @@ function MainNavigator() {
             </ScreenContainer>
           )}
         </Stack.Screen>
-        {["Chat", "Thresholds", "Reminders", "Prescriptions", "Settings"].map((name) => (
-          <Stack.Screen key={name} name={name}>
-            {() => (
-              <ScreenContainer name={name} onOpenSidebar={openSidebar}>
-                <PlaceholderScreen route={{ params: { title: SCREEN_TITLES[name] } }} />
-              </ScreenContainer>
-            )}
-          </Stack.Screen>
-        ))}
+        <Stack.Screen name="Chat">
+          {(props) => (
+            <ScreenContainer name="Chat" onOpenSidebar={openSidebar}>
+              <ChatScreen {...props} />
+            </ScreenContainer>
+          )}
+        </Stack.Screen>
+        <Stack.Screen name="ChatDetail" component={ChatDetailScreen} />
+        <Stack.Screen name="Thresholds">
+          {(props) => (
+            <ScreenContainer name="Thresholds" onOpenSidebar={openSidebar}>
+              <ThresholdsScreen {...props} />
+            </ScreenContainer>
+          )}
+        </Stack.Screen>
+        <Stack.Screen name="Reminders">
+          {(props) => (
+            <ScreenContainer name="Reminders" onOpenSidebar={openSidebar}>
+              <RemindersScreen {...props} />
+            </ScreenContainer>
+          )}
+        </Stack.Screen>
+        <Stack.Screen name="Prescriptions">
+          {(props) => (
+            <ScreenContainer name="Prescriptions" onOpenSidebar={openSidebar}>
+              <PrescriptionsScreen {...props} />
+            </ScreenContainer>
+          )}
+        </Stack.Screen>
+        <Stack.Screen name="Settings">
+          {(props) => (
+            <ScreenContainer name="Settings" onOpenSidebar={openSidebar}>
+              <SettingsScreen {...props} />
+            </ScreenContainer>
+          )}
+        </Stack.Screen>
       </Stack.Navigator>
     </SidebarContext.Provider>
   );
