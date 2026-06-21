@@ -18,52 +18,55 @@ import (
 )
 
 type MainServerContainer struct {
-	BaseUserRepo          userRepository.BaseUserRepository
-	PatientRepo           userRepository.PatientRepository
-	DoctorRepo            userRepository.StaffRepository[domain.Doctor]
-	NurseRepo             userRepository.StaffRepository[domain.Nurse]
-	TokenRepo             repository.TokenRepository
-	NotificationTokenRepo repository.NotificationTokenRepository
-	NotificationRepo      repository.UserNotificationRepository
-	MeasurementRepo       repository.MeasurementRepository
-	ThresholdRepo         repository.ThresholdRepository
-	AlertRepo             repository.AlertRepository
-	DepartmentRepo        repository.DepartmentRepository
-	AssignmentRepo        repository.AssignmentRepository
-	ReminderRepo          repository.ReminderRepository
-	PrescriptionRepo      repository.PrescriptionRepository
-	MedicationIntakeRepo  repository.MedicationIntakeRepository
-	ConversationRepo      chatRepository.ConversationRepository
-	MessageRepo           chatRepository.MessageRepository
-	ActivityLogRepo       *repository.ActivityLogRepository
+	BaseUserRepo            userRepository.BaseUserRepository
+	PatientRepo             userRepository.PatientRepository
+	DoctorRepo              userRepository.StaffRepository[domain.Doctor]
+	NurseRepo               userRepository.StaffRepository[domain.Nurse]
+	TokenRepo               repository.TokenRepository
+	NotificationTokenRepo   repository.NotificationTokenRepository
+	NotificationRepo        repository.UserNotificationRepository
+	MeasurementRepo         repository.MeasurementRepository
+	ThresholdRepo           repository.ThresholdRepository
+	AlertRepo               repository.AlertRepository
+	DepartmentRepo          repository.DepartmentRepository
+	AssignmentRepo          repository.AssignmentRepository
+	ReminderRepo            repository.ReminderRepository
+	PrescriptionRepo        repository.PrescriptionRepository
+	MedicationIntakeRepo    repository.MedicationIntakeRepository
+	FollowUpAppointmentRepo repository.FollowUpAppointmentRepository
+	ConversationRepo        chatRepository.ConversationRepository
+	MessageRepo             chatRepository.MessageRepository
+	ActivityLogRepo         *repository.ActivityLogRepository
 
-	AuthService         service.AuthService
-	UserService         service.UserService
-	MeasurementService  service.MeasurementService
-	ThresholdService    service.ThresholdService
-	AlertService        service.AlertService
-	DepartmentService   service.DepartmentService
-	AssignmentService   service.AssignmentService
-	ReminderService     service.ReminderService
-	PrescriptionService     service.PrescriptionService
-	MedicationIntakeService service.MedicationIntakeService
-	ChatService             service.ChatService
-	NotificationService service.NotificationService
+	AuthService                service.AuthService
+	UserService                service.UserService
+	MeasurementService         service.MeasurementService
+	ThresholdService           service.ThresholdService
+	AlertService               service.AlertService
+	DepartmentService          service.DepartmentService
+	AssignmentService          service.AssignmentService
+	ReminderService            service.ReminderService
+	PrescriptionService        service.PrescriptionService
+	MedicationIntakeService    service.MedicationIntakeService
+	FollowUpAppointmentService service.FollowUpAppointmentService
+	ChatService                service.ChatService
+	NotificationService        service.NotificationService
 
-	AuthHandler              *handler.AuthHandler
-	UserHandler              *handler.UserHandler
-	MeasurementHandler       *handler.MeasurementHandler
-	ThresholdHandler         *handler.ThresholdHandler
-	AlertHandler             *handler.AlertHandler
-	DepartmentHandler        *handler.DepartmentHandler
-	AssignmentHandler        *handler.AssignmentHandler
-	ReminderHandler          *handler.ReminderHandler
-	PrescriptionHandler      *handler.PrescriptionHandler
-	MedicationIntakeHandler  *handler.MedicationIntakeHandler
-	ChatHandler              *handler.ChatHandler
-	NotificationTokenHandler *handler.NotificationTokenHandler
-	NotificationHandler      *handler.NotificationHandler
-	ActivityLogHandler       *handler.ActivityLogHandler
+	AuthHandler                *handler.AuthHandler
+	UserHandler                *handler.UserHandler
+	MeasurementHandler         *handler.MeasurementHandler
+	ThresholdHandler           *handler.ThresholdHandler
+	AlertHandler               *handler.AlertHandler
+	DepartmentHandler          *handler.DepartmentHandler
+	AssignmentHandler          *handler.AssignmentHandler
+	ReminderHandler            *handler.ReminderHandler
+	PrescriptionHandler        *handler.PrescriptionHandler
+	MedicationIntakeHandler    *handler.MedicationIntakeHandler
+	FollowUpAppointmentHandler *handler.FollowUpAppointmentHandler
+	ChatHandler                *handler.ChatHandler
+	NotificationTokenHandler   *handler.NotificationTokenHandler
+	NotificationHandler        *handler.NotificationHandler
+	ActivityLogHandler         *handler.ActivityLogHandler
 
 	WSChatHandler *ws.Handler
 	Hub           *ws.Hub
@@ -100,9 +103,14 @@ func NewMainServerContainer() *MainServerContainer {
 	c.ReminderRepo = repository.NewReminderRepository(db)
 	c.PrescriptionRepo = repository.NewPrescriptionRepository(db)
 	c.MedicationIntakeRepo = repository.NewMedicationIntakeRepository(db)
+	c.FollowUpAppointmentRepo = repository.NewFollowUpAppointmentRepository(db)
 	c.ConversationRepo = chatRepository.NewConversationRepository(db)
 	c.MessageRepo = chatRepository.NewMessageRepository(db)
 	c.ActivityLogRepo = repository.NewActivityLogRepository(db)
+
+	if err := c.BaseUserRepo.EnsureIndexes(context.Background()); err != nil {
+		log.Printf("[WARN] failed to ensure user indexes: %v", err)
+	}
 	if err := c.ConversationRepo.EnsureIndexes(context.Background()); err != nil {
 		log.Printf("[WARN] failed to ensure conversation indexes: %v", err)
 	}
@@ -120,6 +128,7 @@ func NewMainServerContainer() *MainServerContainer {
 	c.ReminderService = service.NewReminderService(c.PatientRepo, c.ReminderRepo)
 	c.PrescriptionService = service.NewPrescriptionService(c.PatientRepo, c.PrescriptionRepo, c.ReminderRepo, c.ReminderService)
 	c.MedicationIntakeService = service.NewMedicationIntakeService(c.PatientRepo, c.PrescriptionRepo, c.MedicationIntakeRepo, c.ReminderRepo)
+	c.FollowUpAppointmentService = service.NewFollowUpAppointmentService(c.PatientRepo, c.AssignmentRepo, c.FollowUpAppointmentRepo)
 	c.ChatService = service.NewChatService(c.ConversationRepo, c.MessageRepo, c.AssignmentRepo)
 	c.NotificationService = service.NewNotificationService(c.NotificationTokenRepo, c.NotificationRepo, nil)
 
@@ -132,6 +141,7 @@ func NewMainServerContainer() *MainServerContainer {
 	c.ReminderHandler = handler.NewReminderHandler(c.ReminderService)
 	c.PrescriptionHandler = handler.NewPrescriptionHandler(c.PrescriptionService)
 	c.MedicationIntakeHandler = handler.NewMedicationIntakeHandler(c.MedicationIntakeService)
+	c.FollowUpAppointmentHandler = handler.NewFollowUpAppointmentHandler(c.FollowUpAppointmentService)
 	c.ChatHandler = handler.NewChatHandler(c.ChatService)
 	c.NotificationTokenHandler = handler.NewNotificationTokenHandler(c.NotificationService)
 	c.NotificationHandler = handler.NewNotificationHandler(c.NotificationService)

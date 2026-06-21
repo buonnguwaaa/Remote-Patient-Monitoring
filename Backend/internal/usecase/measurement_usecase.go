@@ -4,7 +4,6 @@ import "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain
 
 type CreateMeasurementInput struct {
 	PatientID string
-	Type      domain.MeasurementType
 
 	Temperature     *float64
 	HeartRate       *float64
@@ -12,7 +11,12 @@ type CreateMeasurementInput struct {
 	SpO2            *float64
 	BloodPressure   domain.BloodPressure
 
-	Glucose    *float64
+	Height *float64
+	Weight *float64
+
+	Systolic   *float64
+	Diastolic  *float64
+	Glucose    domain.Glucose
 	MealTiming *domain.MealTiming
 
 	Device *string
@@ -20,17 +24,20 @@ type CreateMeasurementInput struct {
 }
 
 type UpdateMeasurementInput struct {
-	ID   string
-	Type domain.MeasurementType
+	ID string
 
 	Temperature     *float64
 	HeartRate       *float64
 	RespiratoryRate *float64
 	SpO2            *float64
 	BloodPressure   domain.BloodPressure
-
-	Glucose    *float64
-	MealTiming *domain.MealTiming
+	SpO2            float64
+	Height          *float64
+	Weight          *float64
+	Systolic        *float64
+	Diastolic       *float64
+	Glucose         domain.Glucose
+	MealTiming      *domain.MealTiming
 
 	Device *string
 	Note   *string
@@ -38,7 +45,6 @@ type UpdateMeasurementInput struct {
 
 type GetMeasurementsInput struct {
 	PatientID  string
-	Type       string
 	MealTiming string
 	IsLatest   bool
 }

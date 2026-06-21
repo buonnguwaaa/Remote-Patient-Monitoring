@@ -25,9 +25,11 @@ type BaseUserRepository interface {
 	FindByResetToken(ctx context.Context, tokenHash string) (*domain.BaseUser, error)
 	ResetPassword(ctx context.Context, id primitive.ObjectID, hashed string) error
 
-	SetActivationToken(ctx context.Context, email, hash string, expires time.Time) error
-	FindByActivationHash(ctx context.Context, hash string) (*domain.BaseUser, error)
+	SetActivationOTP(ctx context.Context, email, hash string, expires time.Time) error
+	FindByEmailAndActivationHash(ctx context.Context, email, hash string) (*domain.BaseUser, error)
 	ActivateUserByEmail(ctx context.Context, email string) error
+
+	EnsureIndexes(ctx context.Context) error
 }
 
 type baseUserRepository struct {
@@ -49,6 +51,9 @@ type UserFilter struct {
 	Limit     int
 	Offset    int
 	SortOrder string
+
+	DiseaseBloodPressure *bool
+	DiseaseGlucose       *bool
 }
 
 func (r *baseUserRepository) FindByID(ctx context.Context, id primitive.ObjectID) (*domain.BaseUser, error) {
@@ -135,7 +140,7 @@ func (r *baseUserRepository) ResetPassword(ctx context.Context, id primitive.Obj
 	return err
 }
 
-func (r *baseUserRepository) SetActivationToken(ctx context.Context, email, hash string, expires time.Time) error {
+func (r *baseUserRepository) SetActivationOTP(ctx context.Context, email, hash string, expires time.Time) error {
 	_, err := r.col.UpdateOne(ctx, bson.M{"email": email}, bson.M{
 		"$set": bson.M{
 			"activationTokenHash":   hash,
@@ -146,9 +151,10 @@ func (r *baseUserRepository) SetActivationToken(ctx context.Context, email, hash
 	return err
 }
 
-func (r *baseUserRepository) FindByActivationHash(ctx context.Context, hash string) (*domain.BaseUser, error) {
+func (r *baseUserRepository) FindByEmailAndActivationHash(ctx context.Context, email, hash string) (*domain.BaseUser, error) {
 	var u domain.BaseUser
 	err := r.col.FindOne(ctx, bson.M{
+		"email":                 email,
 		"activationTokenHash":   hash,
 		"activationTokenExpiry": bson.M{"$gt": time.Now()},
 	}).Decode(&u)
@@ -195,4 +201,40 @@ func buildFilterAndOptions(f UserFilter) (bson.M, *options.FindOptions) {
 	}
 
 	return bsonFilter, opts
+}
+
+func (r *baseUserRepository) EnsureIndexes(ctx context.Context) error {
+	models := []mongo.IndexModel{
+		{
+			Keys:    bson.D{{Key: "email", Value: 1}},
+			Options: options.Index().SetUnique(true).SetName("ux_user_email"),
+		},
+		{
+			Keys:    bson.D{{Key: "role", Value: 1}, {Key: "createdAt", Value: -1}},
+			Options: options.Index().SetName("idx_user_role_created"),
+		},
+		{
+			Keys:    bson.D{{Key: "role", Value: 1}, {Key: "diseaseTypes.bloodPressure", Value: 1}},
+			Options: options.Index().SetName("idx_patient_disease_bp"),
+		},
+		{
+			Keys:    bson.D{{Key: "role", Value: 1}, {Key: "diseaseTypes.glucose", Value: 1}},
+			Options: options.Index().SetName("idx_patient_disease_glucose"),
+		},
+		{
+			Keys:    bson.D{{Key: "departmentId", Value: 1}, {Key: "role", Value: 1}},
+			Options: options.Index().SetName("idx_user_department_role"),
+		},
+		{
+			Keys:    bson.D{{Key: "resetToken", Value: 1}},
+			Options: options.Index().SetSparse(true).SetName("idx_user_reset_token"),
+		},
+		{
+			Keys:    bson.D{{Key: "activationTokenHash", Value: 1}},
+			Options: options.Index().SetSparse(true).SetName("idx_user_activation_token"),
+		},
+	}
+
+	_, err := r.col.Indexes().CreateMany(ctx, models)
+	return err
 }

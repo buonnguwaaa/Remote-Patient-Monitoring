@@ -5,7 +5,7 @@ const (
 	SubjectResetPassword   = "[RPM] - Reset Your Password"
 )
 
-const ActivateEmailTemplate = `
+const ActivateOTPEmailTemplate = `
 	<!DOCTYPE html>
 	<html lang="en">
 	<head>
@@ -42,15 +42,14 @@ const ActivateEmailTemplate = `
 		font-size: 15px;
 		line-height: 1.6;
 		}
-		.button {
-		display: inline-block;
-		background-color: #007bff;
-		color: white;
-		text-decoration: none;
-		padding: 12px 20px;
-		border-radius: 6px;
-		margin: 20px 0;
-		font-weight: 500;
+		.otp {
+		display: block;
+		text-align: center;
+		font-size: 32px;
+		font-weight: 700;
+		letter-spacing: 8px;
+		color: #007bff;
+		margin: 24px 0;
 		}
 		.footer {
 		text-align: center;
@@ -67,13 +66,11 @@ const ActivateEmailTemplate = `
 		</div>
 		<h1>Activate Your Account</h1>
 		<p>Hello %s,</p>
-		<p>Welcome to <strong>Remote Patient Monitoring</strong>! Please click the button below to activate your account.</p>
+		<p>Welcome to <strong>Remote Patient Monitoring</strong>! Use the one-time code below to activate your account.</p>
 
-		<div style="text-align: center;">
-		<a href="%s" class="button">Activate My Account</a>
-		</div>
+		<span class="otp">%s</span>
 
-		<p>If you didn’t create this account, you can safely ignore this email.</p>
+		<p>This code expires in %d minutes. If you didn't create this account, you can safely ignore this email.</p>
 	</div>
 	</body>
 	</html>

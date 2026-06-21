@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"time"
 
@@ -39,12 +40,13 @@ func (h *MeasurementHandler) CreateMeasurement(c *gin.Context) {
 
 	input := &usecase.CreateMeasurementInput{
 		PatientID:       req.PatientID,
-		Type:            req.Type,
 		Temperature:     req.Temperature,
 		HeartRate:       req.HeartRate,
 		RespiratoryRate: req.RespiratoryRate,
 		SpO2:            req.SpO2,
 		BloodPressure:   req.BloodPressure,
+		Height:          req.Height,
+		Weight:          req.Weight,
 		Glucose:         req.Glucose,
 		MealTiming:      req.MealTiming,
 		Device:          req.Device,
@@ -56,6 +58,11 @@ func (h *MeasurementHandler) CreateMeasurement(c *gin.Context) {
 
 	resp, err := h.service.CreateMeasurement(ctx, input)
 	if err != nil {
+		var validationErr *service.ValidationError
+		if errors.As(err, &validationErr) {
+			c.JSON(http.StatusBadRequest, gin.H{"field": validationErr.Field, "error": validationErr.Message})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -86,12 +93,13 @@ func (h *MeasurementHandler) UpdateMeasurement(c *gin.Context) {
 
 	input := &usecase.UpdateMeasurementInput{
 		ID:              id,
-		Type:            req.Type,
 		Temperature:     req.Temperature,
 		HeartRate:       req.HeartRate,
 		RespiratoryRate: req.RespiratoryRate,
 		SpO2:            req.SpO2,
 		BloodPressure:   req.BloodPressure,
+		Height:          req.Height,
+		Weight:          req.Weight,
 		Glucose:         req.Glucose,
 		MealTiming:      req.MealTiming,
 		Device:          req.Device,
@@ -103,6 +111,11 @@ func (h *MeasurementHandler) UpdateMeasurement(c *gin.Context) {
 
 	resp, err := h.service.UpdateMeasurement(ctx, input)
 	if err != nil {
+		var validationErr *service.ValidationError
+		if errors.As(err, &validationErr) {
+			c.JSON(http.StatusBadRequest, gin.H{"field": validationErr.Field, "error": validationErr.Message})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -117,7 +130,6 @@ func (h *MeasurementHandler) UpdateMeasurement(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param patientId query string false "Patient ID"
-// @Param type query string false "Measurement type"
 // @Param mealTiming query string false "Meal timing (pre_meal, post_meal)"
 // @Param latest query boolean false "Get latest measurement only"
 // @Success 200 {object} map[string]interface{} "Measurements retrieved successfully"
@@ -126,7 +138,6 @@ func (h *MeasurementHandler) UpdateMeasurement(c *gin.Context) {
 func (h *MeasurementHandler) GetMeasurements(c *gin.Context) {
 	input := &usecase.GetMeasurementsInput{
 		PatientID:  c.Query("patientId"),
-		Type:       c.Query("type"),
 		MealTiming: c.Query("mealTiming"),
 		IsLatest:   c.Query("latest") == "true",
 	}

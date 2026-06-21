@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"log"
 	"time"
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
@@ -24,15 +25,40 @@ type MeasurementRepository interface {
 
 type MeasurementFilter struct {
 	PatientID  string
-	Type       string
 	MealTiming string
 	IsLatest   bool
 }
 
 func NewMeasurementRepository(db *mongo.Database) MeasurementRepository {
-	return &measurementRepository{
+	repo := &measurementRepository{
 		col: db.Collection("measurements"),
 	}
+	if err := repo.ensureIndexes(context.Background()); err != nil {
+		log.Printf("[WARN] failed to ensure measurement indexes: %v", err)
+	}
+	return repo
+}
+
+func (r *measurementRepository) ensureIndexes(ctx context.Context) error {
+	models := []mongo.IndexModel{
+		{
+			Keys: bson.D{
+				{Key: "patientId", Value: 1},
+				{Key: "createdAt", Value: -1},
+			},
+			Options: options.Index().SetName("idx_measurement_patient_created"),
+		},
+		{
+			Keys: bson.D{
+				{Key: "patientId", Value: 1},
+				{Key: "mealTiming", Value: 1},
+				{Key: "createdAt", Value: -1},
+			},
+			Options: options.Index().SetName("idx_measurement_patient_meal_created"),
+		},
+	}
+	_, err := r.col.Indexes().CreateMany(ctx, models)
+	return err
 }
 
 func (r *measurementRepository) Create(ctx context.Context, m *domain.Measurement) (*domain.Measurement, error) {
@@ -52,12 +78,14 @@ func (r *measurementRepository) Create(ctx context.Context, m *domain.Measuremen
 func (r *measurementRepository) Update(ctx context.Context, m *domain.Measurement) (*domain.Measurement, error) {
 
 	update := bson.M{
-		"type":            m.Type,
 		"temperature":     m.Temperature,
 		"heartRate":       m.HeartRate,
 		"respiratoryRate": m.RespiratoryRate,
 		"spo2":            m.SpO2,
 		"bloodPressure":   m.BloodPressure,
+		"height":          m.Height,
+		"weight":          m.Weight,
+		"bmi":             m.BMI,
 		"glucose":         m.Glucose,
 		"mealTiming":      m.MealTiming,
 		"device":          m.Device,
@@ -90,10 +118,6 @@ func (r *measurementRepository) FindWithFilter(ctx context.Context, f Measuremen
 		if err == nil {
 			filter["patientId"] = pid
 		}
-	}
-
-	if f.Type != "" {
-		filter["type"] = f.Type
 	}
 
 	if f.MealTiming != "" {

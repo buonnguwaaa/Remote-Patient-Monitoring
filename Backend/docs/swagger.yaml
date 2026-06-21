@@ -9,6 +9,22 @@ definitions:
       systolic:
         type: number
     type: object
+  domain.FollowUpAppointmentStatus:
+    enum:
+    - scheduled
+    - completed
+    - canceled
+    type: string
+    x-enum-varnames:
+    - FollowUpAppointmentStatusScheduled
+    - FollowUpAppointmentStatusCompleted
+    - FollowUpAppointmentStatusCanceled
+  domain.Glucose:
+    properties:
+      bloodGlucose:
+        description: mg/dL
+        type: number
+    type: object
   domain.Kind:
     enum:
     - measure
@@ -25,14 +41,6 @@ definitions:
     x-enum-varnames:
     - MealTimingPreMeal
     - MealTimingPostMeal
-  domain.MeasurementType:
-    enum:
-    - bp
-    - glucose
-    type: string
-    x-enum-varnames:
-    - TypeBloodPressure
-    - TypeGlucose
   domain.PrescriptionStatus:
     enum:
     - active
@@ -170,6 +178,25 @@ definitions:
     required:
     - participantIds
     type: object
+  dto.CreateFollowUpAppointmentRequest:
+    properties:
+      doctorId:
+        type: string
+      location:
+        type: string
+      notes:
+        type: string
+      patientId:
+        type: string
+      scheduledAt:
+        type: string
+      timezone:
+        type: string
+    required:
+    - patientId
+    - scheduledAt
+    - timezone
+    type: object
   dto.CreateMeasurementRequest:
     properties:
       bloodPressure:
@@ -177,8 +204,10 @@ definitions:
       device:
         type: string
       glucose:
-        type: number
+        $ref: '#/definitions/domain.Glucose'
       heartRate:
+        type: number
+      height:
         type: number
       mealTiming:
         allOf:
@@ -196,15 +225,10 @@ definitions:
         type: number
       temperature:
         type: number
-      type:
-        allOf:
-        - $ref: '#/definitions/domain.MeasurementType'
-        enum:
-        - bp
-        - glucose
+      weight:
+        type: number
     required:
     - patientId
-    - type
     type: object
   dto.CreateMedicationIntakeRequest:
     properties:
@@ -531,6 +555,29 @@ definitions:
       yearsOfExperience:
         type: integer
     type: object
+  dto.UpdateFollowUpAppointmentRequest:
+    properties:
+      location:
+        type: string
+      notes:
+        type: string
+      scheduledAt:
+        type: string
+      timezone:
+        type: string
+    type: object
+  dto.UpdateFollowUpAppointmentStatusRequest:
+    properties:
+      status:
+        allOf:
+        - $ref: '#/definitions/domain.FollowUpAppointmentStatus'
+        enum:
+        - scheduled
+        - completed
+        - canceled
+    required:
+    - status
+    type: object
   dto.UpdateMeasurementRequest:
     properties:
       bloodPressure:
@@ -538,8 +585,10 @@ definitions:
       device:
         type: string
       glucose:
-        type: number
+        $ref: '#/definitions/domain.Glucose'
       heartRate:
+        type: number
+      height:
         type: number
       mealTiming:
         $ref: '#/definitions/domain.MealTiming'
@@ -551,17 +600,15 @@ definitions:
         type: number
       temperature:
         type: number
-      type:
-        allOf:
-        - $ref: '#/definitions/domain.MeasurementType'
-        enum:
-        - bp
-        - glucose
+      weight:
+        type: number
     type: object
   dto.UpdateMyPatientProfileRequest:
     properties:
       cccd:
         type: string
+      diseaseTypes:
+        $ref: '#/definitions/user.DiseaseTypes'
       emergencyContactName:
         type: string
       emergencyContactPhone:
@@ -600,6 +647,8 @@ definitions:
     properties:
       cccd:
         type: string
+      diseaseTypes:
+        $ref: '#/definitions/user.DiseaseTypes'
       email:
         type: string
       emergencyContactName:
@@ -737,6 +786,13 @@ definitions:
         type: string
     required:
     - name
+    type: object
+  user.DiseaseTypes:
+    properties:
+      bloodPressure:
+        type: boolean
+      glucose:
+        type: boolean
     type: object
   user.Gender:
     enum:
@@ -1109,6 +1165,241 @@ paths:
       summary: Get patient alerts
       tags:
       - alerts
+  /appointments:
+    get:
+      consumes:
+      - application/json
+      description: Get follow-up appointments filtered by patient, status, or date
+        range. Doctors default to their own schedule.
+      parameters:
+      - description: Patient ID
+        in: query
+        name: patientId
+        type: string
+      - description: Appointment status (scheduled, completed, canceled)
+        in: query
+        name: status
+        type: string
+      - description: Start of date range (RFC3339)
+        in: query
+        name: from
+        type: string
+      - description: End of date range (RFC3339)
+        in: query
+        name: to
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Appointments retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get follow-up appointments
+      tags:
+      - appointments
+    post:
+      consumes:
+      - application/json
+      description: Doctor schedules a follow-up appointment for an assigned patient
+      parameters:
+      - description: Appointment details
+        in: body
+        name: appointment
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateFollowUpAppointmentRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Appointment created successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create follow-up appointment
+      tags:
+      - appointments
+  /appointments/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a follow-up appointment by its ID
+      parameters:
+      - description: Appointment ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Appointment retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get follow-up appointment by ID
+      tags:
+      - appointments
+    patch:
+      consumes:
+      - application/json
+      description: Reschedule or update notes for a follow-up appointment
+      parameters:
+      - description: Appointment ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update fields
+        in: body
+        name: update
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateFollowUpAppointmentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Appointment updated successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update follow-up appointment
+      tags:
+      - appointments
+  /appointments/{id}/status:
+    patch:
+      consumes:
+      - application/json
+      description: Mark a follow-up appointment as completed or canceled
+      parameters:
+      - description: Appointment ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Status update
+        in: body
+        name: update
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateFollowUpAppointmentStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Appointment status updated successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update follow-up appointment status
+      tags:
+      - appointments
+  /appointments/me:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve follow-up appointments for the authenticated patient or
+        doctor
+      parameters:
+      - description: Appointment status (scheduled, completed, canceled)
+        in: query
+        name: status
+        type: string
+      - description: Start of date range (RFC3339)
+        in: query
+        name: from
+        type: string
+      - description: End of date range (RFC3339)
+        in: query
+        name: to
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Appointments retrieved successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get my follow-up appointments
+      tags:
+      - appointments
   /assignments:
     get:
       produces:
@@ -1820,10 +2111,6 @@ paths:
       - description: Patient ID
         in: query
         name: patientId
-        type: string
-      - description: Measurement type
-        in: query
-        name: type
         type: string
       - description: Meal timing (pre_meal, post_meal)
         in: query
@@ -3171,6 +3458,14 @@ paths:
         in: query
         name: gender
         type: string
+      - description: Filter by blood pressure disease (true/false)
+        in: query
+        name: bloodPressure
+        type: boolean
+      - description: Filter by glucose disease (true/false)
+        in: query
+        name: glucose
+        type: boolean
       - description: Page number, default 1
         in: query
         name: page

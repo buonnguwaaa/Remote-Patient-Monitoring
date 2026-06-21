@@ -533,6 +533,356 @@ const docTemplate = `{
                 }
             }
         },
+        "/appointments": {
+            "get": {
+                "description": "Get follow-up appointments filtered by patient, status, or date range. Doctors default to their own schedule.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "appointments"
+                ],
+                "summary": "Get follow-up appointments",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Patient ID",
+                        "name": "patientId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Appointment status (scheduled, completed, canceled)",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Start of date range (RFC3339)",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "End of date range (RFC3339)",
+                        "name": "to",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Appointments retrieved successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Doctor schedules a follow-up appointment for an assigned patient",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "appointments"
+                ],
+                "summary": "Create follow-up appointment",
+                "parameters": [
+                    {
+                        "description": "Appointment details",
+                        "name": "appointment",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.CreateFollowUpAppointmentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Appointment created successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/appointments/me": {
+            "get": {
+                "description": "Retrieve follow-up appointments for the authenticated patient or doctor",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "appointments"
+                ],
+                "summary": "Get my follow-up appointments",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Appointment status (scheduled, completed, canceled)",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Start of date range (RFC3339)",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "End of date range (RFC3339)",
+                        "name": "to",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Appointments retrieved successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/appointments/{id}": {
+            "get": {
+                "description": "Retrieve a follow-up appointment by its ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "appointments"
+                ],
+                "summary": "Get follow-up appointment by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Appointment ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Appointment retrieved successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "Reschedule or update notes for a follow-up appointment",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "appointments"
+                ],
+                "summary": "Update follow-up appointment",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Appointment ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Update fields",
+                        "name": "update",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateFollowUpAppointmentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Appointment updated successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/appointments/{id}/status": {
+            "patch": {
+                "description": "Mark a follow-up appointment as completed or canceled",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "appointments"
+                ],
+                "summary": "Update follow-up appointment status",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Appointment ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Status update",
+                        "name": "update",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateFollowUpAppointmentStatusRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Appointment status updated successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/assignments": {
             "get": {
                 "produces": [
@@ -1606,12 +1956,6 @@ const docTemplate = `{
                         "type": "string",
                         "description": "Patient ID",
                         "name": "patientId",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Measurement type",
-                        "name": "type",
                         "in": "query"
                     },
                     {
@@ -3360,6 +3704,18 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "boolean",
+                        "description": "Filter by blood pressure disease (true/false)",
+                        "name": "bloodPressure",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Filter by glucose disease (true/false)",
+                        "name": "glucose",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
                         "description": "Page number, default 1",
                         "name": "page",
@@ -3894,6 +4250,28 @@ const docTemplate = `{
                 }
             }
         },
+        "domain.FollowUpAppointmentStatus": {
+            "type": "string",
+            "enum": [
+                "scheduled",
+                "completed",
+                "canceled"
+            ],
+            "x-enum-varnames": [
+                "FollowUpAppointmentStatusScheduled",
+                "FollowUpAppointmentStatusCompleted",
+                "FollowUpAppointmentStatusCanceled"
+            ]
+        },
+        "domain.Glucose": {
+            "type": "object",
+            "properties": {
+                "bloodGlucose": {
+                    "description": "mg/dL",
+                    "type": "number"
+                }
+            }
+        },
         "domain.Kind": {
             "type": "string",
             "enum": [
@@ -3914,17 +4292,6 @@ const docTemplate = `{
             "x-enum-varnames": [
                 "MealTimingPreMeal",
                 "MealTimingPostMeal"
-            ]
-        },
-        "domain.MeasurementType": {
-            "type": "string",
-            "enum": [
-                "bp",
-                "glucose"
-            ],
-            "x-enum-varnames": [
-                "TypeBloodPressure",
-                "TypeGlucose"
             ]
         },
         "domain.PrescriptionStatus": {
@@ -4123,11 +4490,38 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.CreateMeasurementRequest": {
+        "dto.CreateFollowUpAppointmentRequest": {
             "type": "object",
             "required": [
                 "patientId",
-                "type"
+                "scheduledAt",
+                "timezone"
+            ],
+            "properties": {
+                "doctorId": {
+                    "type": "string"
+                },
+                "location": {
+                    "type": "string"
+                },
+                "notes": {
+                    "type": "string"
+                },
+                "patientId": {
+                    "type": "string"
+                },
+                "scheduledAt": {
+                    "type": "string"
+                },
+                "timezone": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.CreateMeasurementRequest": {
+            "type": "object",
+            "required": [
+                "patientId"
             ],
             "properties": {
                 "bloodPressure": {
@@ -4137,9 +4531,12 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "glucose": {
-                    "type": "number"
+                    "$ref": "#/definitions/domain.Glucose"
                 },
                 "heartRate": {
+                    "type": "number"
+                },
+                "height": {
                     "type": "number"
                 },
                 "mealTiming": {
@@ -4168,16 +4565,8 @@ const docTemplate = `{
                 "temperature": {
                     "type": "number"
                 },
-                "type": {
-                    "enum": [
-                        "bp",
-                        "glucose"
-                    ],
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/domain.MeasurementType"
-                        }
-                    ]
+                "weight": {
+                    "type": "number"
                 }
             }
         },
@@ -4662,6 +5051,43 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.UpdateFollowUpAppointmentRequest": {
+            "type": "object",
+            "properties": {
+                "location": {
+                    "type": "string"
+                },
+                "notes": {
+                    "type": "string"
+                },
+                "scheduledAt": {
+                    "type": "string"
+                },
+                "timezone": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.UpdateFollowUpAppointmentStatusRequest": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "status": {
+                    "enum": [
+                        "scheduled",
+                        "completed",
+                        "canceled"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/domain.FollowUpAppointmentStatus"
+                        }
+                    ]
+                }
+            }
+        },
         "dto.UpdateMeasurementRequest": {
             "type": "object",
             "properties": {
@@ -4672,9 +5098,12 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "glucose": {
-                    "type": "number"
+                    "$ref": "#/definitions/domain.Glucose"
                 },
                 "heartRate": {
+                    "type": "number"
+                },
+                "height": {
                     "type": "number"
                 },
                 "mealTiming": {
@@ -4692,16 +5121,8 @@ const docTemplate = `{
                 "temperature": {
                     "type": "number"
                 },
-                "type": {
-                    "enum": [
-                        "bp",
-                        "glucose"
-                    ],
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/domain.MeasurementType"
-                        }
-                    ]
+                "weight": {
+                    "type": "number"
                 }
             }
         },
@@ -4713,6 +5134,9 @@ const docTemplate = `{
             "properties": {
                 "cccd": {
                     "type": "string"
+                },
+                "diseaseTypes": {
+                    "$ref": "#/definitions/user.DiseaseTypes"
                 },
                 "emergencyContactName": {
                     "type": "string"
@@ -4768,6 +5192,9 @@ const docTemplate = `{
             "properties": {
                 "cccd": {
                     "type": "string"
+                },
+                "diseaseTypes": {
+                    "$ref": "#/definitions/user.DiseaseTypes"
                 },
                 "email": {
                     "type": "string"
@@ -4970,6 +5397,17 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
+                }
+            }
+        },
+        "user.DiseaseTypes": {
+            "type": "object",
+            "properties": {
+                "bloodPressure": {
+                    "type": "boolean"
+                },
+                "glucose": {
+                    "type": "boolean"
                 }
             }
         },

@@ -43,7 +43,8 @@ type ResetPasswordRequest struct {
 }
 
 type ActivateAccountRequest struct {
-	ActivateToken string `json:"activateToken" binding:"required"`
+	Email string `json:"email" example:"john.doe@example.com" binding:"required,email"`
+	OTP   string `json:"otp" example:"123456" binding:"required,len=6,numeric"`
 }
 
 type ResendActivationEmailRequest struct {

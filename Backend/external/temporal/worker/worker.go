@@ -65,6 +65,10 @@ func Start() error {
 		container.MedicationIntakeRepo,
 		container.NotificationService,
 	)
+	appointmentActs := activity.NewAppointmentActivity(
+		container.FollowUpAppointmentRepo,
+		container.NotificationService,
+	)
 
 	alertWorker := worker.New(c, client.AlertTaskQueue, worker.Options{})
 	reminderWorker := worker.New(c, client.ReminderTaskQueue, worker.Options{})
@@ -77,9 +81,12 @@ func Start() error {
 	reminderWorker.RegisterActivity(reminderActs.GetReminderActivity)
 	reminderWorker.RegisterActivity(reminderActs.SendReminderActivity)
 	reminderWorker.RegisterActivity(reminderActs.UpdateReminderStatusActivity)
+	reminderWorker.RegisterActivity(appointmentActs.GetAppointmentActivity)
+	reminderWorker.RegisterActivity(appointmentActs.SendAppointmentReminderActivity)
 
 	alertWorker.RegisterWorkflow(workflow.AlertWorkflow)
 	reminderWorker.RegisterWorkflow(workflow.ReminderWorkflow)
+	reminderWorker.RegisterWorkflow(workflow.AppointmentReminderWorkflow)
 
 	log.Println("Temporal workers started...")
 
