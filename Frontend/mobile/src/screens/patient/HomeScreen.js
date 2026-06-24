@@ -51,8 +51,8 @@ function formatTodayLabel() {
 
 function formatTimingLabel(timing) {
   if (!timing) return "Chưa ghi chú";
-  if (timing === "pre") return "Trước ăn";
-  if (timing === "post") return "Sau ăn";
+  if (timing === "pre" || timing === "pre_meal") return "Trước ăn";
+  if (timing === "post" || timing === "post_meal") return "Sau ăn";
   return timing;
 }
 
@@ -111,7 +111,7 @@ export default function HomeScreen() {
 
       const patientId = profileData.id || user?._id || user?.id;
       const [measurementResult, alertResult, adherenceResult] = await Promise.allSettled([
-        patientId ? getMeasurements(patientId) : Promise.resolve(null),
+        patientId ? getMeasurements({ patientId }) : Promise.resolve(null),
         getMyAlerts(),
         patientId ? getMedicationAdherence(1) : Promise.resolve(null),
       ]);
@@ -269,20 +269,30 @@ export default function HomeScreen() {
           />
         }
       >
-        <View style={styles.headerCard}>
-          <View style={styles.headerTopRow}>
-            <View style={styles.headerIcon}>
-              <Ionicons name="heart" size={26} color="#316BFF" />
-            </View>
+        {/* ---- GREETING CARD ---- */}
+        <View style={styles.greetingCard}>
+          <View style={styles.greetingHeader}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.headerTitle}>Trang chủ bệnh nhân</Text>
-              <Text style={styles.headerSub}>Mã BHYT: {insuranceNumber}</Text>
+              <Text style={styles.greetingHello}>Xin chào 👋</Text>
+              <Text style={styles.greetingName}>{displayName}</Text>
+              <Text style={styles.greetingDate}>{formatTodayLabel()}</Text>
+            </View>
+            <View style={styles.greetingAvatar}>
+              <Ionicons name="person" size={24} color="#316BFF" />
             </View>
           </View>
-          <View style={styles.headerBottomRow}>
-            <Text style={styles.chipPrimary}>Theo dõi từ xa</Text>
-            <Text style={styles.chipLight}>Đồng bộ thời gian thực</Text>
-          </View>
+          
+          {openAlertCount > 0 ? (
+            <View style={styles.greetingAlertBox}>
+              <Ionicons name="warning" size={16} color="#DC2626" />
+              <Text style={styles.greetingAlertText}>Hôm nay bạn có {openAlertCount} cảnh báo cần chú ý</Text>
+            </View>
+          ) : (
+            <View style={[styles.greetingAlertBox, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]}>
+              <Ionicons name="checkmark-circle" size={16} color="#16A34A" />
+              <Text style={[styles.greetingAlertText, { color: '#16A34A' }]}>Sức khỏe của bạn đang ổn định</Text>
+            </View>
+          )}
         </View>
 
         {/* ---- Medication Card ---- */}
@@ -295,7 +305,7 @@ export default function HomeScreen() {
             <View style={[styles.headerIcon, { backgroundColor: "#EFF6FF" }]}>
               <Ionicons name="medical" size={26} color="#2563EB" />
             </View>
-            <View style={{ flex: 1 }}>
+            <View style={{ flex: 1, paddingRight: 8 }}>
               <Text style={styles.headerTitle}>Thuốc hôm nay</Text>
               {medicationError ? (
                 <Text style={[styles.headerSub, { color: "#EF4444" }]}>
@@ -305,10 +315,19 @@ export default function HomeScreen() {
                   const todayStr = medications?.to;
                   const todayData = medications?.days?.find(d => d.date === todayStr);
                   if (todayData && todayData.expected > 0) {
+                    const pct = Math.min(100, Math.round((todayData.taken / todayData.expected) * 100));
                     return (
-                      <Text style={styles.headerSub}>
-                        {todayData.taken} / {todayData.expected} liều đã uống
-                      </Text>
+                      <View style={{ marginTop: 4 }}>
+                        <View style={styles.progressRow}>
+                          <Text style={styles.headerSub}>
+                            {todayData.taken} / {todayData.expected} liều đã uống
+                          </Text>
+                          <Text style={styles.progressPct}>{pct}%</Text>
+                        </View>
+                        <View style={styles.progressBarBg}>
+                          <View style={[styles.progressBarFill, { width: `${pct}%` }]} />
+                        </View>
+                      </View>
                     );
                   }
                   return <Text style={styles.headerSub}>Không có lịch uống thuốc hôm nay</Text>;
@@ -317,14 +336,6 @@ export default function HomeScreen() {
             <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
           </View>
         </TouchableOpacity>
-
-        <View style={styles.greetingBox}>
-          <Text style={styles.greeting}>Xin chào, {displayName}</Text>
-          <Text style={styles.date}>{formatTodayLabel()}</Text>
-          <Text style={styles.subInfo}>
-            Người liên hệ khẩn cấp: {emergencyName} · {emergencyPhone}
-          </Text>
-        </View>
 
         {loading ? (
           <View style={styles.loadingCard}>
@@ -364,7 +375,7 @@ export default function HomeScreen() {
                         mmHg · {Math.round(latestVitals.bp.heartRate || 0)} bpm
                       </Text>
                       <Text style={styles.vitalMeta}>
-                        {formatTimingLabel(latestVitals.bp.timing)} ·{" "}
+                        {latestVitals.bp.mealTiming ? formatTimingLabel(latestVitals.bp.mealTiming) + " · " : ""}
                         {formatRelativeTime(latestVitals.bp.createdAt)}
                       </Text>
                     </>
@@ -384,7 +395,7 @@ export default function HomeScreen() {
                         {Math.round(latestVitals.glucose.glucose ? (typeof latestVitals.glucose.glucose === "object" ? latestVitals.glucose.glucose.bloodGlucose : latestVitals.glucose.glucose) : 0)}
                       </Text>
                       <Text style={styles.vitalUnit}>
-                        mg/dL · {formatTimingLabel(latestVitals.glucose.timing)}
+                        mg/dL {latestVitals.glucose.mealTiming ? "· " + formatTimingLabel(latestVitals.glucose.mealTiming) : ""}
                       </Text>
                       <Text style={styles.vitalMeta}>
                         {formatRelativeTime(latestVitals.glucose.createdAt)}
@@ -623,45 +634,84 @@ const styles = StyleSheet.create({
     color: "#7A8194",
     fontSize: 12,
   },
-  headerBottomRow: {
+  greetingCard: {
+    backgroundColor: "#FFFFFF",
+    padding: 16,
+    borderRadius: 18,
+    marginBottom: 16,
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  greetingHeader: {
     flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  greetingHello: {
+    fontSize: 14,
+    color: "#6B7280",
+  },
+  greetingName: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#111827",
+    marginTop: 2,
+  },
+  greetingDate: {
+    fontSize: 12,
+    color: "#9CA3AF",
+    marginTop: 2,
+  },
+  greetingAvatar: {
+    width: 48,
+    height: 48,
+    backgroundColor: "#EFF6FF",
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  greetingAlertBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FEF2F2",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#FECACA",
     gap: 8,
   },
-  chipPrimary: {
-    backgroundColor: "#316BFF",
-    color: "#FFFFFF",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-    fontSize: 11,
-    overflow: "hidden",
-  },
-  chipLight: {
-    backgroundColor: "#EEF2FF",
-    color: "#4C5A7D",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-    fontSize: 11,
-    overflow: "hidden",
-  },
-  greetingBox: {
-    marginBottom: 20,
-  },
-  greeting: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#121826",
-  },
-  date: {
-    color: "#7A8194",
-    marginTop: 4,
+  greetingAlertText: {
     fontSize: 13,
+    fontWeight: "600",
+    color: "#DC2626",
+    flex: 1,
   },
-  subInfo: {
-    color: "#4C5A7D",
+  progressRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  progressPct: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#2563EB",
+  },
+  progressBarBg: {
+    height: 6,
+    backgroundColor: "#E5E7EB",
+    borderRadius: 999,
     marginTop: 6,
-    fontSize: 12,
+    overflow: "hidden",
+  },
+  progressBarFill: {
+    height: "100%",
+    backgroundColor: "#2563EB",
+    borderRadius: 999,
   },
   card: {
     backgroundColor: "#FFFFFF",
