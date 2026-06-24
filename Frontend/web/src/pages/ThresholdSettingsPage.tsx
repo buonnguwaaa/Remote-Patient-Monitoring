@@ -1,5 +1,5 @@
 import { type ChangeEvent, type FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { FaChevronDown, FaChevronLeft, FaChevronRight, FaEdit, FaPlus, FaCopy, FaSave, FaSearch, FaStopCircle, FaTimes, FaUndo, FaSyncAlt } from "react-icons/fa";
+import { FaChevronDown, FaChevronLeft, FaChevronRight, FaEdit, FaPlus, FaSave, FaSearch, FaStopCircle, FaTimes, FaUndo, FaSyncAlt } from "react-icons/fa";
 import { useTranslation } from "react-i18next";
 
 import Toast from "../components/ui/Toast";
