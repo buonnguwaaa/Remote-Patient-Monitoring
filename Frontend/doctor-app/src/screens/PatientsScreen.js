@@ -27,6 +27,7 @@ export default function PatientsScreen() {
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all"); // 'all' | 'warning' | 'normal'
+  const [filterDisease, setFilterDisease] = useState("all"); // 'all' | 'bloodPressure' | 'glucose'
 
   // Patient detail modal state
   const [selectedPatient, setSelectedPatient] = useState(null);
@@ -66,7 +67,7 @@ export default function PatientsScreen() {
       const formatted = assignments.map((item) => {
         let isWarning = false;
         const latestAlert = latestAlertByPatient.get(item.patientId);
-        if (latestAlert && latestAlert.severity === "high" && latestAlert.status === "open") {
+        if (latestAlert && (latestAlert.severity === "high" || latestAlert.severity === "medium") && latestAlert.status === "open") {
           isWarning = true;
         }
 
@@ -81,18 +82,19 @@ export default function PatientsScreen() {
           updatedAt: item.updatedAt
             ? new Date(item.updatedAt).toLocaleDateString("vi-VN")
             : "Chưa cập nhật",
+          diseaseTypes: item.patientDiseaseTypes || {},
         };
       });
 
       setPatients(formatted);
-      applyFilters(formatted, searchQuery, filterStatus);
+      applyFilters(formatted, searchQuery, filterStatus, filterDisease);
     } catch (err) {
       setError(err.message || "Đã xảy ra lỗi");
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [searchQuery, filterStatus]);
+  }, [searchQuery, filterStatus, filterDisease]);
 
   useEffect(() => {
     loadPatients();
@@ -124,17 +126,29 @@ export default function PatientsScreen() {
       result = result.filter((p) => !p.isWarning);
     }
 
+    // Filter by disease
+    if (disease === "bloodPressure") {
+      result = result.filter((p) => p.diseaseTypes?.bloodPressure);
+    } else if (disease === "glucose") {
+      result = result.filter((p) => p.diseaseTypes?.glucose);
+    }
+
     setFilteredPatients(result);
   };
 
   const handleSearch = (text) => {
     setSearchQuery(text);
-    applyFilters(patients, text, filterStatus);
+    applyFilters(patients, text, filterStatus, filterDisease);
   };
 
   const handleStatusFilter = (status) => {
     setFilterStatus(status);
-    applyFilters(patients, searchQuery, status);
+    applyFilters(patients, searchQuery, status, filterDisease);
+  };
+
+  const handleDiseaseFilter = (disease) => {
+    setFilterDisease(disease);
+    applyFilters(patients, searchQuery, filterStatus, disease);
   };
 
   const handleOpenDetail = async (patient) => {
@@ -207,6 +221,29 @@ export default function PatientsScreen() {
               key={tab.key}
               style={[styles.tab, isActive && styles.tabActive]}
               onPress={() => handleStatusFilter(tab.key)}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
+                {tab.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {/* Disease Filter Tabs */}
+      <View style={styles.tabContainer}>
+        {[
+          { key: "all", label: "Tất cả bệnh" },
+          { key: "bloodPressure", label: "Huyết áp" },
+          { key: "glucose", label: "Tiểu đường" },
+        ].map((tab) => {
+          const isActive = filterDisease === tab.key;
+          return (
+            <TouchableOpacity
+              key={tab.key}
+              style={[styles.tab, isActive && styles.tabActive]}
+              onPress={() => handleDiseaseFilter(tab.key)}
               activeOpacity={0.8}
             >
               <Text style={[styles.tabText, isActive && styles.tabTextActive]}>

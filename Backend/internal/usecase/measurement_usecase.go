@@ -30,12 +30,12 @@ type UpdateMeasurementInput struct {
 	HeartRate       *float64
 	RespiratoryRate *float64
 	SpO2            *float64
-	BloodPressure   domain.BloodPressure
+	BloodPressure   *domain.BloodPressure
 	Height          *float64
 	Weight          *float64
 	Systolic        *float64
 	Diastolic       *float64
-	Glucose         domain.Glucose
+	Glucose         *domain.Glucose
 	MealTiming      *domain.MealTiming
 
 	Device *string

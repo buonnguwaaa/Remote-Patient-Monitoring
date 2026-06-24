@@ -14,6 +14,10 @@ import (
 const (
 	EventTypeChatNewMessage   = "chat.new_message"
 	EventTypeChatAlertMessage = "chat.alert_message"
+
+	// Video call events — sent to both doctor and patient userIDs.
+	EventTypeVideoCallInvite = "video.call_invite"
+	EventTypeVideoCallEnded  = "video.call_ended"
 )
 
 // RealtimeEventData holds the inner data for a realtime event.
@@ -109,6 +113,37 @@ func BuildChatAlertMessageEvent(
 		},
 	}
 }
+
+// VideoCallEventData holds data for video call invite/ended events.
+// joinUrl is NOT included here — the patient must call POST /video-sessions/:id/join
+// to receive the joinUrl after backend validates their permission.
+type VideoCallEventData struct {
+	VideoSessionID string `json:"videoSessionId"`
+	ConversationID string `json:"conversationId"`
+	DoctorID       string `json:"doctorId"`
+	PatientID      string `json:"patientId"`
+}
+
+// BuildVideoCallInviteEvent creates a realtime event notifying the patient of an incoming call.
+func BuildVideoCallInviteEvent(sessionID, conversationID, doctorID, patientID string) RealtimeEvent {
+	return RealtimeEvent{
+		Type:      EventTypeVideoCallInvite,
+		EventID:   fmt.Sprintf("video:invite:%s:recipient:%s", sessionID, patientID),
+		CreatedAt: time.Now().UTC().Format(time.RFC3339),
+		Data:      RealtimeEventData{ConversationID: conversationID},
+	}
+}
+
+// BuildVideoCallEndedEvent creates a realtime event notifying a participant that the call ended.
+func BuildVideoCallEndedEvent(sessionID, conversationID, recipientID string) RealtimeEvent {
+	return RealtimeEvent{
+		Type:      EventTypeVideoCallEnded,
+		EventID:   fmt.Sprintf("video:ended:%s:recipient:%s", sessionID, recipientID),
+		CreatedAt: time.Now().UTC().Format(time.RFC3339),
+		Data:      RealtimeEventData{ConversationID: conversationID},
+	}
+}
+
 
 var multiSpaceRe = regexp.MustCompile(`\s+`)
 

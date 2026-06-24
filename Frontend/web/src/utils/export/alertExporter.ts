@@ -53,7 +53,7 @@ export const exportAlertsToExcel = async (data: AlertExportData) => {
   const alertData = sortedAlerts.map((alert) => ({
     [t("chat.patient")]: patientNameById.get(alert.patientId) ?? 'Không rõ',
     'Mã BN': patientCodeById.get(alert.patientId) ?? '-',
-    [t("alerts.severity")]: alert.severity === 'high' ? t("dashboard.filterHigh") : t("dashboard.filterMedium"),
+    [t("alerts.severity")]: alert.severity === 'high' ? t("dashboard.filterHigh", "Cao") : alert.severity === 'medium' ? t("dashboard.filterMedium", "Trung bình") : t("dashboard.filterLow", "Thấp"),
     [t("patients.status")]: alert.status === 'ack' ? t("dashboard.alertStatusAck") : t("dashboard.alertStatusPending"),
     'Chỉ số vi phạm': alert.violations
       .map((v) => `${violationLabel[v.type] ?? v.type}: ${v.observed}`)

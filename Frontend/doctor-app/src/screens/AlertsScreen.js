@@ -106,6 +106,7 @@ export default function AlertsScreen() {
     return {
       total: alerts.length,
       high: alerts.filter((item) => item.severity === "high").length,
+      medium: alerts.filter((item) => item.severity === "medium").length,
       open: alerts.filter((item) => item.status === "open").length,
       ack: alerts.filter((item) => item.status === "ack").length,
     };
@@ -115,6 +116,8 @@ export default function AlertsScreen() {
     switch (filterType) {
       case "high":
         return alerts.filter((item) => item.severity === "high");
+      case "medium":
+        return alerts.filter((item) => item.severity === "medium");
       case "open":
         return alerts.filter((item) => item.status === "open");
       case "ack":
@@ -125,6 +128,8 @@ export default function AlertsScreen() {
   };
 
   const getViolationLabel = (type) => {
+    if (!type) return "Chỉ số";
+    const cleanType = type.replace(/_(max|min|high|low)$/, "");
     const labels = {
       temperature: "Nhiệt độ",
       heart_rate: "Nhịp tim",
@@ -133,8 +138,10 @@ export default function AlertsScreen() {
       blood_pressure_systolic: "Huyết áp tâm thu",
       blood_pressure_diastolic: "Huyết áp tâm trương",
       glucose: "Đường huyết",
+      sys: "Huyết áp tâm thu",
+      bp_diastolic: "Huyết áp tâm trương"
     };
-    return labels[type] || type;
+    return labels[cleanType] || labels[type] || type;
   };
 
   const getUnit = (type) => {
@@ -173,21 +180,21 @@ export default function AlertsScreen() {
           <View
             style={[
               styles.severityBadge,
-              item.severity === "high" ? styles.severityHigh : styles.severityInfo,
+              item.severity === "high" ? styles.severityHigh : item.severity === "medium" ? styles.severityWarn : styles.severityInfo,
             ]}
           >
             <Ionicons
-              name={item.severity === "high" ? "alert-circle" : "information-circle"}
+              name={item.severity === "high" ? "alert-circle" : item.severity === "medium" ? "warning" : "information-circle"}
               size={12}
-              color={item.severity === "high" ? "#DC2626" : "#D97706"}
+              color={item.severity === "high" ? "#DC2626" : item.severity === "medium" ? "#D97706" : "#2563EB"}
             />
             <Text
               style={[
                 styles.severityText,
-                { color: item.severity === "high" ? "#DC2626" : "#B45309" },
+                { color: item.severity === "high" ? "#DC2626" : item.severity === "medium" ? "#B45309" : "#1D4ED8" },
               ]}
             >
-              {item.severity === "high" ? "Nguy kịch" : "Thông tin"}
+              {item.severity === "high" ? "Nguy kịch" : item.severity === "medium" ? "Cảnh báo" : "Nhẹ"}
             </Text>
           </View>
         </View>
@@ -262,7 +269,8 @@ export default function AlertsScreen() {
           {[
             { key: "all", label: "Tất cả", count: stats.total, color: "#4B5563" },
             { key: "high", label: "Nguy kịch ⚠️", count: stats.high, color: "#DC2626" },
-            { key: "open", label: "Chờ xử lý", count: stats.open, color: "#D97706" },
+            { key: "medium", label: "Cảnh báo ⚠️", count: stats.medium, color: "#D97706" },
+            { key: "open", label: "Chờ xử lý", count: stats.open, color: "#B45309" },
             { key: "ack", label: "Đã xử lý", count: stats.ack, color: "#059669" },
           ].map((tab) => {
             const isActive = filterType === tab.key;
@@ -428,7 +436,8 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   severityHigh: { backgroundColor: "#FEE2E2" },
-  severityInfo: { backgroundColor: "#FEF3C7" },
+  severityWarn: { backgroundColor: "#FEF3C7" },
+  severityInfo: { backgroundColor: "#DBEAFE" },
   severityText: { fontSize: 11, fontWeight: "700" },
   violationsBlock: {
     backgroundColor: "#F8FAFC",

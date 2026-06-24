@@ -227,7 +227,22 @@ export default function ChatScreen() {
 
   const normalizePreview = (message, isMe) => {
     if (!message) return "Chưa có tin nhắn";
-    const content = String(message.content || "").replace(/\s+/g, " ").trim();
+    
+    const textContent = message.content || "";
+
+    if (textContent.includes('"type":"SYSTEM_CALL_STARTED"')) {
+      return "📞 Bác sĩ đang gọi video...";
+    } else if (textContent.includes('"type":"SYSTEM_CALL_ENDED"')) {
+      return "📞 Cuộc gọi video đã kết thúc";
+    } else if (textContent.includes('"type":"video_call_invite"')) {
+      return "📞 Lời mời gọi video";
+    } else if (textContent.includes('"type":"video_call_ended"')) {
+      return "📞 Cuộc gọi video đã kết thúc";
+    } else if (textContent.includes('"type":"SYSTEM_')) {
+      return "📞 Cuộc gọi video";
+    }
+
+    const content = String(textContent).replace(/\s+/g, " ").trim();
     if (!content) return "Tin nhắn không có nội dung";
     const prefix = isMe ? "Bạn: " : "";
     return prefix + content;

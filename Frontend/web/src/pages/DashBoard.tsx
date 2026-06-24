@@ -103,7 +103,7 @@ function ago(ds: string, t: any) {
 }
 
 function isAttentionAlert(alert: AlertResponse) {
-  return alert.severity === "high" && alert.status === "open";
+  return (alert.severity === "high" || alert.severity === "medium") && alert.status === "open";
 }
 
 function endOfMonth(date: Date) {
@@ -263,6 +263,8 @@ const RecentAlerts: React.FC<{
   const violationLabel: Record<string, string> = {
     systolic: "HA tâm thu",
     diastolic: "HA tâm trương",
+    sys: "HA tâm thu",
+    bp_diastolic: "HA tâm trương",
     pulse: t("patientDetail.heartRate"),
     glucose: t("patientDetail.glucose"),
     temperature: t("patientDetail.temperature"),
@@ -301,8 +303,6 @@ const RecentAlerts: React.FC<{
           </p>
         ) : (
           alerts.map((alert, index) => {
-            const isHigh = alert.severity === "high";
-
             return (
               <div
                 key={alert.id}
@@ -313,12 +313,14 @@ const RecentAlerts: React.FC<{
                 onClick={() => navigate("/threshold-alerts")}
               >
                 <div
-                  className={`mt-0.5 shrink-0 rounded-lg p-1.5 ${isHigh
+                  className={`mt-0.5 shrink-0 rounded-lg p-1.5 ${alert.severity === "high"
                     ? "bg-red-50 text-red-400 dark:bg-red-900/30"
-                    : "bg-amber-50 text-amber-400 dark:bg-amber-900/30"
+                    : alert.severity === "medium"
+                    ? "bg-amber-50 text-amber-400 dark:bg-amber-900/30"
+                    : "bg-slate-50 text-slate-400 dark:bg-slate-900/30"
                     }`}
                 >
-                  {isHigh ? (
+                  {alert.severity === "high" ? (
                     <FaExclamationTriangle size={10} />
                   ) : (
                     <FaInfoCircle size={10} />
@@ -337,8 +339,11 @@ const RecentAlerts: React.FC<{
                   <p className="mt-0.5 truncate text-[11px] text-gray-400 dark:text-slate-500">
                     {alert.violations
                       .map(
-                        (violation) =>
-                          `${violationLabel[violation.type] ?? violation.type}: ${violation.observed}`,
+                        (violation) => {
+                          const cleanType = violation.type.replace(/_(max|min|high|low)$/, "");
+                          const label = violationLabel[cleanType] || violationLabel[violation.type] || violation.type;
+                          return `${label}: ${violation.observed}`;
+                        }
                       )
                       .join(" · ")}
                   </p>

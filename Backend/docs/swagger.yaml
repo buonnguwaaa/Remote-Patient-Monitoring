@@ -85,10 +85,15 @@ definitions:
     - TimeOfDayEvening
   dto.ActivateAccountRequest:
     properties:
-      activateToken:
+      email:
+        example: john.doe@example.com
+        type: string
+      otp:
+        example: "123456"
         type: string
     required:
-    - activateToken
+    - email
+    - otp
     type: object
   dto.ActivityLogListResponse:
     properties:
@@ -350,6 +355,15 @@ definitions:
     - effectiveFrom
     - patientId
     type: object
+  dto.CreateVideoSessionRequest:
+    properties:
+      conversationId:
+        type: string
+      patientId:
+        type: string
+    required:
+    - patientId
+    type: object
   dto.DeactivateNotificationTokenRequest:
     properties:
       deviceId:
@@ -504,15 +518,20 @@ definitions:
       confirmedNewPassword:
         minLength: 6
         type: string
+      email:
+        example: john.doe@example.com
+        type: string
       newPassword:
         minLength: 6
         type: string
-      resetToken:
+      otp:
+        example: "123456"
         type: string
     required:
     - confirmedNewPassword
+    - email
     - newPassword
-    - resetToken
+    - otp
     type: object
   dto.UpdateBaseUserRequest:
     properties:
@@ -1528,10 +1547,11 @@ paths:
       - assignments
   /auth/activate:
     post:
-      description: Activate user account created from local strategy using token from
-        email link
+      consumes:
+      - application/json
+      description: Activate user account using OTP sent to email
       parameters:
-      - description: Activation token
+      - description: Email and OTP
         in: body
         name: data
         required: true
@@ -1764,7 +1784,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: Resend account activation email to user
+      description: Resend account activation OTP to user email
       parameters:
       - description: Email
         in: body
@@ -2103,10 +2123,7 @@ paths:
     get:
       consumes:
       - application/json
-      description: |-
-        Retrieve measurements based on query parameters
-        If `patientId` is provided along with `latest=true`, only the latest measurement record for that patient will be returned.
-        Ví dụ: `/measurements?patientId=123&latest=true`
+      description: Retrieve measurements based on query parameters
       parameters:
       - description: Patient ID
         in: query
@@ -2663,6 +2680,36 @@ paths:
       summary: Get today's medications
       tags:
       - prescriptions
+  /realtime/ws:
+    get:
+      consumes:
+      - application/json
+      description: Upgrade HTTP request to WebSocket for user-level realtime notifications
+        (e.g., new chat messages, health alerts). Doctor role only.
+      produces:
+      - application/json
+      responses:
+        "101":
+          description: Switching Protocols
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Open realtime WebSocket connection
+      tags:
+      - realtime
   /reminders:
     get:
       consumes:
@@ -3637,6 +3684,126 @@ paths:
       summary: Update my patient profile
       tags:
       - patients
+  /video-sessions:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateVideoSessionRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Create a video session (doctor only)
+      tags:
+      - video
+  /video-sessions/{id}:
+    get:
+      parameters:
+      - description: Session ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get a video session by ID
+      tags:
+      - video
+  /video-sessions/{id}/end:
+    post:
+      parameters:
+      - description: Session ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: End a video session
+      tags:
+      - video
+  /video-sessions/{id}/join:
+    post:
+      parameters:
+      - description: Session ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Join a video session (returns joinUrl for authorized participants only)
+      tags:
+      - video
+  /video-sessions/{id}/reject:
+    post:
+      parameters:
+      - description: Session ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Reject a video session (patient/participant only)
+      tags:
+      - video
+  /video-sessions/active:
+    get:
+      parameters:
+      - description: Conversation ID
+        in: query
+        name: conversationId
+        type: string
+      - description: Patient ID
+        in: query
+        name: patientId
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get active session by conversationId or patientId
+      tags:
+      - video
 schemes:
 - http
 - https

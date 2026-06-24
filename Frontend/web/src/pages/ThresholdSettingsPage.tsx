@@ -1,5 +1,5 @@
 import { type ChangeEvent, type FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { FaChevronDown, FaChevronLeft, FaChevronRight, FaEdit, FaPlus, FaSave, FaSearch, FaStopCircle, FaTimes, FaUndo, FaSyncAlt } from "react-icons/fa";
+import { FaChevronDown, FaChevronLeft, FaChevronRight, FaEdit, FaPlus, FaCopy, FaSave, FaSearch, FaStopCircle, FaTimes, FaUndo, FaSyncAlt } from "react-icons/fa";
 import { useTranslation } from "react-i18next";
 
 import Toast from "../components/ui/Toast";
@@ -668,13 +668,11 @@ const buildHistoryChips = (item: ThresholdRecord) => {
                   <div className="min-w-0 flex-1">
                     {/* Status + version */}
                     <div className="flex flex-wrap items-center gap-3">
-                      {isActive ? (
+                      {isActive && (
                         <span className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-600 dark:text-emerald-400">
                           <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                           {t("thresholds.currentlyActive")}
                         </span>
-                      ) : (
-                        <span className="text-sm text-slate-400 dark:text-slate-500">{t("thresholds.history")}</span>
                       )}
                       <span className="text-sm text-slate-400 dark:text-slate-500">
                         {t("thresholds.configVersion")} #{thresholdHistory.length - absoluteIndex}
@@ -729,14 +727,6 @@ const buildHistoryChips = (item: ThresholdRecord) => {
                       className="inline-flex items-center rounded-md border border-slate-200 dark:border-slate-600 px-3 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-300 transition hover:bg-slate-50 dark:hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       <FaEdit className="mr-1.5 h-3 w-3" />{t("thresholds.edit")}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => applyThresholdToForm(threshold, "clone")}
-                      disabled={saving}
-                      className="inline-flex items-center rounded-md border border-slate-200 dark:border-slate-600 px-3 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-300 transition hover:bg-slate-50 dark:hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      <FaPlus className="mr-1.5 h-3 w-3" />{t("thresholds.copy")}
                     </button>
                     {isActive && (
                       <button

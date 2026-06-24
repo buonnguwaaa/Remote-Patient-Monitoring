@@ -148,26 +148,59 @@ func (s *thresholdService) UpdateThreshold(ctx context.Context, input *usecase.U
 		return nil, err
 	}
 
-	newThreshold := &domain.Threshold{
-		ID:                 id,
-		TemperatureMin:     input.TemperatureMin,
-		TemperatureMax:     input.TemperatureMax,
-		HeartRateMin:       input.HeartRateMin,
-		HeartRateMax:       input.HeartRateMax,
-		RespiratoryRateMin: input.RespiratoryRateMin,
-		RespiratoryRateMax: input.RespiratoryRateMax,
-		SpO2Min:            input.SpO2Min,
-		SysMin:             input.SysMin,
-		SysMax:             input.SysMax,
-		DiaMin:             input.DiaMin,
-		DiaMax:             input.DiaMax,
-		GlucoseMin:         input.GlucoseMin,
-		GlucoseMax:         input.GlucoseMax,
-		EffectiveFrom:      input.EffectiveFrom,
-		EffectiveTo:        input.EffectiveTo,
+	existing, err := s.thresholdRepo.FindByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("threshold not found")
 	}
 
-	updated, err := s.thresholdRepo.Update(ctx, newThreshold)
+	if input.TemperatureMin != nil {
+		existing.TemperatureMin = *input.TemperatureMin
+	}
+	if input.TemperatureMax != nil {
+		existing.TemperatureMax = *input.TemperatureMax
+	}
+	if input.HeartRateMin != nil {
+		existing.HeartRateMin = *input.HeartRateMin
+	}
+	if input.HeartRateMax != nil {
+		existing.HeartRateMax = *input.HeartRateMax
+	}
+	if input.RespiratoryRateMin != nil {
+		existing.RespiratoryRateMin = *input.RespiratoryRateMin
+	}
+	if input.RespiratoryRateMax != nil {
+		existing.RespiratoryRateMax = *input.RespiratoryRateMax
+	}
+	if input.SpO2Min != nil {
+		existing.SpO2Min = *input.SpO2Min
+	}
+	if input.SysMin != nil {
+		existing.SysMin = *input.SysMin
+	}
+	if input.SysMax != nil {
+		existing.SysMax = *input.SysMax
+	}
+	if input.DiaMin != nil {
+		existing.DiaMin = *input.DiaMin
+	}
+	if input.DiaMax != nil {
+		existing.DiaMax = *input.DiaMax
+	}
+	if input.GlucoseMin != nil {
+		existing.GlucoseMin = input.GlucoseMin
+	}
+	if input.GlucoseMax != nil {
+		existing.GlucoseMax = input.GlucoseMax
+	}
+
+	if !input.EffectiveFrom.IsZero() {
+		existing.EffectiveFrom = input.EffectiveFrom
+	}
+	if input.EffectiveTo != nil {
+		existing.EffectiveTo = input.EffectiveTo
+	}
+
+	updated, err := s.thresholdRepo.Update(ctx, existing)
 	if err != nil {
 		return nil, err
 	}

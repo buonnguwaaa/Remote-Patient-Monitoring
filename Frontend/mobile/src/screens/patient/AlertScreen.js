@@ -73,7 +73,9 @@ const VIOLATION_LABELS = {
 };
 
 function getViolationLabel(type) {
-  return VIOLATION_LABELS[type] || type || "Chỉ số";
+  if (!type) return "Chỉ số";
+  const cleanType = type.replace(/_(max|min|high|low)$/, "");
+  return VIOLATION_LABELS[cleanType] || VIOLATION_LABELS[type] || type || "Chỉ số";
 }
 
 function getViolationDirection(violation) {
@@ -376,6 +378,7 @@ export default function AlertScreen({ isEmbedded }) {
                     const summary = buildAlertSummary(alert);
                     const statusMeta = getStatusMeta(alert);
                     const isHigh = alert.severity === "high";
+                    const isMedium = alert.severity === "medium";
 
                     return (
                       <TouchableOpacity
@@ -384,7 +387,7 @@ export default function AlertScreen({ isEmbedded }) {
                         style={[
                           styles.alertCard,
                           statusMeta.isOpen 
-                            ? (isHigh ? styles.alertCardHigh : styles.alertCardInfo) 
+                            ? (isHigh ? styles.alertCardHigh : isMedium ? styles.alertCardMedium : styles.alertCardInfo) 
                             : styles.alertCardAck,
                         ]}
                         onPress={() => setSelectedAlert(alert)}
@@ -395,14 +398,14 @@ export default function AlertScreen({ isEmbedded }) {
                               style={[
                                 styles.iconBadge,
                                 statusMeta.isOpen 
-                                  ? (isHigh ? styles.iconBadgeHigh : styles.iconBadgeInfo) 
+                                  ? (isHigh ? styles.iconBadgeHigh : isMedium ? styles.iconBadgeMedium : styles.iconBadgeInfo) 
                                   : styles.iconBadgeAck,
                               ]}
                             >
                               <Ionicons
                                 name={summary.iconName}
                                 size={18}
-                                color={statusMeta.isOpen ? (isHigh ? "#DC2626" : "#1D4ED8") : "#6B7280"}
+                                color={statusMeta.isOpen ? (isHigh ? "#DC2626" : isMedium ? "#D97706" : "#1D4ED8") : "#6B7280"}
                               />
                             </View>
                             <View style={styles.alertTextWrap}>
@@ -414,10 +417,10 @@ export default function AlertScreen({ isEmbedded }) {
                           <View style={styles.alertRight}>
                             <Text style={styles.timePill}>{formatClockTime(alert.createdAt)}</Text>
                             <View
-                              style={statusMeta.isOpen ? (isHigh ? styles.levelPillHigh : styles.levelPillInfo) : styles.levelPillAck}
+                              style={statusMeta.isOpen ? (isHigh ? styles.levelPillHigh : isMedium ? styles.levelPillMedium : styles.levelPillInfo) : styles.levelPillAck}
                             >
-                              <Text style={statusMeta.isOpen ? (isHigh ? styles.levelTextHigh : styles.levelTextInfo) : styles.levelTextAck}>
-                                {isHigh ? "Nguy hiểm" : "Thông tin"}
+                              <Text style={statusMeta.isOpen ? (isHigh ? styles.levelTextHigh : isMedium ? styles.levelTextMedium : styles.levelTextInfo) : styles.levelTextAck}>
+                                {isHigh ? "Nguy hiểm" : isMedium ? "Cảnh báo" : "Nhẹ"}
                               </Text>
                             </View>
                           </View>
@@ -503,8 +506,8 @@ export default function AlertScreen({ isEmbedded }) {
                   </View>
                   <View style={styles.metaRow}>
                     <Text style={styles.metaLabel}>Mức độ</Text>
-                    <Text style={[styles.metaValue, selectedAlert?.severity === "high" ? styles.metaHigh : styles.metaInfo]}>
-                      {selectedAlert?.severity === "high" ? "Nguy hiểm" : "Thông tin"}
+                    <Text style={[styles.metaValue, selectedAlert?.severity === "high" ? styles.metaHigh : selectedAlert?.severity === "medium" ? styles.metaMedium : styles.metaInfo]}>
+                      {selectedAlert?.severity === "high" ? "Nguy hiểm" : selectedAlert?.severity === "medium" ? "Cảnh báo" : "Nhẹ"}
                     </Text>
                   </View>
                   <View style={styles.metaRow}>
@@ -539,7 +542,7 @@ export default function AlertScreen({ isEmbedded }) {
                         </View>
                         <View style={styles.modalViolationBottom}>
                           <Text style={styles.modalThreshold}>Ngưỡng: {formatViolationReading(violation, "threshold")}</Text>
-                          <Text style={[styles.modalSeverity, violation.severity === "high" ? styles.metaHigh : styles.metaInfo]}>
+                          <Text style={[styles.modalSeverity, violation.severity === "high" ? styles.metaHigh : violation.severity === "medium" ? styles.metaMedium : styles.metaInfo]}>
                             {isOver ? "Quá cao" : "Quá thấp"}
                           </Text>
                         </View>
@@ -587,12 +590,14 @@ const styles = StyleSheet.create({
   list: { gap: 12 },
   alertCard: { backgroundColor: "#FFFFFF", borderRadius: 18, padding: 14, borderWidth: 1, borderColor: "#E5E7EB", shadowColor: "#000", shadowOpacity: 0.03, shadowRadius: 8, shadowOffset: { width: 0, height: 3 } },
   alertCardHigh: { borderColor: "#FECACA", backgroundColor: "#FFF6F6" },
+  alertCardMedium: { borderColor: "#FDE68A", backgroundColor: "#FFFBEB" },
   alertCardInfo: { borderColor: "#BFDBFE", backgroundColor: "#F8FAFF" },
   alertCardAck: { borderColor: "#E5E7EB", backgroundColor: "#F9FAFB", opacity: 0.94 },
   alertHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12 },
   alertTitleWrap: { flexDirection: "row", gap: 10, flex: 1 },
   iconBadge: { width: 36, height: 36, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   iconBadgeHigh: { backgroundColor: "#FEE2E2" },
+  iconBadgeMedium: { backgroundColor: "#FEF3C7" },
   iconBadgeInfo: { backgroundColor: "#DBEAFE" },
   iconBadgeAck: { backgroundColor: "#F3F4F6" },
   alertTextWrap: { flex: 1 },
@@ -601,9 +606,11 @@ const styles = StyleSheet.create({
   alertRight: { alignItems: "flex-end", gap: 8 },
   timePill: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999, backgroundColor: "rgba(255,255,255,0.88)", fontSize: 12, fontWeight: "700", color: "#111827" },
   levelPillHigh: { backgroundColor: "#FEE2E2", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
+  levelPillMedium: { backgroundColor: "#FEF3C7", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
   levelPillInfo: { backgroundColor: "#DBEAFE", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
   levelPillAck: { backgroundColor: "#E5E7EB", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
   levelTextHigh: { color: "#B91C1C", fontWeight: "700", fontSize: 11 },
+  levelTextMedium: { color: "#D97706", fontWeight: "700", fontSize: 11 },
   levelTextInfo: { color: "#1D4ED8", fontWeight: "700", fontSize: 11 },
   levelTextAck: { color: "#6B7280", fontWeight: "700", fontSize: 11 },
   fieldWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 12 },
@@ -646,6 +653,7 @@ const styles = StyleSheet.create({
   metaLabel: { flex: 1, fontSize: 12, fontWeight: "600", color: "#6B7280" },
   metaValue: { flex: 1.4, fontSize: 12, lineHeight: 18, fontWeight: "600", color: "#111827", textAlign: "right" },
   metaHigh: { color: "#B91C1C" },
+  metaMedium: { color: "#D97706" },
   metaInfo: { color: "#1D4ED8" },
   modalViolationList: { gap: 10 },
   modalViolationCard: { backgroundColor: "#FFF7F7", borderRadius: 16, padding: 14, borderWidth: 1, borderColor: "#FECACA", gap: 8 },

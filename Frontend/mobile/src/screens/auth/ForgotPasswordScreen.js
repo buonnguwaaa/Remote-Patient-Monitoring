@@ -21,7 +21,7 @@ export default function ForgotPasswordScreen({ navigation }) {
   const handleSubmit = async () => {
     const trimmed = email.trim();
     if (!trimmed) {
-      alert('Please enter your email address.');
+      alert('Vui lòng nhập địa chỉ email.');
       return;
     }
     setLoading(true);
@@ -30,7 +30,7 @@ export default function ForgotPasswordScreen({ navigation }) {
     if (res.ok || res.status === 200) {
       setSent(true);
     } else {
-      alert('Something went wrong. Please try again.');
+      alert('Đã có lỗi xảy ra. Vui lòng thử lại.');
     }
   };
 
@@ -42,12 +42,12 @@ export default function ForgotPasswordScreen({ navigation }) {
             <View style={[styles.logoWrap, { backgroundColor: '#16a34a' }]}>
               <Feather name="mail" size={36} color="#fff" />
             </View>
-            <Text style={[styles.title, { marginTop: 12 }]}>Check your email</Text>
+            <Text style={[styles.title, { marginTop: 12 }]}>Kiểm tra email của bạn</Text>
             <Text style={[styles.subtitle, { textAlign: 'center', marginTop: 8, lineHeight: 22 }]}>
               Nếu tài khoản <Text style={{ fontWeight: '700', color: '#030213' }}>{email.trim()}</Text> tồn tại, bạn sẽ nhận được email đặt lại mật khẩu trong giây lát.
             </Text>
             <Text style={[styles.subtitle, { textAlign: 'center', marginTop: 12, lineHeight: 22 }]}>
-              Mở email, nhấn nút <Text style={{ fontWeight: '700', color: '#030213' }}>Reset My Password</Text>, sao chép toàn bộ đường link rồi dán vào bước tiếp theo.
+              Mở email để lấy <Text style={{ fontWeight: '700', color: '#030213' }}>mã OTP gồm 6 chữ số</Text> và nhập vào bước tiếp theo.
             </Text>
             <ButtonPrimary
               title="Tiếp tục đặt lại mật khẩu"
@@ -55,7 +55,7 @@ export default function ForgotPasswordScreen({ navigation }) {
               style={{ marginTop: 28, width: '100%' }}
             />
             <TouchableOpacity onPress={() => navigation.navigate('Login')} style={{ marginTop: 20 }}>
-              <Text style={styles.forgotText}>Back to Sign In</Text>
+              <Text style={styles.forgotText}>Quay lại Đăng nhập</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -71,9 +71,9 @@ export default function ForgotPasswordScreen({ navigation }) {
         </TouchableOpacity>
 
         <View style={[styles.header, { alignItems: 'flex-start', paddingTop: 4 }]}>
-          <Text style={styles.title}>Forgot Password?</Text>
+          <Text style={styles.title}>Quên mật khẩu?</Text>
           <Text style={[styles.subtitle, { textAlign: 'left' }]}>
-            Enter your email and we'll send you a link to reset your password.
+            Nhập email của bạn và chúng tôi sẽ gửi mã OTP để đặt lại mật khẩu.
           </Text>
         </View>
 
@@ -83,7 +83,7 @@ export default function ForgotPasswordScreen({ navigation }) {
             <TextInput
               value={email}
               onChangeText={setEmail}
-              placeholder="Enter your email"
+              placeholder="Nhập email của bạn"
               keyboardType="email-address"
               autoCapitalize="none"
               style={styles.input}
@@ -92,14 +92,14 @@ export default function ForgotPasswordScreen({ navigation }) {
           </View>
 
           <ButtonPrimary
-            title={loading ? 'Sending...' : 'Send Reset Link'}
+            title={loading ? 'Đang gửi...' : 'Gửi mã xác thực'}
             onPress={handleSubmit}
             disabled={loading}
             style={{ marginTop: 8 }}
           />
 
           <TouchableOpacity onPress={() => navigation.navigate('Login')} style={[styles.forgot, { alignItems: 'center', marginTop: 20 }]}>
-            <Text style={styles.forgotText}>Back to Sign In</Text>
+            <Text style={styles.forgotText}>Quay lại Đăng nhập</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

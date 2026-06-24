@@ -72,8 +72,8 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
           <View style={styles.logoWrap}>
             <Text style={styles.logoText}>RPM</Text>
           </View>
-          <Text style={styles.title}>Welcome Back</Text>
-          <Text style={styles.subtitle}>Sign in to continue</Text>
+          <Text style={styles.title}>Remote Patient Monitoring</Text>
+          <Text style={styles.subtitle}>Đăng nhập để tiếp tục</Text>
         </View>
 
         <View style={styles.form}>
@@ -82,7 +82,7 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
             <TextInput
               value={email}
               onChangeText={setEmail}
-              placeholder="Enter your email"
+              placeholder="Nhập địa chỉ email"
               keyboardType="email-address"
               autoCapitalize="none"
               style={styles.input}
@@ -90,19 +90,19 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.label}>Password</Text>
+            <Text style={styles.label}>Mật khẩu</Text>
             <View style={styles.passwordWrap}>
               <TextInput
                 value={password}
                 onChangeText={setPassword}
-                placeholder="Enter your password"
+                placeholder="Nhập mật khẩu"
                 secureTextEntry={!showPassword}
                 style={[styles.input, { paddingRight: 50 }]}
               />
               <TouchableOpacity
                 onPress={() => setShowPassword((s) => !s)}
                 style={styles.eyeButton}
-                accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                accessibilityLabel={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
               >
                 <Feather name={showPassword ? 'eye-off' : 'eye'} size={20} color="#717182" />
               </TouchableOpacity>
@@ -110,11 +110,11 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
           </View>
 
           <TouchableOpacity style={styles.forgot} onPress={() => navigation.navigate('ForgotPassword')}>
-            <Text style={styles.forgotText}>Forgot Password?</Text>
+            <Text style={styles.forgotText}>Quên mật khẩu?</Text>
           </TouchableOpacity>
 
           <ButtonPrimary
-            title={loading ? 'Signing in...' : 'Sign In'}
+            title={loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
             onPress={handleSubmit}
             disabled={loading}
             style={{ marginTop: 10 }}
@@ -126,12 +126,12 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
             activeOpacity={0.8}
           >
             <Feather name="unlock" size={18} color="#030213" style={{ marginRight: 8 }} />
-            <Text style={biometricStyle.text}>Sign in with Biometrics</Text>
+            <Text style={biometricStyle.text}>Đăng nhập bằng sinh trắc học</Text>
           </TouchableOpacity>
 
           <View style={styles.dividerWrap}>
             <View style={styles.divider} />
-            <Text style={styles.dividerText}>Or continue with</Text>
+            <Text style={styles.dividerText}>Hoặc tiếp tục với</Text>
             <View style={styles.divider} />
           </View>
 
@@ -181,8 +181,8 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>
-            Don't have an account?{' '}
-            <Text style={styles.signUp} onPress={() => navigation.navigate('Register')}>Sign Up</Text>
+            Chưa có tài khoản?{' '}
+            <Text style={styles.signUp} onPress={() => navigation.navigate('Register')}>Đăng ký</Text>
           </Text>
         </View>
       </ScrollView>

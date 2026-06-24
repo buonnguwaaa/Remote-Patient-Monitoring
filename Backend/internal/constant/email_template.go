@@ -78,7 +78,7 @@ const ActivateOTPEmailTemplate = `
 
 const ResetPasswordEmailTemplate = `
 	<!DOCTYPE html>
-	<html lang="en">
+	<html lang="vi">
 	<head>
 	<meta charset="UTF-8">
 	<style>
@@ -113,35 +113,14 @@ const ResetPasswordEmailTemplate = `
 		font-size: 15px;
 		line-height: 1.6;
 		}
-		.button {
-		display: inline-block;
-		background-color: #007bff;
-		color: white;
-		text-decoration: none;
-		padding: 12px 20px;
-		border-radius: 6px;
-		margin: 20px 0;
-		font-weight: 500;
-		}
-		.token-box {
-		background-color: #f0f4ff;
-		border: 1px dashed #007bff;
-		border-radius: 8px;
-		padding: 14px 18px;
-		margin: 20px 0;
+		.otp {
+		display: block;
 		text-align: center;
-		}
-		.token-label {
-		font-size: 13px;
-		color: #555;
-		margin-bottom: 6px;
-		}
-		.token-value {
-		font-family: monospace;
-		font-size: 14px;
+		font-size: 32px;
 		font-weight: 700;
-		color: #0a0a0a;
-		word-break: break-all;
+		letter-spacing: 8px;
+		color: #007bff;
+		margin: 24px 0;
 		}
 		.footer {
 		text-align: center;
@@ -156,24 +135,16 @@ const ResetPasswordEmailTemplate = `
 		<div class="logo">
 		<img src="https://img.icons8.com/color/96/000000/heart-monitor.png" alt="Logo">
 		</div>
-		<h1>Reset Your Password</h1>
-		<p>Hello %s,</p>
-		<p>We received a request to reset your password for your <strong>Remote Patient Monitoring</strong> account.</p>
+		<h1>Yêu cầu Đặt lại mật khẩu</h1>
+		<p>Chào %s,</p>
+		<p>Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản <strong>Remote Patient Monitoring</strong> của bạn.</p>
+		
+		<p>Dưới đây là mã xác thực (OTP) của bạn:</p>
 
-		<p><strong>Nếu dùng ứng dụng mobile:</strong> sao chép token bên dưới rồi dán vào màn hình "Đặt lại mật khẩu" trong app.</p>
+		<span class="otp">%s</span>
 
-		<div class="token-box">
-		<div class="token-label">Reset Token (copy token này vào app)</div>
-		<div class="token-value">%s</div>
-		</div>
-
-		<p><strong>Nếu dùng trình duyệt:</strong> nhấn nút bên dưới.</p>
-
-		<div style="text-align: center;">
-		<a href="%s" class="button">Reset My Password</a>
-		</div>
-
-		<p>Token và link sẽ hết hạn sau <strong>15 phút</strong>. Nếu bạn không yêu cầu đặt lại mật khẩu, hãy bỏ qua email này.</p>
+		<p>Mã này sẽ hết hạn sau <strong>%d phút</strong>.</p>
+		<p>Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này để đảm bảo an toàn cho tài khoản.</p>
 	</div>
 	</body>
 	</html>

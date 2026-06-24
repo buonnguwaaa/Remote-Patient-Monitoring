@@ -30,12 +30,12 @@ type UpdateMeasurementRequest struct {
 	RespiratoryRate *float64 `json:"respiratoryRate,omitempty"`
 	SpO2            *float64 `json:"spo2,omitempty"`
 
-	BloodPressure domain.BloodPressure `json:"bloodPressure,omitempty"`
+	BloodPressure *domain.BloodPressure `json:"bloodPressure,omitempty"`
 
 	Height *float64 `json:"height,omitempty"`
 	Weight *float64 `json:"weight,omitempty"`
 
-	Glucose    domain.Glucose     `json:"glucose,omitempty"`
+	Glucose    *domain.Glucose     `json:"glucose,omitempty"`
 	MealTiming *domain.MealTiming `json:"mealTiming,omitempty"`
 	Device     *string            `json:"device,omitempty"`
 	Note       *string            `json:"note,omitempty"`
@@ -56,8 +56,8 @@ type MeasurementResponse struct {
 	Weight *float64 `json:"weight,omitempty"`
 	BMI    *float64 `json:"bmi,omitempty"`
 
-	Glucose    domain.Glucose         `json:"glucose"`
-	MealTiming *domain.MealTiming     `json:"mealTiming,omitempty"`
+	Glucose    domain.Glucose     `json:"glucose"`
+	MealTiming *domain.MealTiming `json:"mealTiming,omitempty"`
 
 	Device *string `json:"device,omitempty"`
 	Note   *string `json:"note,omitempty"`

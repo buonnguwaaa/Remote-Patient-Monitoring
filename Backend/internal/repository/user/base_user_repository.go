@@ -22,7 +22,7 @@ type BaseUserRepository interface {
 	Delete(ctx context.Context, id primitive.ObjectID) error
 
 	SetResetToken(ctx context.Context, email, token string, expires time.Time) error
-	FindByResetToken(ctx context.Context, tokenHash string) (*domain.BaseUser, error)
+	FindByEmailAndResetOTP(ctx context.Context, email, otpHash string) (*domain.BaseUser, error)
 	ResetPassword(ctx context.Context, id primitive.ObjectID, hashed string) error
 
 	SetActivationOTP(ctx context.Context, email, hash string, expires time.Time) error
@@ -120,10 +120,11 @@ func (r *baseUserRepository) SetResetToken(ctx context.Context, email, token str
 	return err
 }
 
-func (r *baseUserRepository) FindByResetToken(ctx context.Context, tokenHash string) (*domain.BaseUser, error) {
+func (r *baseUserRepository) FindByEmailAndResetOTP(ctx context.Context, email, otpHash string) (*domain.BaseUser, error) {
 	var u domain.BaseUser
 	err := r.col.FindOne(ctx, bson.M{
-		"resetToken":       tokenHash,
+		"email":            email,
+		"resetToken":       otpHash,
 		"resetTokenExpiry": bson.M{"$gt": time.Now()},
 	}).Decode(&u)
 	if err != nil {

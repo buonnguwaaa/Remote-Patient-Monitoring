@@ -15,7 +15,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons, FontAwesome5 } from "@expo/vector-icons";
-import { useIsFocused } from "@react-navigation/native";
+import { useIsFocused, useNavigation } from "@react-navigation/native";
 
 import { useAuth } from "../../hooks/useAuth";
 import { useBadge } from "../../context/BadgeContext";
@@ -25,6 +25,8 @@ import {
   getConversations,
 } from "../../api/chatApi";
 import { getAlertById } from "../../api/alertApi";
+import { getActiveVideoSession } from "../../api/videoSessionApi";
+
 
 const QUICK_REPLIES = [
   "Dạ tôi đã xem.",
@@ -295,6 +297,8 @@ function getReplyPreviewContent(message) {
 }
 
 function getViolationLabel(type) {
+  if (!type) return "Chỉ số";
+  const cleanType = type.replace(/_(max|min|high|low)$/, "");
   const labels = {
     temperature: "Nhiệt độ",
     heart_rate: "Nhịp tim",
@@ -303,8 +307,10 @@ function getViolationLabel(type) {
     blood_pressure_systolic: "Huyết áp tâm thu",
     blood_pressure_diastolic: "Huyết áp tâm trương",
     glucose: "Đường huyết",
+    sys: "Huyết áp tâm thu",
+    bp_diastolic: "Huyết áp tâm trương"
   };
-  return labels[type] || type;
+  return labels[cleanType] || labels[type] || type;
 }
 
 
@@ -313,6 +319,7 @@ export default function DoctorChatScreen() {
   const { refreshBadges } = useBadge();
   const currentUserId = user?.id || user?._id;
   const isFocused = useIsFocused();
+  const navigation = useNavigation();
 
   const [conversation, setConversation] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -328,6 +335,8 @@ export default function DoctorChatScreen() {
   const lastDeliveredSentRef = useRef(null);
   const lastReadSentRef = useRef(null);
   const [alertsCache, setAlertsCache] = useState({});
+  const [activeVideoSessionId, setActiveVideoSessionId] = useState(null);
+
   async function fetchConversationMessages(conversationId, limit = 100) {
     const messagesResponse = await getConversationMessages(conversationId, limit);
     if (!messagesResponse.ok) {
@@ -467,6 +476,25 @@ export default function DoctorChatScreen() {
     return () => clearInterval(timer);
   }, [conversation?.id, isFocused, currentUserId]);
 
+  // Poll for active video session every 30 seconds
+  useEffect(() => {
+    if (!conversation?.id || !isFocused) return;
+
+    function checkActiveSession() {
+      getActiveVideoSession(conversation.id)
+        .then((data) => {
+          setActiveVideoSessionId(data?.id || null);
+        })
+        .catch(() => {
+          setActiveVideoSessionId(null);
+        });
+    }
+
+    checkActiveSession();
+    const videoTimer = setInterval(checkActiveSession, 30000);
+    return () => clearInterval(videoTimer);
+  }, [conversation?.id, isFocused]);
+
   useEffect(() => {
     if (!conversation?.id) {
       return undefined;
@@ -517,6 +545,20 @@ export default function DoctorChatScreen() {
 
         if (isDirectMessagePayload(payload)) {
           setMessages((current) => mergeMessages(current, [normalizeMessage(payload)]));
+        }
+
+        // Handle video call system messages via NEW_MESSAGE
+        if (isMessageEnvelope(payload) && payload.data?.messageSource === "system") {
+          const content = payload.data?.content || "";
+          if (content.includes('"type":"video_call_invite"')) {
+            try {
+              const parsed = JSON.parse(content);
+              if (parsed.videoSessionId) setActiveVideoSessionId(parsed.videoSessionId);
+            } catch (_) {}
+          }
+          if (content.includes('"type":"video_call_ended"')) {
+            setActiveVideoSessionId(null);
+          }
         }
       });
     };
@@ -733,29 +775,40 @@ export default function DoctorChatScreen() {
                 <Text style={styles.headerBadgeText}>Chat trực tiếp</Text>
               </View>
             </View>
-            <Text style={styles.headerSub}>
-              {otherParticipantId
-                ? `Người tham gia: ${otherParticipantId.slice(-8)}`
-                : "Cuộc trò chuyện dành cho bệnh nhân"}
-            </Text>
           </View>
 
-          <View
-            style={[
-              styles.headerStatus,
-              socketState === "open" ? styles.headerStatusOnline : styles.headerStatusSyncing,
-            ]}
-          >
-            <View
-              style={[
-                styles.headerDot,
-                socketState === "open" ? styles.headerDotOnline : styles.headerDotSyncing,
-              ]}
-            />
+          <View style={[
+            styles.headerStatus,
+            socketState === "open" ? styles.headerStatusOnline : styles.headerStatusSyncing,
+          ]}>
+            <View style={[
+              styles.headerDot,
+              socketState === "open" ? styles.headerDotOnline : styles.headerDotSyncing,
+            ]} />
             <Text style={styles.headerStatusText}>
               {socketState === "open" ? "Đã kết nối" : "Đang đồng bộ"}
             </Text>
           </View>
+
+          {/* Video call button */}
+          <TouchableOpacity
+            style={styles.videoCallBtn}
+            onPress={() => {
+              if (activeVideoSessionId) {
+                navigation.navigate("VideoCall", { videoSessionId: activeVideoSessionId });
+              } else {
+                // No active session — show friendly toast-like feedback
+                setError("Bác sĩ chưa bắt đầu cuộc gọi video nào.");
+                setTimeout(() => setError(null), 3000);
+              }
+            }}
+          >
+            <Ionicons
+              name="videocam"
+              size={20}
+              color={activeVideoSessionId ? "#22C55E" : "#94A3B8"}
+            />
+          </TouchableOpacity>
         </View>
 
         <View style={styles.chatCard}>
@@ -802,20 +855,56 @@ export default function DoctorChatScreen() {
 
                 // System messages: 3rd-party participant with shield icon + violations grid
                 if (isSystemMessage) {
+                  // Intercept video call events
+                  if (item.message.content.includes('"type":"video_call_invite"')) {
+                    try {
+                      const payload = JSON.parse(item.message.content);
+                      return (
+                        <View key={item.key} style={{ marginVertical: 12, alignItems: 'center' }}>
+                          <View style={{ backgroundColor: '#E0F2FE', padding: 12, borderRadius: 16, width: '85%', alignItems: 'center', borderColor: '#BAE6FD', borderWidth: 1 }}>
+                            <Ionicons name="videocam" size={24} color="#0284C7" style={{ marginBottom: 8 }} />
+                            <Text style={{ fontSize: 13, color: '#0369A1', textAlign: 'center', marginBottom: 10, fontWeight: '500' }}>
+                              Bác sĩ đang mời bạn tham gia một cuộc gọi video.
+                            </Text>
+                            <TouchableOpacity
+                              style={{ backgroundColor: '#0284C7', paddingVertical: 8, paddingHorizontal: 20, borderRadius: 8 }}
+                              onPress={() => navigation.navigate("VideoCall", { videoSessionId: payload.videoSessionId })}
+                            >
+                              <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>Tham gia cuộc gọi</Text>
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      );
+                    } catch (e) {
+                      // Fallback if parsing fails
+                    }
+                  }
+                  if (item.message.content.includes('"type":"video_call_ended"')) {
+                    return (
+                      <View key={item.key} style={{ marginVertical: 12, alignItems: 'center' }}>
+                        <View style={{ backgroundColor: '#F1F5F9', padding: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}>
+                          <Ionicons name="call" size={16} color="#64748B" style={{ marginRight: 6 }} />
+                          <Text style={{ fontSize: 12, color: '#64748B' }}>Cuộc gọi video đã kết thúc.</Text>
+                        </View>
+                      </View>
+                    );
+                  }
+
                   const cachedAlert = item.message.relatedAlertId
                     ? alertsCache[item.message.relatedAlertId]
                     : null;
                   const isHigh = cachedAlert?.severity === "high";
+                  const isMedium = cachedAlert?.severity === "medium";
                   const violations = cachedAlert?.violations ?? [];
 
                   return (
                     <View key={item.key} style={styles.systemMsgRow}>
                       {/* Shield avatar */}
-                      <View style={[styles.systemAvatar, isHigh ? styles.systemAvatarHigh : styles.systemAvatarWarn]}>
+                      <View style={[styles.systemAvatar, isHigh ? styles.systemAvatarHigh : isMedium ? styles.systemAvatarWarn : styles.systemAvatarInfo]}>
                         <Ionicons
                           name="shield-checkmark-outline"
                           size={16}
-                          color={isHigh ? "#DC2626" : "#D97706"}
+                          color={isHigh ? "#DC2626" : isMedium ? "#D97706" : "#2563EB"}
                         />
                       </View>
 
@@ -824,31 +913,31 @@ export default function DoctorChatScreen() {
                         <View style={styles.systemMsgHeader}>
                           <Text style={styles.systemSenderLabel}>Hệ thống giám sát</Text>
                           {cachedAlert ? (
-                            <View style={[styles.systemSeverityBadge, isHigh ? styles.severityHigh : styles.severityWarn]}>
-                              <Ionicons name="warning-outline" size={9} color={isHigh ? "#DC2626" : "#D97706"} />
-                              <Text style={[styles.systemSeverityText, isHigh ? styles.severityHighText : styles.severityWarnText]}>
-                                {isHigh ? "Nghiêm trọng" : "Cảnh báo"}
+                            <View style={[styles.systemSeverityBadge, isHigh ? styles.severityHigh : isMedium ? styles.severityWarn : styles.severityInfo]}>
+                              <Ionicons name="warning-outline" size={9} color={isHigh ? "#DC2626" : isMedium ? "#D97706" : "#2563EB"} />
+                              <Text style={[styles.systemSeverityText, isHigh ? styles.severityHighText : isMedium ? styles.severityWarnText : styles.severityInfoText]}>
+                                {isHigh ? "Nghiêm trọng" : isMedium ? "Cảnh báo" : "Nhẹ"}
                               </Text>
                             </View>
                           ) : null}
                         </View>
 
                         {/* Message card */}
-                        <View style={[styles.systemCard, isHigh ? styles.systemCardHigh : styles.systemCardWarn]}>
+                        <View style={[styles.systemCard, isHigh ? styles.systemCardHigh : isMedium ? styles.systemCardWarn : styles.systemCardInfo]}>
                           {/* Violations grid */}
                           {violations.length > 0 ? (
                             <View style={styles.violationsBlock}>
-                              <Text style={[styles.violationsTitle, isHigh ? styles.violationsTitleHigh : styles.violationsTitleWarn]}>
+                              <Text style={[styles.violationsTitle, isHigh ? styles.violationsTitleHigh : isMedium ? styles.violationsTitleWarn : styles.violationsTitleInfo]}>
                                 {violations.length} chỉ số vượt ngưỡng
                               </Text>
                               <View style={styles.violationsGrid}>
                                 {violations.map((v, idx) => (
                                   <View
                                     key={idx}
-                                    style={[styles.violationItem, v.severity === "high" ? styles.violationItemHigh : styles.violationItemWarn]}
+                                    style={[styles.violationItem, v.severity === "high" ? styles.violationItemHigh : v.severity === "medium" ? styles.violationItemWarn : styles.violationItemInfo]}
                                   >
                                     <Text style={styles.violationLabel}>{getViolationLabel(v.type)}</Text>
-                                    <Text style={[styles.violationValue, v.severity === "high" ? styles.violationValueHigh : styles.violationValueWarn]}>
+                                    <Text style={[styles.violationValue, v.severity === "high" ? styles.violationValueHigh : v.severity === "medium" ? styles.violationValueWarn : styles.violationValueInfo]}>
                                       {v.observed}
                                     </Text>
                                     <Text style={styles.violationThreshold}>Ngưỡng: {v.threshold}</Text>
@@ -859,7 +948,7 @@ export default function DoctorChatScreen() {
                           ) : null}
 
                           {/* Message text */}
-                          <Text style={[styles.systemMsgText, isHigh ? styles.systemMsgTextHigh : styles.systemMsgTextWarn]}>
+                          <Text style={[styles.systemMsgText, isHigh ? styles.systemMsgTextHigh : isMedium ? styles.systemMsgTextWarn : styles.systemMsgTextInfo]}>
                             {item.message.content}
                           </Text>
 
@@ -1058,14 +1147,42 @@ export default function DoctorChatScreen() {
                                   </Text>
                                 </View>
                               ) : null}
-                              <Text
-                                style={[
-                                  styles.messageText,
-                                  !isDoctor && styles.messageTextPatient,
-                                ]}
-                              >
-                                {item.message.content}
-                              </Text>
+                              {(() => {
+                                if (
+                                  item.message.content.startsWith("{") &&
+                                  item.message.content.includes('"type":"video_call_invite"')
+                                ) {
+                                  try {
+                                    const payload = JSON.parse(item.message.content);
+                                    if (payload.type === "video_call_invite") {
+                                      return (
+                                        <View style={{ flexDirection: "row", alignItems: "center" }}>
+                                          <Ionicons name="videocam" size={16} color={!isDoctor ? "#EFF6FF" : "#111827"} style={{ marginRight: 6 }} />
+                                          <Text
+                                            style={[
+                                              styles.messageText,
+                                              { fontWeight: "600" },
+                                              !isDoctor && styles.messageTextPatient,
+                                            ]}
+                                          >
+                                            Đã gửi lời mời gọi video
+                                          </Text>
+                                        </View>
+                                      );
+                                    }
+                                  } catch (e) {}
+                                }
+                                return (
+                                  <Text
+                                    style={[
+                                      styles.messageText,
+                                      !isDoctor && styles.messageTextPatient,
+                                    ]}
+                                  >
+                                    {item.message.content}
+                                  </Text>
+                                );
+                              })()}
                             </>
                           )}
 
@@ -1336,6 +1453,15 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "600",
     color: "#F8FAFC",
+  },
+  videoCallBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 8,
   },
   chatCard: {
     flex: 1,
@@ -1824,6 +1950,7 @@ const styles = StyleSheet.create({
   },
   systemAvatarHigh: { backgroundColor: "#FEE2E2" },
   systemAvatarWarn: { backgroundColor: "#FEF3C7" },
+  systemAvatarInfo: { backgroundColor: "#DBEAFE" },
   systemMsgBody: { flex: 1 },
   systemMsgHeader: {
     flexDirection: "row",
@@ -1846,9 +1973,11 @@ const styles = StyleSheet.create({
   },
   severityHigh: { backgroundColor: "#FEE2E2" },
   severityWarn: { backgroundColor: "#FEF3C7" },
+  severityInfo: { backgroundColor: "#DBEAFE" },
   systemSeverityText: { fontSize: 9, fontWeight: "700" },
   severityHighText: { color: "#DC2626" },
   severityWarnText: { color: "#D97706" },
+  severityInfoText: { color: "#1D4ED8" },
   systemCard: {
     borderRadius: 12,
     borderTopLeftRadius: 3,
@@ -1863,6 +1992,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFBEB",
     borderColor: "#FDE68A",
   },
+  systemCardInfo: {
+    backgroundColor: "#F8FAFC",
+    borderColor: "#E2E8F0",
+  },
   violationsBlock: { marginBottom: 7 },
   violationsTitle: {
     fontSize: 9,
@@ -1873,6 +2006,7 @@ const styles = StyleSheet.create({
   },
   violationsTitleHigh: { color: "#DC2626" },
   violationsTitleWarn: { color: "#D97706" },
+  violationsTitleInfo: { color: "#1D4ED8" },
   violationsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -1892,6 +2026,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#FEF3C7",
     borderColor: "#FDE68A",
   },
+  violationItemInfo: {
+    backgroundColor: "#DBEAFE",
+    borderColor: "#BFDBFE",
+  },
   violationLabel: {
     fontSize: 9,
     fontWeight: "500",
@@ -1905,6 +2043,7 @@ const styles = StyleSheet.create({
   },
   violationValueHigh: { color: "#DC2626" },
   violationValueWarn: { color: "#D97706" },
+  violationValueInfo: { color: "#1D4ED8" },
   violationThreshold: {
     fontSize: 9,
     color: "#64748B",
@@ -1915,6 +2054,7 @@ const styles = StyleSheet.create({
   },
   systemMsgTextHigh: { color: "#7F1D1D" },
   systemMsgTextWarn: { color: "#78350F" },
+  systemMsgTextInfo: { color: "#1E3A8A" },
   systemMsgFooter: {
     flexDirection: "row",
     alignItems: "center",

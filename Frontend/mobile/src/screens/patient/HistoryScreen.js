@@ -3,9 +3,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons, FontAwesome5 } from "@expo/vector-icons";
 import { useAuth } from "../../hooks/useAuth";
 import { getMeasurements } from "../../api/measurementApi";
+import { getThresholds } from "../../api/thresholdApi";
 import { useFocusEffect } from "@react-navigation/native";
 import React, { useCallback, useState } from "react";
 import { LineChart } from "react-native-chart-kit";
+import DateTimePicker from "@react-native-community/datetimepicker";
 
 const screenWidth = Dimensions.get("window").width;
 const chartWidth = screenWidth - 60; // Account for padding and margins
@@ -57,6 +59,37 @@ function getAccentStyle(tab, styles) {
   return styles.recordCardTemp;
 }
 
+function getMeasurementStatusColor(m, threshold, tab) {
+  if (!threshold) return "#3B82F6"; // Default blue
+  let status = "normal";
+  
+  if (tab === "bp") {
+    const sys = m.bloodPressure?.systolic || m.systolic || 0;
+    const dia = m.bloodPressure?.diastolic || m.diastolic || 0;
+    if (sys > threshold.sysMax || dia > threshold.diaMax) status = "high";
+    else if (sys < threshold.sysMin || dia < threshold.diaMin) status = "low";
+  } else if (tab === "glucose") {
+    const glucVal = m.glucose ? (typeof m.glucose === "object" ? m.glucose.bloodGlucose : m.glucose) : 0;
+    if (glucVal > threshold.glucoseMax) status = "high";
+    else if (glucVal < threshold.glucoseMin) status = "low";
+  } else if (tab === "spo2") {
+    if (m.spo2 < threshold.spo2Min) status = "high";
+  } else if (tab === "temp") {
+    if (m.temperature > threshold.tempMax) status = "high";
+    else if (m.temperature < threshold.tempMin) status = "low";
+  } else if (tab === "heartRate") {
+    if (m.heartRate > threshold.pulseMax) status = "high";
+    else if (m.heartRate < threshold.pulseMin) status = "low";
+  } else if (tab === "respiratoryRate") {
+    if (m.respiratoryRate > threshold.respMax) status = "high";
+    else if (m.respiratoryRate < threshold.respMin) status = "low";
+  }
+
+  if (status === "high") return "#EF4444"; // Red
+  if (status === "low") return "#F59E0B"; // Yellow
+  return "#10B981"; // Green
+}
+
 export default function HistoryScreen({ route, isEmbedded }) {
   const { user } = useAuth() || {};
   const patientId = route?.params?.patientId || user?._id || user?.id || "p1";
@@ -65,14 +98,25 @@ export default function HistoryScreen({ route, isEmbedded }) {
   const [showMore, setShowMore] = useState(false);
   const [measurements, setMeasurements] = useState([]);
   const [showChartModal, setShowChartModal] = useState(false);
-  const [timeRangeType, setTimeRangeType] = useState("week"); // "week" or "month"
-  const [timeRangeValue, setTimeRangeValue] = useState(1); // number of weeks/months
   const [selectedDataPoint, setSelectedDataPoint] = useState(null); // For tooltip
 
+  const [threshold, setThreshold] = useState(null);
+  const [startDate, setStartDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 7);
+    return d;
+  });
+  const [endDate, setEndDate] = useState(new Date());
+  const [showPicker, setShowPicker] = useState(null);
+
   const fetchMeasurements = async () => {
-    const res = await getMeasurements(patientId);
-    if (res.ok && res.body.data) {
-      setMeasurements(res.body.data);
+    try {
+      const res = await getMeasurements({ patientId });
+      if (res.ok && res.body.data) setMeasurements(res.body.data);
+      const tRes = await getThresholds({ patientId, latest: true });
+      if (tRes.ok && tRes.body.data && tRes.body.data.length > 0) setThreshold(tRes.body.data[0]);
+    } catch (e) {
+      console.log(e);
     }
   };
 
@@ -89,18 +133,17 @@ export default function HistoryScreen({ route, isEmbedded }) {
     );
 
   // Filter data based on time range
-  const now = new Date();
-  const cutoffDate = new Date(now);
-  
-  if (timeRangeType === "week") {
-    cutoffDate.setDate(now.getDate() - (timeRangeValue * 7));
-  } else {
-    cutoffDate.setMonth(now.getMonth() - timeRangeValue);
-  }
+  const sDate = new Date(startDate);
+  sDate.setHours(0, 0, 0, 0);
+  const eDate = new Date(endDate);
+  eDate.setHours(23, 59, 59, 999);
 
   // For small chart: use selected time range
   const recentMeasurements = activeMeasurements.filter(
-    (m) => new Date(m.createdAt) >= cutoffDate
+    (m) => {
+      const d = new Date(m.createdAt);
+      return d >= sDate && d <= eDate;
+    }
   );
 
   // For modal chart: use same data but with better spacing
@@ -119,7 +162,8 @@ export default function HistoryScreen({ route, isEmbedded }) {
     dynamicChartWidth = calculatedWidth;
     
     // Show ALL labels since we have horizontal scroll
-    chartLabels = recentMeasurements.map((m) => formatShortLabel(m.createdAt));
+    const isSameDay = sDate.getFullYear() === eDate.getFullYear() && sDate.getMonth() === eDate.getMonth() && sDate.getDate() === eDate.getDate();
+    chartLabels = recentMeasurements.map((m) => isSameDay ? formatTime(m.createdAt) : formatShortLabel(m.createdAt));
 
     if (tab === "bp") { 
       const systolicArr = recentMeasurements.map((m) => m.bloodPressure?.systolic || m.systolic || 0);
@@ -191,6 +235,42 @@ export default function HistoryScreen({ route, isEmbedded }) {
       ];
       legend = ["Nhịp thở (lần/ph)"];
     }
+
+    if (threshold) {
+      const addBand = (val, color) => {
+        if (val) {
+          chartDatasets.unshift({ 
+            data: recentMeasurements.map(() => val), 
+            color: () => color, 
+            strokeWidth: 30, 
+            withDots: false,
+            propsForDots: { r: 0 } 
+          });
+        }
+      };
+      // We unshift so bands are rendered behind the actual data lines.
+      // Green = Normal zone. Red = High/Danger zone.
+      // Note: We use a simplified band approach (drawing thick lines at the threshold).
+      if (tab === "bp") {
+        addBand((threshold.sysMax + threshold.sysMin)/2, "rgba(16, 185, 129, 0.15)"); // Green band for normal range
+        addBand(threshold.sysMax, "rgba(239, 68, 68, 0.15)"); // Red band for high
+        addBand(threshold.sysMin, "rgba(245, 158, 11, 0.15)"); // Yellow band for low
+      } else if (tab === "glucose") {
+        addBand((threshold.glucoseMax + threshold.glucoseMin)/2, "rgba(16, 185, 129, 0.15)");
+        addBand(threshold.glucoseMax, "rgba(239, 68, 68, 0.15)");
+      } else if (tab === "spo2") {
+        addBand(threshold.spo2Min, "rgba(239, 68, 68, 0.15)");
+      } else if (tab === "temp") {
+        addBand((threshold.tempMax + threshold.tempMin)/2, "rgba(16, 185, 129, 0.15)");
+        addBand(threshold.tempMax, "rgba(239, 68, 68, 0.15)");
+      } else if (tab === "heartRate") {
+        addBand((threshold.pulseMax + threshold.pulseMin)/2, "rgba(16, 185, 129, 0.15)");
+        addBand(threshold.pulseMax, "rgba(239, 68, 68, 0.15)");
+      } else if (tab === "respiratoryRate") {
+        addBand((threshold.respMax + threshold.respMin)/2, "rgba(16, 185, 129, 0.15)");
+        addBand(threshold.respMax, "rgba(239, 68, 68, 0.15)");
+      }
+    }
   }
 
   // Prepare data for modal chart
@@ -206,7 +286,8 @@ export default function HistoryScreen({ route, isEmbedded }) {
     modalChartWidth = calculatedWidth;
     
     // Show ALL labels since we have horizontal scroll
-    modalChartLabels = extendedMeasurements.map((m) => formatShortLabel(m.createdAt));
+    const isSameDay = sDate.getFullYear() === eDate.getFullYear() && sDate.getMonth() === eDate.getMonth() && sDate.getDate() === eDate.getDate();
+    modalChartLabels = extendedMeasurements.map((m) => isSameDay ? formatTime(m.createdAt) : formatShortLabel(m.createdAt));
 
     if (tab === "bp") { 
       const systolicArr = extendedMeasurements.map((m) => m.bloodPressure?.systolic || m.systolic || 0);
@@ -272,6 +353,39 @@ export default function HistoryScreen({ route, isEmbedded }) {
         },
       ];
     }
+
+    if (threshold) {
+      const addBand = (val, color) => {
+        if (val) {
+          modalChartDatasets.unshift({ 
+            data: extendedMeasurements.map(() => val), 
+            color: () => color, 
+            strokeWidth: 40, 
+            withDots: false,
+            propsForDots: { r: 0 } 
+          });
+        }
+      };
+      if (tab === "bp") {
+        addBand((threshold.sysMax + threshold.sysMin)/2, "rgba(16, 185, 129, 0.15)"); 
+        addBand(threshold.sysMax, "rgba(239, 68, 68, 0.15)"); 
+        addBand(threshold.sysMin, "rgba(245, 158, 11, 0.15)");
+      } else if (tab === "glucose") {
+        addBand((threshold.glucoseMax + threshold.glucoseMin)/2, "rgba(16, 185, 129, 0.15)");
+        addBand(threshold.glucoseMax, "rgba(239, 68, 68, 0.15)");
+      } else if (tab === "spo2") {
+        addBand(threshold.spo2Min, "rgba(239, 68, 68, 0.15)");
+      } else if (tab === "temp") {
+        addBand((threshold.tempMax + threshold.tempMin)/2, "rgba(16, 185, 129, 0.15)");
+        addBand(threshold.tempMax, "rgba(239, 68, 68, 0.15)");
+      } else if (tab === "heartRate") {
+        addBand((threshold.pulseMax + threshold.pulseMin)/2, "rgba(16, 185, 129, 0.15)");
+        addBand(threshold.pulseMax, "rgba(239, 68, 68, 0.15)");
+      } else if (tab === "respiratoryRate") {
+        addBand((threshold.respMax + threshold.respMin)/2, "rgba(16, 185, 129, 0.15)");
+        addBand(threshold.respMax, "rgba(239, 68, 68, 0.15)");
+      }
+    }
   }
 
   const visibleMeasurements = activeMeasurements
@@ -283,7 +397,9 @@ export default function HistoryScreen({ route, isEmbedded }) {
 
   // Handle data point click (for modal chart)
   const handleDataPointClick = (data) => {
-    const { index } = data;
+    const { index, dataset } = data;
+    if (dataset && dataset.propsForDots && dataset.propsForDots.r === 0) return;
+    
     const measurement = extendedMeasurements[index];
     if (measurement) {
       setSelectedDataPoint({
@@ -455,77 +571,42 @@ export default function HistoryScreen({ route, isEmbedded }) {
         </View>
 
         {/* TIME RANGE FILTER */}
-        <View style={styles.filterContainer}>
-          <View style={styles.filterTypeSelector}>
-            <TouchableOpacity
-              onPress={() => setTimeRangeType("week")}
-              style={[
-                styles.filterTypeBtn,
-                timeRangeType === "week" && styles.filterTypeBtnActive
-              ]}
-            >
-              <Ionicons
-                name="calendar-outline"
-                size={14}
-                color={timeRangeType === "week" ? "#FFFFFF" : "#6B7280"}
-              />
-              <Text style={[
-                styles.filterTypeText,
-                timeRangeType === "week" && styles.filterTypeTextActive
-              ]}>
-                Tuần
+        <View style={{ marginBottom: 20 }}>
+          <TouchableOpacity
+            style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "#FFFFFF", paddingVertical: 12, paddingHorizontal: 16, borderRadius: 10, borderWidth: 1, borderColor: "#E5E7EB" }}
+            onPress={() => setShowPicker("start")}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+              <Ionicons name="calendar-outline" size={18} color="#6B7280" />
+              <Text style={{ fontSize: 14, color: "#4B5563", fontWeight: "500" }}>
+                {formatDate(startDate)} - {formatDate(endDate)}
               </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => setTimeRangeType("month")}
-              style={[
-                styles.filterTypeBtn,
-                timeRangeType === "month" && styles.filterTypeBtnActive
-              ]}
-            >
-              <Ionicons
-                name="calendar-outline"
-                size={14}
-                color={timeRangeType === "month" ? "#FFFFFF" : "#6B7280"}
-              />
-              <Text style={[
-                styles.filterTypeText,
-                timeRangeType === "month" && styles.filterTypeTextActive
-              ]}>
-                Tháng
-              </Text>
-            </TouchableOpacity>
-          </View>
+            </View>
+            <Ionicons name="chevron-down" size={18} color="#6B7280" />
+          </TouchableOpacity>
+          
+          {showPicker && (
+            <DateTimePicker
+              value={showPicker === "start" ? startDate : endDate}
+              mode="date"
+              display="default"
+              onChange={(event, selectedDate) => {
+                const currentPicker = showPicker;
+                setShowPicker(null);
+                if (event.type === "dismissed") return;
 
-          <View style={styles.filterValueSelector}>
-            <TouchableOpacity
-              onPress={() => setTimeRangeValue(Math.max(1, timeRangeValue - 1))}
-              disabled={timeRangeValue <= 1}
-              style={[styles.filterBtn, timeRangeValue <= 1 && styles.filterBtnDisabled]}
-            >
-              <Ionicons name="remove" size={18} color={timeRangeValue <= 1 ? "#D1D5DB" : "#6B7280"} />
-            </TouchableOpacity>
-            
-            <Text style={styles.filterValueText}>{timeRangeValue}</Text>
-            
-            <TouchableOpacity
-              onPress={() => {
-                const max = timeRangeType === "week" ? 52 : 12;
-                setTimeRangeValue(Math.min(max, timeRangeValue + 1));
+                if (selectedDate) {
+                  if (currentPicker === "start") {
+                    setStartDate(selectedDate);
+                    // Open end picker immediately after start
+                    setTimeout(() => setShowPicker("end"), 500);
+                  } else {
+                    setEndDate(selectedDate);
+                  }
+                }
               }}
-              disabled={timeRangeValue >= (timeRangeType === "week" ? 52 : 12)}
-              style={[
-                styles.filterBtn,
-                timeRangeValue >= (timeRangeType === "week" ? 52 : 12) && styles.filterBtnDisabled
-              ]}
-            >
-              <Ionicons
-                name="add"
-                size={18}
-                color={timeRangeValue >= (timeRangeType === "week" ? 52 : 12) ? "#D1D5DB" : "#6B7280"}
-              />
-            </TouchableOpacity>
-          </View>
+            />
+          )}
         </View>
 
         {/* TREND CARD */}
@@ -546,7 +627,7 @@ export default function HistoryScreen({ route, isEmbedded }) {
             <View style={styles.emptyChartBox}>
               <Ionicons name="stats-chart" size={22} color="#9CA3AF" />
               <Text style={styles.emptyChartText}>
-                Không có dữ liệu trong {timeRangeValue} {timeRangeType === "week" ? "tuần" : "tháng"} gần đây
+                Không có dữ liệu trong khoảng thời gian đã chọn
               </Text>
             </View>
           ) : (
@@ -560,6 +641,7 @@ export default function HistoryScreen({ route, isEmbedded }) {
                 width={dynamicChartWidth}
                 height={200}
                 yAxisLabel=""
+                segments={5}
                 chartConfig={{
                   backgroundColor: "#FFFFFF",
                   backgroundGradientFrom: "#FFFFFF",
@@ -598,10 +680,11 @@ export default function HistoryScreen({ route, isEmbedded }) {
           const dateStr = formatDate(m.createdAt);
           const timeStr = formatTime(m.createdAt);
 
-          const accentStyle = getAccentStyle(tab, styles);
+          const statusColor = getMeasurementStatusColor(m, threshold, tab);
+          const dynamicBorderStyle = { borderLeftWidth: 4, borderLeftColor: statusColor };
 
           return (
-            <View key={m.id} style={[styles.recordCard, accentStyle]}>
+            <View key={m.id} style={[styles.recordCard, dynamicBorderStyle]}>
               <View style={styles.recordHeader}>
                 <View style={styles.dateRow}>
                   <FontAwesome5 name="calendar-alt" size={14} color="#6B7280" />
@@ -680,13 +763,17 @@ export default function HistoryScreen({ route, isEmbedded }) {
                 )}
               </View>
 
-              <View style={styles.recordMetaRow}>
-                <Text style={styles.recordMetaText}>
-                  Thiết bị: {m.device || "Không rõ"}
-                </Text>
-                <Text style={styles.recordMetaText}>
-                  Người đo: {m.recordedBy || "Không rõ"}
-                </Text>
+              <View style={[styles.recordMetaRow, { display: (m.device && m.device !== "Không rõ") || (m.recordedBy && m.recordedBy !== "Không rõ") ? "flex" : "none" }]}>
+                {m.device && m.device !== "Không rõ" && (
+                  <Text style={styles.recordMetaText}>
+                    Thiết bị: {m.device}
+                  </Text>
+                )}
+                {m.recordedBy && m.recordedBy !== "Không rõ" && (
+                  <Text style={styles.recordMetaText}>
+                    Người đo: {m.recordedBy}
+                  </Text>
+                )}
               </View>
             </View>
           );
@@ -743,6 +830,7 @@ export default function HistoryScreen({ route, isEmbedded }) {
                     width={modalChartWidth}
                     height={400}
                     yAxisLabel=""
+                    segments={5}
                     chartConfig={{
                       backgroundColor: "#FFFFFF",
                       backgroundGradientFrom: "#FFFFFF",
@@ -768,7 +856,7 @@ export default function HistoryScreen({ route, isEmbedded }) {
             <View style={styles.modalFooter}>
               <Text style={styles.modalHint}>
                 <Ionicons name="information-circle" size={14} color="#6B7280" />
-                {" "}Hiển thị dữ liệu {timeRangeValue} {timeRangeType === "week" ? "tuần" : "tháng"} gần nhất · Vuốt ngang để xem toàn bộ
+                {" "}Hiển thị dữ liệu trong khoảng thời gian đã chọn · Vuốt ngang để xem toàn bộ
               </Text>
             </View>
 

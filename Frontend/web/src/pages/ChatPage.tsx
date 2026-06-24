@@ -17,10 +17,13 @@ import {
   Send,
   ShieldAlert,
   X,
+  Video as FaVideo,
+  PhoneCall as FaPhone,
 } from "lucide-react";
 
 import { useAuth } from "../context/AuthContext";
 import { useRealtimeNotification } from "../context/RealtimeNotificationContext";
+import VideoCallModal from "../components/video/VideoCallModal";
 import {
   getAlerts,
   getAlertById,
@@ -398,6 +401,7 @@ function getPatientSummary(patient: PatientDetailResponse) {
 }
 
 function getViolationLabel(type: string, t: (key: string) => string) {
+  const cleanType = type.replace(/_(max|min|high|low)$/, "");
   const labels: Record<string, string> = {
     temperature: t("patientDetail.temperature"),
     heart_rate: t("patientDetail.heartRate"),
@@ -406,9 +410,11 @@ function getViolationLabel(type: string, t: (key: string) => string) {
     blood_pressure_systolic: t("patientDetail.systolic"),
     blood_pressure_diastolic: t("patientDetail.diastolic"),
     glucose: t("patientDetail.glucose"),
+    sys: t("patientDetail.systolic"),
+    bp_diastolic: t("patientDetail.diastolic")
   };
 
-  return labels[type] || type;
+  return labels[cleanType] || labels[type] || type;
 }
 
 const QUICK_TEMPLATES = [
@@ -487,6 +493,7 @@ const ChatPage = ({
   const [openMessageMenuId, setOpenMessageMenuId] = useState<string | null>(
     null,
   );
+  const [videoCallOpen, setVideoCallOpen] = useState(false);
   const currentUserId = user?.id || null;
 
   const handleBack = () => {
@@ -1033,9 +1040,18 @@ const ChatPage = ({
               <X size={20} />
             </button>
           ) : (
-            <button className="rounded-full p-2 text-gray-500 transition hover:bg-gray-100 dark:text-slate-400 dark:hover:bg-slate-800">
-              <MoreVertical size={20} />
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                className="rounded-full p-2 text-blue-500 transition hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20"
+                onClick={() => setVideoCallOpen(true)}
+                title="Gọi video"
+              >
+                <FaVideo size={20} />
+              </button>
+              <button className="rounded-full p-2 text-gray-500 transition hover:bg-gray-100 dark:text-slate-400 dark:hover:bg-slate-800">
+                <MoreVertical size={20} />
+              </button>
+            </div>
           )}
         </div>
       </header>
@@ -1085,7 +1101,9 @@ const ChatPage = ({
                     <span
                       className={`inline-flex items-center gap-1 rounded-md px-3 py-1 text-xs font-medium ${alertContext.severity === "high"
                         ? "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300"
-                        : "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-200"
+                        : alertContext.severity === "medium"
+                        ? "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-200"
+                        : "bg-slate-100 text-slate-700 dark:bg-slate-500/15 dark:text-slate-200"
                         }`}
                     >
                       {alertContext.severity === "high" ? (
@@ -1094,7 +1112,7 @@ const ChatPage = ({
                         <Info size={14} />
                       )}
                       {alertContext.severity === "high"
-                        ? t("chat.severe") : t("alerts.info")}
+                        ? t("chat.severe") : alertContext.severity === "medium" ? t("alerts.medium", "Cảnh báo") : t("alerts.low", "Nhẹ")}
                     </span>
                     <span
                       className={`rounded-md px-3 py-1 text-xs font-medium ${alertContext.status === "ack"
@@ -1161,10 +1179,33 @@ const ChatPage = ({
 
               // System messages render as a 3rd-party participant with avatar + inline violations
               if (item.message.messageSource === "system") {
+                // Intercept video call events
+                if (item.message.content.includes('"type":"video_call_invite"')) {
+                  return (
+                    <div key={item.key} className="flex justify-center my-3">
+                      <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 text-xs font-medium text-blue-700 flex items-center gap-2 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300">
+                        <FaVideo size={14} />
+                        Bác sĩ đã bắt đầu một cuộc gọi video.
+                      </div>
+                    </div>
+                  );
+                }
+                if (item.message.content.includes('"type":"video_call_ended"')) {
+                  return (
+                    <div key={item.key} className="flex justify-center my-3">
+                      <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-medium text-slate-500 flex items-center gap-2 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
+                        <FaPhone size={14} className="text-red-500" />
+                        Cuộc gọi video đã kết thúc.
+                      </div>
+                    </div>
+                  );
+                }
+
                 const cachedAlert = item.message.relatedAlertId
                   ? alertsCache.get(item.message.relatedAlertId)
                   : undefined;
                 const isHighSeverity = cachedAlert?.severity === "high";
+                const isMediumSeverity = cachedAlert?.severity === "medium";
                 const violations = cachedAlert?.violations ?? [];
 
                 return (
@@ -1176,9 +1217,11 @@ const ChatPage = ({
                     {/* System avatar */}
                     <div className={`flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center shadow-sm ${isHighSeverity
                       ? "bg-red-100 dark:bg-red-500/20"
-                      : "bg-amber-100 dark:bg-amber-500/20"
+                      : isMediumSeverity
+                      ? "bg-amber-100 dark:bg-amber-500/20"
+                      : "bg-slate-100 dark:bg-slate-500/20"
                       }`}>
-                      <ShieldAlert size={18} className={isHighSeverity ? "text-red-600 dark:text-red-300" : "text-amber-600 dark:text-amber-300"} />
+                      <ShieldAlert size={18} className={isHighSeverity ? "text-red-600 dark:text-red-300" : isMediumSeverity ? "text-amber-600 dark:text-amber-300" : "text-slate-600 dark:text-slate-300"} />
                     </div>
 
                     <div className="flex-1 min-w-0 max-w-[80%]">
@@ -1188,10 +1231,12 @@ const ChatPage = ({
                         {cachedAlert && (
                           <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${isHighSeverity
                             ? "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300"
-                            : "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300"
+                            : isMediumSeverity
+                            ? "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300"
+                            : "bg-slate-100 text-slate-700 dark:bg-slate-500/20 dark:text-slate-300"
                             }`}>
                             <AlertTriangle size={9} />
-                            {isHighSeverity ? t("chat.severe") : t("patients.warning")}
+                            {isHighSeverity ? t("chat.severe") : isMediumSeverity ? t("patients.warning", "Cảnh báo") : t("alerts.low", "Nhẹ")}
                           </span>
                         )}
                       </div>
@@ -1199,7 +1244,9 @@ const ChatPage = ({
                       {/* Message card */}
                       <div className={`rounded-2xl rounded-tl-sm border px-4 py-3 shadow-sm ${isHighSeverity
                         ? "border-red-200 bg-red-50 dark:border-red-500/20 dark:bg-red-500/8"
-                        : "border-amber-200 bg-amber-50 dark:border-amber-500/20 dark:bg-amber-500/8"
+                        : isMediumSeverity
+                        ? "border-amber-200 bg-amber-50 dark:border-amber-500/20 dark:bg-amber-500/8"
+                        : "border-slate-200 bg-slate-50 dark:border-slate-500/20 dark:bg-slate-500/8"
                         }`}>
 
                         {/* Violations grid — shown when alert data is available */}
@@ -1215,11 +1262,13 @@ const ChatPage = ({
                                   key={idx}
                                   className={`rounded-lg border px-3 py-2 ${v.severity === "high"
                                     ? "border-red-200/70 bg-red-100/60 dark:border-red-500/20 dark:bg-red-500/10"
-                                    : "border-amber-200/70 bg-amber-100/60 dark:border-amber-500/20 dark:bg-amber-500/10"
+                                    : v.severity === "medium"
+                                    ? "border-amber-200/70 bg-amber-100/60 dark:border-amber-500/20 dark:bg-amber-500/10"
+                                    : "border-slate-200/70 bg-slate-100/60 dark:border-slate-500/20 dark:bg-slate-500/10"
                                     }`}
                                 >
                                   <div className="text-[11px] font-medium text-slate-600 dark:text-slate-300">{getViolationLabel(v.type, t)}</div>
-                                  <div className={`text-base font-bold ${v.severity === "high" ? "text-red-600 dark:text-red-300" : "text-amber-600 dark:text-amber-300"
+                                  <div className={`text-base font-bold ${v.severity === "high" ? "text-red-600 dark:text-red-300" : v.severity === "medium" ? "text-amber-600 dark:text-amber-300" : "text-slate-600 dark:text-slate-300"
                                     }`}>{v.observed}</div>
                                   <div className="text-[10px] text-slate-500 dark:text-slate-400">Ngưỡng: {v.threshold}</div>
                                 </div>
@@ -1445,9 +1494,28 @@ const ChatPage = ({
                               </div>
                             </div>
                           ) : null}
-                          <p className="whitespace-pre-wrap leading-relaxed">
-                            {item.message.content}
-                          </p>
+                          {(() => {
+                            if (item.message.content.startsWith("{") && item.message.content.includes('"type":"video_call_invite"')) {
+                              try {
+                                const payload = JSON.parse(item.message.content);
+                                if (payload.type === "video_call_invite") {
+                                  return (
+                                    <div className="flex items-center gap-2 font-medium">
+                                      <FaVideo className="text-current opacity-80" />
+                                      <span>{t("chat.videoCallInvite", "Đã gửi lời mời gọi video")}</span>
+                                    </div>
+                                  );
+                                }
+                              } catch (e) {
+                                // fallback to normal text
+                              }
+                            }
+                            return (
+                              <p className="whitespace-pre-wrap leading-relaxed">
+                                {item.message.content}
+                              </p>
+                            );
+                          })()}
                         </>
                       )}
 
@@ -1541,6 +1609,15 @@ const ChatPage = ({
           </button>
         </div>
       </footer>
+
+      {videoCallOpen && conversation?.id && patient && (
+        <VideoCallModal
+          patientId={patient.id}
+          patientName={patient.name}
+          conversationId={conversation.id}
+          onClose={() => setVideoCallOpen(false)}
+        />
+      )}
     </div>
   );
 };

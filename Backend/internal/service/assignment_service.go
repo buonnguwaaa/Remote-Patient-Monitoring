@@ -165,6 +165,7 @@ func (s *assignmentService) mapToResponseWithNames(a *domain.Assignment, userInf
 		AssignedBy:      a.AssignedBy,
 		CreatedAt:       a.CreatedAt,
 		UpdatedAt:       a.UpdatedAt,
+		PatientDiseaseTypes: &patient.DiseaseTypes,
 	}
 }
 
