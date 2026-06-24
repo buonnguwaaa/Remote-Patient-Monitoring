@@ -86,7 +86,6 @@ export const addWorksheet = (
   data: any[],
   sheetName: string,
   columnWidths?: number[],
-  titleOffset: number = 0,
 ): ExcelJS.Worksheet => {
   const worksheet = workbook.addWorksheet(sheetName);
   if (data.length > 0) {

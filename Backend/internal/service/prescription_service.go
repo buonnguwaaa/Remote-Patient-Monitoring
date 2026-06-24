@@ -562,10 +562,14 @@ func validateMedications(medications []domain.PrescriptionMedication) error {
 			if _, dup := seen[key]; dup {
 				var todVN string
 				switch dose.TimeOfDay {
-				case "morning": todVN = "Sáng"
-				case "noon": todVN = "Trưa"
-				case "evening": todVN = "Tối"
-				default: todVN = string(dose.TimeOfDay)
+				case "morning":
+					todVN = "Sáng"
+				case "noon":
+					todVN = "Trưa"
+				case "evening":
+					todVN = "Tối"
+				default:
+					todVN = string(dose.TimeOfDay)
 				}
 				return fmt.Errorf("Thuốc thứ %d: bị trùng lịch uống thuốc (Buổi %s, %s)", i+1, todVN, domain.FormatClock(hour, minute))
 			}
@@ -604,8 +608,6 @@ func prescriptionEndDate(end *time.Time, start time.Time) time.Time {
 	}
 	return start.AddDate(1, 0, 0)
 }
-
-
 
 func toPrescriptionResponse(p *domain.Prescription) *dto.PrescriptionResponse {
 	return &dto.PrescriptionResponse{

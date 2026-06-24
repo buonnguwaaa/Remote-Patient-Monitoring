@@ -471,6 +471,21 @@ export default function PatientDetailModal({
               </View>
 
               <View style={styles.infoBlock}>
+                <Text style={styles.infoLabel}>Loại bệnh đang theo dõi</Text>
+                <View style={{ flexDirection: "row", gap: 8, marginTop: 4 }}>
+                  {detailedInfo?.diseaseTypes?.bloodPressure ? (
+                    <View style={styles.chipPrimary}><Text style={styles.chipPrimaryText}>Huyết áp</Text></View>
+                  ) : null}
+                  {detailedInfo?.diseaseTypes?.glucose ? (
+                    <View style={styles.chipPrimary}><Text style={styles.chipPrimaryText}>Tiểu đường</Text></View>
+                  ) : null}
+                  {!detailedInfo?.diseaseTypes?.bloodPressure && !detailedInfo?.diseaseTypes?.glucose ? (
+                    <Text style={styles.infoValue}>Chưa có thông tin</Text>
+                  ) : null}
+                </View>
+              </View>
+
+              <View style={styles.infoBlock}>
                 <Text style={styles.infoLabel}>Tiền sử y khoa</Text>
                 <Text style={[styles.infoValue, styles.medicalHistoryText]}>
                   {detailedInfo?.medicalHistory || "Không có dữ liệu tiền sử bệnh lý."}
@@ -711,6 +726,19 @@ const styles = StyleSheet.create({
   infoLabel: { fontSize: 11, color: "#6B7280", fontWeight: "600" },
   infoValue: { fontSize: 13, fontWeight: "700", color: "#1F2937", marginTop: 4 },
   medicalHistoryText: { fontWeight: "500", color: "#4B5563", lineHeight: 18 },
+  chipPrimary: {
+    backgroundColor: "#EFF6FF",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#BFDBFE",
+  },
+  chipPrimaryText: {
+    color: "#2563EB",
+    fontSize: 11,
+    fontWeight: "600",
+  },
   vitalsGrid: { flexDirection: "row", gap: 12, marginBottom: 12 },
   vitalCard: {
     flex: 1,

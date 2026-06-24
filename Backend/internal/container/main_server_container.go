@@ -37,6 +37,7 @@ type MainServerContainer struct {
 	ConversationRepo        chatRepository.ConversationRepository
 	MessageRepo             chatRepository.MessageRepository
 	ActivityLogRepo         *repository.ActivityLogRepository
+	VideoSessionRepo        repository.VideoSessionRepository
 
 	AuthService                service.AuthService
 	UserService                service.UserService
@@ -51,6 +52,7 @@ type MainServerContainer struct {
 	FollowUpAppointmentService service.FollowUpAppointmentService
 	ChatService                service.ChatService
 	NotificationService        service.NotificationService
+	VideoSessionService        service.VideoSessionService
 
 	AuthHandler                *handler.AuthHandler
 	UserHandler                *handler.UserHandler
@@ -67,6 +69,7 @@ type MainServerContainer struct {
 	NotificationTokenHandler   *handler.NotificationTokenHandler
 	NotificationHandler        *handler.NotificationHandler
 	ActivityLogHandler         *handler.ActivityLogHandler
+	VideoSessionHandler        *handler.VideoSessionHandler
 
 	WSChatHandler *ws.Handler
 	Hub           *ws.Hub
@@ -107,6 +110,7 @@ func NewMainServerContainer() *MainServerContainer {
 	c.ConversationRepo = chatRepository.NewConversationRepository(db)
 	c.MessageRepo = chatRepository.NewMessageRepository(db)
 	c.ActivityLogRepo = repository.NewActivityLogRepository(db)
+	c.VideoSessionRepo = repository.NewVideoSessionRepository(db)
 
 	if err := c.BaseUserRepo.EnsureIndexes(context.Background()); err != nil {
 		log.Printf("[WARN] failed to ensure user indexes: %v", err)
@@ -131,6 +135,7 @@ func NewMainServerContainer() *MainServerContainer {
 	c.FollowUpAppointmentService = service.NewFollowUpAppointmentService(c.PatientRepo, c.AssignmentRepo, c.FollowUpAppointmentRepo)
 	c.ChatService = service.NewChatService(c.ConversationRepo, c.MessageRepo, c.AssignmentRepo)
 	c.NotificationService = service.NewNotificationService(c.NotificationTokenRepo, c.NotificationRepo, nil)
+	c.VideoSessionService = service.NewVideoSessionService(c.VideoSessionRepo, c.AssignmentRepo, c.ChatService, nil) // RealtimePublisher wired below
 
 	c.AuthHandler = handler.NewAuthHandler(c.AuthService)
 	c.MeasurementHandler = handler.NewMeasurementHandler(c.MeasurementService)
@@ -147,6 +152,7 @@ func NewMainServerContainer() *MainServerContainer {
 	c.NotificationHandler = handler.NewNotificationHandler(c.NotificationService)
 	c.ActivityLogHandler = handler.NewActivityLogHandler(c.ActivityLogRepo)
 
+	// Wire RealtimePublisher into VideoSessionService after it is created below.
 	c.Hub = ws.NewHub()
 	go c.Hub.Run()
 	if subscriber := ws.NewRedisChatEventSubscriber(config.Redis.Client, c.Hub); subscriber != nil {
@@ -169,6 +175,10 @@ func NewMainServerContainer() *MainServerContainer {
 		}()
 	}
 	c.RealtimeHandler = realtime.NewHandler(c.RealtimeHub)
+
+	// Re-create VideoSessionService with the actual RealtimePublisher now available.
+	c.VideoSessionService = service.NewVideoSessionService(c.VideoSessionRepo, c.AssignmentRepo, c.ChatService, c.RealtimePublisher)
+	c.VideoSessionHandler = handler.NewVideoSessionHandler(c.VideoSessionService)
 
 	c.WSChatHandler = ws.NewHandler(c.Hub, c.ChatService, c.RealtimePublisher, c.ChatService)
 

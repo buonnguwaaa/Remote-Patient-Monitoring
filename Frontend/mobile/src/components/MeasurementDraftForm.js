@@ -35,13 +35,13 @@ function TypeTile({ active, isSaved, isDraft, item, onPress }) {
 
 export default function MeasurementDraftForm({
   type,
-  timing,
+  mealTiming,
   values,
   savedSections,
   submitting,
   onSelectType,
   onFieldChange,
-  onTimingChange,
+  onMealTimingChange,
   onSaveSection,
   onSubmit,
 }) {
@@ -113,19 +113,19 @@ export default function MeasurementDraftForm({
           <Text style={[styles.fieldLabel, styles.marginTopMedium]}>Thời điểm đo so với bữa ăn</Text>
           <View style={styles.chipRow}>
             <TouchableOpacity
-              style={[styles.chipChoice, timing === "pre" && styles.chipChoiceActive]}
-              onPress={() => onTimingChange("pre")}
+              style={[styles.chipChoice, mealTiming === "pre_meal" && styles.chipChoiceActive]}
+              onPress={() => onMealTimingChange("pre_meal")}
             >
-              <Text style={[styles.chipChoiceText, timing === "pre" && styles.chipChoiceTextActive]}>
-                Trước ăn (pre)
+              <Text style={[styles.chipChoiceText, mealTiming === "pre_meal" && styles.chipChoiceTextActive]}>
+                Trước ăn
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.chipChoice, timing === "post" && styles.chipChoiceActive]}
-              onPress={() => onTimingChange("post")}
+              style={[styles.chipChoice, mealTiming === "post_meal" && styles.chipChoiceActive]}
+              onPress={() => onMealTimingChange("post_meal")}
             >
-              <Text style={[styles.chipChoiceText, timing === "post" && styles.chipChoiceTextActive]}>
-                Sau ăn (post)
+              <Text style={[styles.chipChoiceText, mealTiming === "post_meal" && styles.chipChoiceTextActive]}>
+                Sau ăn
               </Text>
             </TouchableOpacity>
           </View>
@@ -190,22 +190,58 @@ export default function MeasurementDraftForm({
       );
     }
 
-    return (
-      <>
-        <Text style={styles.fieldGroupTitle}>Nhịp thở</Text>
-        <View style={styles.fieldColumn}>
-          <Text style={styles.fieldLabel}>Nhịp thở</Text>
-          <TextInput
-            style={styles.input}
-            value={values.respiratoryRate}
-            onChangeText={(value) => onFieldChange("respiratoryRate", value, "respiratoryRate")}
-            keyboardType="numeric"
-            placeholder="vd: 18"
-          />
-          <Text style={styles.fieldHint}>lần/phút · 5-60</Text>
-        </View>
-      </>
-    );
+    if (type === "respiratoryRate") {
+      return (
+        <>
+          <Text style={styles.fieldGroupTitle}>Nhịp thở</Text>
+          <View style={styles.fieldColumn}>
+            <Text style={styles.fieldLabel}>Nhịp thở</Text>
+            <TextInput
+              style={styles.input}
+              value={values.respiratoryRate}
+              onChangeText={(value) => onFieldChange("respiratoryRate", value, "respiratoryRate")}
+              keyboardType="numeric"
+              placeholder="vd: 18"
+            />
+            <Text style={styles.fieldHint}>lần/phút · 5-60</Text>
+          </View>
+        </>
+      );
+    }
+
+    if (type === "bodyStats") {
+      return (
+        <>
+          <Text style={styles.fieldGroupTitle}>Thể trạng</Text>
+          <View style={styles.row}>
+            <View style={styles.fieldColumn}>
+              <Text style={styles.fieldLabel}>Chiều cao</Text>
+              <TextInput
+                style={styles.input}
+                value={values.height}
+                onChangeText={(value) => onFieldChange("height", value, "bodyStats")}
+                keyboardType="numeric"
+                placeholder="vd: 170"
+              />
+              <Text style={styles.fieldHint}>cm · 30-300</Text>
+            </View>
+            <View style={styles.fieldColumn}>
+              <Text style={styles.fieldLabel}>Cân nặng</Text>
+              <TextInput
+                style={styles.input}
+                value={values.weight}
+                onChangeText={(value) => onFieldChange("weight", value, "bodyStats")}
+                keyboardType="numeric"
+                placeholder="vd: 65"
+              />
+              <Text style={styles.fieldHint}>kg · 2-500</Text>
+            </View>
+          </View>
+        </>
+      );
+    }
+
+    return null;
   };
 
   return (
@@ -229,6 +265,18 @@ export default function MeasurementDraftForm({
         </View>
         <View style={styles.typeGridRow}>
           {MEASUREMENT_SECTIONS.slice(3, 6).map((item) => (
+            <TypeTile
+              key={item.key}
+              active={type === item.key}
+              isSaved={savedSections[item.key]}
+              isDraft={hasMeasurementSectionValue(item.key, values) && !savedSections[item.key]}
+              item={item}
+              onPress={() => onSelectType(item.key)}
+            />
+          ))}
+        </View>
+        <View style={styles.typeGridRow}>
+          {MEASUREMENT_SECTIONS.slice(6).map((item) => (
             <TypeTile
               key={item.key}
               active={type === item.key}

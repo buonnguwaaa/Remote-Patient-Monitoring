@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
+	userDomain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -23,8 +24,9 @@ type AssignmentRepository interface {
 }
 
 type UserDisplayInfo struct {
-	Name     string
-	PublicID string
+	Name         string
+	PublicID     string
+	DiseaseTypes userDomain.DiseaseTypes
 }
 
 type assignmentRepository struct {
@@ -105,7 +107,7 @@ func (r *assignmentRepository) FindAll(ctx context.Context) ([]*domain.Assignmen
 					"as":           "user",
 				}},
 				bson.M{"$unwind": bson.M{"path": "$user", "preserveNullAndEmptyArrays": false}},
-				bson.M{"$project": bson.M{"_id": 1, "name": "$user.name", "publicId": "$user.userPublicId"}},
+				bson.M{"$project": bson.M{"_id": 1, "name": "$user.name", "publicId": "$user.userPublicId", "diseaseTypes": "$user.diseaseTypes"}},
 			},
 		}}},
 	}
@@ -119,9 +121,10 @@ func (r *assignmentRepository) FindAll(ctx context.Context) ([]*domain.Assignmen
 	var facetResults []struct {
 		Assignments []*domain.Assignment `bson:"assignments"`
 		Names       []struct {
-			ID       primitive.ObjectID `bson:"_id"`
-			Name     string             `bson:"name"`
-			PublicID string             `bson:"publicId"`
+			ID           primitive.ObjectID      `bson:"_id"`
+			Name         string                  `bson:"name"`
+			PublicID     string                  `bson:"publicId"`
+			DiseaseTypes userDomain.DiseaseTypes `bson:"diseaseTypes"`
 		} `bson:"names"`
 	}
 	if err := cursor.All(ctx, &facetResults); err != nil {
@@ -134,7 +137,7 @@ func (r *assignmentRepository) FindAll(ctx context.Context) ([]*domain.Assignmen
 
 	nameMap := make(map[primitive.ObjectID]UserDisplayInfo)
 	for _, u := range facetResults[0].Names {
-		nameMap[u.ID] = UserDisplayInfo{Name: u.Name, PublicID: u.PublicID}
+		nameMap[u.ID] = UserDisplayInfo{Name: u.Name, PublicID: u.PublicID, DiseaseTypes: u.DiseaseTypes}
 	}
 
 	return facetResults[0].Assignments, nameMap, nil
@@ -190,7 +193,7 @@ func (r *assignmentRepository) findByAssigneeWithNames(ctx context.Context, matc
 					"as":           "user",
 				}},
 				bson.M{"$unwind": bson.M{"path": "$user", "preserveNullAndEmptyArrays": false}},
-				bson.M{"$project": bson.M{"_id": 1, "name": "$user.name", "publicId": "$user.userPublicId"}},
+				bson.M{"$project": bson.M{"_id": 1, "name": "$user.name", "publicId": "$user.userPublicId", "diseaseTypes": "$user.diseaseTypes"}},
 			},
 		}}},
 	}
@@ -204,9 +207,10 @@ func (r *assignmentRepository) findByAssigneeWithNames(ctx context.Context, matc
 	var facetResults []struct {
 		Assignments []*domain.Assignment `bson:"assignments"`
 		Names       []struct {
-			ID       primitive.ObjectID `bson:"_id"`
-			Name     string             `bson:"name"`
-			PublicID string             `bson:"publicId"`
+			ID           primitive.ObjectID      `bson:"_id"`
+			Name         string                  `bson:"name"`
+			PublicID     string                  `bson:"publicId"`
+			DiseaseTypes userDomain.DiseaseTypes `bson:"diseaseTypes"`
 		} `bson:"names"`
 	}
 	if err := cursor.All(ctx, &facetResults); err != nil {
@@ -219,7 +223,7 @@ func (r *assignmentRepository) findByAssigneeWithNames(ctx context.Context, matc
 
 	nameMap := make(map[primitive.ObjectID]UserDisplayInfo)
 	for _, u := range facetResults[0].Names {
-		nameMap[u.ID] = UserDisplayInfo{Name: u.Name, PublicID: u.PublicID}
+		nameMap[u.ID] = UserDisplayInfo{Name: u.Name, PublicID: u.PublicID, DiseaseTypes: u.DiseaseTypes}
 	}
 
 	return facetResults[0].Assignments, nameMap, nil
@@ -236,7 +240,7 @@ func (r *assignmentRepository) EnsureIndexes(ctx context.Context) error {
 		{Keys: bson.D{{Key: "doctorId", Value: 1}}},
 		{Keys: bson.D{{Key: "nurseId", Value: 1}}},
 		{
-			Keys: bson.D{{Key: "patientId", Value: 1}, {Key: "doctorId", Value: 1}},
+			Keys:    bson.D{{Key: "patientId", Value: 1}, {Key: "doctorId", Value: 1}},
 			Options: options.Index().SetName("idx_assignment_patient_doctor"),
 		},
 	})

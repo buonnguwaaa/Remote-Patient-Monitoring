@@ -1076,7 +1076,10 @@ const docTemplate = `{
         },
         "/auth/activate": {
             "post": {
-                "description": "Activate user account created from local strategy using token from email link",
+                "description": "Activate user account using OTP sent to email",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -1086,7 +1089,7 @@ const docTemplate = `{
                 "summary": "Activate account",
                 "parameters": [
                     {
-                        "description": "Activation token",
+                        "description": "Email and OTP",
                         "name": "data",
                         "in": "body",
                         "required": true,
@@ -1431,7 +1434,7 @@ const docTemplate = `{
         },
         "/auth/resend-activation": {
             "post": {
-                "description": "Resend account activation email to user",
+                "description": "Resend account activation OTP to user email",
                 "consumes": [
                     "application/json"
                 ],
@@ -1940,7 +1943,7 @@ const docTemplate = `{
         },
         "/measurements": {
             "get": {
-                "description": "Retrieve measurements based on query parameters\nIf ` + "`" + `patientId` + "`" + ` is provided along with ` + "`" + `latest=true` + "`" + `, only the latest measurement record for that patient will be returned.\nVí dụ: ` + "`" + `/measurements?patientId=123\u0026latest=true` + "`" + `",
+                "description": "Retrieve measurements based on query parameters",
                 "consumes": [
                     "application/json"
                 ],
@@ -2764,6 +2767,52 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/realtime/ws": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Upgrade HTTP request to WebSocket for user-level realtime notifications (e.g., new chat messages, health alerts). Doctor role only.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "realtime"
+                ],
+                "summary": "Open realtime WebSocket connection",
+                "responses": {
+                    "101": {
+                        "description": "Switching Protocols",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -4233,6 +4282,190 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/video-sessions": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "video"
+                ],
+                "summary": "Create a video session (doctor only)",
+                "parameters": [
+                    {
+                        "description": "Request",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.CreateVideoSessionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/video-sessions/active": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "video"
+                ],
+                "summary": "Get active session by conversationId or patientId",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Conversation ID",
+                        "name": "conversationId",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Patient ID",
+                        "name": "patientId",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/video-sessions/{id}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "video"
+                ],
+                "summary": "Get a video session by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Session ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/video-sessions/{id}/end": {
+            "post": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "video"
+                ],
+                "summary": "End a video session",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Session ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/video-sessions/{id}/join": {
+            "post": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "video"
+                ],
+                "summary": "Join a video session (returns joinUrl for authorized participants only)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Session ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/video-sessions/{id}/reject": {
+            "post": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "video"
+                ],
+                "summary": "Reject a video session (patient/participant only)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Session ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -4351,11 +4584,17 @@ const docTemplate = `{
         "dto.ActivateAccountRequest": {
             "type": "object",
             "required": [
-                "activateToken"
+                "email",
+                "otp"
             ],
             "properties": {
-                "activateToken": {
-                    "type": "string"
+                "email": {
+                    "type": "string",
+                    "example": "john.doe@example.com"
+                },
+                "otp": {
+                    "type": "string",
+                    "example": "123456"
                 }
             }
         },
@@ -4745,6 +4984,20 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.CreateVideoSessionRequest": {
+            "type": "object",
+            "required": [
+                "patientId"
+            ],
+            "properties": {
+                "conversationId": {
+                    "type": "string"
+                },
+                "patientId": {
+                    "type": "string"
+                }
+            }
+        },
         "dto.DeactivateNotificationTokenRequest": {
             "type": "object",
             "required": [
@@ -4971,20 +5224,26 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "confirmedNewPassword",
+                "email",
                 "newPassword",
-                "resetToken"
+                "otp"
             ],
             "properties": {
                 "confirmedNewPassword": {
                     "type": "string",
                     "minLength": 6
                 },
+                "email": {
+                    "type": "string",
+                    "example": "john.doe@example.com"
+                },
                 "newPassword": {
                     "type": "string",
                     "minLength": 6
                 },
-                "resetToken": {
-                    "type": "string"
+                "otp": {
+                    "type": "string",
+                    "example": "123456"
                 }
             }
         },

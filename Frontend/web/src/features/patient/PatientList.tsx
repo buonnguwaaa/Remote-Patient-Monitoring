@@ -41,7 +41,7 @@ const PatientList = () => {
           let status: PatientItem["status"] = t("patients.normal");
 
           const latestAlert = latestAlertByPatient.get(assignment.patientId);
-          if (latestAlert && latestAlert.severity === "high" && latestAlert.status === "open") {
+          if (latestAlert && (latestAlert.severity === "high" || latestAlert.severity === "medium") && latestAlert.status === "open") {
             status = t("patients.warning");
           }
 

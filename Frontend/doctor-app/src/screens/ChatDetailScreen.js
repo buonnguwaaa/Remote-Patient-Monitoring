@@ -182,6 +182,8 @@ function getReplyPreviewContent(message) {
 }
 
 function getViolationLabel(type) {
+  if (!type) return "Chỉ số";
+  const cleanType = type.replace(/_(max|min|high|low)$/, "");
   const labels = {
     temperature: "Nhiệt độ",
     heart_rate: "Nhịp tim",
@@ -190,8 +192,10 @@ function getViolationLabel(type) {
     blood_pressure_systolic: "Huyết áp tâm thu",
     blood_pressure_diastolic: "Huyết áp tâm trương",
     glucose: "Đường huyết",
+    sys: "Huyết áp tâm thu",
+    bp_diastolic: "Huyết áp tâm trương"
   };
-  return labels[type] || type;
+  return labels[cleanType] || labels[type] || type;
 }
 
 function getUnit(type) {
@@ -781,6 +785,7 @@ export default function ChatDetailScreen() {
                     ? alertsCache[item.message.relatedAlertId]
                     : null;
                   const isHigh = cachedAlert?.severity === "high";
+                  const isMedium = cachedAlert?.severity === "medium";
                   const violations = cachedAlert?.violations ?? [];
 
                   return (
@@ -788,13 +793,13 @@ export default function ChatDetailScreen() {
                       <View
                         style={[
                           styles.systemAvatar,
-                          isHigh ? styles.systemAvatarHigh : styles.systemAvatarWarn,
+                          isHigh ? styles.systemAvatarHigh : isMedium ? styles.systemAvatarWarn : styles.systemAvatarInfo,
                         ]}
                       >
                         <Ionicons
                           name="shield-checkmark"
                           size={16}
-                          color={isHigh ? "#DC2626" : "#D97706"}
+                          color={isHigh ? "#DC2626" : isMedium ? "#D97706" : "#2563EB"}
                         />
                       </View>
 
@@ -805,25 +810,25 @@ export default function ChatDetailScreen() {
                             <View
                               style={[
                                 styles.systemSeverityBadge,
-                                isHigh ? styles.severityHigh : styles.severityWarn,
+                                isHigh ? styles.severityHigh : isMedium ? styles.severityWarn : styles.severityInfo,
                               ]}
                             >
                               <Text
                                 style={[
                                   styles.systemSeverityText,
-                                  isHigh ? styles.severityHighText : styles.severityWarnText,
+                                  isHigh ? styles.severityHighText : isMedium ? styles.severityWarnText : styles.severityInfoText,
                                 ]}
                               >
-                                {isHigh ? "Nguy kịch" : "Cảnh báo"}
+                                {isHigh ? "Nguy kịch" : isMedium ? "Cảnh báo" : "Nhẹ"}
                               </Text>
                             </View>
                           ) : null}
                         </View>
 
-                        <View style={[styles.systemCard, isHigh ? styles.systemCardHigh : styles.systemCardWarn]}>
+                        <View style={[styles.systemCard, isHigh ? styles.systemCardHigh : isMedium ? styles.systemCardWarn : styles.systemCardInfo]}>
                           {violations.length > 0 && (
                             <View style={styles.violationsBlock}>
-                              <Text style={[styles.violationsTitle, isHigh ? styles.violationsTitleHigh : styles.violationsTitleWarn]}>
+                              <Text style={[styles.violationsTitle, isHigh ? styles.violationsTitleHigh : isMedium ? styles.violationsTitleWarn : styles.violationsTitleInfo]}>
                                 {violations.length} chỉ số vượt ngưỡng
                               </Text>
                               <View style={styles.violationsGrid}>
@@ -832,11 +837,11 @@ export default function ChatDetailScreen() {
                                     key={idx}
                                     style={[
                                       styles.violationItem,
-                                      v.severity === "high" ? styles.violationItemHigh : styles.violationItemWarn,
+                                      v.severity === "high" ? styles.violationItemHigh : v.severity === "medium" ? styles.violationItemWarn : styles.violationItemInfo,
                                     ]}
                                   >
                                     <Text style={styles.violationLabel}>{getViolationLabel(v.type)}</Text>
-                                    <Text style={[styles.violationValue, v.severity === "high" ? styles.violationValueHigh : styles.violationValueWarn]}>
+                                    <Text style={[styles.violationValue, v.severity === "high" ? styles.violationValueHigh : v.severity === "medium" ? styles.violationValueWarn : styles.violationValueInfo]}>
                                       {v.observed} {getUnit(v.type)}
                                     </Text>
                                     <Text style={styles.violationThreshold}>Ngưỡng: {v.threshold}</Text>
@@ -846,7 +851,7 @@ export default function ChatDetailScreen() {
                             </View>
                           )}
 
-                          <Text style={[styles.systemMsgText, isHigh ? styles.systemMsgTextHigh : styles.systemMsgTextWarn]}>
+                          <Text style={[styles.systemMsgText, isHigh ? styles.systemMsgTextHigh : isMedium ? styles.systemMsgTextWarn : styles.systemMsgTextInfo]}>
                             {item.message.content}
                           </Text>
 
@@ -1274,21 +1279,26 @@ const styles = StyleSheet.create({
   },
   systemAvatarHigh: { backgroundColor: "#FEE2E2" },
   systemAvatarWarn: { backgroundColor: "#FEF3C7" },
+  systemAvatarInfo: { backgroundColor: "#DBEAFE" },
   systemMsgBody: { flex: 1 },
   systemMsgHeader: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 },
   systemSenderLabel: { fontSize: 12, fontWeight: "700", color: "#4B5563" },
   systemSeverityBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
   severityHigh: { backgroundColor: "#FEE2E2" },
   severityWarn: { backgroundColor: "#FEF3C7" },
+  severityInfo: { backgroundColor: "#DBEAFE" },
   systemSeverityText: { fontSize: 9, fontWeight: "700" },
   severityHighText: { color: "#DC2626" },
   severityWarnText: { color: "#B45309" },
+  severityInfoText: { color: "#1D4ED8" },
   systemCard: { borderRadius: 12, padding: 12, borderWidth: 1 },
   systemCardHigh: { backgroundColor: "#FFF5F5", borderColor: "#FCA5A5" },
   systemCardWarn: { backgroundColor: "#FFFBEB", borderColor: "#FDE68A" },
+  systemCardInfo: { backgroundColor: "#F8FAFC", borderColor: "#E2E8F0" },
   systemMsgText: { fontSize: 13, lineHeight: 18 },
   systemMsgTextHigh: { color: "#7F1D1D" },
   systemMsgTextWarn: { color: "#78350F" },
+  systemMsgTextInfo: { color: "#1E3A8A" },
   systemMsgFooter: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 8 },
   systemMsgTime: { fontSize: 10, color: "#9CA3AF" },
   systemMsgStatus: { fontSize: 10, color: "#9CA3AF" },
@@ -1296,14 +1306,17 @@ const styles = StyleSheet.create({
   violationsTitle: { fontSize: 11, fontWeight: "700", textTransform: "uppercase" },
   violationsTitleHigh: { color: "#DC2626" },
   violationsTitleWarn: { color: "#D97706" },
+  violationsTitleInfo: { color: "#1D4ED8" },
   violationsGrid: { gap: 6 },
   violationItem: { padding: 8, borderRadius: 8, borderWidth: 1 },
   violationItemHigh: { backgroundColor: "#FFF", borderColor: "#FEE2E2" },
   violationItemWarn: { backgroundColor: "#FFF", borderColor: "#FEF3C7" },
+  violationItemInfo: { backgroundColor: "#DBEAFE", borderColor: "#BFDBFE" },
   violationLabel: { fontSize: 11, color: "#4B5563" },
   violationValue: { fontSize: 13, fontWeight: "700", marginVertical: 2 },
   violationValueHigh: { color: "#DC2626" },
   violationValueWarn: { color: "#D97706" },
+  violationValueInfo: { color: "#1D4ED8" },
   violationThreshold: { fontSize: 9, color: "#9CA3AF" },
   messageWrapper: { flexDirection: "row", marginVertical: 2 },
   messageWrapperLeft: { justifyContent: "flex-start" },

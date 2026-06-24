@@ -25,6 +25,7 @@ func RegisterRoutes(r *gin.Engine, c *container.MainServerContainer) {
 	RegisterNotificationRoutes(r, c)
 	RegisterRealtimeRoutes(r, c)
 	RegisterActivityLogRoutes(r, c)
+	RegisterVideoSessionRoutes(r, c)
 	// Health check endpoint
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{

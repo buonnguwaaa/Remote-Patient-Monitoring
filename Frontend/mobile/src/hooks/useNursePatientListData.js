@@ -94,7 +94,7 @@ function buildLastMeasurements(measurement) {
     glucose: (() => {
       const glucVal = measurement?.glucose ? (typeof measurement.glucose === "object" ? measurement.glucose.bloodGlucose : measurement.glucose) : null;
       return hasPositiveNumber(glucVal)
-        ? { value: glucVal, timing: measurement?.timing || "" }
+        ? { value: glucVal, timing: measurement?.mealTiming || measurement?.timing || "" }
         : null;
     })(),
     spo2: hasPositiveNumber(measurement?.spo2) ? { value: measurement.spo2 } : null,
@@ -128,7 +128,7 @@ function buildAlertsSummaryMap(alerts = []) {
     };
 
     currentSummary.total += 1;
-    if (alert?.severity === "high") {
+    if (alert?.severity === "high" || alert?.severity === "medium") {
       currentSummary.high += 1;
     }
 
@@ -296,7 +296,7 @@ export function useNursePatientListData(currentUser) {
           async (assignment) => {
             const [patientResponse, measurementResponse] = await Promise.all([
               getPatientById(assignment.patientId),
-              getMeasurements(assignment.patientId, undefined, undefined, true),
+              getMeasurements({ patientId: assignment.patientId, latest: true }),
             ]);
 
             const profile = patientResponse.ok

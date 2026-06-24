@@ -433,7 +433,7 @@ export default function PrescriptionPage() {
   const [currentPage, setCurrentPage] = useState(1);
 
   // Flow panel state — track after last create
-  const [lastCreatedPrescriptionId, setLastCreatedPrescriptionId] = useState<string | null>(null);
+  // Flow panel state — track after last create
 
   // ---- Derived ----
   const patientOptions = useMemo(() => {
@@ -478,9 +478,7 @@ export default function PrescriptionPage() {
   }, [reminders]);
 
   // Flow verification
-  const flowStep1 = lastCreatedPrescriptionId !== null;
-  const flowStep2 = flowStep1 && reminders.some((r) => r.prescriptionId === lastCreatedPrescriptionId);
-  const flowStep3 = flowStep1 && (adherence?.summary.expected ?? 0) > 0;
+  // Flow verification
 
   // ---- Data loading ----
   const loadPatients = async () => {
@@ -796,8 +794,8 @@ export default function PrescriptionPage() {
         });
         showToast(t("prescriptions.updateSuccess"), "success");
       } else {
-        const created = await createPrescription(base);
-        setLastCreatedPrescriptionId(created.id);
+        await createPrescription(base);
+
         showToast(t("prescriptions.createSuccess"), "success");
       }
 

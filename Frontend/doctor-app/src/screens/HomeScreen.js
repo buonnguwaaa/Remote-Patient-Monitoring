@@ -14,7 +14,7 @@ import { useAuth } from "../context/AuthContext";
 import { getMyPatients, getAlerts } from "../api/patientApi";
 
 function isAttentionAlert(alert) {
-  return alert.severity === "high" && alert.status === "open";
+  return (alert.severity === "high" || alert.severity === "medium") && alert.status === "open";
 }
 
 function timeAgo(dateStr) {
@@ -185,6 +185,7 @@ export default function HomeScreen({ onNavigate }) {
         ) : (
           recentAlerts.map((alert, idx) => {
             const isHigh = alert.severity === "high";
+            const isMedium = alert.severity === "medium";
             return (
               <TouchableOpacity
                 key={alert.id}
@@ -192,11 +193,11 @@ export default function HomeScreen({ onNavigate }) {
                 onPress={() => handleNavigate("Alerts")}
                 activeOpacity={0.7}
               >
-                <View style={[styles.alertIcon, { backgroundColor: isHigh ? "#FEF2F2" : "#FFFBEB" }]}>
+                <View style={[styles.alertIcon, { backgroundColor: isHigh ? "#FEF2F2" : isMedium ? "#FFFBEB" : "#EFF6FF" }]}>
                   <Ionicons
-                    name={isHigh ? "warning-outline" : "information-circle-outline"}
+                    name={isHigh ? "warning-outline" : isMedium ? "warning-outline" : "information-circle-outline"}
                     size={16}
-                    color={isHigh ? "#DC2626" : "#D97706"}
+                    color={isHigh ? "#DC2626" : isMedium ? "#D97706" : "#2563EB"}
                   />
                 </View>
                 <View style={{ flex: 1 }}>
