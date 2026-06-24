@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -9,10 +9,13 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../context/AuthContext";
+import * as SecureStore from "expo-secure-store";
+import * as LocalAuthentication from "expo-local-authentication";
 
 export default function LoginScreen() {
   const { login } = useAuth();
@@ -22,6 +25,61 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [hasBiometric, setHasBiometric] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const bioEnabled = await SecureStore.getItemAsync("doctor_biometric_enabled");
+      if (bioEnabled === "true") {
+        setHasBiometric(true);
+        setTimeout(() => {
+          handleBiometricLogin();
+        }, 600);
+      }
+    })();
+  }, []);
+
+  const handleBiometricLogin = async () => {
+    try {
+      const bioEnabled = await SecureStore.getItemAsync("doctor_biometric_enabled");
+      if (bioEnabled !== "true") {
+        Alert.alert("Chưa kích hoạt", "Vui lòng đăng nhập bằng mật khẩu trước và bật sinh trắc học trong phần Cài đặt.");
+        return;
+      }
+
+      const hasHardware = await LocalAuthentication.hasHardwareAsync();
+      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+      if (!hasHardware || !isEnrolled) {
+        Alert.alert("Lỗi", "Thiết bị này không hỗ trợ hoặc chưa đăng ký sinh trắc học.");
+        return;
+      }
+
+      const authRes = await LocalAuthentication.authenticateAsync({
+        promptMessage: "Đăng nhập bằng sinh trắc học",
+        cancelLabel: "Hủy",
+      });
+
+      if (authRes.success) {
+        const savedEmail = await SecureStore.getItemAsync("doctor_email");
+        const savedPassword = await SecureStore.getItemAsync("doctor_password");
+
+        if (savedEmail && savedPassword) {
+          setError("");
+          setLoading(true);
+          const result = await login(savedEmail, savedPassword);
+          setLoading(false);
+          if (!result.ok) {
+            setError(result.error || "Đăng nhập sinh trắc học thất bại.");
+          }
+        } else {
+          Alert.alert("Lỗi", "Không tìm thấy thông tin đăng nhập đã lưu.");
+        }
+      }
+    } catch (e) {
+      console.error(e);
+      Alert.alert("Lỗi", "Đã xảy ra lỗi khi xác thực sinh trắc học.");
+    }
+  };
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
@@ -118,16 +176,20 @@ export default function LoginScreen() {
               )}
             </TouchableOpacity>
 
-            <View style={styles.dividerRow}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>hoặc</Text>
-              <View style={styles.dividerLine} />
-            </View>
+            {hasBiometric && (
+              <>
+                <View style={styles.dividerRow}>
+                  <View style={styles.dividerLine} />
+                  <Text style={styles.dividerText}>hoặc</Text>
+                  <View style={styles.dividerLine} />
+                </View>
 
-            <TouchableOpacity style={styles.biometricBtn} onPress={() => {}} activeOpacity={0.8}>
-              <Ionicons name="scan-outline" size={22} color="#2563EB" />
-              <Text style={styles.biometricText}>Đăng nhập sinh trắc học</Text>
-            </TouchableOpacity>
+                <TouchableOpacity style={styles.biometricBtn} onPress={handleBiometricLogin} activeOpacity={0.8}>
+                  <Ionicons name="scan-outline" size={22} color="#2563EB" />
+                  <Text style={styles.biometricText}>Đăng nhập sinh trắc học</Text>
+                </TouchableOpacity>
+              </>
+            )}
           </View>
 
           <Text style={styles.footer}>

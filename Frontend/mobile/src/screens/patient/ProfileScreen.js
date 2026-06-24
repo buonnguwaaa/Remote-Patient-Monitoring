@@ -11,6 +11,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   Modal,
+  Switch,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons, MaterialIcons, FontAwesome5 } from "@expo/vector-icons";
@@ -180,8 +182,62 @@ function ValidationMessage({ message }) {
 }
 
 export default function ProfileScreen() {
-  const { logout, updateUser } = useAuth();
+  const { logout, updateUser, isBiometricEnabled, enableBiometric, disableBiometric, sessionPassword } = useAuth();
   const { showSuccess, showError, showWarning } = useSnackbar();
+  const [biometricLoading, setBiometricLoading] = useState(false);
+
+  const handleToggleBiometric = async () => {
+    if (isBiometricEnabled) {
+      const res = await disableBiometric();
+      if (!res.ok) {
+        Alert.alert("Lỗi", res.error);
+      }
+    } else {
+      if (!sessionPassword) {
+        if (Platform.OS === "ios") {
+          Alert.prompt(
+            "Xác nhận mật khẩu",
+            "Vui lòng nhập mật khẩu tài khoản của bạn để bật tính năng này:",
+            [
+              { text: "Hủy", style: "cancel" },
+              {
+                text: "Xác nhận",
+                onPress: async (pwd) => {
+                  if (!pwd) {
+                    Alert.alert("Lỗi", "Mật khẩu không được để trống.");
+                    return;
+                  }
+                  setBiometricLoading(true);
+                  const res = await enableBiometric(pwd);
+                  setBiometricLoading(false);
+                  if (!res.ok) {
+                    Alert.alert("Lỗi", res.error);
+                  } else {
+                    Alert.alert("Thành công", "Đã bật đăng nhập sinh trắc học.");
+                  }
+                },
+              },
+            ],
+            "secure-text"
+          );
+        } else {
+          Alert.alert(
+            "Yêu cầu đăng nhập lại",
+            "Vì lý do bảo mật, vui lòng đăng xuất và đăng nhập lại bằng mật khẩu để có thể kích hoạt tính năng sinh trắc học trên thiết bị này."
+          );
+        }
+      } else {
+        setBiometricLoading(true);
+        const res = await enableBiometric();
+        setBiometricLoading(false);
+        if (!res.ok) {
+          Alert.alert("Lỗi", res.error);
+        } else {
+          Alert.alert("Thành công", "Đã bật đăng nhập sinh trắc học.");
+        }
+      }
+    }
+  };
 
   const [editMode, setEditMode] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -859,6 +915,28 @@ export default function ProfileScreen() {
                   
                 </Text>
               </View>
+            </View>
+
+            <View style={styles.infoDivider} />
+
+            <View style={[styles.settingInfoRow, { alignItems: 'center' }]}>
+              <Ionicons name="finger-print-outline" size={18} color="#2563EB" />
+              <View style={styles.settingContent}>
+                <Text style={styles.settingLabel}>Đăng nhập vân tay / Face ID</Text>
+                <Text style={styles.settingSub}>
+                  Sử dụng sinh trắc học để đăng nhập nhanh
+                </Text>
+              </View>
+              {biometricLoading ? (
+                <ActivityIndicator size="small" color="#2563EB" />
+              ) : (
+                <Switch
+                  value={isBiometricEnabled}
+                  onValueChange={handleToggleBiometric}
+                  trackColor={{ false: "#D1D5DB", true: "#93C5FD" }}
+                  thumbColor={isBiometricEnabled ? "#2563EB" : "#F3F4F6"}
+                />
+              )}
             </View>
           </View>
 

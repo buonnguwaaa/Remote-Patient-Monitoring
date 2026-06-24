@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,10 @@ import {
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
+  Alert,
 } from 'react-native';
+import * as SecureStore from 'expo-secure-store';
+import * as LocalAuthentication from 'expo-local-authentication';
 import ButtonPrimary from '../../components/ButtonPrimary';
 import { Feather, FontAwesome } from '@expo/vector-icons';
 import styles from '../../styles/login';
@@ -42,6 +45,69 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const { login, saveGoogleTokens, updateUser } = useAuth();
+  const [hasBiometric, setHasBiometric] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const bioEnabled = await SecureStore.getItemAsync("patient_biometric_enabled");
+      if (bioEnabled === "true") {
+        setHasBiometric(true);
+        setTimeout(() => {
+          handleBiometricLogin();
+        }, 600);
+      }
+    })();
+  }, []);
+
+  const handleBiometricLogin = async () => {
+    try {
+      const bioEnabled = await SecureStore.getItemAsync("patient_biometric_enabled");
+      if (bioEnabled !== "true") {
+        Alert.alert("Chưa kích hoạt", "Vui lòng đăng nhập bằng mật khẩu trước và kích hoạt sinh trắc học ở màn hình Hồ sơ.");
+        return;
+      }
+
+      const hasHardware = await LocalAuthentication.hasHardwareAsync();
+      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+      if (!hasHardware || !isEnrolled) {
+        Alert.alert("Lỗi", "Thiết bị không hỗ trợ hoặc chưa đăng ký sinh trắc học.");
+        return;
+      }
+
+      const authRes = await LocalAuthentication.authenticateAsync({
+        promptMessage: "Đăng nhập bằng sinh trắc học",
+        cancelLabel: "Hủy",
+      });
+
+      if (authRes.success) {
+        const savedEmail = await SecureStore.getItemAsync("patient_email");
+        const savedPassword = await SecureStore.getItemAsync("patient_password");
+
+        if (savedEmail && savedPassword) {
+          setLoading(true);
+          const res = await login(savedEmail, savedPassword);
+          setLoading(false);
+          if (!res.ok) {
+            Alert.alert("Đăng nhập thất bại", String(res.error?.error || res.error || "Lỗi xác thực"));
+            return;
+          }
+
+          if (onLoginSuccess) {
+            try {
+              await onLoginSuccess(res.data || null);
+            } catch (e) {
+              // noop
+            }
+          }
+        } else {
+          Alert.alert("Lỗi", "Không tìm thấy thông tin đăng nhập đã lưu.");
+        }
+      }
+    } catch (e) {
+      console.error(e);
+      Alert.alert("Lỗi", "Đã xảy ra lỗi khi xác thực sinh trắc học.");
+    }
+  };
 
   const handleSubmit = () => {
     setLoading(true);
@@ -120,14 +186,16 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
             style={{ marginTop: 10 }}
           />
 
-          <TouchableOpacity
-            style={biometricStyle.btn}
-            onPress={() => {}}
-            activeOpacity={0.8}
-          >
-            <Feather name="unlock" size={18} color="#030213" style={{ marginRight: 8 }} />
-            <Text style={biometricStyle.text}>Sign in with Biometrics</Text>
-          </TouchableOpacity>
+          {hasBiometric && (
+            <TouchableOpacity
+              style={biometricStyle.btn}
+              onPress={handleBiometricLogin}
+              activeOpacity={0.8}
+            >
+              <Feather name="unlock" size={18} color="#030213" style={{ marginRight: 8 }} />
+              <Text style={biometricStyle.text}>Sign in with Biometrics</Text>
+            </TouchableOpacity>
+          )}
 
           <View style={styles.dividerWrap}>
             <View style={styles.divider} />

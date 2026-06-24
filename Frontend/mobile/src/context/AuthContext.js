@@ -2,6 +2,8 @@ import React, { createContext, useEffect, useState } from "react";
 import * as authApi from "../api/authApi";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
+import * as SecureStore from "expo-secure-store";
+import * as LocalAuthentication from "expo-local-authentication";
 
 let CookieManager = null;
 if (Platform.OS !== "web") {
@@ -37,10 +39,15 @@ function extractUserPayload(response) {
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [initializing, setInitializing] = useState(true);
+  const [isBiometricEnabled, setIsBiometricEnabled] = useState(false);
+  const [sessionPassword, setSessionPassword] = useState(null);
 
   useEffect(() => {
     (async () => {
       try {
+        const bioEnabled = await SecureStore.getItemAsync("patient_biometric_enabled");
+        setIsBiometricEnabled(bioEnabled === "true");
+
         const response = await authApi.me();
         setUser(extractUserPayload(response));
       } catch (error) {
@@ -86,9 +93,11 @@ export function AuthProvider({ children }) {
     const meUser = extractUserPayload(meResponse);
     if (meUser) {
       setUser(meUser);
+      setSessionPassword(password);
       return { ok: true, data: meUser };
     }
 
+    setSessionPassword(password);
     return { ok: true, data: loginResponse.body };
   };
 
@@ -140,6 +149,53 @@ export function AuthProvider({ children }) {
     } catch (e) {}
 
     setUser(null);
+    setSessionPassword(null);
+  };
+
+  const enableBiometric = async (passwordInput) => {
+    try {
+      const hasHardware = await LocalAuthentication.hasHardwareAsync();
+      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+      if (!hasHardware || !isEnrolled) {
+        return { ok: false, error: "Thiết bị không hỗ trợ hoặc chưa đăng ký sinh trắc học." };
+      }
+
+      const authRes = await LocalAuthentication.authenticateAsync({
+        promptMessage: "Xác thực sinh trắc học để kích hoạt đăng nhập nhanh",
+        cancelLabel: "Hủy",
+      });
+
+      if (!authRes.success) {
+        return { ok: false, error: "Xác thực sinh trắc học thất bại." };
+      }
+
+      const emailToSave = user?.email;
+      const passwordToSave = passwordInput || sessionPassword;
+
+      if (!emailToSave || !passwordToSave) {
+        return { ok: false, error: "Không tìm thấy mật khẩu phiên. Vui lòng nhập mật khẩu để xác nhận." };
+      }
+
+      await SecureStore.setItemAsync("patient_email", emailToSave);
+      await SecureStore.setItemAsync("patient_password", passwordToSave);
+      await SecureStore.setItemAsync("patient_biometric_enabled", "true");
+      setIsBiometricEnabled(true);
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: e.message || "Lỗi khi bật sinh trắc học." };
+    }
+  };
+
+  const disableBiometric = async () => {
+    try {
+      await SecureStore.deleteItemAsync("patient_email");
+      await SecureStore.deleteItemAsync("patient_password");
+      await SecureStore.setItemAsync("patient_biometric_enabled", "false");
+      setIsBiometricEnabled(false);
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: e.message || "Lỗi khi tắt sinh trắc học." };
+    }
   };
 
   const refreshSession = async () => {
@@ -186,6 +242,10 @@ export function AuthProvider({ children }) {
         refreshSession,
         updateUser,
         saveGoogleTokens,
+        isBiometricEnabled,
+        sessionPassword,
+        enableBiometric,
+        disableBiometric,
       }}
     >
       {children}

@@ -53,7 +53,8 @@
         }
       ],
       "./plugins/withCleartextTraffic",
-      "./plugins/withNotificationSound"
+      "./plugins/withNotificationSound",
+      "expo-secure-store"
     ],
     "extra": {
       "eas": {

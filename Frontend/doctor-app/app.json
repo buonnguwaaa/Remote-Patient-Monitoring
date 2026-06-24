@@ -31,7 +31,8 @@
     "plugins": [
       "expo-dev-client",
       "./plugins/withCleartextTraffic",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "expo-secure-store"
     ],
     "extra": {
       "eas": {
