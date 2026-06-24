@@ -17,7 +17,6 @@ import { FaRegMessage } from "react-icons/fa6";
 import { 
   FaNotesMedical, 
   FaCalendarAlt, 
-  FaVideo,
   FaIdCard,
   FaBirthdayCake,
   FaVenusMars,

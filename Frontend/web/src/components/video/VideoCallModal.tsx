@@ -32,7 +32,7 @@ export default function VideoCallModal({
   onClose,
 }: VideoCallModalProps) {
   const [callState, setCallState] = useState<CallState>("creating");
-  const [session, setSession] = useState<VideoSessionResponse | null>(null);
+
   const [joinUrl, setJoinUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const sessionRef = useRef<VideoSessionResponse | null>(null);
@@ -55,14 +55,14 @@ export default function VideoCallModal({
         }
         
         if (cancelled) return;
-        setSession(currentSession);
+
         sessionRef.current = currentSession;
         setCallState("waiting");
 
         // 2. Doctor immediately joins to get the joinUrl.
         const joined = await joinVideoSession(currentSession.id);
         if (cancelled) return;
-        setSession(joined);
+
         sessionRef.current = joined;
         if (joined.joinUrl) {
           setJoinUrl(joined.joinUrl);
