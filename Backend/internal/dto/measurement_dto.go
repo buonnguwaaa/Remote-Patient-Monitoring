@@ -9,11 +9,11 @@ import (
 type CreateMeasurementRequest struct {
 	PatientID string `json:"patientId" validate:"required"`
 
-	Temperature     float64              `json:"temperature"`
-	HeartRate       float64              `json:"heartRate"`
-	RespiratoryRate float64              `json:"respiratoryRate"`
-	SpO2            float64              `json:"spo2"`
-	BloodPressure   domain.BloodPressure `json:"bloodPressure"`
+	Temperature     *float64             `json:"temperature,omitempty"`
+	HeartRate       *float64             `json:"heartRate,omitempty"`
+	RespiratoryRate *float64             `json:"respiratoryRate,omitempty"`
+	SpO2            *float64             `json:"spo2,omitempty"`
+	BloodPressure   domain.BloodPressure `json:"bloodPressure,omitempty"`
 
 	Height *float64 `json:"height,omitempty"`
 	Weight *float64 `json:"weight,omitempty"`
@@ -25,17 +25,17 @@ type CreateMeasurementRequest struct {
 }
 
 type UpdateMeasurementRequest struct {
-	Temperature     float64 `json:"temperature,omitempty"`
-	HeartRate       float64 `json:"heartRate,omitempty"`
-	RespiratoryRate float64 `json:"respiratoryRate,omitempty"`
-	SpO2            float64 `json:"spo2,omitempty"`
+	Temperature     *float64 `json:"temperature,omitempty"`
+	HeartRate       *float64 `json:"heartRate,omitempty"`
+	RespiratoryRate *float64 `json:"respiratoryRate,omitempty"`
+	SpO2            *float64 `json:"spo2,omitempty"`
 
-	BloodPressure domain.BloodPressure `json:"bloodPressure,omitempty"`
+	BloodPressure *domain.BloodPressure `json:"bloodPressure,omitempty"`
 
 	Height *float64 `json:"height,omitempty"`
 	Weight *float64 `json:"weight,omitempty"`
 
-	Glucose    domain.Glucose     `json:"glucose,omitempty"`
+	Glucose    *domain.Glucose     `json:"glucose,omitempty"`
 	MealTiming *domain.MealTiming `json:"mealTiming,omitempty"`
 	Device     *string            `json:"device,omitempty"`
 	Note       *string            `json:"note,omitempty"`
@@ -45,18 +45,19 @@ type MeasurementResponse struct {
 	ID        string `json:"id"`
 	PatientID string `json:"patientId"`
 
-	Temperature     float64              `json:"temperature"`
-	HeartRate       float64              `json:"heartRate"`
-	RespiratoryRate float64              `json:"respiratoryRate"`
-	SpO2            float64              `json:"spo2"`
-	BloodPressure   domain.BloodPressure `json:"bloodPressure"`
+	Temperature     *float64 `json:"temperature,omitempty"`
+	HeartRate       *float64 `json:"heartRate,omitempty"`
+	RespiratoryRate *float64 `json:"respiratoryRate,omitempty"`
+	SpO2            *float64 `json:"spo2,omitempty"`
+
+	BloodPressure domain.BloodPressure `json:"bloodPressure,omitempty"`
 
 	Height *float64 `json:"height,omitempty"`
 	Weight *float64 `json:"weight,omitempty"`
 	BMI    *float64 `json:"bmi,omitempty"`
 
-	Glucose    domain.Glucose         `json:"glucose"`
-	MealTiming *domain.MealTiming     `json:"mealTiming,omitempty"`
+	Glucose    domain.Glucose     `json:"glucose"`
+	MealTiming *domain.MealTiming `json:"mealTiming,omitempty"`
 
 	Device *string `json:"device,omitempty"`
 	Note   *string `json:"note,omitempty"`

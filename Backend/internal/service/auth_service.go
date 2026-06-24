@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
@@ -26,7 +25,7 @@ const (
 	LocalProvider  = "local"
 	GoogleProvider = "google"
 
-	ActivationOTPLength = 6
+	ActivationOTPLength   = 6
 	ActivationOTPTTL      = 15 * time.Minute
 	ResetPasswordTokenTTL = 15 * time.Minute
 )
@@ -263,22 +262,21 @@ func (s *authService) ForgotPassword(ctx context.Context, input *usecase.ForgotP
 		return nil
 	}
 
-	token, err := util.GenerateRandomToken(32)
+	otp, err := util.GenerateNumericOTP(6)
 	if err != nil {
-		return fmt.Errorf("failed to generate token: %w", err)
+		return fmt.Errorf("failed to generate otp: %w", err)
 	}
 
-	tokenHash := util.HashTokenSHA256(token)
+	tokenHash := util.HashTokenSHA256(otp)
 	expires := time.Now().Add(ResetPasswordTokenTTL)
 
 	if err := s.baseUserRepo.SetResetToken(ctx, email, tokenHash, expires); err != nil {
 		return err
 	}
 
-	resetURI := fmt.Sprintf("%s/reset-password?token=%s", os.Getenv("FE_WEB_URL"), token)
 	go func() {
 		if err := util.SendEmail(u.Email, constant.SubjectResetPassword,
-			fmt.Sprintf(constant.ResetPasswordEmailTemplate, u.Name, resetURI)); err != nil {
+			fmt.Sprintf(constant.ResetPasswordEmailTemplate, u.Name, otp, int(ResetPasswordTokenTTL.Minutes()))); err != nil {
 			log.Printf("failed to send reset password email: %v", err)
 		}
 	}()
@@ -287,17 +285,23 @@ func (s *authService) ForgotPassword(ctx context.Context, input *usecase.ForgotP
 }
 
 func (s *authService) ResetPassword(ctx context.Context, input *usecase.ResetPasswordInput) error {
-	if strings.TrimSpace(input.Token) == "" {
-		return errors.New("missing token")
+	email := strings.ToLower(strings.TrimSpace(input.Email))
+	otp := strings.TrimSpace(input.OTP)
+
+	if email == "" {
+		return errors.New("missing email")
+	}
+	if otp == "" {
+		return errors.New("missing otp")
 	}
 	if input.NewPassword != input.ConfirmedNewPassword {
 		return errors.New("password and confirmed password do not match")
 	}
 
-	hashedToken := util.HashTokenSHA256(input.Token)
-	u, err := s.baseUserRepo.FindByResetToken(ctx, hashedToken)
+	hashedOTP := util.HashTokenSHA256(otp)
+	u, err := s.baseUserRepo.FindByEmailAndResetOTP(ctx, email, hashedOTP)
 	if err != nil {
-		return errors.New("invalid or expired token")
+		return errors.New("invalid or expired otp")
 	}
 
 	hashedPwd, err := util.HashPassword(input.NewPassword)

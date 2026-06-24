@@ -44,8 +44,13 @@ func (s *measurementService) CreateMeasurement(ctx context.Context, input *useca
 		return nil, fmt.Errorf("user not found or not patient")
 	}
 
-	mapValue := calculateMAP(input.BloodPressure.Systolic, input.BloodPressure.Diastolic)
-	input.BloodPressure.MAP = &mapValue
+	// Tính MAP chỉ khi cả systolic và diastolic có giá trị
+	bp := input.BloodPressure
+	if bp.Systolic != nil && bp.Diastolic != nil {
+		mapValue := calculateMAP(*bp.Systolic, *bp.Diastolic)
+		bp.MAP = &mapValue
+	}
+
 	bmi := calculateBMI(input.Height, input.Weight)
 
 	measurement := &domain.Measurement{
@@ -54,7 +59,7 @@ func (s *measurementService) CreateMeasurement(ctx context.Context, input *useca
 		HeartRate:       input.HeartRate,
 		RespiratoryRate: input.RespiratoryRate,
 		SpO2:            input.SpO2,
-		BloodPressure:   input.BloodPressure,
+		BloodPressure:   bp,
 		Height:          input.Height,
 		Weight:          input.Weight,
 		BMI:             bmi,
@@ -91,37 +96,60 @@ func (s *measurementService) UpdateMeasurement(ctx context.Context, input *useca
 		return nil, fmt.Errorf("measurement not found")
 	}
 
-	mapValue := calculateMAP(input.BloodPressure.Systolic, input.BloodPressure.Diastolic)
-	input.BloodPressure.MAP = &mapValue
-
-	height := input.Height
-	if height == nil {
-		height = existing.Height
+	if input.Temperature != nil {
+		existing.Temperature = input.Temperature
 	}
-	weight := input.Weight
-	if weight == nil {
-		weight = existing.Weight
+	if input.HeartRate != nil {
+		existing.HeartRate = input.HeartRate
 	}
-	bmi := calculateBMI(height, weight)
-
-	newMeasurement := &domain.Measurement{
-		ID:              id,
-		Temperature:     input.Temperature,
-		HeartRate:       input.HeartRate,
-		RespiratoryRate: input.RespiratoryRate,
-		SpO2:            input.SpO2,
-		BloodPressure:   input.BloodPressure,
-		Height:          input.Height,
-		Weight:          input.Weight,
-		BMI:             bmi,
-		Glucose:         input.Glucose,
-		MealTiming:      input.MealTiming,
-		Device:          input.Device,
-		Note:            input.Note,
-		UpdatedAt:       time.Now().UTC(),
+	if input.RespiratoryRate != nil {
+		existing.RespiratoryRate = input.RespiratoryRate
+	}
+	if input.SpO2 != nil {
+		existing.SpO2 = input.SpO2
 	}
 
-	updated, err := s.measurementRepo.Update(ctx, newMeasurement)
+	if input.BloodPressure != nil {
+		if input.BloodPressure.Systolic != nil {
+			existing.BloodPressure.Systolic = input.BloodPressure.Systolic
+		}
+		if input.BloodPressure.Diastolic != nil {
+			existing.BloodPressure.Diastolic = input.BloodPressure.Diastolic
+		}
+	}
+
+	if existing.BloodPressure.Systolic != nil && existing.BloodPressure.Diastolic != nil {
+		mapValue := calculateMAP(*existing.BloodPressure.Systolic, *existing.BloodPressure.Diastolic)
+		existing.BloodPressure.MAP = &mapValue
+	}
+
+	if input.Height != nil {
+		existing.Height = input.Height
+	}
+	if input.Weight != nil {
+		existing.Weight = input.Weight
+	}
+	existing.BMI = calculateBMI(existing.Height, existing.Weight)
+
+	if input.Glucose != nil {
+		if input.Glucose.BloodGlucose != nil {
+			existing.Glucose.BloodGlucose = input.Glucose.BloodGlucose
+		}
+	}
+
+	if input.MealTiming != nil {
+		existing.MealTiming = input.MealTiming
+	}
+	if input.Device != nil {
+		existing.Device = input.Device
+	}
+	if input.Note != nil {
+		existing.Note = input.Note
+	}
+
+	existing.UpdatedAt = time.Now().UTC()
+
+	updated, err := s.measurementRepo.Update(ctx, existing)
 	if err != nil {
 		return nil, err
 	}

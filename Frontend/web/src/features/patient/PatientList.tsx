@@ -41,7 +41,7 @@ const PatientList = () => {
           let status: PatientItem["status"] = t("patients.normal");
 
           const latestAlert = latestAlertByPatient.get(assignment.patientId);
-          if (latestAlert && latestAlert.severity === "high" && latestAlert.status === "open") {
+          if (latestAlert && (latestAlert.severity === "high" || latestAlert.severity === "medium") && latestAlert.status === "open") {
             status = t("patients.warning");
           }
 
@@ -90,7 +90,7 @@ const PatientList = () => {
     {
       header: t("patients.index"),
       render: (patient) => <span className="font-bold">{filteredPatients.indexOf(patient) + 1}</span>,
-      className: "w-10",
+      className: "w-10 px-3",
     },
     {
       header: t("patients.patientCode"),
@@ -272,7 +272,7 @@ const PatientList = () => {
       </div>
 
       <div className="hidden md:block">
-        <Table data={filteredPatients} columns={columns} onRowClick={clickedRow} itemsPerPage={8} />
+        <Table data={filteredPatients} columns={columns} onRowClick={clickedRow} itemsPerPage={20} />
       </div>
     </div>
   );

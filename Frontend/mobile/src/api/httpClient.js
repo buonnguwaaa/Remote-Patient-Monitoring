@@ -1,10 +1,13 @@
 import Constants from "expo-constants";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { Platform } from "react-native";
+
 const extras =
   Constants?.manifest?.extra || Constants?.expoConfig?.extra || {};
-export const BASE_URL =
-  process.env.EXPO_PUBLIC_BASE_URL || extras.BASE_URL || "";
+
+let envBaseUrl = process.env.EXPO_PUBLIC_BASE_URL || extras.BASE_URL || "";
+export const BASE_URL = Platform.OS === "web" ? "http://localhost:8080" : envBaseUrl;
 
 async function parseResponse(response) {
   const text = await response.text();

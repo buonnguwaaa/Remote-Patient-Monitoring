@@ -15,6 +15,7 @@ import {
   getMeasurementValidationError,
   hasMeasurementSectionValue,
   hasMeasurementValue,
+  hasAtLeastOneSavedSection,
   MEASUREMENT_SECTIONS,
 } from "../../utils/measurementForm";
 
@@ -25,7 +26,7 @@ export default function InputMeasurementPatientScreen({ isEmbedded }) {
   const { showSuccess, showError, showWarning, showInfo } = useSnackbar();
   const currentPatientUser = user || { _id: "u_patient_self_1", id: "p1", name: "Thong tin mau" };
   const [type, setType] = useState("bp");
-  const [timing, setTiming] = useState("pre");
+  const [mealTiming, setMealTiming] = useState("pre_meal");
   const [device, setDevice] = useState("");
   const [note, setNote] = useState("");
   const [systolic, setSystolic] = useState("");
@@ -35,6 +36,8 @@ export default function InputMeasurementPatientScreen({ isEmbedded }) {
   const [temperature, setTemperature] = useState("");
   const [heartRate, setHeartRate] = useState("");
   const [respiratoryRate, setRespiratoryRate] = useState("");
+  const [height, setHeight] = useState("");
+  const [weight, setWeight] = useState("");
   const [savedSections, setSavedSections] = useState(createSavedMeasurementState);
   const [submitting, setSubmitting] = useState(false);
   const measurementValues = {
@@ -45,7 +48,9 @@ export default function InputMeasurementPatientScreen({ isEmbedded }) {
     temperature,
     heartRate,
     respiratoryRate,
-    timing,
+    height,
+    weight,
+    mealTiming,
     device,
     note,
   };
@@ -78,6 +83,8 @@ export default function InputMeasurementPatientScreen({ isEmbedded }) {
     if (field === "temperature") setTemperature(value);
     if (field === "heartRate") setHeartRate(value);
     if (field === "respiratoryRate") setRespiratoryRate(value);
+    if (field === "height") setHeight(value);
+    if (field === "weight") setWeight(value);
     if (field === "device") setDevice(value);
     if (field === "note") setNote(value);
 
@@ -106,7 +113,7 @@ export default function InputMeasurementPatientScreen({ isEmbedded }) {
 
   const resetForm = () => {
     setType("bp");
-    setTiming("pre");
+    setMealTiming("pre_meal");
     setDevice("");
     setNote("");
     setSystolic("");
@@ -116,11 +123,13 @@ export default function InputMeasurementPatientScreen({ isEmbedded }) {
     setTemperature("");
     setHeartRate("");
     setRespiratoryRate("");
+    setHeight("");
+    setWeight("");
     setSavedSections(createSavedMeasurementState());
   };
 
-  const handleTimingChange = (nextTiming) => {
-    setTiming(nextTiming);
+  const handleMealTimingChange = (nextTiming) => {
+    setMealTiming(nextTiming);
     markEditing("glucose");
   };
 
@@ -133,16 +142,14 @@ export default function InputMeasurementPatientScreen({ isEmbedded }) {
 
   const submitMeasurement = async () => {
     if (!ensurePatient()) return;
-    const missingSections = MEASUREMENT_SECTIONS.filter((item) => !savedSections[item.key]);
-    if (missingSections.length > 0) {
-      showWarning(
-        `Bạn cần nhập và lưu đủ tất cả chỉ số trước khi gửi. Còn thiếu: ${missingSections
-          .map((item) => item.label)
-          .join(", ")}.`
-      );
+
+    // Logic mới: chỉ cần ít nhất 1 nhóm đã được lưu
+    if (!hasAtLeastOneSavedSection(savedSections)) {
+      showWarning("Bạn cần nhập và lưu ít nhất một nhóm chỉ số trước khi gửi.");
       return;
     }
-    const savedKeys = MEASUREMENT_SECTIONS.map((item) => item.key);
+
+    // Kiểm tra nếu đang nhập dở một nhóm mà chưa bấm lưu
     const unsavedKeys = MEASUREMENT_SECTIONS.filter(
       (item) => hasMeasurementSectionValue(item.key, measurementValues) && !savedSections[item.key]
     );
@@ -150,9 +157,13 @@ export default function InputMeasurementPatientScreen({ isEmbedded }) {
       showWarning(`Bạn còn ${unsavedKeys.length} phần đang nhập nhưng chưa bấm "Lưu thông tin".`);
       return;
     }
+
+    // Validate các nhóm đã lưu
+    const savedKeys = MEASUREMENT_SECTIONS.filter((item) => savedSections[item.key]).map((item) => item.key);
     for (const key of savedKeys) {
       if (!validateSection(key)) return;
     }
+
     const patientId = currentPatientUser.id || currentPatientUser._id;
     const payload = buildMeasurementPayload({
       patientId,
@@ -211,13 +222,13 @@ export default function InputMeasurementPatientScreen({ isEmbedded }) {
           </View>
           <MeasurementDraftForm
             type={type}
-            timing={timing}
+            mealTiming={mealTiming}
             values={measurementValues}
             savedSections={savedSections}
             submitting={submitting}
             onSelectType={setType}
             onFieldChange={handleMeasurementFieldChange}
-            onTimingChange={handleTimingChange}
+            onMealTimingChange={handleMealTimingChange}
             onSaveSection={saveCurrentSection}
             onSubmit={submitMeasurement}
           />

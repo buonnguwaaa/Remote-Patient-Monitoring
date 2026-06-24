@@ -1,5 +1,5 @@
-import { type ChangeEvent, type FormEvent, useEffect, useMemo, useState } from "react";
-import { FaChevronLeft, FaChevronRight, FaEdit, FaPlus, FaSave, FaStopCircle, FaTimes, FaUndo, FaSyncAlt } from "react-icons/fa";
+import { type ChangeEvent, type FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FaChevronDown, FaChevronLeft, FaChevronRight, FaEdit, FaPlus, FaCopy, FaSave, FaSearch, FaStopCircle, FaTimes, FaUndo, FaSyncAlt } from "react-icons/fa";
 import { useTranslation } from "react-i18next";
 
 import Toast from "../components/ui/Toast";
@@ -33,6 +33,128 @@ interface ThresholdFormData {
   effectiveFrom: string;
   effectiveTo: string;
 }
+
+interface PatientSearchSelectProps {
+  value: string;
+  options: { patientId: string; patientName?: string; patientCode?: string }[];
+  onChange: (patientId: string) => void;
+  disabled?: boolean;
+  loadingLabel?: string;
+  placeholder?: string;
+  searchPlaceholder?: string;
+  noResultsLabel?: string;
+  className?: string;
+}
+
+const PatientSearchSelect = ({
+  value,
+  options,
+  onChange,
+  disabled,
+  loadingLabel,
+  placeholder,
+  searchPlaceholder,
+  noResultsLabel,
+  className,
+}: PatientSearchSelectProps) => {
+  const [inputValue, setInputValue] = useState("");
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const selected = options.find((o) => o.patientId === value);
+  const selectedDisplayText = selected
+    ? `${selected.patientName || selected.patientId}${selected.patientCode ? ` • ${selected.patientCode}` : ""}`
+    : "";
+
+  // Sync input display with selection when closed
+  useEffect(() => {
+    if (!open) setInputValue(selectedDisplayText);
+  }, [open, selectedDisplayText]);
+
+  const filtered = useMemo(() => {
+    const q = inputValue.trim().toLowerCase();
+    if (!q || !open) return options;
+    return options.filter(
+      (o) =>
+        (o.patientName || "").toLowerCase().includes(q) ||
+        (o.patientCode || "").toLowerCase().includes(q),
+    );
+  }, [options, inputValue, open]);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const handleFocus = () => {
+    setInputValue("");
+    setOpen(true);
+  };
+
+  const handleSelect = (patientId: string) => {
+    onChange(patientId);
+    setOpen(false);
+  };
+
+  return (
+    <div ref={containerRef} className={`relative ${className ?? ""}`}>
+      <div className="relative">
+        <FaSearch className="pointer-events-none absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+        <input
+          ref={inputRef}
+          type="text"
+          value={disabled ? (loadingLabel ?? placeholder ?? "") : inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          onFocus={handleFocus}
+          placeholder={open ? (searchPlaceholder ?? "Tìm kiếm...") : (placeholder ?? "")}
+          disabled={disabled}
+          className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 py-2.5 pl-9 pr-9 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-70"
+        />
+        <FaChevronDown
+          onClick={() => !disabled && (open ? setOpen(false) : inputRef.current?.focus())}
+          className={`absolute right-3.5 top-1/2 h-3 w-3 -translate-y-1/2 cursor-pointer text-slate-400 transition-transform ${open ? "rotate-180" : ""}`}
+        />
+      </div>
+
+      {open && (
+        <div className="absolute z-20 mt-1 w-full rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 shadow-lg">
+          <div className="max-h-52 overflow-y-auto py-1">
+            {filtered.length === 0 ? (
+              <div className="px-3 py-4 text-center text-sm text-slate-400">
+                {noResultsLabel ?? "Không tìm thấy"}
+              </div>
+            ) : (
+              filtered.map((o) => (
+                <button
+                  key={o.patientId}
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => handleSelect(o.patientId)}
+                  className={`flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm transition hover:bg-blue-50 dark:hover:bg-slate-700 ${
+                    o.patientId === value
+                      ? "bg-blue-50 font-semibold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+                      : "text-gray-700 dark:text-slate-200"
+                  }`}
+                >
+                  <span className="flex-1 truncate">{o.patientName || o.patientId}</span>
+                  {o.patientCode && (
+                    <span className="shrink-0 text-xs text-slate-400">• {o.patientCode}</span>
+                  )}
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const createDefaultFormData = (patientId = ""): ThresholdFormData => ({
   patientId,
@@ -389,23 +511,6 @@ const buildHistoryChips = (item: ThresholdRecord) => {
     }));
   };
 
-  const handlePatientFilterChange = (event: ChangeEvent<HTMLSelectElement>) => {
-    const patientId = event.target.value;
-    setFormData(createDefaultFormData(patientId));
-    // This will trigger useEffect to load thresholds for the new patient
-  };
-
-  const handlePatientChangeInModal = (event: ChangeEvent<HTMLSelectElement>) => {
-    const patientId = event.target.value;
-    // When changing patient in modal, switch to create mode
-    // (can't edit patient A's threshold for patient B)
-    setFormData((current) => ({
-      ...current,
-      patientId: patientId,
-    }));
-    setEditingThresholdId(null); // Switch to create mode
-  };
-
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
 
@@ -475,89 +580,81 @@ const buildHistoryChips = (item: ThresholdRecord) => {
 
   return (
     <div className="mx-auto p-6">
+      {/* Header */}
       <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800 dark:text-slate-100">{t("thresholds.title")}</h1>
-          <p className="mt-2 max-w-3xl text-gray-600 dark:text-slate-400">{t("thresholds.description")}</p>
+          <h1 className="text-3xl font-semibold text-slate-900 dark:text-slate-100">{t("thresholds.title")}</h1>
+          <p className="mt-1 text-base text-slate-500 dark:text-slate-400">{t("thresholds.description")}</p>
         </div>
-
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-2">
           <button
             type="button"
             onClick={handleOpenCreateForm}
-            className="inline-flex items-center rounded-xl bg-slate-100 dark:bg-slate-700 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-200 dark:hover:bg-slate-600"
+            className="inline-flex items-center rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 dark:hover:bg-slate-700"
           >
-            <FaPlus className="mr-2" />{t("thresholds.createConfig")}</button>
+            <FaPlus className="mr-2 h-3 w-3" />{t("thresholds.createConfig")}
+          </button>
           <button
             type="button"
             onClick={() => formData.patientId && void loadPatientThresholds(formData.patientId)}
             disabled={loadingThresholds || !formData.patientId}
-            className="inline-flex items-center rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 dark:hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex items-center rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-sm font-medium text-slate-500 dark:text-slate-400 transition hover:bg-slate-50 dark:hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <FaSyncAlt
-              className={`mr-2 ${loadingThresholds ? "animate-spin" : ""}`}
-            />{t("common.refresh")}</button>
+            <FaSyncAlt className={`mr-2 h-3 w-3 ${loadingThresholds ? "animate-spin" : ""}`} />{t("common.refresh")}
+          </button>
         </div>
       </div>
 
-      <div className="mb-6 grid gap-4 md:grid-cols-3">
-        <div className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">
-          <div className="text-sm text-gray-500 dark:text-slate-400">{t("thresholds.managedPatients")}</div>
-          <div className="mt-2 text-3xl font-bold text-gray-900 dark:text-slate-100">{patientOptions.length}</div>
-        </div>
-        <div className="rounded-2xl border border-blue-100 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/30 p-4 shadow-sm">
-          <div className="text-sm text-blue-700 dark:text-blue-300">{t("thresholds.activeConfigs")}</div>
-          <div className="mt-2 text-3xl font-bold text-blue-800 dark:text-blue-200">{activeThreshold ? 1 : 0}</div>
-        </div>
-        <div className="rounded-2xl border border-indigo-100 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-900/30 p-4 shadow-sm">
-          <div className="text-sm text-indigo-700 dark:text-indigo-300">{t("thresholds.historyConfigs")}</div>
-          <div className="mt-2 text-3xl font-bold text-indigo-800 dark:text-indigo-200">{reusableHistoryCount}</div>
-        </div>
+      {/* Stats */}
+      <div className="mb-5 grid gap-3 md:grid-cols-3">
+        {[
+          { label: t("thresholds.managedPatients"), value: patientOptions.length },
+          { label: t("thresholds.activeConfigs"), value: activeThreshold ? 1 : 0 },
+          { label: t("thresholds.historyConfigs"), value: reusableHistoryCount },
+        ].map(({ label, value }) => (
+          <div key={label} className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-5 py-4">
+            <div className="text-sm font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">{label}</div>
+            <div className="mt-2 text-3xl font-semibold text-slate-900 dark:text-slate-100">{value}</div>
+          </div>
+        ))}
       </div>
 
-      <div className="mb-6 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
-        <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">{t("thresholds.filterByPatient")}</label>
-        <select
-          name="patientId"
+      {/* Patient selector */}
+      <div className="mb-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-5 py-4">
+        <label className="mb-2 block text-base font-medium text-slate-700 dark:text-slate-300">{t("thresholds.filterByPatient")}</label>
+        <PatientSearchSelect
           value={formData.patientId}
-          onChange={handlePatientFilterChange}
+          options={patientOptions}
+          onChange={(patientId) => setFormData(createDefaultFormData(patientId))}
           disabled={loadingPatients}
-          className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-slate-100 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">
-            {loadingPatients ? t("thresholds.loadingPatients") : t("thresholds.selectPatient")}
-          </option>
-          {patientOptions.map((patient) => (
-            <option key={patient.patientId} value={patient.patientId}>
-              {patient.patientName || patient.patientId}
-              {patient.patientCode ? ` • ${patient.patientCode}` : ""}
-            </option>
-          ))}
-        </select>
+          loadingLabel={t("thresholds.loadingPatients")}
+          placeholder={t("thresholds.selectPatient")}
+          searchPlaceholder={t("thresholds.searchPatient")}
+          noResultsLabel={t("thresholds.noPatientFound")}
+        />
       </div>
 
-      <div className="rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
-        <div className="flex items-start justify-between gap-4">
+      {/* Config list */}
+      <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 px-5 py-4">
           <div>
-            <h2 className="text-xl font-semibold text-gray-800 dark:text-slate-100">{t("thresholds.configList")}</h2>
-            <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">{t("thresholds.configListDesc")}</p>
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t("thresholds.configList")}</h2>
+            <p className="mt-0.5 text-sm text-slate-400 dark:text-slate-500">{t("thresholds.configListDesc")}</p>
           </div>
-          <div className="rounded-full bg-slate-100 dark:bg-slate-700 px-3 py-1 text-xs font-semibold text-slate-600 dark:text-slate-300">
+          <span className="text-sm text-slate-400 dark:text-slate-500">
             {thresholdHistory.length} {t("thresholds.configsCount")}
-          </div>
+          </span>
         </div>
 
-        <div className="mt-5 space-y-4">
+        <div className="divide-y divide-slate-100 dark:divide-slate-700/60">
           {loadingThresholds && (
-            <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 px-4 py-6 text-sm text-slate-500 dark:text-slate-400">{t("thresholds.loadingConfigs")}</div>
+            <div className="px-5 py-8 text-base text-slate-400 dark:text-slate-500">{t("thresholds.loadingConfigs")}</div>
           )}
-
           {!loadingThresholds && !formData.patientId && (
-            <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 px-4 py-6 text-sm text-slate-500 dark:text-slate-400">{t("thresholds.selectPatientFirst")}</div>
+            <div className="px-5 py-8 text-base text-slate-400 dark:text-slate-500">{t("thresholds.selectPatientFirst")}</div>
           )}
-
           {!loadingThresholds && formData.patientId && thresholdHistory.length === 0 && (
-            <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 px-4 py-6 text-sm text-slate-500 dark:text-slate-400">{t("thresholds.noConfigs")}</div>
+            <div className="px-5 py-8 text-base text-slate-400 dark:text-slate-500">{t("thresholds.noConfigs")}</div>
           )}
 
           {paginatedHistory.map((threshold, index) => {
@@ -566,97 +663,80 @@ const buildHistoryChips = (item: ThresholdRecord) => {
             const canEdit = isActive;
 
             return (
-              <div
-                key={threshold.id}
-                className="border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4"
-              >
+              <div key={threshold.id} className="px-5 py-4">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span
-                        className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
-                          isActive
-                            ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300"
-                            : "bg-slate-200 dark:bg-slate-600 text-slate-600 dark:text-slate-300"
-                        }`}
-                      >
-                        {isActive ? t("thresholds.currentlyActive") : t("thresholds.history")}
-                      </span>
-                      <span className="text-sm font-semibold text-gray-800 dark:text-slate-100">
+                    {/* Status + version */}
+                    <div className="flex flex-wrap items-center gap-3">
+                      {isActive && (
+                        <span className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                          {t("thresholds.currentlyActive")}
+                        </span>
+                      )}
+                      <span className="text-sm text-slate-400 dark:text-slate-500">
                         {t("thresholds.configVersion")} #{thresholdHistory.length - absoluteIndex}
                       </span>
                     </div>
 
-                    <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
-                      <span className="font-semibold text-gray-900 dark:text-slate-100">
+                    {/* Patient name */}
+                    <div className="mt-1.5 flex items-center gap-2">
+                      <span className="text-base font-medium text-slate-800 dark:text-slate-100">
                         {selectedPatient?.patientName || threshold.patientId}
                       </span>
-                      <span className="text-slate-400">•</span>
-                      <span className="text-gray-500 dark:text-slate-400">
-                        {selectedPatient?.patientCode || t("common.notUpdated")}
-                      </span>
+                      {selectedPatient?.patientCode && (
+                        <span className="text-sm text-slate-400 dark:text-slate-500">{selectedPatient.patientCode}</span>
+                      )}
                     </div>
 
-                    <div className="mt-4 flex flex-wrap gap-2">
+                    {/* Threshold chips */}
+                    <div className="mt-3 flex flex-wrap gap-1.5">
                       {buildHistoryChips(threshold).map((chip, idx) => (
                         <span
                           key={`${threshold.id}-chip-${idx}`}
-                          className="rounded-full bg-slate-100 dark:bg-slate-700 px-3 py-1 text-xs font-medium text-gray-600 dark:text-slate-300"
+                          className="rounded border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 px-2 py-0.5 text-sm text-slate-600 dark:text-slate-300"
                         >
                           {chip}
                         </span>
                       ))}
                     </div>
 
-                    <div className="mt-4 flex flex-wrap gap-3">
-                      <div className="flex-none rounded-lg bg-slate-50 dark:bg-slate-800 px-4 py-3">
-                        <div className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">{t("thresholds.validFrom")}</div>
-                        <div className="mt-1 text-sm font-semibold text-gray-800 dark:text-slate-100">
-                          {formatDateTime(threshold.effectiveFrom)}
-                        </div>
+                    {/* Date info */}
+                    <div className="mt-3 flex flex-wrap gap-5 text-sm">
+                      <div>
+                        <span className="text-slate-400 dark:text-slate-500">{t("thresholds.validFrom")}: </span>
+                        <span className="font-medium text-slate-700 dark:text-slate-300">{formatDateTime(threshold.effectiveFrom)}</span>
                       </div>
-
-                      <div className="flex-none rounded-lg bg-slate-50 dark:bg-slate-800 px-4 py-3">
-                        <div className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">{t("thresholds.validTo")}</div>
-                        <div className="mt-1 text-sm font-semibold text-gray-800 dark:text-slate-100">
-                          {formatDateTime(threshold.effectiveTo)}
-                        </div>
+                      <div>
+                        <span className="text-slate-400 dark:text-slate-500">{t("thresholds.validTo")}: </span>
+                        <span className="font-medium text-slate-700 dark:text-slate-300">{formatDateTime(threshold.effectiveTo)}</span>
                       </div>
-
-                      <div className="flex-none rounded-lg bg-slate-50 dark:bg-slate-800 px-4 py-3">
-                        <div className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">{t("thresholds.updated")}</div>
-                        <div className="mt-1 text-sm font-semibold text-gray-800 dark:text-slate-100">
-                          {formatDateTime(threshold.updatedAt)}
-                        </div>
+                      <div>
+                        <span className="text-slate-400 dark:text-slate-500">{t("thresholds.updated")}: </span>
+                        <span className="font-medium text-slate-700 dark:text-slate-300">{formatDateTime(threshold.updatedAt)}</span>
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap gap-2 lg:justify-end">
+                  {/* Actions */}
+                  <div className="flex flex-wrap gap-1.5 lg:justify-end">
                     <button
                       type="button"
                       onClick={() => applyThresholdToForm(threshold, "edit")}
                       disabled={!canEdit || saving}
-                      className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="inline-flex items-center rounded-md border border-slate-200 dark:border-slate-600 px-3 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-300 transition hover:bg-slate-50 dark:hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
                     >
-                      <FaEdit className="mr-2" />{t("thresholds.edit")}</button>
-
-                    <button
-                      type="button"
-                      onClick={() => applyThresholdToForm(threshold, "clone")}
-                      disabled={saving}
-                      className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      <FaPlus className="mr-2" />{t("thresholds.copy")}</button>
-
+                      <FaEdit className="mr-1.5 h-3 w-3" />{t("thresholds.edit")}
+                    </button>
                     {isActive && (
                       <button
                         type="button"
                         onClick={handleArchiveActiveThreshold}
                         disabled={saving}
-                        className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 transition hover:bg-slate-50 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                        className="inline-flex items-center rounded-md border border-slate-200 dark:border-slate-600 px-3 py-1.5 text-sm font-medium text-slate-500 dark:text-slate-400 transition hover:bg-slate-50 dark:hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
                       >
-                        <FaStopCircle className="mr-2" />{t("thresholds.stopValidity")}</button>
+                        <FaStopCircle className="mr-1.5 h-3 w-3" />{t("thresholds.stopValidity")}
+                      </button>
                     )}
                   </div>
                 </div>
@@ -665,152 +745,140 @@ const buildHistoryChips = (item: ThresholdRecord) => {
           })}
         </div>
 
-        {/* Pagination Controls */}
+        {/* Pagination */}
         {totalHistoryPages > 1 && (
-          <div className="mt-6 flex items-center justify-between border-t border-slate-200 dark:border-slate-700 pt-4">
-            <div className="text-sm text-slate-500 dark:text-slate-400">
+          <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-700 px-5 py-3">
+            <span className="text-sm text-slate-400 dark:text-slate-500">
               {t("common.page")} {historyPage}/{totalHistoryPages}
-            </div>
-            
-            <div className="flex items-center gap-2">
+            </span>
+            <div className="flex items-center gap-1.5">
               <button
                 type="button"
-                onClick={() => setHistoryPage((current) => Math.max(1, current - 1))}
+                onClick={() => setHistoryPage((p) => Math.max(1, p - 1))}
                 disabled={historyPage === 1}
-                className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 dark:hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex items-center rounded-md border border-slate-200 dark:border-slate-600 px-2.5 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-300 transition hover:bg-slate-50 dark:hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                <FaChevronLeft className="mr-1" />{t("common.previous")}</button>
-              
+                <FaChevronLeft className="mr-1 h-2.5 w-2.5" />{t("common.previous")}
+              </button>
               <button
                 type="button"
-                onClick={() => setHistoryPage((current) => Math.min(totalHistoryPages, current + 1))}
+                onClick={() => setHistoryPage((p) => Math.min(totalHistoryPages, p + 1))}
                 disabled={historyPage === totalHistoryPages}
-                className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 dark:hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex items-center rounded-md border border-slate-200 dark:border-slate-600 px-2.5 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-300 transition hover:bg-slate-50 dark:hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                Sau
-                <FaChevronRight className="ml-1" />
+                {t("common.next")}<FaChevronRight className="ml-1 h-2.5 w-2.5" />
               </button>
             </div>
           </div>
         )}
       </div>
 
+      {/* Form modal */}
       {isFormVisible && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
           onClick={handleCloseForm}
         >
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="threshold-form-title"
-            onClick={(event) => event.stopPropagation()}
-            className="w-full max-w-4xl max-h-[92vh] overflow-hidden rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900"
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-2xl max-h-[90vh] overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
           >
-            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-slate-700">
-              <h2
-                id="threshold-form-title"
-                className="text-lg font-semibold text-gray-900 dark:text-slate-100"
-              >
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 px-5 py-3.5">
+              <h2 id="threshold-form-title" className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                 {modeLabel}
               </h2>
               <button
                 type="button"
                 onClick={handleCloseForm}
-                className="p-2 items-center rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700"
+                className="rounded p-1.5 text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-800"
               >
-                <FaTimes />
+                <FaTimes className="h-3.5 w-3.5" />
               </button>
             </div>
 
             <form onSubmit={handleSubmit}>
-              <div className="max-h-[calc(92vh-140px)] overflow-y-auto px-4 py-4">
-                <div className="grid gap-4">
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
-                      {t("alerts.patient")} <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      name="patientId"
-                      value={formData.patientId}
-                      onChange={handlePatientChangeInModal}
-                      disabled={loadingPatients || Boolean(editingThresholdId)}
-                      className="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2.5 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-70"
-                    >
-                      <option value="">
-                        {loadingPatients
-                          ? t("thresholds.loadingPatients")
-                          : t("thresholds.selectPatient")}
-                      </option>
-                      {patientOptions.map((patient) => (
-                        <option
-                          key={patient.patientId}
-                          value={patient.patientId}
-                        >
-                          {(patient.patientName || patient.patientId) +
-                            (patient.patientCode
-                              ? ` • ${patient.patientCode}`
-                              : "")}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+              <div className="max-h-[calc(90vh-120px)] overflow-y-auto px-5 py-4 space-y-4">
+                {/* Patient */}
+                <div>
+                  <label className="mb-1.5 block text-base font-medium text-slate-700 dark:text-slate-300">
+                    {t("alerts.patient")} <span className="text-red-400">*</span>
+                  </label>
+                  <PatientSearchSelect
+                    value={formData.patientId}
+                    options={patientOptions}
+                    onChange={(patientId) => {
+                      setFormData((current) => ({ ...current, patientId }));
+                      setEditingThresholdId(null);
+                    }}
+                    disabled={loadingPatients || Boolean(editingThresholdId)}
+                    loadingLabel={t("thresholds.loadingPatients")}
+                    placeholder={t("thresholds.selectPatient")}
+                    searchPlaceholder={t("thresholds.searchPatient")}
+                    noResultsLabel={t("thresholds.noPatientFound")}
+                  />
+                </div>
 
+                {/* Threshold sections — 2-col grid */}
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {thresholdSections.map((section) => (
-                    <div key={section.title}>
-                      <h3 className="mb-3 text-base font-semibold text-gray-800 dark:text-slate-100">
+                    <div key={section.title} className="rounded-lg border border-slate-100 dark:border-slate-700 p-4">
+                      <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                         {section.title}
                       </h3>
-                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="mb-1 block text-sm text-gray-600 dark:text-slate-300">{t("thresholds.minimum")}</label>
+                          <label className="mb-1 block text-sm text-slate-400 dark:text-slate-500">{t("thresholds.minimum")}</label>
                           <input
                             type="number"
                             step={section.step}
                             name={section.minKey}
                             value={formData[section.minKey]}
                             onChange={handleChange}
-                            className="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full rounded-md border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-base text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-slate-400 dark:focus:ring-slate-500"
                           />
                         </div>
                         <div>
-                          <label className="mb-1 block text-sm text-gray-600 dark:text-slate-300">{t("thresholds.maximum")}</label>
+                          <label className="mb-1 block text-sm text-slate-400 dark:text-slate-500">{t("thresholds.maximum")}</label>
                           <input
                             type="number"
                             step={section.step}
                             name={section.maxKey}
                             value={formData[section.maxKey]}
                             onChange={handleChange}
-                            className="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full rounded-md border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-base text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-slate-400 dark:focus:ring-slate-500"
                           />
                         </div>
                       </div>
                     </div>
                   ))}
 
-                  <div>
-                    <h3 className="mb-3 text-base font-semibold text-gray-800 dark:text-slate-100">
-                      SpO2 (%)
-                    </h3>
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                      <div>
-                        <label className="mb-1 block text-sm text-gray-600 dark:text-slate-300">{t("thresholds.minimum")}</label>
-                        <input
-                          type="number"
-                          name="spo2Min"
-                          value={formData.spo2Min}
-                          onChange={handleChange}
-                          className="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
+                  {/* SpO2 */}
+                  <div className="rounded-lg border border-slate-100 dark:border-slate-700 p-4">
+                    <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">SpO2 (%)</h3>
+                    <div>
+                      <label className="mb-1 block text-sm text-slate-400 dark:text-slate-500">{t("thresholds.minimum")}</label>
+                      <input
+                        type="number"
+                        name="spo2Min"
+                        value={formData.spo2Min}
+                        onChange={handleChange}
+                        className="w-full rounded-md border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-base text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-slate-400 dark:focus:ring-slate-500"
+                      />
                     </div>
                   </div>
 
-                  <div>
-                    <h3 className="mb-3 text-base font-semibold text-gray-800 dark:text-slate-100">{t("thresholds.validityPeriod")}</h3>
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                  {/* Validity period */}
+                  <div className="rounded-lg border border-slate-100 dark:border-slate-700 p-4 sm:col-span-2">
+                    <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                      {t("thresholds.validityPeriod")}
+                    </h3>
+                    <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="mb-1 block text-sm text-gray-600 dark:text-slate-300">{t("thresholds.fromDate")} <span className="text-red-500">*</span>
+                        <label className="mb-1 block text-sm text-slate-400 dark:text-slate-500">
+                          {t("thresholds.fromDate")} <span className="text-red-400">*</span>
                         </label>
                         <input
                           type="date"
@@ -818,17 +886,17 @@ const buildHistoryChips = (item: ThresholdRecord) => {
                           value={formData.effectiveFrom}
                           onChange={handleChange}
                           required
-                          className="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full rounded-md border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-base text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-slate-400 dark:focus:ring-slate-500"
                         />
                       </div>
                       <div>
-                        <label className="mb-1 block text-sm text-gray-600 dark:text-slate-300">{t("thresholds.toDate")}</label>
+                        <label className="mb-1 block text-sm text-slate-400 dark:text-slate-500">{t("thresholds.toDate")}</label>
                         <input
                           type="date"
                           name="effectiveTo"
                           value={formData.effectiveTo}
                           onChange={handleChange}
-                          className="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-900 dark:text-slate-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full rounded-md border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-base text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-slate-400 dark:focus:ring-slate-500"
                         />
                       </div>
                     </div>
@@ -836,31 +904,29 @@ const buildHistoryChips = (item: ThresholdRecord) => {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between border-t border-gray-200 dark:border-slate-700 px-4 py-3">
+              <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-700 px-5 py-3">
                 <button
                   type="button"
                   onClick={() => resetForm()}
-                  className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
+                  className="inline-flex items-center rounded-md border border-slate-200 dark:border-slate-600 px-3 py-1.5 text-sm font-medium text-slate-500 dark:text-slate-400 transition hover:bg-slate-50 dark:hover:bg-slate-800"
                 >
-                  <FaUndo className="mr-2" />{t("common.reset")}</button>
-
+                  <FaUndo className="mr-1.5 h-3 w-3" />{t("common.reset")}
+                </button>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={handleCloseForm}
-                    className="rounded-lg border border-slate-300 dark:border-slate-600 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
-                  >{t("common.cancel")}</button>
+                    className="rounded-md border border-slate-200 dark:border-slate-600 px-3.5 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-300 transition hover:bg-slate-50 dark:hover:bg-slate-800"
+                  >
+                    {t("common.cancel")}
+                  </button>
                   <button
                     type="submit"
                     disabled={!formData.patientId || saving}
-                    className="inline-flex items-center rounded-lg bg-slate-800 dark:bg-slate-100 px-4 py-2 text-sm font-medium text-white dark:text-slate-900 transition hover:bg-slate-700 dark:hover:bg-slate-200 disabled:cursor-not-allowed disabled:bg-slate-400 dark:disabled:bg-slate-600 dark:disabled:text-slate-100"
+                    className="inline-flex items-center rounded-md bg-slate-900 dark:bg-slate-100 px-4 py-1.5 text-sm font-medium text-white dark:text-slate-900 transition hover:bg-slate-700 dark:hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
                   >
-                    <FaSave className="mr-2" />
-                    {saving
-                      ? t("thresholds.saving")
-                      : editingThresholdId
-                        ? t("thresholds.updateConfig")
-                        : t("thresholds.saveConfig")}
+                    <FaSave className="mr-1.5 h-3 w-3" />
+                    {saving ? t("thresholds.saving") : editingThresholdId ? t("thresholds.updateConfig") : t("thresholds.saveConfig")}
                   </button>
                 </div>
               </div>

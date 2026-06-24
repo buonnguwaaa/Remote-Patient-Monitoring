@@ -5,6 +5,7 @@ export const MEASUREMENT_SECTIONS = [
   { key: "temp", iconName: "thermometer-outline", label: "Nhiệt độ", description: "°C" },
   { key: "heartRate", iconName: "fitness-outline", label: "Nhịp tim", description: "lần/phút" },
   { key: "respiratoryRate", iconName: "cloud-outline", label: "Nhịp thở", description: "lần/phút" },
+  { key: "bodyStats", iconName: "body-outline", label: "Thể trạng", description: "Chiều cao / Cân nặng" },
 ];
 
 export function createSavedMeasurementState() {
@@ -39,6 +40,9 @@ export function hasMeasurementSectionValue(sectionKey, values = {}) {
   if (sectionKey === "respiratoryRate") {
     return hasMeasurementValue(values.respiratoryRate);
   }
+  if (sectionKey === "bodyStats") {
+    return hasMeasurementValue(values.height) || hasMeasurementValue(values.weight);
+  }
   return false;
 }
 
@@ -64,20 +68,25 @@ export function buildMeasurementPayload({
 
   return {
     patientId,
-    type: hasBp || !hasGlucose ? "bp" : "glucose",
     temperature: toOptionalNumber(values.temperature, emptyNumberValue),
     heartRate: toOptionalNumber(values.heartRate, emptyNumberValue),
     respiratoryRate: toOptionalNumber(values.respiratoryRate, emptyNumberValue),
     spo2: toOptionalNumber(values.spo2, emptyNumberValue),
+    height: toOptionalNumber(values.height, emptyNumberValue),
+    weight: toOptionalNumber(values.weight, emptyNumberValue),
     bloodPressure: {
       systolic: toOptionalNumber(values.systolic, emptyNumberValue),
       diastolic: toOptionalNumber(values.diastolic, emptyNumberValue),
     },
-    glucose: hasGlucose ? Number(values.glucose) : null,
-    timing: hasGlucose ? values.timing : null,
+    glucose: hasGlucose ? { bloodGlucose: Number(values.glucose) } : null,
+    mealTiming: hasGlucose ? values.mealTiming : null,
     device: toOptionalText(values.device),
     note: toOptionalText(values.note),
   };
+}
+
+export function hasAtLeastOneSavedSection(savedSections) {
+  return MEASUREMENT_SECTIONS.some((item) => savedSections[item.key]);
 }
 
 export function getMeasurementValidationError(sectionKey, values = {}) {
@@ -192,6 +201,32 @@ export function getMeasurementValidationError(sectionKey, values = {}) {
       return {
         title: "Giá trị không hợp lệ",
         message: "Nhịp thở nên nằm trong khoảng 5-60 lần/phút.",
+      };
+    }
+  }
+
+  if (sectionKey === "bodyStats") {
+    const h = Number(values.height);
+    const w = Number(values.weight);
+    
+    if (!values.height && !values.weight) {
+      return {
+        title: "Thiếu chỉ số",
+        message: "Hãy nhập chiều cao hoặc cân nặng.",
+      };
+    }
+    
+    if (values.height && (Number.isNaN(h) || h < 30 || h > 300)) {
+      return {
+        title: "Giá trị không hợp lệ",
+        message: "Chiều cao nên nằm trong khoảng 30-300 cm.",
+      };
+    }
+    
+    if (values.weight && (Number.isNaN(w) || w < 2 || w > 500)) {
+      return {
+        title: "Giá trị không hợp lệ",
+        message: "Cân nặng nên nằm trong khoảng 2-500 kg.",
       };
     }
   }

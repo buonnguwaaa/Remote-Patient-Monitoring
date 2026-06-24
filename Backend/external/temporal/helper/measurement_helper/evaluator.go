@@ -6,7 +6,6 @@ import (
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
 )
 
-// This function checks the measurement against the threshold and returns an alert if any rule is violated.
 func EvaluateMeasurementAgainstThreshold(m *domain.Measurement, t *domain.Threshold) []domain.ThresholdViolation {
 	violations := []domain.ThresholdViolation{}
 
@@ -20,52 +19,70 @@ func EvaluateMeasurementAgainstThreshold(m *domain.Measurement, t *domain.Thresh
 		})
 	}
 
-	// Temperature (°C)
-	if t.TemperatureMax != 0 && m.Temperature > t.TemperatureMax {
-		appendViolation("temperature", "temperature_max", m.Temperature, t.TemperatureMax)
-	}
-	if t.TemperatureMin != 0 && m.Temperature < t.TemperatureMin {
-		appendViolation("temperature", "temperature_min", m.Temperature, t.TemperatureMin)
-	}
-
-	// Heart Rate (bpm)
-	if t.HeartRateMax != 0 && m.HeartRate > t.HeartRateMax {
-		appendViolation("heart_rate", "heart_rate_max", m.HeartRate, t.HeartRateMax)
-	}
-	if t.HeartRateMin != 0 && m.HeartRate < t.HeartRateMin {
-		appendViolation("heart_rate", "heart_rate_min", m.HeartRate, t.HeartRateMin)
+	// Temperature
+	if m.Temperature != nil {
+		v := *m.Temperature
+		if t.TemperatureMax != 0 && v > t.TemperatureMax {
+			appendViolation("temperature", "temperature_max", v, t.TemperatureMax)
+		}
+		if t.TemperatureMin != 0 && v < t.TemperatureMin {
+			appendViolation("temperature", "temperature_min", v, t.TemperatureMin)
+		}
 	}
 
-	// Respiratory Rate (breaths/min)
-	if t.RespiratoryRateMax != 0 && m.RespiratoryRate > t.RespiratoryRateMax {
-		appendViolation("respiratory_rate", "respiratory_rate_max", m.RespiratoryRate, t.RespiratoryRateMax)
-	}
-	if t.RespiratoryRateMin != 0 && m.RespiratoryRate < t.RespiratoryRateMin {
-		appendViolation("respiratory_rate", "respiratory_rate_min", m.RespiratoryRate, t.RespiratoryRateMin)
-	}
-
-	// SpO2 (%)
-	if t.SpO2Min != 0 && m.SpO2 < t.SpO2Min {
-		appendViolation("spo2", "spo2_min", m.SpO2, t.SpO2Min)
+	// Heart Rate
+	if m.HeartRate != nil {
+		v := *m.HeartRate
+		if t.HeartRateMax != 0 && v > t.HeartRateMax {
+			appendViolation("heart_rate", "heart_rate_max", v, t.HeartRateMax)
+		}
+		if t.HeartRateMin != 0 && v < t.HeartRateMin {
+			appendViolation("heart_rate", "heart_rate_min", v, t.HeartRateMin)
+		}
 	}
 
-	// Blood Pressure - Systolic (mmHg)
-	if t.SysMax != 0 && m.BloodPressure.Systolic > t.SysMax {
-		appendViolation("blood_pressure_systolic", "bp_systolic_max", m.BloodPressure.Systolic, t.SysMax)
-	}
-	if t.SysMin != 0 && m.BloodPressure.Systolic < t.SysMin {
-		appendViolation("blood_pressure_systolic", "bp_systolic_min", m.BloodPressure.Systolic, t.SysMin)
-	}
-
-	// Blood Pressure - Diastolic (mmHg)
-	if t.DiaMax != 0 && m.BloodPressure.Diastolic > t.DiaMax {
-		appendViolation("blood_pressure_diastolic", "bp_diastolic_max", m.BloodPressure.Diastolic, t.DiaMax)
-	}
-	if t.DiaMin != 0 && m.BloodPressure.Diastolic < t.DiaMin {
-		appendViolation("blood_pressure_diastolic", "bp_diastolic_min", m.BloodPressure.Diastolic, t.DiaMin)
+	// Respiratory Rate
+	if m.RespiratoryRate != nil {
+		v := *m.RespiratoryRate
+		if t.RespiratoryRateMax != 0 && v > t.RespiratoryRateMax {
+			appendViolation("respiratory_rate", "respiratory_rate_max", v, t.RespiratoryRateMax)
+		}
+		if t.RespiratoryRateMin != 0 && v < t.RespiratoryRateMin {
+			appendViolation("respiratory_rate", "respiratory_rate_min", v, t.RespiratoryRateMin)
+		}
 	}
 
-	// Glucose (mg/dL)
+	// SpO2
+	if m.SpO2 != nil {
+		v := *m.SpO2
+		if t.SpO2Min != 0 && v < t.SpO2Min {
+			appendViolation("spo2", "spo2_min", v, t.SpO2Min)
+		}
+	}
+
+	// Blood Pressure - Systolic
+	if m.BloodPressure.Systolic != nil {
+		v := *m.BloodPressure.Systolic
+		if t.SysMax != 0 && v > t.SysMax {
+			appendViolation("blood_pressure_systolic", "bp_systolic_max", v, t.SysMax)
+		}
+		if t.SysMin != 0 && v < t.SysMin {
+			appendViolation("blood_pressure_systolic", "bp_systolic_min", v, t.SysMin)
+		}
+	}
+
+	// Blood Pressure - Diastolic
+	if m.BloodPressure.Diastolic != nil {
+		v := *m.BloodPressure.Diastolic
+		if t.DiaMax != 0 && v > t.DiaMax {
+			appendViolation("blood_pressure_diastolic", "bp_diastolic_max", v, t.DiaMax)
+		}
+		if t.DiaMin != 0 && v < t.DiaMin {
+			appendViolation("blood_pressure_diastolic", "bp_diastolic_min", v, t.DiaMin)
+		}
+	}
+
+	// Glucose
 	if t.GlucoseMax != nil && m.Glucose.BloodGlucose != nil && *m.Glucose.BloodGlucose > *t.GlucoseMax {
 		appendViolation("glucose", "glucose_max", *m.Glucose.BloodGlucose, *t.GlucoseMax)
 	}

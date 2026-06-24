@@ -20,6 +20,8 @@ import { BadgeProvider, useBadge } from "../context/BadgeContext";
 
 import LoginScreen from "../screens/auth/LoginScreen";
 import RegisterScreen from "../screens/auth/RegisterScreen";
+import ForgotPasswordScreen from "../screens/auth/ForgotPasswordScreen";
+import ResetPasswordScreen from "../screens/auth/ResetPasswordScreen";
 
 import HomeScreen from "../screens/patient/HomeScreen";
 import HistoryScreen from "../screens/patient/HistoryScreen";
@@ -31,6 +33,10 @@ import NotificationInboxScreen from "../screens/patient/NotificationInboxScreen"
 import TrackingScreen from "../screens/patient/TrackingScreen";
 import NotificationContainerScreen from "../screens/patient/NotificationContainerScreen";
 import MedicationScreen from "../screens/patient/MedicationScreen";
+import VideoCallScreen from "../screens/patient/VideoCallScreen";
+import EducationHomeScreen from "../screens/patient/EducationHomeScreen";
+import EducationArticleScreen from "../screens/patient/EducationArticleScreen";
+import EducationQuizScreen from "../screens/patient/EducationQuizScreen";
 
 import NursePatientListScreen from "../screens/nurse/NursePatientListScreen";
 import MeasurementInputScreen from "../screens/nurse/MeasurementInputScreen";
@@ -80,6 +86,9 @@ function PatientTabNavigator() {
           if (route.name === "PatientTracking") {
             return <Ionicons name="pulse-outline" size={size} color={color} />;
           }
+          if (route.name === "EducationHome") {
+            return <Ionicons name="book-outline" size={size} color={color} />;
+          }
           if (route.name === "DoctorChat") {
             return <Ionicons name="chatbubble-ellipses-outline" size={size} color={color} />;
           }
@@ -95,6 +104,7 @@ function PatientTabNavigator() {
     >
       <Tab.Screen name="PatientHome" component={HomeScreen} options={{ title: "Trang chủ" }} />
       <Tab.Screen name="PatientTracking" component={TrackingScreen} options={{ title: "Theo dõi" }} />
+      <Tab.Screen name="EducationHome" component={EducationHomeScreen} options={{ title: "Giáo dục" }} />
       <Tab.Screen name="DoctorChat" component={DoctorChatScreen} options={{ title: "Tin nhắn", tabBarBadge: msgBadge }} />
       <Tab.Screen name="PatientNotifs" component={NotificationContainerScreen} options={{ title: "Thông báo", tabBarBadge: notifBadge }} />
       <Tab.Screen name="PatientProfile" component={ProfileScreen} options={{ title: "Hồ sơ" }} />
@@ -165,6 +175,8 @@ function RootNavigator() {
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Register" component={RegisterScreen} />
+        <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+        <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
       </Stack.Navigator>
     );
   }
@@ -192,6 +204,9 @@ function RootNavigator() {
           <Stack.Screen name="PatientAlerts" component={AlertScreen} />
           <Stack.Screen name="PatientNotifications" component={NotificationInboxScreen} />
           <Stack.Screen name="PatientMedications" component={MedicationScreen} />
+          <Stack.Screen name="VideoCall" component={VideoCallScreen} />
+          <Stack.Screen name="EducationArticle" component={EducationArticleScreen} />
+          <Stack.Screen name="EducationQuiz" component={EducationQuizScreen} />
         </>
       )}
     </Stack.Navigator>

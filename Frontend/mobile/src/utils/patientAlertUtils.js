@@ -46,6 +46,8 @@ function getViolationUnit(type) {
 }
 
 export function getViolationLabel(type) {
+  if (!type) return "Chỉ số";
+  const cleanType = type.replace(/_(max|min|high|low)$/, "");
   const labels = {
     temperature: "Nhiệt độ",
     heart_rate: "Nhịp tim",
@@ -54,9 +56,10 @@ export function getViolationLabel(type) {
     blood_pressure_systolic: "Huyết áp tâm thu",
     blood_pressure_diastolic: "Huyết áp tâm trương",
     glucose: "Đường huyết",
+    sys: "Huyết áp tâm thu",
+    bp_diastolic: "Huyết áp tâm trương"
   };
-
-  return labels[type] || type || "Chỉ số";
+  return labels[cleanType] || labels[type] || type;
 }
 
 export function getViolationIcon(type) {
@@ -131,6 +134,7 @@ export function buildAlertPreviewItems(alerts, limit = 3) {
       const summary = buildAlertSummary(alert);
       const additionalSummary = buildAdditionalViolationSummary(alert);
       const isHigh = alert?.severity === "high";
+      const isMedium = alert?.severity === "medium";
 
       return {
         id: alert?.id || `${summary.title}-${alert?.createdAt || "preview"}`,
@@ -138,13 +142,14 @@ export function buildAlertPreviewItems(alerts, limit = 3) {
         title: summary.title,
         iconName: summary.iconName,
         observedText: formatAlertObservedValue(primaryViolation),
-        severityText: isHigh ? "Nguy hiểm" : "Thông tin",
+        severityText: isHigh ? "Nguy hiểm" : isMedium ? "Cảnh báo" : "Nhẹ",
         statusText: alert?.status === "open" ? "Chờ xác nhận" : "Đã xác nhận",
         isAcknowledged: alert?.status === "ack",
         ruleText: primaryViolation?.rule || summary.summary,
         additionalSummary,
         createdAt: alert?.createdAt,
         isHigh,
+        isMedium,
       };
     });
 }

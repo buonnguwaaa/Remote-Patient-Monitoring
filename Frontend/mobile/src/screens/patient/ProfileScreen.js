@@ -50,6 +50,10 @@ const EMPTY_PATIENT_FORM = {
   dob: "",
   createdAt: "",
   updatedAt: "",
+  diseaseTypes: {
+    bloodPressure: false,
+    glucose: false,
+  },
 };
 
 function getAvatarInitial(name) {
@@ -166,6 +170,10 @@ function normalizeProfile(profile = {}) {
     dob: profile.dob || "",
     createdAt: profile.createdAt || "",
     updatedAt: profile.updatedAt || "",
+    diseaseTypes: {
+      bloodPressure: profile.diseaseTypes?.bloodPressure || false,
+      glucose: profile.diseaseTypes?.glucose || false,
+    },
   };
 
   return { user, patient };
@@ -732,6 +740,8 @@ export default function ProfileScreen() {
             </View>
           </View>
 
+
+
           <Text style={styles.sectionTitle}>Tiền sử bệnh án</Text>
           <View style={styles.infoCard}>
             <View style={styles.medicalRowHeader}>
@@ -825,42 +835,7 @@ export default function ProfileScreen() {
             </View>
           </View>
 
-          <Text style={styles.sectionTitle}>Tài khoản & cài đặt</Text>
-          <View style={styles.settingsCard}>
-            <View style={styles.settingInfoRow}>
-              <Ionicons name="mail-unread-outline" size={18} color="#2563EB" />
-              <View style={styles.settingContent}>
-                <Text style={styles.settingLabel}>Email đăng nhập được bảo vệ</Text>
-                <Text style={styles.settingSub}>
-              
-                </Text>
-              </View>
-            </View>
 
-            <View style={styles.infoDivider} />
-
-            <View style={styles.settingInfoRow}>
-              <Ionicons name="notifications-outline" size={18} color="#2563EB" />
-              <View style={styles.settingContent}>
-                <Text style={styles.settingLabel}>Thông báo đang dùng cấu hình mặc định</Text>
-                <Text style={styles.settingSub}>
-                  
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.infoDivider} />
-
-            <View style={styles.settingInfoRow}>
-              <Ionicons name="lock-closed-outline" size={18} color="#2563EB" />
-              <View style={styles.settingContent}>
-                <Text style={styles.settingLabel}>Bảo mật tài khoản</Text>
-                <Text style={styles.settingSub}>
-                  
-                </Text>
-              </View>
-            </View>
-          </View>
 
           {editMode ? (
             <TouchableOpacity
@@ -1291,6 +1266,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 12,
     backgroundColor: "#FFFFFF",
+    color: "#111827",
+  },
+  diseaseTypeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+  },
+  checkboxWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 4,
+  },
+  checkboxLabel: {
+    fontSize: 14,
     color: "#111827",
   },
   textAreaCounter: {

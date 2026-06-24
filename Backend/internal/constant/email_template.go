@@ -78,7 +78,7 @@ const ActivateOTPEmailTemplate = `
 
 const ResetPasswordEmailTemplate = `
 	<!DOCTYPE html>
-	<html lang="en">
+	<html lang="vi">
 	<head>
 	<meta charset="UTF-8">
 	<style>
@@ -113,15 +113,14 @@ const ResetPasswordEmailTemplate = `
 		font-size: 15px;
 		line-height: 1.6;
 		}
-		.button {
-		display: inline-block;
-		background-color: #007bff;
-		color: white;
-		text-decoration: none;
-		padding: 12px 20px;
-		border-radius: 6px;
-		margin: 20px 0;
-		font-weight: 500;
+		.otp {
+		display: block;
+		text-align: center;
+		font-size: 32px;
+		font-weight: 700;
+		letter-spacing: 8px;
+		color: #007bff;
+		margin: 24px 0;
 		}
 		.footer {
 		text-align: center;
@@ -136,15 +135,16 @@ const ResetPasswordEmailTemplate = `
 		<div class="logo">
 		<img src="https://img.icons8.com/color/96/000000/heart-monitor.png" alt="Logo">
 		</div>
-		<h1>Reset Your Password</h1>
-		<p>Hello %s,</p>
-		<p>We received a request to reset your password for your <strong>Remote Patient Monitoring</strong> account. Click the button below to create a new password.</p>
+		<h1>Yêu cầu Đặt lại mật khẩu</h1>
+		<p>Chào %s,</p>
+		<p>Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản <strong>Remote Patient Monitoring</strong> của bạn.</p>
+		
+		<p>Dưới đây là mã xác thực (OTP) của bạn:</p>
 
-		<div style="text-align: center;">
-		<a href="%s" class="button">Reset My Password</a>
-		</div>
+		<span class="otp">%s</span>
 
-		<p>This link will expire in <strong>15 minutes</strong>. If you did not request a password reset, you can safely ignore this email.</p>
+		<p>Mã này sẽ hết hạn sau <strong>%d phút</strong>.</p>
+		<p>Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này để đảm bảo an toàn cho tài khoản.</p>
 	</div>
 	</body>
 	</html>
