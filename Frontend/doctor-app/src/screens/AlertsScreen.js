@@ -10,6 +10,7 @@ import {
   Modal,
   Alert,
   ScrollView,
+  DeviceEventEmitter,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
@@ -72,6 +73,13 @@ export default function AlertsScreen() {
 
   useEffect(() => {
     fetchAlerts();
+  }, [fetchAlerts]);
+
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener("NEW_ALERT", () => {
+      fetchAlerts(true);
+    });
+    return () => sub.remove();
   }, [fetchAlerts]);
 
   const handleAcknowledge = async () => {

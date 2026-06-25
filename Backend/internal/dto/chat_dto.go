@@ -27,6 +27,7 @@ type ConversationResponse struct {
 	ID              primitive.ObjectID                `json:"id"`
 	Participants    []ConversationParticipantResponse `json:"participants"`
 	LatestMessageID *primitive.ObjectID               `json:"latestMessageId,omitempty"`
+	LastMessage     *MessageResponse                  `json:"lastMessage,omitempty"`
 	CreatedAt       time.Time                         `json:"createdAt"`
 	UpdatedAt       time.Time                         `json:"updatedAt"`
 }

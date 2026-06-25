@@ -8,6 +8,7 @@
     "reminders": "Reminders",
     "prescriptions": "Prescriptions",
     "appointments": "Follow-up Appointments",
+    "compliance": "Medication Compliance",
     "settings": "Settings"
   },
   "common": {
@@ -69,6 +70,7 @@
     "to": "To",
     "exportAlerts": "Export Alerts",
     "exportHealthReport": "Export Health Report",
+    "exportComplianceReport": "Export Medication Compliance Report",
     "selectPatients": "Select Patients",
     "selectAll": "Select All",
     "deselectAll": "Deselect All",

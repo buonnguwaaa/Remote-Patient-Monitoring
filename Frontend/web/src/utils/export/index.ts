@@ -6,3 +6,4 @@
 export * from './excelExporter';
 export * from './alertExporter';
 export * from './healthReportExporter';
+export * from './complianceExporter';

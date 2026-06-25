@@ -8,6 +8,7 @@
     "reminders": "Nhắc nhở",
     "prescriptions": "Đơn thuốc",
     "appointments": "Lịch tái khám",
+    "compliance": "Tuân thủ dùng thuốc",
     "settings": "Cài đặt"
   },
   "common": {
@@ -69,6 +70,7 @@
     "to": "Đến ngày",
     "exportAlerts": "Xuất cảnh báo",
     "exportHealthReport": "Xuất báo cáo chỉ số sức khỏe",
+    "exportComplianceReport": "Xuất báo cáo tuân thủ dùng thuốc",
     "selectPatients": "Chọn bệnh nhân",
     "selectAll": "Chọn tất cả",
     "deselectAll": "Bỏ chọn tất cả",

@@ -94,3 +94,13 @@ export const updatePrescriptionStatus = (id, status) => request(`/prescriptions/
   body: JSON.stringify({ status }),
 });
 
+export const getAdherence = (params = {}) => {
+  const query = new URLSearchParams();
+  if (params.patientId) query.set("patientId", params.patientId);
+  if (params.days) query.set("days", params.days);
+  if (params.from) query.set("from", params.from);
+  if (params.to) query.set("to", params.to);
+  const qs = query.toString();
+  return request(`/medication-intakes/adherence${qs ? "?" + qs : ""}`);
+};
+
