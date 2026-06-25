@@ -99,7 +99,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	h.setAccessTokenCookie(c, resp.AccessToken)
 	h.setRefreshTokenCookie(c, resp.RefreshToken)
 
-	c.JSON(http.StatusOK, gin.H{"message": "User logged in successfully"})
+	c.JSON(http.StatusOK, gin.H{"data": resp, "message": "User logged in successfully"})
 }
 
 // Me retrieves the authenticated user's information
@@ -281,7 +281,8 @@ func (h *AuthHandler) ResetPassword(c *gin.Context) {
 		return
 	}
 	input := &usecase.ResetPasswordInput{
-		Token:                req.ResetToken,
+		Email:                req.Email,
+		OTP:                  req.OTP,
 		NewPassword:          req.NewPassword,
 		ConfirmedNewPassword: req.ConfirmedNewPassword,
 	}

@@ -17,24 +17,35 @@ export interface PatientDetailResponse {
   medicalHistory?: string;
 }
 
+export type MealTiming = "pre_meal" | "post_meal";
+
 export interface MeasurementResponse {
   id: string;
   patientId: string;
+
   temperature?: number | null;
   heartRate?: number | null;
   respiratoryRate?: number | null;
   spo2?: number | null;
+
   bloodPressure?: {
     systolic?: number | null;
     diastolic?: number | null;
+    map?: number | null;
   } | null;
-  type: string;
-  systolic?: number | null;
-  diastolic?: number | null;
-  glucose?: number | null;
-  timing?: string;
-  device?: string;
-  note?: string;
+
+  height?: number | null;
+  weight?: number | null;
+  bmi?: number | null;
+
+  glucose?: {
+    bloodGlucose?: number | null;
+  } | number | null;
+
+  mealTiming?: MealTiming | null;
+
+  device?: string | null;
+  note?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -67,7 +78,7 @@ export const getLatestAlertForPatient = async (
 export const getAlerts = async (params?: {
   patientId?: string;
   status?: "open" | "ack";
-  severity?: "high" | "info";
+  severity?: "low" | "medium" | "high";
   isLatest?: boolean;
   limit?: number;
   page?: number;

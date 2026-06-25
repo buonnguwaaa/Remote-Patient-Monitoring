@@ -42,7 +42,8 @@ type ForgotPasswordInput struct {
 }
 
 type ResetPasswordInput struct {
-	Token                string
+	Email                string
+	OTP                  string
 	NewPassword          string
 	ConfirmedNewPassword string
 }

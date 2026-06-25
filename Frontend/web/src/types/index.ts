@@ -44,7 +44,7 @@ export interface ThresholdViolation {
   rule: string;
   observed: number;
   threshold: number;
-  severity: "info" | "high";
+  severity: "low" | "medium" | "high";
 }
 
 export interface Alert {
@@ -54,7 +54,7 @@ export interface Alert {
   patientAvatar?: string;
   violations: ThresholdViolation[];
   status: "open" | "ack";
-  severity: "info" | "high";
+  severity: "low" | "medium" | "high";
   acknowledgedBy?: string;
   acknowledgedAt?: string;
   doctorNote?: string;

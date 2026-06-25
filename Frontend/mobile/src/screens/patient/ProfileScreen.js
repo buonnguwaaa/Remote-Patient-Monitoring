@@ -52,6 +52,10 @@ const EMPTY_PATIENT_FORM = {
   dob: "",
   createdAt: "",
   updatedAt: "",
+  diseaseTypes: {
+    bloodPressure: false,
+    glucose: false,
+  },
 };
 
 function getAvatarInitial(name) {
@@ -168,6 +172,10 @@ function normalizeProfile(profile = {}) {
     dob: profile.dob || "",
     createdAt: profile.createdAt || "",
     updatedAt: profile.updatedAt || "",
+    diseaseTypes: {
+      bloodPressure: profile.diseaseTypes?.bloodPressure || false,
+      glucose: profile.diseaseTypes?.glucose || false,
+    },
   };
 
   return { user, patient };
@@ -788,6 +796,8 @@ export default function ProfileScreen() {
             </View>
           </View>
 
+
+
           <Text style={styles.sectionTitle}>Tiền sử bệnh án</Text>
           <View style={styles.infoCard}>
             <View style={styles.medicalRowHeader}>
@@ -1369,6 +1379,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 12,
     backgroundColor: "#FFFFFF",
+    color: "#111827",
+  },
+  diseaseTypeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+  },
+  checkboxWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 4,
+  },
+  checkboxLabel: {
+    fontSize: 14,
     color: "#111827",
   },
   textAreaCounter: {

@@ -3,6 +3,7 @@ package dto
 import (
 	"time"
 
+	userDomain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -17,8 +18,9 @@ type AssignPatientRequest struct {
 type AssignmentResponse struct {
 	ID              primitive.ObjectID `json:"id"`
 	PatientID       primitive.ObjectID `json:"patientId"`
-	PatientPublicID string             `json:"patientPublicId"`
-	PatientName     string             `json:"patientName,omitempty"`
+	PatientPublicID     string             `json:"patientPublicId"`
+	PatientName         string             `json:"patientName,omitempty"`
+	PatientDiseaseTypes *userDomain.DiseaseTypes `json:"patientDiseaseTypes,omitempty"`
 	DoctorID        primitive.ObjectID `json:"doctorId,omitempty"`
 	DoctorPublicID  string             `json:"doctorPublicId,omitempty"`
 	DoctorName      string             `json:"doctorName,omitempty"`

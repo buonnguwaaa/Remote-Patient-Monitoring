@@ -22,10 +22,10 @@ type BaseUserInfoResponse struct {
 
 type PatientInfoResponse struct {
 	BaseUserInfoResponse
-	InsuranceNumber       string                 `json:"insuranceNumber,omitempty"`
-	CCCD                  string                 `json:"cccd,omitempty"`
-	EmergencyContactName  string                 `json:"emergencyContactName,omitempty"`
-	EmergencyContactPhone string                 `json:"emergencyContactPhone,omitempty"`
+	InsuranceNumber       string              `json:"insuranceNumber,omitempty"`
+	CCCD                  string              `json:"cccd,omitempty"`
+	EmergencyContactName  string              `json:"emergencyContactName,omitempty"`
+	EmergencyContactPhone string              `json:"emergencyContactPhone,omitempty"`
 	MedicalHistory        string              `json:"medicalHistory,omitempty"`
 	DiseaseTypes          domain.DiseaseTypes `json:"diseaseTypes"`
 }
@@ -59,10 +59,10 @@ type UpdateUserStatusRequest struct {
 }
 
 type PatientProfileFieldsRequest struct {
-	InsuranceNumber       string                  `json:"insuranceNumber"`
-	CCCD                  string                  `json:"cccd"`
-	EmergencyContactName  string                  `json:"emergencyContactName"`
-	EmergencyContactPhone string                  `json:"emergencyContactPhone"`
+	InsuranceNumber       string               `json:"insuranceNumber"`
+	CCCD                  string               `json:"cccd"`
+	EmergencyContactName  string               `json:"emergencyContactName"`
+	EmergencyContactPhone string               `json:"emergencyContactPhone"`
 	MedicalHistory        string               `json:"medicalHistory"`
 	DiseaseTypes          *domain.DiseaseTypes `json:"diseaseTypes,omitempty"`
 }

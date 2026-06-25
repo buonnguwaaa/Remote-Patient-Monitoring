@@ -85,10 +85,14 @@ func ValidateDoseTime(dose MedicationDose) error {
 	if bucket != dose.TimeOfDay {
 		var todVN string
 		switch dose.TimeOfDay {
-		case "morning": todVN = "Sáng"
-		case "noon": todVN = "Trưa"
-		case "evening": todVN = "Tối"
-		default: todVN = string(dose.TimeOfDay)
+		case "morning":
+			todVN = "Sáng"
+		case "noon":
+			todVN = "Trưa"
+		case "evening":
+			todVN = "Tối"
+		default:
+			todVN = string(dose.TimeOfDay)
 		}
 		return fmt.Errorf("giờ %s không nằm trong khoảng thời gian của Buổi %s", FormatClock(*dose.Hour, *dose.Minute), todVN)
 	}

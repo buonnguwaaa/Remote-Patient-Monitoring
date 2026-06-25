@@ -23,17 +23,17 @@ type CreateThresholdRequest struct {
 }
 
 type UpdateThresholdRequest struct {
-	TemperatureMin     float64    `json:"temperatureMin,omitempty"`
-	TemperatureMax     float64    `json:"temperatureMax,omitempty"`
-	HeartRateMin       float64    `json:"heartRateMin,omitempty"`
-	HeartRateMax       float64    `json:"heartRateMax,omitempty"`
-	RespiratoryRateMin float64    `json:"respiratoryRateMin,omitempty"`
-	RespiratoryRateMax float64    `json:"respiratoryRateMax,omitempty"`
-	SpO2Min            float64    `json:"spo2Min,omitempty"`
-	SysMin             float64    `json:"sysMin,omitempty"`
-	SysMax             float64    `json:"sysMax,omitempty"`
-	DiaMin             float64    `json:"diaMin,omitempty"`
-	DiaMax             float64    `json:"diaMax,omitempty"`
+	TemperatureMin     *float64   `json:"temperatureMin,omitempty"`
+	TemperatureMax     *float64   `json:"temperatureMax,omitempty"`
+	HeartRateMin       *float64   `json:"heartRateMin,omitempty"`
+	HeartRateMax       *float64   `json:"heartRateMax,omitempty"`
+	RespiratoryRateMin *float64   `json:"respiratoryRateMin,omitempty"`
+	RespiratoryRateMax *float64   `json:"respiratoryRateMax,omitempty"`
+	SpO2Min            *float64   `json:"spo2Min,omitempty"`
+	SysMin             *float64   `json:"sysMin,omitempty"`
+	SysMax             *float64   `json:"sysMax,omitempty"`
+	DiaMin             *float64   `json:"diaMin,omitempty"`
+	DiaMax             *float64   `json:"diaMax,omitempty"`
 	GlucoseMin         *float64   `json:"glucoseMin,omitempty"`
 	GlucoseMax         *float64   `json:"glucoseMax,omitempty"`
 	EffectiveFrom      time.Time  `json:"effectiveFrom,omitempty"`

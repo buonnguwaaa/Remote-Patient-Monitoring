@@ -156,6 +156,7 @@ const ThresholdAlert = () => {
   };
 
   const getViolationLabel = (type: string) => {
+    const cleanType = type.replace(/_(max|min|high|low)$/, "");
     const labels: Record<string, string> = {
       temperature: t("alerts.temperature"),
       heart_rate: t("alerts.heartRate"),
@@ -164,8 +165,10 @@ const ThresholdAlert = () => {
       blood_pressure_systolic: t("alerts.systolic"),
       blood_pressure_diastolic: t("alerts.diastolic"),
       glucose: t("alerts.glucose"),
+      sys: t("alerts.systolic"),
+      bp_diastolic: t("alerts.diastolic")
     };
-    return labels[type] || type;
+    return labels[cleanType] || labels[type] || type;
   };
 
   const formatDate = (value: string) =>
@@ -187,9 +190,15 @@ const ThresholdAlert = () => {
       >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h3 className="truncate text-base font-semibold text-gray-900 dark:text-slate-100">
-              {alert.patientName || t("alerts.patient")}
-            </h3>
+            <button
+              type="button"
+              onClick={() => navigate(`/patient/${alert.patientId}`)}
+              className="group flex max-w-full items-center text-left"
+            >
+              <h3 className="truncate text-base font-semibold text-blue-600 group-hover:text-blue-800 group-hover:underline dark:text-blue-400 dark:group-hover:text-blue-300 transition-colors">
+                {alert.patientName || t("alerts.patient")}
+              </h3>
+            </button>
             <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
               {formatDate(alert.createdAt)}
             </div>
@@ -207,11 +216,13 @@ const ThresholdAlert = () => {
             className={`inline-flex whitespace-nowrap items-center gap-1 rounded-md px-3 py-1 text-xs font-medium ${
               alert.severity === "high"
                 ? "bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300"
-                : "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-200"
+                : alert.severity === "medium"
+                ? "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-200"
+                : "bg-slate-100 text-slate-800 dark:bg-slate-500/15 dark:text-slate-200"
             }`}
           >
             {alert.severity === "high" ? <FaExclamationTriangle /> : <FaInfoCircle />}
-            {alert.severity === "high" ? t("alerts.severe") : t("alerts.info")}
+            {alert.severity === "high" ? t("alerts.severe", "Nguy hiểm") : alert.severity === "medium" ? t("alerts.medium", "Cảnh báo") : t("alerts.low", "Nhẹ")}
           </span>
           <span className="text-xs text-slate-500 dark:text-slate-400">
             {alert.status === "ack" ? t("alerts.processed") : t("alerts.pending")}
@@ -290,9 +301,13 @@ const ThresholdAlert = () => {
       className: "min-w-[180px] pl-8 pr-3",
       cellClassName: "text-center",
       render: (alert) => (
-        <div className="text-sm font-medium text-gray-900 dark:text-slate-100">
+        <button
+          type="button"
+          onClick={() => navigate(`/patient/${alert.patientId}`)}
+          className="text-sm font-semibold text-blue-600 transition-colors hover:text-blue-800 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
+        >
           {alert.patientName || t("alerts.patient")}
-        </div>
+        </button>
       ),
     },
     {
@@ -347,18 +362,30 @@ const ThresholdAlert = () => {
       header: <div className="flex justify-center">{t("alerts.severity")}</div>,
       className: "min-w-[110px]",
       cellClassName: "text-center",
-      render: (alert) =>
-        alert.severity === "high" ? (
-          <span className="inline-flex whitespace-nowrap items-center gap-1 rounded-full bg-red-100 px-2.5 py-1 text-sm font-medium text-red-800 dark:bg-red-500/15 dark:text-red-300 dark:ring-1 dark:ring-red-500/25">
-            <FaExclamationTriangle className="h-3 w-3" />
-            {t("alerts.severe")}
-          </span>
-        ) : (
-          <span className="inline-flex whitespace-nowrap items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-sm font-medium text-amber-800 dark:bg-amber-500/15 dark:text-amber-200 dark:ring-1 dark:ring-amber-500/25">
-            <FaInfoCircle className="h-3 w-3" />
-            {t("alerts.info")}
-          </span>
-        ),
+      render: (alert) => {
+        if (alert.severity === "high") {
+          return (
+            <span className="inline-flex whitespace-nowrap items-center gap-1 rounded-full bg-red-100 px-2.5 py-1 text-sm font-medium text-red-800 dark:bg-red-500/15 dark:text-red-300 dark:ring-1 dark:ring-red-500/25">
+              <FaExclamationTriangle className="h-3 w-3" />
+              {t("alerts.severe", "Nguy hiểm")}
+            </span>
+          );
+        } else if (alert.severity === "medium") {
+          return (
+            <span className="inline-flex whitespace-nowrap items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-sm font-medium text-amber-800 dark:bg-amber-500/15 dark:text-amber-200 dark:ring-1 dark:ring-amber-500/25">
+              <FaInfoCircle className="h-3 w-3" />
+              {t("alerts.medium", "Cảnh báo")}
+            </span>
+          );
+        } else {
+          return (
+            <span className="inline-flex whitespace-nowrap items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-sm font-medium text-slate-800 dark:bg-slate-500/15 dark:text-slate-200 dark:ring-1 dark:ring-slate-500/25">
+              <FaInfoCircle className="h-3 w-3" />
+              {t("alerts.low", "Nhẹ")}
+            </span>
+          );
+        }
+      },
     },
     {
       header: <div className="flex justify-center">{t("alerts.status")}</div>,
@@ -386,7 +413,7 @@ const ThresholdAlert = () => {
       className: "min-w-[160px]",
       cellClassName: "text-center",
       render: (alert) => (
-        <div className="flex items-center justify-center gap-1.5">
+        <div className="flex items-center justify-center gap-1.5" onClick={(e) => e.stopPropagation()}>
           {alert.status === "open" ? (
             <button
               type="button"
@@ -419,9 +446,6 @@ const ThresholdAlert = () => {
             <h1 className="text-2xl font-bold text-gray-800 dark:text-slate-100 sm:text-3xl">
               {t("alerts.title")}
             </h1>
-            <p className="mt-2 max-w-3xl text-sm text-gray-600 dark:text-slate-400 sm:text-base">
-              {t("alerts.description")}
-            </p>
           </div>
           <button
             type="button"
@@ -481,6 +505,7 @@ const ThresholdAlert = () => {
             data={alerts}
             columns={columns}
             rowKey={(alert) => alert.id}
+            onRowClick={(alert) => navigate(`/patient/${alert.patientId}`)}
             loading={loading}
             paginated={true}
             itemsPerPage={8}

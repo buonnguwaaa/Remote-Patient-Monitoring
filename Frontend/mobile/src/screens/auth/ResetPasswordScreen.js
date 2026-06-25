@@ -13,20 +13,9 @@ import ButtonPrimary from '../../components/ButtonPrimary';
 import styles from '../../styles/login';
 import * as authApi from '../../api/authApi';
 
-function extractToken(input) {
-  const trimmed = input.trim();
-  try {
-    const url = new URL(trimmed);
-    const t = url.searchParams.get('token');
-    if (t) return t;
-  } catch {
-    // not a URL, use as-is
-  }
-  return trimmed;
-}
-
 export default function ResetPasswordScreen({ navigation }) {
-  const [tokenInput, setTokenInput] = useState('');
+  const [email, setEmail] = useState('');
+  const [otp, setOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -37,13 +26,17 @@ export default function ResetPasswordScreen({ navigation }) {
 
   const handleSubmit = async () => {
     setError('');
-    const token = extractToken(tokenInput);
-    if (!token) {
-      setError('Vui lòng dán link hoặc token từ email.');
+    
+    if (!email || !email.includes('@')) {
+      setError('Vui lòng nhập địa chỉ email hợp lệ.');
       return;
     }
-    if (newPassword.length < 8) {
-      setError('Mật khẩu phải có ít nhất 8 ký tự.');
+    if (!otp || otp.length !== 6) {
+      setError('Vui lòng nhập mã OTP gồm 6 chữ số.');
+      return;
+    }
+    if (newPassword.length < 6) {
+      setError('Mật khẩu phải có ít nhất 6 ký tự.');
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -53,7 +46,8 @@ export default function ResetPasswordScreen({ navigation }) {
 
     setLoading(true);
     const res = await authApi.resetPassword({
-      resetToken: token,
+      email: email.trim().toLowerCase(),
+      otp: otp.trim(),
       newPassword,
       confirmedNewPassword: confirmPassword,
     });
@@ -62,7 +56,7 @@ export default function ResetPasswordScreen({ navigation }) {
     if (res.ok) {
       setSuccess(true);
     } else {
-      const msg = res.body?.error || res.error || 'Token không hợp lệ hoặc đã hết hạn.';
+      const msg = res.body?.error || res.error || 'Mã OTP không hợp lệ hoặc đã hết hạn.';
       setError(msg);
     }
   };
@@ -102,7 +96,7 @@ export default function ResetPasswordScreen({ navigation }) {
         <View style={[styles.header, { alignItems: 'flex-start', paddingTop: 4 }]}>
           <Text style={styles.title}>Đặt lại mật khẩu</Text>
           <Text style={[styles.subtitle, { textAlign: 'left' }]}>
-            Dán link từ email vào ô bên dưới và nhập mật khẩu mới.
+            Nhập email, mã OTP từ email và mật khẩu mới của bạn.
           </Text>
         </View>
 
@@ -114,21 +108,30 @@ export default function ResetPasswordScreen({ navigation }) {
           ) : null}
 
           <View style={styles.field}>
-            <Text style={styles.label}>Link hoặc token từ email</Text>
+            <Text style={styles.label}>Email</Text>
             <TextInput
-              value={tokenInput}
-              onChangeText={(v) => { setTokenInput(v); setError(''); }}
-              placeholder="Dán link reset hoặc token tại đây"
+              value={email}
+              onChangeText={(v) => { setEmail(v); setError(''); }}
+              placeholder="Nhập địa chỉ email"
               autoCapitalize="none"
               autoCorrect={false}
-              multiline
-              numberOfLines={2}
-              style={[styles.input, { height: 70, textAlignVertical: 'top', paddingTop: 12 }]}
+              keyboardType="email-address"
+              style={styles.input}
               editable={!loading}
             />
-            <Text style={{ color: '#717182', marginTop: 6, fontSize: 12 }}>
-              Ví dụ: https://...?token=abc123 hoặc chỉ abc123
-            </Text>
+          </View>
+
+          <View style={styles.field}>
+            <Text style={styles.label}>Mã OTP từ email</Text>
+            <TextInput
+              value={otp}
+              onChangeText={(v) => { setOtp(v.replace(/[^0-9]/g, '')); setError(''); }}
+              placeholder="Nhập mã 6 chữ số"
+              keyboardType="numeric"
+              maxLength={6}
+              style={styles.input}
+              editable={!loading}
+            />
           </View>
 
           <View style={styles.field}>
