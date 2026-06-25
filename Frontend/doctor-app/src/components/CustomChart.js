@@ -71,25 +71,46 @@ export default function CustomChart({ chartType, measurements, threshold, startD
       const label = `${date.getDate()}/${date.getMonth() + 1} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
 
       if (chartType === "bp") {
-        const sys = m.systolic || m.bloodPressure?.systolic || null;
-        const dia = m.diastolic || m.bloodPressure?.diastolic || null;
-        if (sys !== null || dia !== null) {
-          value = sys;
-          val2 = dia;
+        const sys = m.systolic || m.bloodPressure?.systolic;
+        const dia = m.diastolic || m.bloodPressure?.diastolic;
+        if (sys !== undefined && sys !== null && dia !== undefined && dia !== null) {
+          const sysNum = Number(sys);
+          const diaNum = Number(dia);
+          if (!isNaN(sysNum) && !isNaN(diaNum)) {
+            value = sysNum;
+            val2 = diaNum;
+          }
         }
       } else if (chartType === "pulse") {
-        value = m.pulse || m.heartRate || null;
+        const pulseVal = m.pulse || m.heartRate;
+        if (pulseVal !== undefined && pulseVal !== null) {
+          const num = Number(pulseVal);
+          if (!isNaN(num)) value = num;
+        }
       } else if (chartType === "temperature") {
-        value = m.temperature || null;
+        if (m.temperature !== undefined && m.temperature !== null) {
+          const num = Number(m.temperature);
+          if (!isNaN(num)) value = num;
+        }
       } else if (chartType === "spo2") {
-        value = m.spo2 || null;
+        if (m.spo2 !== undefined && m.spo2 !== null) {
+          const num = Number(m.spo2);
+          if (!isNaN(num)) value = num;
+        }
       } else if (chartType === "respiratory") {
-        value = m.respiratoryRate || null;
+        if (m.respiratoryRate !== undefined && m.respiratoryRate !== null) {
+          const num = Number(m.respiratoryRate);
+          if (!isNaN(num)) value = num;
+        }
       } else if (chartType === "glucose") {
-        value = m.glucose ? (typeof m.glucose === "object" ? m.glucose.bloodGlucose : m.glucose) : null;
+        const rawGluc = m.glucose ? (typeof m.glucose === "object" ? m.glucose.bloodGlucose : m.glucose) : null;
+        if (rawGluc !== undefined && rawGluc !== null) {
+          const num = Number(rawGluc);
+          if (!isNaN(num)) value = num;
+        }
       }
 
-      if (value !== null) {
+      if (value !== null && value !== undefined && !isNaN(value)) {
         chartPoints.push({ value, val2, label });
       }
     });
@@ -109,35 +130,53 @@ export default function CustomChart({ chartType, measurements, threshold, startD
 
   let allVals = [];
   points.forEach((p) => {
-    allVals.push(p.value);
-    if (p.val2 !== null) allVals.push(p.val2);
+    if (p.value !== null && p.value !== undefined && !isNaN(p.value)) {
+      allVals.push(p.value);
+    }
+    if (p.val2 !== null && p.val2 !== undefined && !isNaN(p.val2)) {
+      allVals.push(p.val2);
+    }
   });
 
   if (threshold) {
+    const pushIfValid = (val) => {
+      if (val !== undefined && val !== null) {
+        const num = Number(val);
+        if (!isNaN(num) && isFinite(num)) {
+          allVals.push(num);
+        }
+      }
+    };
     if (chartType === "bp") {
-      if (threshold.sysMin) allVals.push(threshold.sysMin);
-      if (threshold.sysMax) allVals.push(threshold.sysMax);
-      if (threshold.diaMin) allVals.push(threshold.diaMin);
-      if (threshold.diaMax) allVals.push(threshold.diaMax);
+      pushIfValid(threshold.sysMin);
+      pushIfValid(threshold.sysMax);
+      pushIfValid(threshold.diaMin);
+      pushIfValid(threshold.diaMax);
     } else if (chartType === "pulse") {
-      if (threshold.heartRateMin) allVals.push(threshold.heartRateMin);
-      if (threshold.heartRateMax) allVals.push(threshold.heartRateMax);
+      pushIfValid(threshold.heartRateMin);
+      pushIfValid(threshold.heartRateMax);
     } else if (chartType === "temperature") {
-      if (threshold.temperatureMin) allVals.push(threshold.temperatureMin);
-      if (threshold.temperatureMax) allVals.push(threshold.temperatureMax);
+      pushIfValid(threshold.temperatureMin);
+      pushIfValid(threshold.temperatureMax);
     } else if (chartType === "spo2") {
-      if (threshold.spo2Min) allVals.push(threshold.spo2Min);
+      pushIfValid(threshold.spo2Min);
     } else if (chartType === "respiratory") {
-      if (threshold.respiratoryRateMin) allVals.push(threshold.respiratoryRateMin);
-      if (threshold.respiratoryRateMax) allVals.push(threshold.respiratoryRateMax);
+      pushIfValid(threshold.respiratoryRateMin);
+      pushIfValid(threshold.respiratoryRateMax);
     } else if (chartType === "glucose") {
-      if (threshold.glucoseMin) allVals.push(threshold.glucoseMin);
-      if (threshold.glucoseMax) allVals.push(threshold.glucoseMax);
+      pushIfValid(threshold.glucoseMin);
+      pushIfValid(threshold.glucoseMax);
     }
   }
 
-  let maxVal = Math.max(...allVals);
-  let minVal = Math.min(...allVals);
+  allVals = allVals.filter((v) => typeof v === "number" && !isNaN(v) && isFinite(v));
+
+  let maxVal = 100;
+  let minVal = 0;
+  if (allVals.length > 0) {
+    maxVal = Math.max(...allVals);
+    minVal = Math.min(...allVals);
+  }
 
   const diff = maxVal - minVal;
   if (diff === 0) {

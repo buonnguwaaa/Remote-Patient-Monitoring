@@ -154,9 +154,9 @@ function isMessageEnvelope(payload) {
 function isDirectMessagePayload(payload) {
   return Boolean(
     payload &&
-      typeof payload === "object" &&
-      (payload.id || payload._id) &&
-      (payload.content !== undefined || payload.message !== undefined)
+    typeof payload === "object" &&
+    (payload.id || payload._id) &&
+    (payload.content !== undefined || payload.message !== undefined)
   );
 }
 
@@ -203,14 +203,14 @@ function updateConversationParticipantState(conversation, userId, nextState) {
     participants: conversation.participants.map((participant) =>
       participant.userId === userId
         ? {
-            ...participant,
-            ...(nextState.lastDeliveredMessageId !== undefined
-              ? { lastDeliveredMessageId: nextState.lastDeliveredMessageId }
-              : {}),
-            ...(nextState.lastReadMessageId !== undefined
-              ? { lastReadMessageId: nextState.lastReadMessageId }
-              : {}),
-          }
+          ...participant,
+          ...(nextState.lastDeliveredMessageId !== undefined
+            ? { lastDeliveredMessageId: nextState.lastDeliveredMessageId }
+            : {}),
+          ...(nextState.lastReadMessageId !== undefined
+            ? { lastReadMessageId: nextState.lastReadMessageId }
+            : {}),
+        }
         : participant
     ),
   };
@@ -402,8 +402,8 @@ export default function DoctorChatScreen() {
       if (!conversationsResponse.ok) {
         throw new Error(
           conversationsResponse.body?.error ||
-            conversationsResponse.error ||
-            "Không thể tải danh sách cuộc trò chuyện."
+          conversationsResponse.error ||
+          "Không thể tải danh sách cuộc trò chuyện."
         );
       }
 
@@ -554,7 +554,7 @@ export default function DoctorChatScreen() {
             try {
               const parsed = JSON.parse(content);
               if (parsed.videoSessionId) setActiveVideoSessionId(parsed.videoSessionId);
-            } catch (_) {}
+            } catch (_) { }
           }
           if (content.includes('"type":"video_call_ended"')) {
             setActiveVideoSessionId(null);
@@ -596,7 +596,7 @@ export default function DoctorChatScreen() {
     );
   }, [conversation?.participants, currentUserId]);
 
-  const handleSelectQuickReply = (text) =>{
+  const handleSelectQuickReply = (text) => {
     setDraft(text);
     setError(null);
   }
@@ -672,7 +672,7 @@ export default function DoctorChatScreen() {
     if (lastReadSentRef.current !== latestIncomingMessage.id) {
       socketRef.current.send(JSON.stringify(createReadPayload(latestIncomingMessage.id)));
       lastReadSentRef.current = latestIncomingMessage.id;
-      
+
       // Refresh badge count after sending READ event
       // Use setTimeout to allow backend to process the READ event first
       setTimeout(() => {
@@ -717,9 +717,9 @@ export default function DoctorChatScreen() {
     const left = isDoctor
       ? Math.max(12, Math.min(bubbleLeft, screenWidth - MESSAGE_MENU_WIDTH - 12))
       : Math.max(
-          12,
-          Math.min(bubbleRight - MESSAGE_MENU_WIDTH, screenWidth - MESSAGE_MENU_WIDTH - 12)
-        );
+        12,
+        Math.min(bubbleRight - MESSAGE_MENU_WIDTH, screenWidth - MESSAGE_MENU_WIDTH - 12)
+      );
 
     const top = Math.max(
       12,
@@ -1170,7 +1170,7 @@ export default function DoctorChatScreen() {
                                         </View>
                                       );
                                     }
-                                  } catch (e) {}
+                                  } catch (e) { }
                                 }
                                 return (
                                   <Text

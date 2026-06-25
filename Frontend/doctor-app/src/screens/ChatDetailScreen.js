@@ -409,10 +409,10 @@ export default function ChatDetailScreen() {
               participants: current.participants.map((p) =>
                 p.userId === payload.data.userId
                   ? {
-                      ...p,
-                      lastDeliveredMessageId: payload.data.lastReadMessageId,
-                      lastReadMessageId: payload.data.lastReadMessageId,
-                    }
+                    ...p,
+                    lastDeliveredMessageId: payload.data.lastReadMessageId,
+                    lastReadMessageId: payload.data.lastReadMessageId,
+                  }
                   : p
               ),
             };
@@ -650,6 +650,19 @@ export default function ChatDetailScreen() {
             </Text>
           </TouchableOpacity>
 
+          {/* Video call button */}
+          <TouchableOpacity
+            style={styles.headerVideoBtn}
+            onPress={() => {
+              navigation.navigate("VideoCall", {
+                patientId,
+                conversationId: conversation?.id,
+              });
+            }}
+          >
+            <Ionicons name="videocam-outline" size={22} color="#2563EB" />
+          </TouchableOpacity>
+
           {/* Connection Status Dot */}
           <View style={styles.headerStatus}>
             <View
@@ -781,6 +794,38 @@ export default function ChatDetailScreen() {
 
                 // 1. Render system metrics alerts
                 if (isSystemMessage) {
+                  if (item.message.content && item.message.content.includes('"type":"video_call_invite"')) {
+                    try {
+                      const payload = JSON.parse(item.message.content);
+                      return (
+                        <View key={item.key} style={{ marginVertical: 12, alignItems: 'center' }}>
+                          <View style={{ backgroundColor: '#E0F2FE', padding: 12, borderRadius: 16, width: '85%', alignItems: 'center', borderColor: '#BAE6FD', borderWidth: 1 }}>
+                            <Ionicons name="videocam" size={24} color="#0284C7" style={{ marginBottom: 8 }} />
+                            <Text style={{ fontSize: 13, color: '#0369A1', textAlign: 'center', marginBottom: 10, fontWeight: '500' }}>
+                              Cuộc gọi video đã bắt đầu.
+                            </Text>
+                            <TouchableOpacity
+                              style={{ backgroundColor: '#0284C7', paddingVertical: 8, paddingHorizontal: 20, borderRadius: 8 }}
+                              onPress={() => navigation.navigate("VideoCall", { videoSessionId: payload.videoSessionId, patientId, conversationId: conversation?.id })}
+                            >
+                              <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>Tham gia cuộc gọi</Text>
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      );
+                    } catch (e) {}
+                  }
+                  if (item.message.content && item.message.content.includes('"type":"video_call_ended"')) {
+                    return (
+                      <View key={item.key} style={{ marginVertical: 12, alignItems: 'center' }}>
+                        <View style={{ backgroundColor: '#F1F5F9', padding: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}>
+                          <Ionicons name="call-outline" size={16} color="#64748B" style={{ marginRight: 6 }} />
+                          <Text style={{ fontSize: 12, color: '#64748B' }}>Cuộc gọi video đã kết thúc.</Text>
+                        </View>
+                      </View>
+                    );
+                  }
+
                   const cachedAlert = item.message.relatedAlertId
                     ? alertsCache[item.message.relatedAlertId]
                     : null;
@@ -1046,14 +1091,64 @@ export default function ChatDetailScreen() {
                                   </Text>
                                 </View>
                               ) : null}
-                              <Text
-                                style={[
-                                  styles.messageText,
-                                  isMine ? styles.messageTextDoctor : styles.messageTextPatient,
-                                ]}
-                              >
-                                {item.message.content}
-                              </Text>
+                              {(() => {
+                                if (
+                                  item.message.content &&
+                                  item.message.content.startsWith("{") &&
+                                  item.message.content.includes('"type":"video_call_invite"')
+                                ) {
+                                  try {
+                                    const payload = JSON.parse(item.message.content);
+                                    if (payload.type === "video_call_invite") {
+                                      return (
+                                        <TouchableOpacity
+                                          style={styles.videoInviteBubble}
+                                          onPress={() => {
+                                            navigation.navigate("VideoCall", {
+                                              videoSessionId: payload.videoSessionId,
+                                              patientId,
+                                              conversationId: conversation?.id,
+                                            });
+                                          }}
+                                        >
+                                          <View style={styles.videoInviteRow}>
+                                            <Ionicons name="videocam" size={20} color="#fff" />
+                                            <Text style={styles.videoInviteTitle}>Cuộc gọi video</Text>
+                                          </View>
+                                          <Text style={styles.videoInviteDesc}>
+                                            Bác sĩ đã bắt đầu cuộc gọi video. Nhấn để tham gia!
+                                          </Text>
+                                          <View style={styles.videoInviteBtn}>
+                                            <Text style={styles.videoInviteBtnText}>Tham gia ngay</Text>
+                                          </View>
+                                        </TouchableOpacity>
+                                      );
+                                    }
+                                  } catch (e) {}
+                                }
+                                if (
+                                  item.message.content &&
+                                  item.message.content.startsWith("{") &&
+                                  item.message.content.includes('"type":"video_call_ended"')
+                                ) {
+                                  return (
+                                    <View style={styles.videoEndedBubble}>
+                                      <Ionicons name="videocam-off" size={16} color="#4B5563" />
+                                      <Text style={styles.videoEndedText}>Cuộc gọi video đã kết thúc</Text>
+                                    </View>
+                                  );
+                                }
+                                return (
+                                  <Text
+                                    style={[
+                                      styles.messageText,
+                                      isMine ? styles.messageTextDoctor : styles.messageTextPatient,
+                                    ]}
+                                  >
+                                    {item.message.content}
+                                  </Text>
+                                );
+                              })()}
                             </>
                           )}
 
@@ -1150,46 +1245,49 @@ export default function ChatDetailScreen() {
         </View>
 
         {/* Input composer row */}
-        <View style={[styles.composerWrapper, { paddingBottom: Math.max(insets.bottom, 10) }]}>
-          <View style={styles.composerInputWrap}>
-            {replyTarget && (
-              <View style={styles.replyComposerCard}>
-                <View style={styles.replyComposerBody}>
-                  <Text style={styles.replyComposerLabel}>Đang trả lời</Text>
-                  <Text style={styles.replyComposerSender}>
-                    {replyTarget.senderId === currentUserId ? "Bạn" : displayPatientName}
-                  </Text>
-                  <Text style={styles.replyComposerText} numberOfLines={2}>
-                    {getReplyPreviewContent(replyTarget)}
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  onPress={() => setReplyTarget(null)}
-                  activeOpacity={0.85}
-                  style={styles.replyComposerClose}
-                >
-                  <Ionicons name="close" size={16} color="#6B7280" />
-                </TouchableOpacity>
+        <View style={[styles.composerWrapper, { paddingBottom: Math.max(insets.bottom, 10), flexDirection: "column", alignItems: "stretch" }]}>
+          {replyTarget && (
+            <View style={styles.replyComposerCard}>
+              <View style={styles.replyComposerBody}>
+                <Text style={styles.replyComposerLabel}>Đang trả lời</Text>
+                <Text style={styles.replyComposerSender}>
+                  {replyTarget.senderId === currentUserId ? "Bạn" : displayPatientName}
+                </Text>
+                <Text style={styles.replyComposerText} numberOfLines={2}>
+                  {getReplyPreviewContent(replyTarget)}
+                </Text>
               </View>
-            )}
-            <TextInput
-              value={draft}
-              onChangeText={setDraft}
-              placeholder="Nhập lời nhắn cho bệnh nhân..."
-              placeholderTextColor="#9CA3AF"
-              multiline
-              style={styles.composerInput}
-            />
-          </View>
+              <TouchableOpacity
+                onPress={() => setReplyTarget(null)}
+                activeOpacity={0.85}
+                style={styles.replyComposerClose}
+              >
+                <Ionicons name="close" size={16} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+          )}
 
-          <TouchableOpacity
-            style={[styles.sendButton, !draft.trim() && styles.sendButtonDisabled]}
-            onPress={() => handleSend()}
-            activeOpacity={0.85}
-            disabled={!draft.trim()}
-          >
-            <Ionicons name="send" size={18} color="#FFF" />
-          </TouchableOpacity>
+          <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 10 }}>
+            <View style={styles.composerInputWrap}>
+              <TextInput
+                value={draft}
+                onChangeText={setDraft}
+                placeholder="Nhập lời nhắn cho bệnh nhân..."
+                placeholderTextColor="#9CA3AF"
+                multiline
+                style={styles.composerInput}
+              />
+            </View>
+
+            <TouchableOpacity
+              style={[styles.sendButton, !draft.trim() && styles.sendButtonDisabled]}
+              onPress={() => handleSend()}
+              activeOpacity={0.85}
+              disabled={!draft.trim()}
+            >
+              <Ionicons name="send" size={18} color="#FFF" />
+            </TouchableOpacity>
+          </View>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -1379,7 +1477,7 @@ const styles = StyleSheet.create({
   quickChip: { backgroundColor: "#EFF6FF", borderWidth: 1, borderColor: "#BFDBFE", borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6, justifyContent: "center" },
   quickChipText: { fontSize: 12, color: "#2563EB", fontWeight: "500" },
   composerWrapper: { flexDirection: "row", alignItems: "flex-end", backgroundColor: "#fff", padding: 10, borderTopWidth: 1, borderTopColor: "#F3F4F6", gap: 10 },
-  composerInputWrap: { flex: 1, backgroundColor: "#F3F4F6", borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, maxH: 120 },
+  composerInputWrap: { flex: 1, backgroundColor: "#F3F4F6", borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, maxHeight: 120 },
   composerInput: { flex: 1, fontSize: 14, color: "#1F2937", paddingVertical: 4, textAlignVertical: "center" },
   sendButton: { width: 36, height: 36, borderRadius: 18, backgroundColor: "#2563EB", alignItems: "center", justifyContent: "center", alignSelf: "flex-end" },
   sendButtonDisabled: { backgroundColor: "#BFDBFE" },
@@ -1389,4 +1487,54 @@ const styles = StyleSheet.create({
   replyComposerSender: { fontSize: 11, fontWeight: "700", color: "#2563EB", marginVertical: 2 },
   replyComposerText: { fontSize: 11, color: "#6B7280" },
   replyComposerClose: { padding: 4 },
+  headerVideoBtn: { padding: 4, marginRight: 8 },
+  videoInviteBubble: {
+    backgroundColor: "#1E3A8A",
+    borderRadius: 16,
+    padding: 12,
+    maxWidth: 240,
+    marginTop: 4,
+  },
+  videoInviteRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 6,
+    gap: 6,
+  },
+  videoInviteTitle: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 14,
+  },
+  videoInviteDesc: {
+    color: "#93C5FD",
+    fontSize: 12,
+    marginBottom: 10,
+    lineHeight: 16,
+  },
+  videoInviteBtn: {
+    backgroundColor: "#2563EB",
+    borderRadius: 8,
+    paddingVertical: 8,
+    alignItems: "center",
+  },
+  videoInviteBtnText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 12,
+  },
+  videoEndedBubble: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#E5E7EB",
+    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    gap: 6,
+  },
+  videoEndedText: {
+    color: "#4B5563",
+    fontSize: 12,
+    fontWeight: "600",
+  },
 });

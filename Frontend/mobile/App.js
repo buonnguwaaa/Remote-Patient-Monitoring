@@ -4,6 +4,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AuthProvider } from "./src/context/AuthContext";
 import { SnackbarProvider } from "./src/context/SnackbarContext";
 import AppNavigator from "./src/navigation/AppNavigator";
+import ErrorBoundary from "./src/components/ErrorBoundary";
 import {
   attachNotificationListeners,
   processInitialNotificationResponse,
@@ -29,13 +30,15 @@ function NotificationLifecycleBridge() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <SnackbarProvider>
-        <SafeAreaProvider>
-          <NotificationLifecycleBridge />
-          <AppNavigator />
-        </SafeAreaProvider>
-      </SnackbarProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <SnackbarProvider>
+          <SafeAreaProvider>
+            <NotificationLifecycleBridge />
+            <AppNavigator />
+          </SafeAreaProvider>
+        </SnackbarProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

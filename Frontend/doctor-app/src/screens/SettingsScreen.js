@@ -15,9 +15,63 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../context/AuthContext";
 
 export default function SettingsScreen() {
-  const { user, logout } = useAuth();
+  const { user, logout, isBiometricEnabled, enableBiometric, disableBiometric, sessionPassword } = useAuth();
   const [language, setLanguage] = useState("vi"); // 'vi' | 'en'
   const [darkMode, setDarkMode] = useState(false);
+  const [biometricLoading, setBiometricLoading] = useState(false);
+
+  const handleToggleBiometric = async () => {
+    if (isBiometricEnabled) {
+      const res = await disableBiometric();
+      if (!res.ok) {
+        Alert.alert("Lỗi", res.error);
+      }
+    } else {
+      if (!sessionPassword) {
+        if (Platform.OS === "ios") {
+          Alert.prompt(
+            "Xác nhận mật khẩu",
+            "Vui lòng nhập mật khẩu tài khoản của bạn để bật tính năng này:",
+            [
+              { text: "Hủy", style: "cancel" },
+              {
+                text: "Xác nhận",
+                onPress: async (pwd) => {
+                  if (!pwd) {
+                    Alert.alert("Lỗi", "Mật khẩu không được để trống.");
+                    return;
+                  }
+                  setBiometricLoading(true);
+                  const res = await enableBiometric(pwd);
+                  setBiometricLoading(false);
+                  if (!res.ok) {
+                    Alert.alert("Lỗi", res.error);
+                  } else {
+                    Alert.alert("Thành công", "Đã bật đăng nhập sinh trắc học.");
+                  }
+                },
+              },
+            ],
+            "secure-text"
+          );
+        } else {
+          Alert.alert(
+            "Yêu cầu đăng nhập lại",
+            "Vì lý do bảo mật, vui lòng đăng xuất và đăng nhập lại bằng mật khẩu để có thể kích hoạt tính năng sinh trắc học trên thiết bị này."
+          );
+        }
+      } else {
+        setBiometricLoading(true);
+        const res = await enableBiometric();
+        setBiometricLoading(false);
+        if (!res.ok) {
+          Alert.alert("Lỗi", res.error);
+        } else {
+          Alert.alert("Thành công", "Đã bật đăng nhập sinh trắc học.");
+        }
+      }
+    }
+  };
 
 
 
@@ -111,6 +165,30 @@ export default function SettingsScreen() {
             >
               <View style={[styles.toggleCircle, darkMode && styles.toggleCircleActive]} />
             </TouchableOpacity>
+          </View>
+
+          <View style={styles.divider} />
+
+          {/* Biometric toggle */}
+          <View style={styles.settingRow}>
+            <View style={styles.settingInfo}>
+              <Ionicons name="finger-print-outline" size={20} color={darkMode ? "#93C5FD" : "#2563EB"} />
+              <View style={{ marginLeft: 12 }}>
+                <Text style={[styles.settingLabel, darkMode && styles.textWhite]}>Sinh trắc học (Fingerprint/FaceID)</Text>
+                <Text style={styles.settingSub}>Kích hoạt đăng nhập nhanh bằng vân tay/khuôn mặt</Text>
+              </View>
+            </View>
+
+            {biometricLoading ? (
+              <ActivityIndicator size="small" color="#2563EB" />
+            ) : (
+              <TouchableOpacity
+                style={[styles.toggleBtn, isBiometricEnabled && styles.toggleBtnActive]}
+                onPress={handleToggleBiometric}
+              >
+                <View style={[styles.toggleCircle, isBiometricEnabled && styles.toggleCircleActive]} />
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 

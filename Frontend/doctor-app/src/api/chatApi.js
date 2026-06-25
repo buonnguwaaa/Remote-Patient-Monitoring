@@ -37,9 +37,15 @@ export function buildConversationSocketUrl(conversationId) {
   return `${wsBase}/chat/ws?conversationId=${encodeURIComponent(conversationId)}`;
 }
 
+export function buildRealtimeSocketUrl() {
+  const wsBase = BASE_URL.replace(/^http:/i, "ws:").replace(/^https:/i, "wss:");
+  return `${wsBase}/realtime/ws`;
+}
+
 export default {
   getConversations,
   getConversationMessages,
   ensureConversation,
   buildConversationSocketUrl,
+  buildRealtimeSocketUrl,
 };

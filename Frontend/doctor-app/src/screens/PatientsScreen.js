@@ -105,7 +105,7 @@ export default function PatientsScreen() {
     loadPatients();
   };
 
-  const applyFilters = (list, query, status) => {
+  const applyFilters = (list, query, status, disease) => {
     let result = [...list];
 
     // Filter by query
@@ -302,6 +302,9 @@ export default function PatientsScreen() {
         threshold={threshold}
         detailLoading={detailLoading}
         detailError={detailError}
+        onActionChat={(patientId) => navigation.navigate("Chat", { patientId })}
+        onActionReminder={(patientId) => navigation.navigate("Reminders", { patientId })}
+        onActionPrescription={(patientId) => navigation.navigate("Prescriptions", { patientId })}
       />
     </SafeAreaView>
   );

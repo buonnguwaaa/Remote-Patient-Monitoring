@@ -160,23 +160,72 @@ func (s *chatService) GetUserConversations(ctx context.Context, input *usecase.G
 
 	hasMore := len(conversations) > limit
 	nextCursor := ""
-	if !hasMore {
-		return &dto.GetConversationsResponse{
-			Conversations: mapConversationsToDTO(conversations),
-			Paging: dto.Paging{
-				HasMore:    false,
-				NextCursor: "",
-			},
-		}, nil
+	if hasMore {
+		conversations = conversations[:limit]
+		nextCursor = conversations[len(conversations)-1].UpdatedAt.UTC().Format(time.RFC3339Nano)
 	}
 
-	conversations = conversations[:limit]
-	nextCursor = conversations[len(conversations)-1].UpdatedAt.UTC().Format(time.RFC3339Nano)
+	// Batch fetch latest message for each conversation using latestMessageId
+	latestMessageMap := make(map[primitive.ObjectID]*chatDomain.Message)
+	var missingConvIDs []primitive.ObjectID
+
+	for _, conv := range conversations {
+		if conv.LatestMessageID != nil && !conv.LatestMessageID.IsZero() {
+			// Will fetch by ID below
+		} else {
+			missingConvIDs = append(missingConvIDs, conv.ID)
+		}
+	}
+
+	// Collect all latestMessageIDs to batch fetch
+	latestMsgIDs := make([]primitive.ObjectID, 0, len(conversations))
+	for _, conv := range conversations {
+		if conv.LatestMessageID != nil && !conv.LatestMessageID.IsZero() {
+			latestMsgIDs = append(latestMsgIDs, *conv.LatestMessageID)
+		}
+	}
+
+	if len(latestMsgIDs) > 0 {
+		msgs, err := s.messageRepo.FindByIDs(ctx, latestMsgIDs)
+		if err != nil {
+			log.Printf("warn: failed to batch fetch latest messages: %v", err)
+		} else {
+			for _, msg := range msgs {
+				latestMessageMap[msg.ConversationID] = msg
+			}
+		}
+	}
+
+	// For conversations without latestMessageId, fetch individually (fallback)
+	for _, convID := range missingConvIDs {
+		msg, err := s.messageRepo.FindLatestByConversationID(ctx, convID)
+		if err != nil {
+			log.Printf("warn: failed to fetch latest message for conversation %s: %v", convID.Hex(), err)
+			continue
+		}
+		if msg != nil {
+			latestMessageMap[convID] = msg
+		}
+	}
+
+	// Build response with lastMessage embedded
+	convDTOs := make([]dto.ConversationResponse, 0, len(conversations))
+	for _, conv := range conversations {
+		mapped := mapConversationToDTO(conv)
+		if mapped == nil {
+			continue
+		}
+		if msg, ok := latestMessageMap[conv.ID]; ok {
+			msgDTO := mapMessageToDTO(msg)
+			mapped.LastMessage = msgDTO
+		}
+		convDTOs = append(convDTOs, *mapped)
+	}
 
 	return &dto.GetConversationsResponse{
-		Conversations: mapConversationsToDTO(conversations),
+		Conversations: convDTOs,
 		Paging: dto.Paging{
-			HasMore:    true,
+			HasMore:    hasMore,
 			NextCursor: nextCursor,
 		},
 	}, nil
