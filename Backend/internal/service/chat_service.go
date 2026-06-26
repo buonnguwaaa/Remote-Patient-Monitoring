@@ -449,16 +449,6 @@ func mapParticipantsToDTO(participants []chatDomain.Participant) []dto.Conversat
 	return results
 }
 
-func mapConversationsToDTO(conversations []*chatDomain.Conversation) []dto.ConversationResponse {
-	results := make([]dto.ConversationResponse, 0, len(conversations))
-	for _, c := range conversations {
-		mapped := mapConversationToDTO(c)
-		if mapped != nil {
-			results = append(results, *mapped)
-		}
-	}
-	return results
-}
 
 func mapMessageToDTO(m *chatDomain.Message) *dto.MessageResponse {
 	if m == nil {
