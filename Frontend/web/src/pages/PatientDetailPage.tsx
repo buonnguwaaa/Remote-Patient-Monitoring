@@ -12,15 +12,17 @@ import {
   MdExpandMore,
   MdExpandLess,
   MdFilterList,
+  MdOutlineDoneAll,
 } from "react-icons/md";
 import { FaRegMessage } from "react-icons/fa6";
-import { 
-  FaNotesMedical, 
-  FaCalendarAlt, 
+import {
+  FaNotesMedical,
+  FaCalendarAlt,
   FaIdCard,
   FaBirthdayCake,
   FaVenusMars,
-  FaPhone 
+  FaPhone,
+  FaVideo
 } from "react-icons/fa";
 import { GiHeartBeats } from "react-icons/gi";
 import VideoCallModal from "../components/video/VideoCallModal";
@@ -377,7 +379,7 @@ const PatientDetailPage = () => {
         .finally(() => { if (!cancelled) setThresholdLoading(false); });
 
       getAlerts({ patientId, status: "open" })
-        .then((data) => { 
+        .then((data) => {
           if (!cancelled) {
             setOpenAlerts(data.filter((a) => a.patientId === patientId));
           }
@@ -664,72 +666,72 @@ const PatientDetailPage = () => {
   const bpTag = latestMeasurement ? getBpTags(latestMeasurement.systolic, latestMeasurement.diastolic, thr) : null;
   const vitals = latestMeasurement
     ? [
-        {
-          id: "bp",
-          label: "Huyết áp",
-          value: latestMeasurement.systolic != null && latestMeasurement.systolic > 0
-            ? `${Math.round(latestMeasurement.systolic)}/${Math.round(latestMeasurement.diastolic ?? 0)}`
-            : "—",
-          unit: "mmHg",
-          isOut: bpTag != null,
-          subTag: bpTag,
-          range: thr ? `${thr.sysMin}–${thr.sysMax} / ${thr.diaMin}–${thr.diaMax}` : null,
-        },
-        {
-          id: "pulse",
-          label: "Nhịp tim",
-          value: fmtVal(latestMeasurement.pulse),
-          unit: "bpm",
-          isOut: !!(thr && latestMeasurement.pulse != null && latestMeasurement.pulse > 0 &&
-            (latestMeasurement.pulse < thr.heartRateMin || latestMeasurement.pulse > thr.heartRateMax)),
-          subTag: null,
-          range: thr ? `${thr.heartRateMin}–${thr.heartRateMax}` : null,
-        },
-        {
-          id: "temperature",
-          label: "Nhiệt độ",
-          value: latestMeasurement.temperature != null && latestMeasurement.temperature > 0
-            ? latestMeasurement.temperature.toFixed(1)
-            : "—",
-          unit: "°C",
-          isOut: !!(thr && latestMeasurement.temperature != null && latestMeasurement.temperature > 0 &&
-            (latestMeasurement.temperature < thr.temperatureMin || latestMeasurement.temperature > thr.temperatureMax)),
-          subTag: null,
-          range: thr ? `${thr.temperatureMin}–${thr.temperatureMax}` : null,
-        },
-        {
-          id: "spo2",
-          label: "SpO₂",
-          value: fmtVal(latestMeasurement.spo2),
-          unit: "%",
-          isOut: !!(thr && latestMeasurement.spo2 != null && latestMeasurement.spo2 > 0 &&
-            latestMeasurement.spo2 < thr.spo2Min),
-          subTag: null,
-          range: thr ? `≥ ${thr.spo2Min}` : null,
-        },
-        {
-          id: "respiratory",
-          label: "Nhịp thở",
-          value: fmtVal(latestMeasurement.respiratoryRate),
-          unit: "lần/ph",
-          isOut: !!(thr?.respiratoryRateMin && latestMeasurement.respiratoryRate != null &&
-            latestMeasurement.respiratoryRate > 0 &&
-            (latestMeasurement.respiratoryRate < thr.respiratoryRateMin ||
-              latestMeasurement.respiratoryRate > (thr.respiratoryRateMax ?? 999))),
-          subTag: null,
-          range: thr && thr.respiratoryRateMin ? `${thr.respiratoryRateMin}–${thr.respiratoryRateMax}` : null,
-        },
-        {
-          id: "glucose",
-          label: "Đường huyết",
-          value: fmtVal(latestMeasurement.glucose),
-          unit: "mg/dL",
-          isOut: !!(thr?.glucoseMin && latestMeasurement.glucose != null && latestMeasurement.glucose > 0 &&
-            (latestMeasurement.glucose < thr.glucoseMin || latestMeasurement.glucose > (thr.glucoseMax ?? 999))),
-          subTag: null,
-          range: thr && thr.glucoseMin ? `${thr.glucoseMin}–${thr.glucoseMax}` : null,
-        },
-      ]
+      {
+        id: "bp",
+        label: "Huyết áp",
+        value: latestMeasurement.systolic != null && latestMeasurement.systolic > 0
+          ? `${Math.round(latestMeasurement.systolic)}/${Math.round(latestMeasurement.diastolic ?? 0)}`
+          : "—",
+        unit: "mmHg",
+        isOut: bpTag != null,
+        subTag: bpTag,
+        range: thr ? `${thr.sysMin}–${thr.sysMax} / ${thr.diaMin}–${thr.diaMax}` : null,
+      },
+      {
+        id: "pulse",
+        label: "Nhịp tim",
+        value: fmtVal(latestMeasurement.pulse),
+        unit: "bpm",
+        isOut: !!(thr && latestMeasurement.pulse != null && latestMeasurement.pulse > 0 &&
+          (latestMeasurement.pulse < thr.heartRateMin || latestMeasurement.pulse > thr.heartRateMax)),
+        subTag: null,
+        range: thr ? `${thr.heartRateMin}–${thr.heartRateMax}` : null,
+      },
+      {
+        id: "temperature",
+        label: "Nhiệt độ",
+        value: latestMeasurement.temperature != null && latestMeasurement.temperature > 0
+          ? latestMeasurement.temperature.toFixed(1)
+          : "—",
+        unit: "°C",
+        isOut: !!(thr && latestMeasurement.temperature != null && latestMeasurement.temperature > 0 &&
+          (latestMeasurement.temperature < thr.temperatureMin || latestMeasurement.temperature > thr.temperatureMax)),
+        subTag: null,
+        range: thr ? `${thr.temperatureMin}–${thr.temperatureMax}` : null,
+      },
+      {
+        id: "spo2",
+        label: "SpO₂",
+        value: fmtVal(latestMeasurement.spo2),
+        unit: "%",
+        isOut: !!(thr && latestMeasurement.spo2 != null && latestMeasurement.spo2 > 0 &&
+          latestMeasurement.spo2 < thr.spo2Min),
+        subTag: null,
+        range: thr ? `≥ ${thr.spo2Min}` : null,
+      },
+      {
+        id: "respiratory",
+        label: "Nhịp thở",
+        value: fmtVal(latestMeasurement.respiratoryRate),
+        unit: "lần/ph",
+        isOut: !!(thr?.respiratoryRateMin && latestMeasurement.respiratoryRate != null &&
+          latestMeasurement.respiratoryRate > 0 &&
+          (latestMeasurement.respiratoryRate < thr.respiratoryRateMin ||
+            latestMeasurement.respiratoryRate > (thr.respiratoryRateMax ?? 999))),
+        subTag: null,
+        range: thr && thr.respiratoryRateMin ? `${thr.respiratoryRateMin}–${thr.respiratoryRateMax}` : null,
+      },
+      {
+        id: "glucose",
+        label: "Đường huyết",
+        value: fmtVal(latestMeasurement.glucose),
+        unit: "mg/dL",
+        isOut: !!(thr?.glucoseMin && latestMeasurement.glucose != null && latestMeasurement.glucose > 0 &&
+          (latestMeasurement.glucose < thr.glucoseMin || latestMeasurement.glucose > (thr.glucoseMax ?? 999))),
+        subTag: null,
+        range: thr && thr.glucoseMin ? `${thr.glucoseMin}–${thr.glucoseMax}` : null,
+      },
+    ]
     : [];
 
   return (
@@ -768,11 +770,10 @@ const PatientDetailPage = () => {
                 {/* Alert badge — shows count, not severity */}
                 {openAlerts.length > 0 && (
                   <span
-                    className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${
-                      hasCritical
+                    className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${hasCritical
                         ? "bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800"
                         : "bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800"
-                    }`}
+                      }`}
                   >
                     {openAlerts.length} cảnh báo tồn đọng
                   </span>
@@ -828,6 +829,13 @@ const PatientDetailPage = () => {
                 {t("patientDetail.manageReminders")}
               </button>
               <button
+                onClick={() => navigate(`/compliance?patientId=${patientId}`)}
+                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-gray-200 dark:border-slate-600 text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition font-medium"
+              >
+                <MdOutlineDoneAll size={14} />
+                {t("nav.compliance")}
+              </button>
+              <button
                 onClick={() => navigate(`/patient/chat/${patientId}`)}
                 className="relative text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 p-1.5 transition"
               >
@@ -835,6 +843,13 @@ const PatientDetailPage = () => {
                 {openAlerts.length > 0 && (
                   <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 bg-red-500 rounded-full" />
                 )}
+              </button>
+              <button
+                onClick={() => setVideoCallOpen(true)}
+                className="text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 p-1.5 transition"
+                title="Gọi video"
+              >
+                <FaVideo size={16} />
               </button>
             </div>
           </div>
@@ -847,21 +862,19 @@ const PatientDetailPage = () => {
           <div className="bg-white dark:bg-slate-800 rounded-xl border border-orange-200 dark:border-slate-600 overflow-hidden">
             {/* Header */}
             <div
-              className={`px-4 py-2.5 flex items-center gap-3 border-b ${
-                hasCritical
+              className={`px-4 py-2.5 flex items-center gap-3 border-b ${hasCritical
                   ? "bg-red-50/70 dark:bg-red-900/10 border-red-200 dark:border-red-900/30"
                   : "bg-amber-50/70 dark:bg-amber-900/10 border-amber-200 dark:border-amber-900/30"
-              }`}
+                }`}
             >
               <span className="text-sm font-semibold text-gray-800 dark:text-slate-200">
                 Cảnh báo chưa xử lý
               </span>
               <span
-                className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                  hasCritical
+                className={`text-[10px] font-bold px-2 py-0.5 rounded ${hasCritical
                     ? "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400"
                     : "bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400"
-                }`}
+                  }`}
               >
                 {openAlerts.length}
               </span>
@@ -878,13 +891,12 @@ const PatientDetailPage = () => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1.5">
                       <span
-                        className={`text-[10px] font-bold px-2 py-px rounded ${
-                          alert.severity === "high"
+                        className={`text-[10px] font-bold px-2 py-px rounded ${alert.severity === "high"
                             ? "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400"
                             : alert.severity === "medium"
-                            ? "bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400"
-                            : "bg-slate-100 dark:bg-slate-900/30 text-slate-600 dark:text-slate-400"
-                        }`}
+                              ? "bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400"
+                              : "bg-slate-100 dark:bg-slate-900/30 text-slate-600 dark:text-slate-400"
+                          }`}
                       >
                         {alert.severity === "high" ? "Nguy cấp" : alert.severity === "medium" ? "Cảnh báo" : "Nhẹ"}
                       </span>
@@ -938,14 +950,13 @@ const PatientDetailPage = () => {
               {vitals.map((v) => (
                 <div
                   key={v.id}
-                  className={`relative overflow-hidden rounded-xl p-4 flex flex-col transition-all duration-200 ${
-                    v.isOut
+                  className={`relative overflow-hidden rounded-xl p-4 flex flex-col transition-all duration-200 ${v.isOut
                       ? "bg-gradient-to-b from-red-50/50 to-white dark:from-red-900/20 dark:to-slate-800 border border-red-200 dark:border-red-800/40 shadow-sm"
                       : "bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700/60 shadow-sm hover:shadow-md"
-                  }`}
+                    }`}
                 >
                   {v.isOut && <div className="absolute top-0 left-0 w-full h-1 bg-red-500" />}
-                  
+
                   <div className="flex items-center justify-between mb-1.5">
                     <div className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                       {v.label}
@@ -962,9 +973,8 @@ const PatientDetailPage = () => {
 
                   <div className="flex items-baseline gap-1.5 mt-1">
                     <span
-                      className={`text-3xl font-bold tracking-tight ${
-                        v.isOut ? "text-red-600 dark:text-red-400" : "text-gray-900 dark:text-slate-100"
-                      }`}
+                      className={`text-3xl font-bold tracking-tight ${v.isOut ? "text-red-600 dark:text-red-400" : "text-gray-900 dark:text-slate-100"
+                        }`}
                     >
                       {v.value}
                     </span>
@@ -992,11 +1002,10 @@ const PatientDetailPage = () => {
           <div className="fixed inset-0 z-40 bg-black/50" onClick={() => setIsChartExpanded(false)} />
         )}
         <section
-          className={`bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4 transition-all ${
-            isChartExpanded
+          className={`bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4 transition-all ${isChartExpanded
               ? "fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[95vw] h-[88vh] flex flex-col"
               : ""
-          }`}
+            }`}
         >
           {/* Chart toolbar */}
           <div className="flex flex-wrap items-center justify-between gap-3 mb-4 shrink-0">
@@ -1027,11 +1036,10 @@ const PatientDetailPage = () => {
                 <button
                   key={key}
                   onClick={() => setChartType(key)}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all whitespace-nowrap flex items-center gap-1.5 ${
-                    chartType === key
+                  className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all whitespace-nowrap flex items-center gap-1.5 ${chartType === key
                       ? "bg-white dark:bg-slate-600 shadow-sm text-gray-800 dark:text-slate-100"
                       : "text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-300"
-                  }`}
+                    }`}
                 >
                   {chartType === key && (
                     <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
@@ -1080,12 +1088,12 @@ const PatientDetailPage = () => {
             ) : (() => {
               // Per-chart color config
               const chartCfg: Record<string, { color: string; gradientId: string; unit: string }> = {
-                bp:          { color: "#6366f1", gradientId: "gradBp",   unit: "mmHg" },
-                pulse:       { color: "#f43f5e", gradientId: "gradPulse",unit: "bpm"  },
-                temperature: { color: "#f97316", gradientId: "gradTemp", unit: "°C"  },
-                spo2:        { color: "#06b6d4", gradientId: "gradSpo2", unit: "%"   },
-                glucose:     { color: "#3b82f6", gradientId: "gradGluc", unit: "mg/dL"},
-                respiratory: { color: "#8b5cf6", gradientId: "gradResp", unit: "lần/ph"},
+                bp: { color: "#6366f1", gradientId: "gradBp", unit: "mmHg" },
+                pulse: { color: "#f43f5e", gradientId: "gradPulse", unit: "bpm" },
+                temperature: { color: "#f97316", gradientId: "gradTemp", unit: "°C" },
+                spo2: { color: "#06b6d4", gradientId: "gradSpo2", unit: "%" },
+                glucose: { color: "#3b82f6", gradientId: "gradGluc", unit: "mg/dL" },
+                respiratory: { color: "#8b5cf6", gradientId: "gradResp", unit: "lần/ph" },
               };
               const cfg = chartCfg[chartType] ?? chartCfg["bp"];
               const diaColor = "#10b981";
@@ -1094,7 +1102,7 @@ const PatientDetailPage = () => {
               const cleanData = chartData.map((d) => {
                 const out: any = { measuredAt: d.measuredAt };
                 if (chartType === "bp") {
-                  out.systolic  = d.systolic  != null && d.systolic  > 0 ? d.systolic  : null;
+                  out.systolic = d.systolic != null && d.systolic > 0 ? d.systolic : null;
                   out.diastolic = d.diastolic != null && d.diastolic > 0 ? d.diastolic : null;
                 } else if (chartType === "pulse") {
                   out.pulse = d.pulse != null && d.pulse > 0 ? d.pulse : null;
@@ -1115,12 +1123,12 @@ const PatientDetailPage = () => {
                   <AreaChart data={cleanData} margin={{ top: 12, right: 90, left: -4, bottom: 8 }}>
                     <defs>
                       <linearGradient id={cfg.gradientId} x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%"  stopColor={cfg.color} stopOpacity={0.18} />
+                        <stop offset="5%" stopColor={cfg.color} stopOpacity={0.18} />
                         <stop offset="95%" stopColor={cfg.color} stopOpacity={0.01} />
                       </linearGradient>
                       {chartType === "bp" && (
                         <linearGradient id="gradDia" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%"  stopColor={diaColor} stopOpacity={0.15} />
+                          <stop offset="5%" stopColor={diaColor} stopOpacity={0.15} />
                           <stop offset="95%" stopColor={diaColor} stopOpacity={0.01} />
                         </linearGradient>
                       )}
@@ -1251,10 +1259,10 @@ const PatientDetailPage = () => {
                   </span>
                 </>
               )}
-              {chartType === "pulse"       && <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-[#f43f5e] inline-block rounded-full" /> Nhịp tim</span>}
-              {chartType === "glucose"     && <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-[#3b82f6] inline-block rounded-full" /> Đường huyết</span>}
+              {chartType === "pulse" && <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-[#f43f5e] inline-block rounded-full" /> Nhịp tim</span>}
+              {chartType === "glucose" && <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-[#3b82f6] inline-block rounded-full" /> Đường huyết</span>}
               {chartType === "temperature" && <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-[#f97316] inline-block rounded-full" /> Nhiệt độ</span>}
-              {chartType === "spo2"        && <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-[#06b6d4] inline-block rounded-full" /> SpO₂</span>}
+              {chartType === "spo2" && <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-[#06b6d4] inline-block rounded-full" /> SpO₂</span>}
               {chartType === "respiratory" && <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-[#8b5cf6] inline-block rounded-full" /> Nhịp thở</span>}
               <span className="flex items-center gap-1.5">
                 <span className="w-3 border-b border-dashed border-gray-400 inline-block" /> Ngưỡng an toàn
@@ -1317,11 +1325,10 @@ const PatientDetailPage = () => {
             </span>
             <button
               onClick={() => setShowOnlyAbnormal(!showOnlyAbnormal)}
-              className={`flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg border transition-all ${
-                showOnlyAbnormal
+              className={`flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg border transition-all ${showOnlyAbnormal
                   ? "border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20"
                   : "border-gray-200 dark:border-slate-600 text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700"
-              }`}
+                }`}
             >
               <MdFilterList size={13} />
               {showOnlyAbnormal ? "Đang lọc: bất thường" : "Chỉ hiện bất thường"}

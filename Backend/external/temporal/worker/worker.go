@@ -10,6 +10,7 @@ import (
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/helper/measurement_helper"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/workflow"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/container"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/service"
 	"go.temporal.io/sdk/worker"
 )
 
@@ -38,14 +39,20 @@ func Start() error {
 		}
 	}()
 
-	var pushClient *fcm.Client
-	pushClient, err = fcm.NewClientFromEnv()
-	if err != nil {
-		log.Printf("[WARN] FCM client not configured, push delivery disabled: %v", err)
-		pushClient = nil
+	if err := config.LoadFirebaseCredentials(); err != nil {
+		log.Printf("[WARN] Firebase credentials not loaded: %v", err)
 	}
 
-	container := container.NewTemporalWorkerContainer(pushClient)
+	var pushProvider service.PushProvider
+	fcmClient, fcmErr := fcm.NewClientFromEnv()
+	if fcmErr != nil {
+		log.Printf("[WARN] FCM client not configured, push delivery disabled: %v", fcmErr)
+		pushProvider = nil
+	} else {
+		pushProvider = fcmClient
+	}
+
+	container := container.NewTemporalWorkerContainer(pushProvider)
 	publisher := measurement_helper.NewRedisChatEventPublisher(config.Redis.Client)
 	userEventPublisher := measurement_helper.NewRedisUserEventPublisher(config.Redis.Client)
 	alertActs := activity.NewProcessingAlertActivity(

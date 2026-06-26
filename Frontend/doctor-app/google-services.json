@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "141850470097",
+    "project_id": "datn-rpm",
+    "storage_bucket": "datn-rpm.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:141850470097:android:b2628e8bbeabf6fee287f0",
+        "android_client_info": {
+          "package_name": "com.rpm.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDef0QGGCaKytcwwARzty3tKB_ATXHj5n8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

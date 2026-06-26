@@ -13,8 +13,9 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useIsFocused } from "@react-navigation/native";
+import { useIsFocused, useRoute } from "@react-navigation/native";
 import Toast from "../components/Toast";
+import PatientSelectorModal from "../components/PatientSelectorModal";
 
 import { useAuth } from "../context/AuthContext";
 import {
@@ -83,10 +84,18 @@ function formatDateOnly(iso) {
 
 export default function RemindersScreen() {
   const isFocused = useIsFocused();
+  const route = useRoute();
   const { user } = useAuth();
 
   const [patients, setPatients] = useState([]);
   const [selectedPatientId, setSelectedPatientId] = useState("");
+
+  useEffect(() => {
+    if (route.params?.patientId) {
+      setSelectedPatientId(route.params.patientId);
+    }
+  }, [route.params?.patientId]);
+
   const [statusFilter, setStatusFilter] = useState("all");
   const [kindFilter, setKindFilter] = useState("all");
   const [loadingPatients, setLoadingPatients] = useState(true);
@@ -101,6 +110,22 @@ export default function RemindersScreen() {
   const [saving, setSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+
+  const handleCloseForm = () => {
+    const isBlank = !formData.message || formData.message.trim() === "";
+    if (isBlank) {
+      setIsFormVisible(false);
+    } else {
+      Alert.alert(
+        "Xác nhận đóng",
+        "Bạn có thay đổi chưa lưu. Bạn có chắc chắn muốn hủy bỏ và đóng biểu mẫu không?",
+        [
+          { text: "Quay lại", style: "cancel" },
+          { text: "Đóng", style: "destructive", onPress: () => setIsFormVisible(false) }
+        ]
+      );
+    }
+  };
 
   // Search modals
   const [showPatientModal, setShowPatientModal] = useState(false);
@@ -133,27 +158,29 @@ export default function RemindersScreen() {
     setLoadingReminders(true);
 
     try {
-      const targetPatientIds = selectedPatientId
-        ? [selectedPatientId]
-        : patients.map((item) => item.patientId);
-
-      if (targetPatientIds.length === 0) {
-        setReminders([]);
-        setLoadingReminders(false);
-        return;
+      let merged = [];
+      if (selectedPatientId) {
+        const res = await getReminders({
+          patientId: selectedPatientId,
+          status: statusFilter === "all" ? undefined : statusFilter,
+          kind: kindFilter === "all" ? undefined : kindFilter,
+        });
+        merged = res.body?.data || res.body || [];
+      } else {
+        if (patients.length === 0) {
+          setReminders([]);
+          setLoadingReminders(false);
+          return;
+        }
+        const res = await getReminders({
+          status: statusFilter === "all" ? undefined : statusFilter,
+          kind: kindFilter === "all" ? undefined : kindFilter,
+        });
+        const allReminders = res.body?.data || res.body || [];
+        const doctorPatientIds = new Set(patients.map((p) => p.patientId));
+        merged = allReminders.filter((rem) => doctorPatientIds.has(rem.patientId));
       }
 
-      const reminderGroups = await Promise.all(
-        targetPatientIds.map((patientId) =>
-          getReminders({
-            patientId,
-            status: statusFilter === "all" ? undefined : statusFilter,
-            kind: kindFilter === "all" ? undefined : kindFilter,
-          })
-        )
-      );
-
-      const merged = reminderGroups.flatMap((res) => res.body?.data || res.body || []);
       const uniqueList = Array.from(
         new Map(merged.map((item) => [item.id, item])).values()
       ).sort(
@@ -385,83 +412,21 @@ export default function RemindersScreen() {
       </View>
 
       {/* Patient Search Picker Modal */}
-      <Modal
+      <PatientSelectorModal
         visible={showPatientModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowPatientModal(false)}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Chọn bệnh nhân</Text>
-              <TouchableOpacity onPress={() => setShowPatientModal(false)} style={styles.modalCloseBtn}>
-                <Ionicons name="close" size={24} color="#374151" />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.searchBarContainer}>
-              <Ionicons name="search" size={18} color="#9CA3AF" style={{ marginRight: 8 }} />
-              <TextInput
-                style={styles.searchBarInput}
-                placeholder="Tìm theo tên hoặc mã bệnh án..."
-                placeholderTextColor="#9CA3AF"
-                value={patientSearchQuery}
-                onChangeText={setPatientSearchQuery}
-              />
-              {patientSearchQuery ? (
-                <TouchableOpacity onPress={() => setPatientSearchQuery("")}>
-                  <Ionicons name="close-circle" size={18} color="#9CA3AF" />
-                </TouchableOpacity>
-              ) : null}
-            </View>
-
-            {loadingPatients ? (
-              <ActivityIndicator size="large" color="#2563EB" style={{ marginVertical: 24 }} />
-            ) : (
-              <ScrollView style={styles.modalList} keyboardShouldPersistTaps="handled">
-                {filteredPatients.length === 0 ? (
-                  <Text style={styles.modalEmptyText}>Không tìm thấy bệnh nhân nào.</Text>
-                ) : (
-                  filteredPatients.map((p, idx) => {
-                    const isSelected = isFormVisible
-                      ? p.patientId === formData.patientId
-                      : p.patientId === selectedPatientId;
-                    return (
-                      <TouchableOpacity
-                        key={p.patientId || p.id || `patient-${idx}`}
-                        style={[styles.modalItem, isSelected && styles.modalItemActive]}
-                        onPress={() => {
-                          if (isFormVisible) {
-                            setFormData((prev) => ({ ...prev, patientId: p.patientId }));
-                          } else {
-                            setSelectedPatientId(p.patientId);
-                          }
-                          setShowPatientModal(false);
-                        }}
-                      >
-                        <View style={{ flex: 1 }}>
-                          <Text style={[styles.modalItemName, isSelected && styles.modalItemNameActive]}>
-                            {p.patientName || p.name}
-                          </Text>
-                          {p.patientCode ? (
-                            <Text style={[styles.modalItemCode, isSelected && styles.modalItemCodeActive]}>
-                              Mã HS: {p.patientCode}
-                            </Text>
-                          ) : null}
-                        </View>
-                        {isSelected ? (
-                          <Ionicons name="checkmark" size={18} color="#2563EB" />
-                        ) : null}
-                      </TouchableOpacity>
-                    );
-                  })
-                )}
-              </ScrollView>
-            )}
-          </View>
-        </View>
-      </Modal>
+        onClose={() => setShowPatientModal(false)}
+        patients={patients}
+        selectedPatientId={isFormVisible ? formData.patientId : selectedPatientId}
+        onSelect={(patientId) => {
+          if (isFormVisible) {
+            setFormData((prev) => ({ ...prev, patientId }));
+          } else {
+            setSelectedPatientId(patientId);
+          }
+          setShowPatientModal(false);
+        }}
+        loading={loadingPatients}
+      />
 
       {/* Filter Options Bar */}
       <View style={styles.filterBar}>
@@ -658,7 +623,7 @@ export default function RemindersScreen() {
           visible={isFormVisible}
           transparent
           animationType="fade"
-          onRequestClose={() => setIsFormVisible(false)}
+          onRequestClose={handleCloseForm}
         >
           <View style={styles.formBackdrop}>
             <KeyboardAvoidingView
@@ -670,7 +635,7 @@ export default function RemindersScreen() {
                   <Text style={styles.formTitle}>
                     {editingId ? "Chỉnh sửa nhắc nhở" : "Thêm nhắc nhở mới"}
                   </Text>
-                  <TouchableOpacity onPress={() => setIsFormVisible(false)}>
+                  <TouchableOpacity onPress={handleCloseForm}>
                     <Ionicons name="close" size={24} color="#4B5563" />
                   </TouchableOpacity>
                 </View>
@@ -849,7 +814,7 @@ export default function RemindersScreen() {
                 <View style={styles.formActions}>
                   <TouchableOpacity
                     style={styles.cancelBtn}
-                    onPress={() => setIsFormVisible(false)}
+                    onPress={handleCloseForm}
                     disabled={saving}
                   >
                     <Text style={styles.cancelBtnText}>Hủy bỏ</Text>

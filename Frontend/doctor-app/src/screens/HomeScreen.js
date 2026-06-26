@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
+  DeviceEventEmitter,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
@@ -69,6 +70,13 @@ export default function HomeScreen({ onNavigate }) {
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener("NEW_ALERT", () => {
+      loadData();
+    });
+    return () => sub.remove();
+  }, [loadData]);
 
   const onRefresh = () => { setRefreshing(true); loadData(); };
 
