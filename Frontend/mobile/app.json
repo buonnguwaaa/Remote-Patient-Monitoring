@@ -3,11 +3,6 @@
     "name": "RPM Patient",
     "slug": "rpm-patient",
     "owner": "khoadeptrai1",
-    "extra": {
-      "eas": {
-        "projectId": "b04726d5-2f2c-4ab3-bf2f-25ffc9699852"
-      }
-    },
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
@@ -38,7 +33,11 @@
       "config": {
         "usesCleartextTraffic": true
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "notification": {
+        "icon": "./assets/icon.png",
+        "color": "#10B981"
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -49,7 +48,8 @@
       [
         "expo-notifications",
         {
-          "color": "#ffffff"
+          "color": "#10B981",
+          "icon": "./assets/icon.png"
         }
       ],
       "./plugins/withCleartextTraffic",

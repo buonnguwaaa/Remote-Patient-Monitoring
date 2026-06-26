@@ -17,9 +17,10 @@ function normalizePayload(payload) {
  * Map a notification data payload to a screen navigation action.
  *
  * Notification types sent by the backend:
- *   - type = "alert"   → open Alerts screen (highlight the alert)
- *   - type = "reminder"→ open Reminders screen
- *   - fallback         → open Alerts screen (safest default for doctors)
+ *   - type = "alert"       → open Alerts screen (highlight the alert)
+ *   - type = "reminder"    → open Reminders screen
+ *   - type = "new_message" → open Chat screen
+ *   - fallback             → open Alerts screen (safest default for doctors)
  */
 function buildNavigationAction(payload) {
   const data = normalizePayload(payload);
@@ -36,6 +37,16 @@ function buildNavigationAction(payload) {
     return {
       screen: "Reminders",
       params: { selectedReminderId: data.reminderId },
+    };
+  }
+
+  if (type === "new_message" && data.conversationId) {
+    return {
+      screen: "ChatDetail",
+      params: { 
+        conversationId: data.conversationId,
+        patientId: data.senderId, // senderId is the patient who sent the message
+      },
     };
   }
 

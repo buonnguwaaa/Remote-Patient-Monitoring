@@ -141,7 +141,7 @@ const createDefaultFormData = (patientId = "") => {
   return {
     patientId,
     medications: [createDefaultMedication()],
-    timezone: "Asia/Saigon",
+    timezone: "Asia/Ho_Chi_Minh",
     daysOfWeek: [1, 2, 3, 4, 5, 6, 0],
     startDate: today.toISOString().split("T")[0],
     endDate: endDate.toISOString().split("T")[0],
@@ -352,7 +352,7 @@ export default function PrescriptionsScreen() {
     setFormData({
       patientId: p.patientId,
       medications: meds,
-      timezone: p.timezone || "Asia/Saigon",
+      timezone: p.timezone || "Asia/Ho_Chi_Minh",
       daysOfWeek: p.daysOfWeek || [],
       startDate: formatDateOnly(p.startDate),
       endDate: p.endDate ? formatDateOnly(p.endDate) : "",

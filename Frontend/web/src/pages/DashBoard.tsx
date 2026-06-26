@@ -227,11 +227,6 @@ function buildDashboardChartData(
 
   const chartStats: ChartStatItem[] = [
     {
-      id: "all",
-      label: t("dashboard.chartCurrent"),
-      value: assignments.length,
-    },
-    {
       id: "month",
       label: t("dashboard.chartThisMonth"),
       value:
@@ -547,7 +542,6 @@ const DashBoard = () => {
     () =>
       loading
         ? [
-          { id: "all", label: t("dashboard.filterAll"), value: "..." },
           { id: "month", label: t("patientDetail.month"), value: "..." },
           { id: "week", label: t("patientDetail.week"), value: "..." },
         ]

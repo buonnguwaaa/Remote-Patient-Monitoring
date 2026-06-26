@@ -22,7 +22,7 @@ const PatientManagementAdmin: React.FC = () => {
 
   const fetchPatients = async () => {
     try {
-      const response = await api.get("/users/patients");
+      const response = await api.get("/users/patients?limit=1000&sortOrder=desc");
       if (response.data?.data) {
         const apiPatients = response.data.data.map((u: any) => ({
           id: u.id,
