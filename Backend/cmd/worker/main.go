@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	_ "time/tzdata" // embed timezone database for minimal container images
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/worker"
 	"github.com/joho/godotenv"

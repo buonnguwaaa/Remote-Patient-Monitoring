@@ -96,7 +96,7 @@ const reminderStatusOptions: Array<{
 ];
 
 const timezoneOptions = [
-  { value: "Asia/Saigon", label: t("reminders.timezoneRecommended") },
+  { value: "Asia/Ho_Chi_Minh", label: t("reminders.timezoneRecommended") },
   { value: "UTC", label: "UTC" },
   { value: "Asia/Bangkok", label: "Asia/Bangkok" },
 ];
@@ -112,7 +112,7 @@ const createDefaultFormData = (patientId = ""): ReminderFormData => {
     message: "",
     time: "08:00",
     daysOfWeek: [1, 2, 3, 4, 5, 6, 0],
-    timezone: "Asia/Saigon",
+    timezone: "Asia/Ho_Chi_Minh",
     startDate: today.toISOString().split("T")[0],
     endDate: endDate.toISOString().split("T")[0],
     status: "active",
@@ -798,20 +798,48 @@ const buildWeekdaySummary = (daysOfWeek: number[]) => {
                 <FaChevronLeft className="mr-1" />{t("common.previous")}</button>
               
               <div className="flex items-center gap-1">
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                  <button
-                    key={page}
-                    type="button"
-                    onClick={() => setCurrentPage(page)}
-                    className={`inline-flex items-center justify-center w-10 h-10 rounded-lg text-sm font-medium transition ${
-                      page === currentPage
-                        ? "bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900"
-                        : "border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700"
-                    }`}
-                  >
-                    {page}
-                  </button>
-                ))}
+                {(() => {
+                  const pages: (number | string)[] = [];
+                  const maxVisible = 7;
+                  if (totalPages <= maxVisible) {
+                    for (let i = 1; i <= totalPages; i++) pages.push(i);
+                  } else {
+                    pages.push(1);
+                    if (currentPage > 3) pages.push("...");
+                    const start = Math.max(2, currentPage - 1);
+                    const end = Math.min(totalPages - 1, currentPage + 1);
+                    for (let i = start; i <= end; i++) pages.push(i);
+                    if (currentPage < totalPages - 2) pages.push("...");
+                    pages.push(totalPages);
+                  }
+                  return pages.map((page, idx) => {
+                    if (page === "...") {
+                      return (
+                        <span
+                          key={`ellipsis-${idx}`}
+                          className="flex w-10 h-10 items-center justify-center text-slate-400 dark:text-slate-500"
+                        >
+                          ...
+                        </span>
+                      );
+                    }
+                    const pageNum = page as number;
+                    return (
+                      <button
+                        key={pageNum}
+                        type="button"
+                        onClick={() => setCurrentPage(pageNum)}
+                        className={`inline-flex items-center justify-center w-10 h-10 rounded-lg text-sm font-medium transition ${
+                          pageNum === currentPage
+                            ? "bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900"
+                            : "border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700"
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  });
+                })()}
               </div>
               
               <button

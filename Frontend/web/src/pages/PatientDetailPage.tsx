@@ -12,7 +12,6 @@ import {
   MdExpandMore,
   MdExpandLess,
   MdFilterList,
-  MdOutlineDoneAll,
 } from "react-icons/md";
 import { FaRegMessage } from "react-icons/fa6";
 import {
@@ -828,13 +827,7 @@ const PatientDetailPage = () => {
                 <MdNotificationsActive size={14} />
                 {t("patientDetail.manageReminders")}
               </button>
-              <button
-                onClick={() => navigate(`/compliance?patientId=${patientId}`)}
-                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-gray-200 dark:border-slate-600 text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition font-medium"
-              >
-                <MdOutlineDoneAll size={14} />
-                {t("nav.compliance")}
-              </button>
+
               <button
                 onClick={() => navigate(`/patient/chat/${patientId}`)}
                 className="relative text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 p-1.5 transition"
