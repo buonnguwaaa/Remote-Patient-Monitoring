@@ -14,6 +14,7 @@ import (
 type MessageRepository interface {
 	Create(ctx context.Context, message *chatDomain.Message) (*chatDomain.Message, error)
 	FindByID(ctx context.Context, id primitive.ObjectID) (*chatDomain.Message, error)
+	FindByIDs(ctx context.Context, ids []primitive.ObjectID) ([]*chatDomain.Message, error)
 	FindWithFilter(ctx context.Context, filter MessageFilter) ([]*chatDomain.Message, error)
 	FindByConversationID(ctx context.Context, conversationID primitive.ObjectID, limit int) ([]*chatDomain.Message, error)
 	FindLatestByConversationID(ctx context.Context, conversationID primitive.ObjectID) (*chatDomain.Message, error)
@@ -63,6 +64,25 @@ func (r *messageRepository) FindByID(ctx context.Context, id primitive.ObjectID)
 	}
 
 	return &message, nil
+}
+
+func (r *messageRepository) FindByIDs(ctx context.Context, ids []primitive.ObjectID) ([]*chatDomain.Message, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	cursor, err := r.col.Find(ctx, bson.M{"_id": bson.M{"$in": ids}})
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var messages []*chatDomain.Message
+	if err := cursor.All(ctx, &messages); err != nil {
+		return nil, err
+	}
+
+	return messages, nil
 }
 
 func (r *messageRepository) FindByConversationID(ctx context.Context, conversationID primitive.ObjectID, limit int) ([]*chatDomain.Message, error) {

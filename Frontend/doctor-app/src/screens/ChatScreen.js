@@ -14,7 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute, useIsFocused } from "@react-navigation/native";
 import { useAuth } from "../context/AuthContext";
 import { getMyPatients } from "../api/patientApi";
-import { getConversations, getConversationMessages, ensureConversation } from "../api/chatApi";
+import { getConversations, ensureConversation } from "../api/chatApi";
 
 export default function ChatScreen() {
   const navigation = useNavigation();
@@ -43,7 +43,7 @@ export default function ChatScreen() {
     setError(null);
 
     try {
-      // Fetch assigned patients and user's conversations in parallel
+      // Single parallel fetch — patients + conversations (with lastMessage embedded)
       const [patientsRes, convsRes] = await Promise.all([
         getMyPatients(),
         getConversations(50),
@@ -59,72 +59,51 @@ export default function ChatScreen() {
       const patients = patientsRes.body?.data || [];
       const convList = convsRes.body?.data?.conversations || [];
 
-      const patientMap = new Map(
-        patients.map((p) => [p.patientId, p])
-      );
+      const patientMap = new Map(patients.map((p) => [p.patientId, p]));
 
-      // Build conversation previews with last message and unread counts
-      const previews = await Promise.all(
-        convList.map(async (conversation) => {
-          const otherParticipantId =
-            conversation.participants?.find((p) => p.userId !== currentUserId)?.userId ||
-            conversation.participants?.[0]?.userId ||
-            null;
+      const previews = convList.map((conversation) => {
+        const otherParticipantId =
+          conversation.participants?.find((p) => p.userId !== currentUserId)?.userId ||
+          conversation.participants?.[0]?.userId ||
+          null;
 
-          const patient = otherParticipantId ? patientMap.get(otherParticipantId) : null;
+        const patient = otherParticipantId ? patientMap.get(otherParticipantId) : null;
 
-          // Fetch the last message to show preview and calculate unread count
-          let lastMessage = null;
-          let unreadCount = 0;
-          try {
-            const msgRes = await getConversationMessages(conversation.id, 20);
-            if (msgRes.ok) {
-              const messages = msgRes.body?.data?.messages || [];
-              lastMessage = messages[0] || null;
+        // lastMessage is now embedded by the backend — no extra API call needed
+        const lastMessage = conversation.lastMessage || null;
 
-              // Calculate unread count based on current user's checkpoint lastReadMessageId
-              const myParticipant = conversation.participants?.find(
-                (p) => p.userId === currentUserId
-              );
-              const lastReadId = myParticipant?.lastReadMessageId;
+        // Calculate unread count from participant checkpoint
+        let unreadCount = 0;
+        const myParticipant = conversation.participants?.find(
+          (p) => p.userId === currentUserId
+        );
+        const lastReadId = myParticipant?.lastReadMessageId;
 
-              if (!lastReadId) {
-                // If never read, count all messages sent by other participant
-                unreadCount = messages.filter((m) => m.senderId !== currentUserId).length;
-              } else {
-                const readIndex = messages.findIndex((m) => m.id === lastReadId);
-                if (readIndex === -1) {
-                  unreadCount = messages.filter((m) => m.senderId !== currentUserId).length;
-                } else {
-                  unreadCount = messages
-                    .slice(0, readIndex) // Since API returns newest first (index 0 is newest)
-                    .filter((m) => m.senderId !== currentUserId).length;
-                }
-              }
-            }
-          } catch (msgErr) {
-            console.error("Error loading messages for preview:", msgErr);
+        if (lastMessage && lastMessage.senderId !== currentUserId) {
+          // Simple heuristic: if lastReadId doesn't match lastMessage id, there's at least 1 unread
+          if (!lastReadId || lastReadId !== lastMessage.id) {
+            unreadCount = 1; // We don't have exact count without fetching all messages
           }
+        }
 
-          return {
-            conversationId: conversation.id,
-            patientId: otherParticipantId,
-            patientName: patient?.patientName || "Bệnh nhân",
-            gender: patient?.gender || "Khác",
-            patientCode: patient?.patientCode || patient?.patientPublicId || "N/A",
-            lastMessage,
-            unreadCount,
-            updatedAt: lastMessage?.createdAt || conversation.updatedAt || conversation.createdAt,
-          };
-        })
-      );
+        return {
+          conversationId: conversation.id,
+          patientId: otherParticipantId,
+          patientName: patient?.patientName || "Bệnh nhân",
+          gender: patient?.gender || "Khác",
+          patientCode: patient?.patientCode || patient?.patientPublicId || "N/A",
+          lastMessage,
+          unreadCount,
+          updatedAt: lastMessage?.createdAt || conversation.updatedAt || conversation.createdAt,
+        };
+      });
 
       // Sort newest chats first
       previews.sort(
         (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
       );
 
-      // Deduplicate previews based on patientId
+      // Deduplicate by patientId
       const seen = new Set();
       const deduped = [];
       previews.forEach((item) => {
@@ -155,7 +134,6 @@ export default function ChatScreen() {
           const res = await ensureConversation(patientId);
           if (res.ok) {
             const conversation = res.body?.data || {};
-            // Clear route params so going back doesn't trigger loop
             navigation.setParams({ patientId: undefined });
             navigation.navigate("ChatDetail", {
               patientId,
@@ -183,7 +161,7 @@ export default function ChatScreen() {
     }
   }, [isFocused, route.params?.patientId, loadConversations]);
 
-  // Polling for updates while screen is active
+  // Polling for updates while screen is focused
   useEffect(() => {
     if (!isFocused || redirecting || route.params?.patientId) {
       return undefined;
@@ -218,16 +196,16 @@ export default function ChatScreen() {
 
   const getAvatarColors = (gender) => {
     if (gender === "Nam") {
-      return { bg: "#EFF6FF", text: "#2563EB", border: "#BFDBFE" }; // Blue
+      return { bg: "#EFF6FF", text: "#2563EB", border: "#BFDBFE" };
     } else if (gender === "Nữ") {
-      return { bg: "#FDF2F8", text: "#DB2777", border: "#FBCFE8" }; // Pink
+      return { bg: "#FDF2F8", text: "#DB2777", border: "#FBCFE8" };
     }
-    return { bg: "#F3F4F6", text: "#4B5563", border: "#E5E7EB" }; // Gray
+    return { bg: "#F3F4F6", text: "#4B5563", border: "#E5E7EB" };
   };
 
   const normalizePreview = (message, isMe) => {
     if (!message) return "Chưa có tin nhắn";
-    
+
     const textContent = message.content || "";
 
     if (textContent.includes('"type":"SYSTEM_CALL_STARTED"')) {
@@ -380,9 +358,7 @@ export default function ChatScreen() {
                     </Text>
                     {hasUnread && (
                       <View style={styles.unreadBadge}>
-                        <Text style={styles.unreadCountText}>
-                          {item.unreadCount > 99 ? "99+" : item.unreadCount}
-                        </Text>
+                        <Text style={styles.unreadCountText}>N</Text>
                       </View>
                     )}
                   </View>

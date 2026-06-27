@@ -20,18 +20,22 @@ var upgrader = websocket.Upgrader{
 }
 
 type Handler struct {
-	Hub                *Hub
-	ChatService        service.ChatService
-	RealtimePublisher  *realtime.RedisUserEventPublisher
-	ParticipantService service.ChatService
+	Hub                 *Hub
+	ChatService         service.ChatService
+	RealtimePublisher   *realtime.RedisUserEventPublisher
+	ParticipantService  service.ChatService
+	NotificationService service.NotificationService
+	UserService         service.UserService
 }
 
-func NewHandler(hub *Hub, chatService service.ChatService, realtimePublisher *realtime.RedisUserEventPublisher, participantService service.ChatService) *Handler {
+func NewHandler(hub *Hub, chatService service.ChatService, realtimePublisher *realtime.RedisUserEventPublisher, participantService service.ChatService, notificationService service.NotificationService, userService service.UserService) *Handler {
 	return &Handler{
-		Hub:                hub,
-		ChatService:        chatService,
-		RealtimePublisher:  realtimePublisher,
-		ParticipantService: participantService,
+		Hub:                 hub,
+		ChatService:         chatService,
+		RealtimePublisher:   realtimePublisher,
+		ParticipantService:  participantService,
+		NotificationService: notificationService,
+		UserService:         userService,
 	}
 }
 
@@ -103,13 +107,15 @@ func (h *Handler) ServeWs(c *gin.Context) {
 
 	// 5. Create client and register with hub
 	client := &Client{
-		UserID:            userID,
-		ConversationID:    conversationID,
-		Conn:              conn,
-		Hub:               h.Hub,
-		Send:              make(chan []byte, 256),
-		ChatService:       h.ChatService,
-		RealtimePublisher: h.RealtimePublisher,
+		UserID:              userID,
+		ConversationID:      conversationID,
+		Conn:                conn,
+		Hub:                 h.Hub,
+		Send:                make(chan []byte, 256),
+		ChatService:         h.ChatService,
+		RealtimePublisher:   h.RealtimePublisher,
+		NotificationService: h.NotificationService,
+		UserService:         h.UserService,
 	}
 
 	h.Hub.Register <- client

@@ -22,13 +22,15 @@ const (
 )
 
 type Client struct {
-	UserID            primitive.ObjectID
-	ConversationID    primitive.ObjectID
-	Conn              *websocket.Conn
-	Hub               *Hub
-	Send              chan []byte
-	ChatService       service.ChatService
-	RealtimePublisher *realtime.RedisUserEventPublisher
+	UserID              primitive.ObjectID
+	ConversationID      primitive.ObjectID
+	Conn                *websocket.Conn
+	Hub                 *Hub
+	Send                chan []byte
+	ChatService         service.ChatService
+	RealtimePublisher   *realtime.RedisUserEventPublisher
+	NotificationService service.NotificationService
+	UserService         service.UserService
 }
 
 type wsRequest struct {
@@ -142,6 +144,9 @@ func (c *Client) handleSendMessage(data json.RawMessage) {
 	// Publish user-level realtime event for participants other than the sender.
 	// This allows the doctor to get a notification on other pages/tabs.
 	c.publishUserEventForNewMessage(saved)
+
+	// Send FCM push notification to recipient
+	c.sendPushNotificationForNewMessage(saved)
 }
 
 // publishUserEventForNewMessage publishes a user-level notification event
@@ -200,6 +205,84 @@ func (c *Client) publishUserEventForNewMessage(saved interface{}) {
 
 		if err := c.RealtimePublisher.Publish(context.Background(), recipientID, event); err != nil {
 			log.Printf("warn: failed to publish user event for recipient=%s: %v", recipientID, err)
+		}
+	}
+}
+
+// sendPushNotificationForNewMessage sends FCM push notification to recipients
+func (c *Client) sendPushNotificationForNewMessage(saved interface{}) {
+	if c.NotificationService == nil || c.UserService == nil {
+		return
+	}
+
+	// Get conversation to find all participants
+	conv, err := c.ChatService.GetConversationByID(context.Background(), c.ConversationID)
+	if err != nil || conv == nil {
+		log.Printf("warn: failed to get conversation for FCM notification: %v", err)
+		return
+	}
+
+	// Re-marshal to extract message fields
+	msgBytes, err := json.Marshal(saved)
+	if err != nil {
+		log.Printf("warn: failed to marshal saved message for FCM: %v", err)
+		return
+	}
+
+	var msgFields struct {
+		ID             string  `json:"id"`
+		ConversationID string  `json:"conversationId"`
+		SenderID       *string `json:"senderId"`
+		Content        string  `json:"content"`
+	}
+	if err := json.Unmarshal(msgBytes, &msgFields); err != nil {
+		log.Printf("warn: failed to unmarshal saved message fields for FCM: %v", err)
+		return
+	}
+
+	// Get sender name
+	senderName := "Bệnh nhân"
+	if msgFields.SenderID != nil {
+		sender, err := c.UserService.GetBaseUserByID(context.Background(), &usecase.GetUserByIDInput{ID: *msgFields.SenderID})
+		if err == nil && sender != nil {
+			senderName = sender.Name
+		}
+	}
+
+	// Prepare notification content
+	preview := msgFields.Content
+	if len(preview) > 100 {
+		preview = preview[:97] + "..."
+	}
+
+	// Send to each recipient (except sender)
+	for _, p := range conv.Participants {
+		if p.UserID.Hex() == c.UserID.Hex() {
+			continue // skip sender
+		}
+
+		recipientID := p.UserID
+
+		// Send FCM notification
+		data := map[string]string{
+			"type":           "new_message",
+			"conversationId": msgFields.ConversationID,
+			"messageId":      msgFields.ID,
+			"senderId":       c.UserID.Hex(),
+		}
+
+		err := c.NotificationService.SendToUser(
+			context.Background(),
+			recipientID,
+			senderName,
+			preview,
+			data,
+		)
+
+		if err != nil {
+			log.Printf("warn: failed to send FCM notification to user=%s: %v", recipientID.Hex(), err)
+		} else {
+			log.Printf("[INFO] sent FCM notification for new message to user=%s", recipientID.Hex())
 		}
 	}
 }

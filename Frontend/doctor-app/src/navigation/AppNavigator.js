@@ -11,13 +11,13 @@ import {
   Animated,
   Dimensions,
 } from "react-native";
-import { NavigationContainer, useNavigation, createNavigationContainerRef } from "@react-navigation/native";
+import { NavigationContainer, useNavigation } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-export const navigationRef = createNavigationContainerRef();
+import { navigationRef, flushPendingNotificationNavigation } from "./navigationRef";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../context/AuthContext";
+import { useBadges } from "../context/BadgeContext";
 import LoginScreen from "../screens/LoginScreen";
 import HomeScreen from "../screens/HomeScreen";
 import ProfileScreen from "../screens/ProfileScreen";
@@ -30,6 +30,8 @@ import ThresholdsScreen from "../screens/ThresholdsScreen";
 import RemindersScreen from "../screens/RemindersScreen";
 import PrescriptionsScreen from "../screens/PrescriptionsScreen";
 import SettingsScreen from "../screens/SettingsScreen";
+import VideoCallScreen from "../screens/VideoCallScreen";
+import ComplianceScreen from "../screens/ComplianceScreen";
 
 const SIDEBAR_WIDTH = 280;
 const Stack = createNativeStackNavigator();
@@ -41,6 +43,7 @@ const NAV_ITEMS = [
   { name: "Patients",      label: "Hồ sơ bệnh nhân",    icon: "people-outline" },
   { name: "Alerts",        label: "Quản lý cảnh báo",   icon: "warning-outline" },
   { name: "Chat",          label: "Tin nhắn",            icon: "chatbubble-ellipses-outline" },
+  { name: "Compliance",    label: "Tuân thủ dùng thuốc", icon: "checkmark-done-circle-outline" },
   { name: "Thresholds",    label: "Cấu hình ngưỡng",    icon: "options-outline" },
   { name: "Reminders",     label: "Nhắc nhở",            icon: "alarm-outline" },
   { name: "Prescriptions", label: "Đơn thuốc",           icon: "document-text-outline" },
@@ -52,6 +55,7 @@ const SCREEN_TITLES = {
   Patients:      "Hồ sơ bệnh nhân",
   Alerts:        "Quản lý cảnh báo",
   Chat:          "Tin nhắn",
+  Compliance:    "Tuân thủ dùng thuốc",
   Thresholds:    "Cấu hình ngưỡng",
   Reminders:     "Nhắc nhở",
   Prescriptions: "Đơn thuốc",
@@ -61,6 +65,7 @@ const SCREEN_TITLES = {
 
 function Sidebar({ visible, currentRoute, onNavigate, onClose }) {
   const { user, logout } = useAuth();
+  const { unreadAlertsCount, unreadChatsCount } = useBadges();
   const insets = useSafeAreaInsets();
   const translateX = useRef(new Animated.Value(-SIDEBAR_WIDTH)).current;
   const opacity = useRef(new Animated.Value(0)).current;
@@ -146,6 +151,13 @@ function Sidebar({ visible, currentRoute, onNavigate, onClose }) {
 
             {NAV_ITEMS.map((item) => {
               const isActive = currentRoute === item.name;
+              let badgeCount = 0;
+              if (item.name === "Alerts") {
+                badgeCount = unreadAlertsCount;
+              } else if (item.name === "Chat") {
+                badgeCount = unreadChatsCount;
+              }
+
               return (
                 <TouchableOpacity
                   key={item.name}
@@ -153,7 +165,16 @@ function Sidebar({ visible, currentRoute, onNavigate, onClose }) {
                   onPress={() => onNavigate(item.name)}
                   activeOpacity={0.7}
                 >
-                  <Ionicons name={item.icon} size={20} color={isActive ? "#2563EB" : "#6B7280"} />
+                  <View style={styles.iconContainer}>
+                    <Ionicons name={item.icon} size={20} color={isActive ? "#2563EB" : "#6B7280"} />
+                    {badgeCount > 0 && (
+                      <View style={styles.badge}>
+                        <Text style={styles.badgeText}>
+                          {badgeCount > 99 ? "99+" : badgeCount}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
                   <Text style={[styles.navLabel, isActive && styles.navLabelActive]}>
                     {item.label}
                   </Text>
@@ -195,20 +216,81 @@ function AppHeader({ title, onOpenSidebar, onOpenProfile }) {
   );
 }
 
-function ScreenContainer({ name, onOpenSidebar, children }) {
+function ScreenContainer({ name, children }) {
   const navigation = useNavigation();
+  const { openSidebar } = useSidebar();
   const openProfile = () => navigation.navigate("Profile");
   return (
     <View style={{ flex: 1, backgroundColor: "#F2F6FF" }}>
       <AppHeader
         title={SCREEN_TITLES[name]}
-        onOpenSidebar={onOpenSidebar}
+        onOpenSidebar={openSidebar}
         onOpenProfile={openProfile}
       />
       {children}
     </View>
   );
 }
+
+const HomeScreenWrapper = () => (
+  <ScreenContainer name="Home">
+    <HomeScreen />
+  </ScreenContainer>
+);
+
+const ProfileScreenWrapper = () => (
+  <ScreenContainer name="Profile">
+    <ProfileScreen />
+  </ScreenContainer>
+);
+
+const PatientsScreenWrapper = () => (
+  <ScreenContainer name="Patients">
+    <PatientsScreen />
+  </ScreenContainer>
+);
+
+const AlertsScreenWrapper = () => (
+  <ScreenContainer name="Alerts">
+    <AlertsScreen />
+  </ScreenContainer>
+);
+
+const ChatScreenWrapper = (props) => (
+  <ScreenContainer name="Chat">
+    <ChatScreen {...props} />
+  </ScreenContainer>
+);
+
+const ComplianceScreenWrapper = (props) => (
+  <ScreenContainer name="Compliance">
+    <ComplianceScreen {...props} />
+  </ScreenContainer>
+);
+
+const ThresholdsScreenWrapper = (props) => (
+  <ScreenContainer name="Thresholds">
+    <ThresholdsScreen {...props} />
+  </ScreenContainer>
+);
+
+const RemindersScreenWrapper = (props) => (
+  <ScreenContainer name="Reminders">
+    <RemindersScreen {...props} />
+  </ScreenContainer>
+);
+
+const PrescriptionsScreenWrapper = (props) => (
+  <ScreenContainer name="Prescriptions">
+    <PrescriptionsScreen {...props} />
+  </ScreenContainer>
+);
+
+const SettingsScreenWrapper = (props) => (
+  <ScreenContainer name="Settings">
+    <SettingsScreen {...props} />
+  </ScreenContainer>
+);
 
 function MainNavigator() {
   const [sidebarVisible, setSidebarVisible] = useState(false);
@@ -249,70 +331,18 @@ function MainNavigator() {
         onClose={closeSidebar}
       />
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="Home">
-          {() => (
-            <ScreenContainer name="Home" onOpenSidebar={openSidebar}>
-              <HomeScreen />
-            </ScreenContainer>
-          )}
-        </Stack.Screen>
-        <Stack.Screen name="Profile">
-          {() => (
-            <ScreenContainer name="Profile" onOpenSidebar={openSidebar}>
-              <ProfileScreen />
-            </ScreenContainer>
-          )}
-        </Stack.Screen>
-        <Stack.Screen name="Patients">
-          {() => (
-            <ScreenContainer name="Patients" onOpenSidebar={openSidebar}>
-              <PatientsScreen />
-            </ScreenContainer>
-          )}
-        </Stack.Screen>
-        <Stack.Screen name="Alerts">
-          {() => (
-            <ScreenContainer name="Alerts" onOpenSidebar={openSidebar}>
-              <AlertsScreen />
-            </ScreenContainer>
-          )}
-        </Stack.Screen>
-        <Stack.Screen name="Chat">
-          {(props) => (
-            <ScreenContainer name="Chat" onOpenSidebar={openSidebar}>
-              <ChatScreen {...props} />
-            </ScreenContainer>
-          )}
-        </Stack.Screen>
+        <Stack.Screen name="Home" component={HomeScreenWrapper} />
+        <Stack.Screen name="Profile" component={ProfileScreenWrapper} />
+        <Stack.Screen name="Patients" component={PatientsScreenWrapper} />
+        <Stack.Screen name="Alerts" component={AlertsScreenWrapper} />
+        <Stack.Screen name="Chat" component={ChatScreenWrapper} />
         <Stack.Screen name="ChatDetail" component={ChatDetailScreen} />
-        <Stack.Screen name="Thresholds">
-          {(props) => (
-            <ScreenContainer name="Thresholds" onOpenSidebar={openSidebar}>
-              <ThresholdsScreen {...props} />
-            </ScreenContainer>
-          )}
-        </Stack.Screen>
-        <Stack.Screen name="Reminders">
-          {(props) => (
-            <ScreenContainer name="Reminders" onOpenSidebar={openSidebar}>
-              <RemindersScreen {...props} />
-            </ScreenContainer>
-          )}
-        </Stack.Screen>
-        <Stack.Screen name="Prescriptions">
-          {(props) => (
-            <ScreenContainer name="Prescriptions" onOpenSidebar={openSidebar}>
-              <PrescriptionsScreen {...props} />
-            </ScreenContainer>
-          )}
-        </Stack.Screen>
-        <Stack.Screen name="Settings">
-          {(props) => (
-            <ScreenContainer name="Settings" onOpenSidebar={openSidebar}>
-              <SettingsScreen {...props} />
-            </ScreenContainer>
-          )}
-        </Stack.Screen>
+        <Stack.Screen name="Thresholds" component={ThresholdsScreenWrapper} />
+        <Stack.Screen name="Reminders" component={RemindersScreenWrapper} />
+        <Stack.Screen name="Prescriptions" component={PrescriptionsScreenWrapper} />
+        <Stack.Screen name="Settings" component={SettingsScreenWrapper} />
+        <Stack.Screen name="Compliance" component={ComplianceScreenWrapper} />
+        <Stack.Screen name="VideoCall" component={VideoCallScreen} />
       </Stack.Navigator>
     </SidebarContext.Provider>
   );
@@ -343,7 +373,10 @@ function RootNavigator() {
 
 export default function AppNavigator() {
   return (
-    <NavigationContainer ref={navigationRef}>
+    <NavigationContainer
+      ref={navigationRef}
+      onReady={flushPendingNotificationNavigation}
+    >
       <RootNavigator />
     </NavigationContainer>
   );
@@ -455,4 +488,29 @@ const styles = StyleSheet.create({
   profileName: { fontSize: 14, fontWeight: "700", color: "#111827" },
   profileSub: { fontSize: 11, color: "#6B7280", marginTop: 2 },
   navDivider: { height: 1, backgroundColor: "#F3F4F6", marginHorizontal: 10, marginBottom: 8, marginTop: 4 },
+  iconContainer: {
+    position: "relative",
+    width: 24,
+    height: 24,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  badge: {
+    position: "absolute",
+    right: -8,
+    top: -6,
+    backgroundColor: "#EF4444",
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 3,
+  },
+  badgeText: {
+    color: "#fff",
+    fontSize: 9,
+    fontWeight: "800",
+    textAlign: "center",
+  },
 });

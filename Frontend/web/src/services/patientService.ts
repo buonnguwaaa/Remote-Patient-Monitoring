@@ -142,3 +142,51 @@ export const getMeasurements = async (params: {
   );
   return response.data.data || [];
 };
+
+export interface AdherenceResponse {
+  from: string;
+  to: string;
+  summary: {
+    expected: number;
+    taken: number;
+    missed: number;
+    adherenceRate: number;
+  };
+  days: Array<{
+    date: string;
+    expected: number;
+    taken: number;
+    missed: number;
+    medications: Array<{
+      prescriptionId: string;
+      drugName: string;
+      dosage: string;
+      expected: number;
+      taken: number;
+      missed: number;
+      slots: Array<{
+        time: string;
+        hour: number;
+        minute: number;
+        timeOfDay: string;
+        mealTiming: string;
+        pillCount: number;
+        status: "taken" | "missed" | "pending";
+        intakeId?: string;
+        takenAt?: string;
+      }>;
+    }>;
+  }>;
+}
+
+export const getAdherence = async (params: {
+  patientId: string;
+  days?: number;
+  from?: string;
+  to?: string;
+}): Promise<AdherenceResponse> => {
+  const response = await api.get<{ data: AdherenceResponse }>("/medication-intakes/adherence", {
+    params,
+  });
+  return response.data.data;
+};

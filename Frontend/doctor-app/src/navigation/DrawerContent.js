@@ -6,17 +6,19 @@ import {
   StyleSheet,
   ScrollView,
 } from "react-native";
-import { DrawerContentScrollView } from "@react-navigation/drawer";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../context/AuthContext";
+import { useBadges } from "../context/BadgeContext";
 
 const NAV_ITEMS = [
   { name: "Home",          label: "Tổng quan",          icon: "home-outline" },
   { name: "Patients",      label: "Hồ sơ bệnh nhân",    icon: "people-outline" },
   { name: "Alerts",        label: "Quản lý cảnh báo",   icon: "warning-outline" },
   { name: "Chat",          label: "Tin nhắn",            icon: "chatbubble-ellipses-outline" },
+  { name: "Compliance",    label: "Tuân thủ dùng thuốc", icon: "checkmark-done-circle-outline" },
   { name: "Thresholds",    label: "Cấu hình ngưỡng",    icon: "options-outline" },
   { name: "Reminders",     label: "Nhắc nhở",            icon: "alarm-outline" },
+  { name: "Prescriptions", label: "Đơn thuốc",           icon: "document-text-outline" },
   { name: "Profile",       label: "Hồ sơ bác sĩ",       icon: "person-circle-outline" },
   { name: "Settings",      label: "Cài đặt",             icon: "settings-outline" },
 ];
@@ -24,6 +26,7 @@ const NAV_ITEMS = [
 export default function DrawerContent(props) {
   const { state, navigation } = props;
   const { user, logout } = useAuth();
+  const { unreadAlertsCount, unreadChatsCount } = useBadges() || { unreadAlertsCount: 0, unreadChatsCount: 0 };
   const currentRouteName = state?.routes?.[state?.index]?.name;
 
   return (
@@ -42,14 +45,21 @@ export default function DrawerContent(props) {
       </View>
 
       {/* Nav items */}
-      <DrawerContentScrollView
-        {...props}
+      <ScrollView
         contentContainerStyle={{ paddingTop: 0 }}
-        scrollIndicatorInsets={{ right: 1 }}
+        showsVerticalScrollIndicator={false}
+        style={{ flex: 1 }}
       >
         <View style={styles.navSection}>
           {NAV_ITEMS.map((item) => {
             const isActive = currentRouteName === item.name;
+            let badgeCount = 0;
+            if (item.name === "Alerts") {
+              badgeCount = unreadAlertsCount;
+            } else if (item.name === "Chat") {
+              badgeCount = unreadChatsCount;
+            }
+
             return (
               <TouchableOpacity
                 key={item.name}
@@ -65,12 +75,17 @@ export default function DrawerContent(props) {
                 <Text style={[styles.navLabel, isActive && styles.navLabelActive]}>
                   {item.label}
                 </Text>
+                {badgeCount > 0 && (
+                  <View style={styles.badgeContainer}>
+                    <Text style={styles.badgeText}>{badgeCount > 99 ? "99+" : badgeCount}</Text>
+                  </View>
+                )}
                 {isActive && <View style={styles.activeBar} />}
               </TouchableOpacity>
             );
           })}
         </View>
-      </DrawerContentScrollView>
+      </ScrollView>
 
       {/* Logout */}
       <View style={styles.footer}>
@@ -128,6 +143,21 @@ const styles = StyleSheet.create({
     width: 3,
     borderRadius: 2,
     backgroundColor: "#2563EB",
+  },
+  badgeContainer: {
+    backgroundColor: "#EF4444",
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    paddingHorizontal: 6,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 8,
+  },
+  badgeText: {
+    color: "#fff",
+    fontSize: 10,
+    fontWeight: "bold",
   },
   footer: { paddingHorizontal: 12, paddingBottom: 24 },
   divider: { height: 1, backgroundColor: "#F3F4F6", marginBottom: 12 },

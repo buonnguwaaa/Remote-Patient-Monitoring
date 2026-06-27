@@ -182,6 +182,7 @@ jobs:
           script: |
             cd /home/ubuntu/app
 
-            docker compose up -d --pull always
-
+            docker compose pull server worker nginx
+            docker compose up -d server worker nginx
+            docker compose restart nginx
             docker image prune -f

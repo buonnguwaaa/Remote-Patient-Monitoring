@@ -13,8 +13,9 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useIsFocused } from "@react-navigation/native";
+import { useIsFocused, useRoute } from "@react-navigation/native";
 import Toast from "../components/Toast";
+import PatientSelectorModal from "../components/PatientSelectorModal";
 
 import { useAuth } from "../context/AuthContext";
 import {
@@ -23,6 +24,7 @@ import {
   createPrescription,
   updatePrescription,
   updatePrescriptionStatus,
+  getReminders,
 } from "../api/patientApi";
 
 const weekdayOptions = [
@@ -44,6 +46,77 @@ const weekdayLabelsFull = {
   6: "Thứ 7",
   0: "Chủ nhật",
 };
+
+const drug = (name, dosage, schedule) => ({ name, dosage, schedule });
+
+const DRUG_SUGGESTIONS = [
+  drug("Paracetamol", "500mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, noon: { customTime: "12:00", mealTiming: "post_meal", pillCount: 1 }, evening: { customTime: "20:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Ibuprofen", "400mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, noon: { customTime: "12:00", mealTiming: "post_meal", pillCount: 1 }, evening: { customTime: "20:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Aspirin", "500mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, noon: { customTime: "12:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Diclofenac", "50mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, evening: { customTime: "20:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Meloxicam", "7.5mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Amoxicillin", "500mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, noon: { customTime: "14:00", mealTiming: "post_meal", pillCount: 1 }, evening: { customTime: "20:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Ampicillin", "500mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, noon: { customTime: "14:00", mealTiming: "post_meal", pillCount: 1 }, evening: { customTime: "20:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Azithromycin", "500mg", { morning: { customTime: "08:00", mealTiming: "", pillCount: 1 } }),
+  drug("Clarithromycin", "500mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, evening: { customTime: "20:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Ciprofloxacin", "500mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, evening: { customTime: "20:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Metronidazole", "500mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, noon: { customTime: "14:00", mealTiming: "post_meal", pillCount: 1 }, evening: { customTime: "20:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Doxycycline", "100mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, evening: { customTime: "20:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Cefuroxime", "500mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, evening: { customTime: "20:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Ceftriaxone", "1g"),
+  drug("Cephalexin", "500mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, noon: { customTime: "14:00", mealTiming: "post_meal", pillCount: 1 }, evening: { customTime: "20:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Omeprazole", "20mg", { morning: { customTime: "07:00", mealTiming: "pre_meal", pillCount: 1 } }),
+  drug("Pantoprazole", "40mg", { morning: { customTime: "07:00", mealTiming: "pre_meal", pillCount: 1 } }),
+  drug("Esomeprazole", "40mg", { morning: { customTime: "07:00", mealTiming: "pre_meal", pillCount: 1 } }),
+  drug("Ranitidine", "150mg", { morning: { customTime: "08:00", mealTiming: "pre_meal", pillCount: 1 }, evening: { customTime: "20:00", mealTiming: "pre_meal", pillCount: 1 } }),
+  drug("Antacid", "1 gói", { morning: { customTime: "08:30", mealTiming: "post_meal", pillCount: 1 }, noon: { customTime: "12:30", mealTiming: "post_meal", pillCount: 1 }, evening: { customTime: "20:30", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Metformin", "500mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, noon: { customTime: "12:00", mealTiming: "post_meal", pillCount: 1 }, evening: { customTime: "20:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Glibenclamide", "5mg", { morning: { customTime: "07:30", mealTiming: "pre_meal", pillCount: 1 } }),
+  drug("Gliclazide", "80mg", { morning: { customTime: "07:30", mealTiming: "pre_meal", pillCount: 1 } }),
+  drug("Insulin Aspart"),
+  drug("Insulin Glargine", "", { evening: { customTime: "22:00", mealTiming: "", pillCount: 1 } }),
+  drug("Amlodipine", "5mg", { morning: { customTime: "08:00", mealTiming: "", pillCount: 1 } }),
+  drug("Nifedipine", "30mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Atenolol", "50mg", { morning: { customTime: "08:00", mealTiming: "", pillCount: 1 } }),
+  drug("Metoprolol", "50mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, evening: { customTime: "20:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Bisoprolol", "5mg", { morning: { customTime: "08:00", mealTiming: "", pillCount: 1 } }),
+  drug("Losartan", "50mg", { morning: { customTime: "08:00", mealTiming: "", pillCount: 1 } }),
+  drug("Valsartan", "80mg", { morning: { customTime: "08:00", mealTiming: "", pillCount: 1 } }),
+  drug("Lisinopril", "10mg", { morning: { customTime: "08:00", mealTiming: "", pillCount: 1 } }),
+  drug("Enalapril", "10mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Ramipril", "5mg", { morning: { customTime: "08:00", mealTiming: "", pillCount: 1 } }),
+  drug("Atorvastatin", "20mg", { evening: { customTime: "21:00", mealTiming: "", pillCount: 1 } }),
+  drug("Rosuvastatin", "10mg", { evening: { customTime: "21:00", mealTiming: "", pillCount: 1 } }),
+  drug("Simvastatin", "20mg", { evening: { customTime: "21:00", mealTiming: "", pillCount: 1 } }),
+  drug("Aspirin 81mg", "81mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Clopidogrel", "75mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Warfarin", "5mg", { evening: { customTime: "18:00", mealTiming: "", pillCount: 1 } }),
+  drug("Furosemide", "40mg", { morning: { customTime: "07:00", mealTiming: "", pillCount: 1 } }),
+  drug("Hydrochlorothiazide", "25mg", { morning: { customTime: "07:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Spironolactone", "25mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Prednisolone", "5mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Dexamethasone", "0.5mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Methylprednisolone", "4mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, noon: { customTime: "12:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Cetirizine", "10mg", { evening: { customTime: "21:00", mealTiming: "", pillCount: 1 } }),
+  drug("Loratadine", "10mg", { morning: { customTime: "08:00", mealTiming: "", pillCount: 1 } }),
+  drug("Fexofenadine", "120mg", { morning: { customTime: "08:00", mealTiming: "", pillCount: 1 } }),
+  drug("Salbutamol", "4mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, noon: { customTime: "12:00", mealTiming: "post_meal", pillCount: 1 }, evening: { customTime: "20:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Montelukast", "10mg", { evening: { customTime: "21:00", mealTiming: "", pillCount: 1 } }),
+  drug("Fluticasone"),
+  drug("Levothyroxine", "50mcg", { morning: { customTime: "07:00", mealTiming: "pre_meal", pillCount: 1 } }),
+  drug("Methimazole", "10mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, noon: { customTime: "14:00", mealTiming: "post_meal", pillCount: 1 }, evening: { customTime: "20:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Diazepam", "5mg", { evening: { customTime: "21:00", mealTiming: "", pillCount: 1 } }),
+  drug("Alprazolam", "0.25mg", { evening: { customTime: "21:00", mealTiming: "", pillCount: 1 } }),
+  drug("Clonazepam", "0.5mg", { evening: { customTime: "21:00", mealTiming: "", pillCount: 1 } }),
+  drug("Vitamin B1", "10mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Vitamin B6", "10mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Vitamin B12", "500mcg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Vitamin C", "500mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Vitamin D3", "1000IU", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Sắt (II) sulfate", "60mg", { morning: { customTime: "07:30", mealTiming: "pre_meal", pillCount: 1 } }),
+  drug("Acid folic", "5mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 } }),
+  drug("Canxi carbonat", "500mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, evening: { customTime: "20:00", mealTiming: "post_meal", pillCount: 1 } }),
+];
 
 const createDefaultDose = () => ({
   timeOfDay: "morning", // 'morning' | 'noon' | 'evening'
@@ -96,14 +169,23 @@ function formatDateOnly(iso) {
 
 export default function PrescriptionsScreen() {
   const isFocused = useIsFocused();
+  const route = useRoute();
   const { user } = useAuth();
 
   const [patients, setPatients] = useState([]);
   const [selectedPatientId, setSelectedPatientId] = useState("");
+
+  useEffect(() => {
+    if (route.params?.patientId) {
+      setSelectedPatientId(route.params.patientId);
+    }
+  }, [route.params?.patientId]);
+
   const [statusFilter, setStatusFilter] = useState("all");
   const [loadingPatients, setLoadingPatients] = useState(true);
 
   const [prescriptions, setPrescriptions] = useState([]);
+  const [reminders, setReminders] = useState([]);
   const [loadingPrescriptions, setLoadingPrescriptions] = useState(false);
 
   // Form states
@@ -113,6 +195,55 @@ export default function PrescriptionsScreen() {
   const [saving, setSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [focusedMedIdx, setFocusedMedIdx] = useState(null);
+
+  const handleDrugSelect = (medIdx, suggestion) => {
+    setFormData((prev) => {
+      const nextMeds = [...prev.medications];
+      const med = { ...nextMeds[medIdx] };
+      med.drugName = suggestion.name;
+      if (suggestion.dosage) {
+        med.dosage = suggestion.dosage;
+      }
+      if (suggestion.schedule) {
+        const schedule = [];
+        for (const tod of ["morning", "noon", "evening"]) {
+          const slot = suggestion.schedule[tod];
+          if (slot) {
+            schedule.push({
+              timeOfDay: tod,
+              customTime: slot.customTime,
+              mealTiming: slot.mealTiming || "",
+              pillCount: slot.pillCount || 1,
+            });
+          }
+        }
+        if (schedule.length > 0) {
+          med.schedule = schedule;
+        }
+      }
+      nextMeds[medIdx] = med;
+      return { ...prev, medications: nextMeds };
+    });
+  };
+
+  const handleCloseForm = () => {
+    const hasTypedMedication = (formData.medications || []).some(
+      (med) => med.drugName && med.drugName.trim() !== ""
+    );
+    if (!hasTypedMedication) {
+      setIsFormVisible(false);
+    } else {
+      Alert.alert(
+        "Xác nhận đóng",
+        "Đơn thuốc có chứa các loại thuốc chưa lưu. Bạn có chắc chắn muốn hủy bỏ và đóng biểu mẫu không?",
+        [
+          { text: "Quay lại", style: "cancel" },
+          { text: "Đóng", style: "destructive", onPress: () => setIsFormVisible(false) }
+        ]
+      );
+    }
+  };
 
   // Search modals
   const [showPatientModal, setShowPatientModal] = useState(false);
@@ -145,17 +276,26 @@ export default function PrescriptionsScreen() {
     setLoadingPrescriptions(true);
 
     try {
-      const res = await getPrescriptions({
-        patientId: selectedPatientId || undefined,
-        status: statusFilter === "all" ? undefined : statusFilter,
-      });
-      const list = res.body?.data || res.body || [];
+      const [presRes, remRes] = await Promise.all([
+        getPrescriptions({
+          patientId: selectedPatientId || undefined,
+          status: statusFilter === "all" ? undefined : statusFilter,
+        }),
+        getReminders({
+          patientId: selectedPatientId || undefined,
+        }),
+      ]);
+
+      const list = presRes.body?.data || presRes.body || [];
       const sorted = [...list].sort(
         (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
       setPrescriptions(sorted);
+
+      const remindersList = remRes.body?.data || remRes.body || [];
+      setReminders(remindersList);
     } catch (err) {
-      console.error("Failed to load prescriptions:", err);
+      console.error("Failed to load prescriptions or reminders:", err);
     } finally {
       setLoadingPrescriptions(false);
     }
@@ -504,83 +644,21 @@ export default function PrescriptionsScreen() {
       </View>
 
       {/* Patient Search Modal */}
-      <Modal
+      <PatientSelectorModal
         visible={showPatientModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowPatientModal(false)}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Chọn bệnh nhân</Text>
-              <TouchableOpacity onPress={() => setShowPatientModal(false)} style={styles.modalCloseBtn}>
-                <Ionicons name="close" size={24} color="#374151" />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.searchBarContainer}>
-              <Ionicons name="search" size={18} color="#9CA3AF" style={{ marginRight: 8 }} />
-              <TextInput
-                style={styles.searchBarInput}
-                placeholder="Tìm theo tên hoặc mã bệnh án..."
-                placeholderTextColor="#9CA3AF"
-                value={patientSearchQuery}
-                onChangeText={setPatientSearchQuery}
-              />
-              {patientSearchQuery ? (
-                <TouchableOpacity onPress={() => setPatientSearchQuery("")}>
-                  <Ionicons name="close-circle" size={18} color="#9CA3AF" />
-                </TouchableOpacity>
-              ) : null}
-            </View>
-
-            {loadingPatients ? (
-              <ActivityIndicator size="large" color="#2563EB" style={{ marginVertical: 24 }} />
-            ) : (
-              <ScrollView style={styles.modalList} keyboardShouldPersistTaps="handled">
-                {filteredPatients.length === 0 ? (
-                  <Text style={styles.modalEmptyText}>Không tìm thấy bệnh nhân nào.</Text>
-                ) : (
-                  filteredPatients.map((p, idx) => {
-                    const isSelected = isFormVisible
-                      ? p.patientId === formData.patientId
-                      : p.patientId === selectedPatientId;
-                    return (
-                      <TouchableOpacity
-                        key={p.patientId || p.id || `patient-${idx}`}
-                        style={[styles.modalItem, isSelected && styles.modalItemActive]}
-                        onPress={() => {
-                          if (isFormVisible) {
-                            setFormData((prev) => ({ ...prev, patientId: p.patientId }));
-                          } else {
-                            setSelectedPatientId(p.patientId);
-                          }
-                          setShowPatientModal(false);
-                        }}
-                      >
-                        <View style={{ flex: 1 }}>
-                          <Text style={[styles.modalItemName, isSelected && styles.modalItemNameActive]}>
-                            {p.patientName || p.name}
-                          </Text>
-                          {p.patientCode ? (
-                            <Text style={[styles.modalItemCode, isSelected && styles.modalItemCodeActive]}>
-                              Mã HS: {p.patientCode}
-                            </Text>
-                          ) : null}
-                        </View>
-                        {isSelected ? (
-                          <Ionicons name="checkmark" size={18} color="#2563EB" />
-                        ) : null}
-                      </TouchableOpacity>
-                    );
-                  })
-                )}
-              </ScrollView>
-            )}
-          </View>
-        </View>
-      </Modal>
+        onClose={() => setShowPatientModal(false)}
+        patients={patients}
+        selectedPatientId={isFormVisible ? formData.patientId : selectedPatientId}
+        onSelect={(patientId) => {
+          if (isFormVisible) {
+            setFormData((prev) => ({ ...prev, patientId }));
+          } else {
+            setSelectedPatientId(patientId);
+          }
+          setShowPatientModal(false);
+        }}
+        loading={loadingPatients}
+      />
 
       {/* Filter Status Bar */}
       <View style={styles.filterBar}>
@@ -718,6 +796,27 @@ export default function PrescriptionsScreen() {
                   </Text>
                 </View>
 
+                {/* Linked Reminders */}
+                {(() => {
+                  const linkedReminders = reminders.filter((r) => r.prescriptionId === p.id);
+                  if (linkedReminders.length === 0) return null;
+                  return (
+                    <View style={styles.linkedRemindersSection}>
+                      <Text style={styles.linkedRemindersTitle}>
+                        <Ionicons name="alarm-outline" size={13} color="#B45309" /> Nhắc nhở liên kết:
+                      </Text>
+                      {linkedReminders.map((r, rIdx) => (
+                        <View key={r.id || rIdx} style={styles.linkedReminderRow}>
+                          <View style={[styles.reminderStatusDot, { backgroundColor: r.status === "active" ? "#10B981" : "#9CA3AF" }]} />
+                          <Text style={styles.linkedReminderText} numberOfLines={1}>
+                            [{r.time}] {r.message || "Uống thuốc"} ({r.status === "active" ? "Đang hoạt động" : r.status === "paused" ? "Tạm dừng" : r.status === "completed" ? "Đã xong" : "Đã ngưng"})
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  );
+                })()}
+
                 {/* Actions */}
                 <View style={styles.cardActions}>
                   {p.status === "active" && (
@@ -760,7 +859,7 @@ export default function PrescriptionsScreen() {
           visible={isFormVisible}
           transparent
           animationType="fade"
-          onRequestClose={() => setIsFormVisible(false)}
+          onRequestClose={handleCloseForm}
         >
           <View style={styles.formBackdrop}>
             <KeyboardAvoidingView
@@ -772,7 +871,7 @@ export default function PrescriptionsScreen() {
                   <Text style={styles.formTitle}>
                     {editingId ? "Chỉnh sửa đơn thuốc" : "Kê đơn thuốc mới"}
                   </Text>
-                  <TouchableOpacity onPress={() => setIsFormVisible(false)}>
+                  <TouchableOpacity onPress={handleCloseForm}>
                     <Ionicons name="close" size={24} color="#4B5563" />
                   </TouchableOpacity>
                 </View>
@@ -919,12 +1018,65 @@ export default function PrescriptionsScreen() {
                       {/* Drug Name & Dosage */}
                       <View style={styles.formSection}>
                         <Text style={styles.inputLabel}>Tên thuốc *</Text>
-                        <TextInput
-                          style={styles.input}
-                          placeholder="Ví dụ: Panadol, Metformin..."
-                          value={med.drugName}
-                          onChangeText={(val) => handleMedFieldChange(medIdx, "drugName", val)}
-                        />
+                        <View style={{ justifyContent: "center" }}>
+                          <TextInput
+                            style={[styles.input, { paddingRight: 36 }]}
+                            placeholder="Ví dụ: Panadol, Metformin..."
+                            value={med.drugName}
+                            onChangeText={(val) => handleMedFieldChange(medIdx, "drugName", val)}
+                            onFocus={() => setFocusedMedIdx(medIdx)}
+                            onBlur={() => {
+                              // Delay slightly so onPress registers
+                              setTimeout(() => {
+                                setFocusedMedIdx((prev) => (prev === medIdx ? null : prev));
+                              }, 200);
+                            }}
+                          />
+                          <TouchableOpacity
+                            style={{ position: "absolute", right: 12, padding: 4 }}
+                            onPress={() => setFocusedMedIdx(focusedMedIdx === medIdx ? null : medIdx)}
+                          >
+                            <Ionicons
+                              name={focusedMedIdx === medIdx ? "chevron-up" : "chevron-down"}
+                              size={18}
+                              color="#6B7280"
+                            />
+                          </TouchableOpacity>
+                        </View>
+                        {focusedMedIdx === medIdx && (() => {
+                          const query = (med.drugName || "").trim().toLowerCase();
+                          const matches = query
+                            ? DRUG_SUGGESTIONS.filter((item) =>
+                                item.name.toLowerCase().includes(query)
+                              )
+                            : DRUG_SUGGESTIONS;
+                          if (matches.length === 0) return null;
+                          return (
+                            <ScrollView
+                              style={styles.suggestionsContainer}
+                              nestedScrollEnabled={true}
+                              keyboardShouldPersistTaps="handled"
+                            >
+                              {matches.map((item, sIdx) => (
+                                <TouchableOpacity
+                                  key={`suggestion-${sIdx}`}
+                                  style={[
+                                    styles.suggestionItem,
+                                    sIdx === matches.length - 1 && { borderBottomWidth: 0 },
+                                  ]}
+                                  onPress={() => {
+                                    handleDrugSelect(medIdx, item);
+                                    setFocusedMedIdx(null);
+                                  }}
+                                >
+                                  <Ionicons name="medkit" size={16} color="#3B82F6" />
+                                  <Text style={styles.suggestionText}>{item.name}</Text>
+                                  {item.dosage ? <Text style={styles.suggestionDosage}>({item.dosage})</Text> : null}
+                                </TouchableOpacity>
+                              ))}
+                            </ScrollView>
+                          );
+                        })()}
                       </View>
 
                       <View style={styles.row}>
@@ -1088,7 +1240,7 @@ export default function PrescriptionsScreen() {
                 <View style={styles.formActions}>
                   <TouchableOpacity
                     style={styles.cancelBtn}
-                    onPress={() => setIsFormVisible(false)}
+                    onPress={handleCloseForm}
                     disabled={saving}
                   >
                     <Text style={styles.cancelBtnText}>Hủy bỏ</Text>
@@ -1837,5 +1989,63 @@ const styles = StyleSheet.create({
     color: "#9CA3AF",
     textAlign: "center",
     marginVertical: 12,
+  },
+  linkedRemindersSection: {
+    backgroundColor: "#FFFBEB",
+    borderRadius: 10,
+    padding: 10,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: "#FEF3C7",
+  },
+  linkedRemindersTitle: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#B45309",
+    marginBottom: 6,
+  },
+  linkedReminderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 4,
+    gap: 6,
+  },
+  reminderStatusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  linkedReminderText: {
+    fontSize: 11,
+    color: "#78350F",
+    fontWeight: "500",
+    flex: 1,
+  },
+  suggestionsContainer: {
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 10,
+    marginTop: 6,
+    padding: 2,
+  },
+  suggestionItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E2E8F0",
+  },
+  suggestionText: {
+    fontSize: 14,
+    color: "#1F2937",
+    fontWeight: "600",
+    marginLeft: 8,
+  },
+  suggestionDosage: {
+    fontSize: 12,
+    color: "#4B5563",
+    marginLeft: 6,
   },
 });

@@ -22,6 +22,9 @@ export default function PatientDetailModal({
   threshold,
   detailLoading,
   detailError,
+  onActionChat,
+  onActionReminder,
+  onActionPrescription,
 }) {
   const [activeModalTab, setActiveModalTab] = useState("profile"); // 'profile' | 'history' | 'charts'
   const [chartType, setChartType] = useState("bp");
@@ -673,8 +676,46 @@ export default function PatientDetailModal({
           )}
 
           {/* Bottom Actions */}
+          <View style={styles.actionRowContainer}>
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: "#EFF6FF", borderColor: "#BFDBFE" }]}
+              onPress={() => {
+                onClose();
+                onActionChat && onActionChat(patient?.id || patient?.patientId);
+              }}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="chatbubble-ellipses-outline" size={16} color="#2563EB" />
+              <Text style={[styles.actionBtnText, { color: "#2563EB" }]}>Nhắn tin</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: "#FEF3C7", borderColor: "#FDE68A" }]}
+              onPress={() => {
+                onClose();
+                onActionReminder && onActionReminder(patient?.id || patient?.patientId);
+              }}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="alarm-outline" size={16} color="#D97706" />
+              <Text style={[styles.actionBtnText, { color: "#D97706" }]}>Nhắc nhở</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: "#F0FDF4", borderColor: "#BBF7D0" }]}
+              onPress={() => {
+                onClose();
+                onActionPrescription && onActionPrescription(patient?.id || patient?.patientId);
+              }}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="document-text-outline" size={16} color="#16A34A" />
+              <Text style={[styles.actionBtnText, { color: "#16A34A" }]}>Đơn thuốc</Text>
+            </TouchableOpacity>
+          </View>
+
           <View style={styles.modalFooter}>
-            <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+            <TouchableOpacity style={styles.closeButton} onPress={onClose} activeOpacity={0.7}>
               <Text style={styles.closeButtonText}>Đóng</Text>
             </TouchableOpacity>
           </View>
@@ -688,6 +729,29 @@ export default function PatientDetailModal({
 }
 
 const styles = StyleSheet.create({
+  actionRowContainer: {
+    flexDirection: "row",
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: "#fff",
+    borderTopWidth: 1,
+    borderTopColor: "#F1F5F9",
+  },
+  actionBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    height: 38,
+    borderRadius: 10,
+    borderWidth: 1,
+    gap: 4,
+  },
+  actionBtnText: {
+    fontSize: 12,
+    fontWeight: "700",
+  },
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
   modalContent: {
     backgroundColor: "#F8FAFC",

@@ -5,7 +5,9 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
+    "icon": "./assets/icon.png",
     "splash": {
+      "image": "./assets/icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -15,23 +17,40 @@
     },
     "android": {
       "package": "com.rpm.doctor",
+      "icon": "./assets/icon.png",
       "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#ffffff"
       },
       "usesCleartextTraffic": true,
       "permissions": [
         "INTERNET",
-        "ACCESS_NETWORK_STATE"
+        "ACCESS_NETWORK_STATE",
+        "android.permission.POST_NOTIFICATIONS"
       ],
       "config": {
         "usesCleartextTraffic": true
+      },
+      "notification": {
+        "icon": "./assets/icon.png",
+        "color": "#2563EB"
       }
     },
     "scheme": "rpm-doctor",
     "plugins": [
       "expo-dev-client",
       "./plugins/withCleartextTraffic",
-      "@react-native-community/datetimepicker"
+      "./plugins/withNotificationSound",
+      "@react-native-community/datetimepicker",
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "color": "#2563EB",
+          "defaultChannel": "rpm_doctor_notification",
+          "icon": "./assets/icon.png"
+        }
+      ]
     ],
     "extra": {
       "eas": {

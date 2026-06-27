@@ -39,14 +39,17 @@ func Start() error {
 		}
 	}()
 
+	if err := config.LoadFirebaseCredentials(); err != nil {
+		log.Printf("[WARN] Firebase credentials not loaded: %v", err)
+	}
+
 	var pushProvider service.PushProvider
-	var pushClientRaw *fcm.Client
-	pushClientRaw, err = fcm.NewClientFromEnv()
-	if err != nil {
-		log.Printf("[WARN] FCM client not configured, push delivery disabled: %v", err)
+	fcmClient, fcmErr := fcm.NewClientFromEnv()
+	if fcmErr != nil {
+		log.Printf("[WARN] FCM client not configured, push delivery disabled: %v", fcmErr)
 		pushProvider = nil // explicit nil interface, not typed nil pointer
 	} else {
-		pushProvider = pushClientRaw
+		pushProvider = fcmClient
 	}
 
 	container := container.NewTemporalWorkerContainer(pushProvider)

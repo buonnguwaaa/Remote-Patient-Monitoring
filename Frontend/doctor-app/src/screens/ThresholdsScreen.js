@@ -15,6 +15,8 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useIsFocused } from "@react-navigation/native";
 import Toast from "../components/Toast";
+import PatientSelectorModal from "../components/PatientSelectorModal";
+import DateTimePicker from "@react-native-community/datetimepicker";
 
 import { useAuth } from "../context/AuthContext";
 import {
@@ -85,6 +87,49 @@ export default function ThresholdsScreen() {
   // Patient Search Modal states
   const [showPatientModal, setShowPatientModal] = useState(false);
   const [patientSearchQuery, setPatientSearchQuery] = useState("");
+
+  // DatePicker states & handlers
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [datePickerField, setDatePickerField] = useState("effectiveFrom"); // 'effectiveFrom' | 'effectiveTo'
+  const [currentPickerDate, setCurrentPickerDate] = useState(new Date());
+
+  const openDatePicker = (field) => {
+    setDatePickerField(field);
+    const dateStr = formData[field];
+    let dateVal = new Date();
+    if (dateStr) {
+      // Parse YYYY-MM-DD safely
+      const parts = dateStr.split("-");
+      if (parts.length === 3) {
+        const y = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10) - 1;
+        const d = parseInt(parts[2], 10);
+        dateVal = new Date(y, m, d);
+      }
+    }
+    setCurrentPickerDate(isNaN(dateVal.getTime()) ? new Date() : dateVal);
+    setShowDatePicker(true);
+  };
+
+  const handleDateChange = (event, selectedDate) => {
+    if (Platform.OS === "android") {
+      setShowDatePicker(false);
+      if (selectedDate) {
+        const formatted = selectedDate.toISOString().split("T")[0];
+        setFormData({ ...formData, [datePickerField]: formatted });
+      }
+    } else {
+      if (selectedDate) {
+        setCurrentPickerDate(selectedDate);
+      }
+    }
+  };
+
+  const handleConfirmIOSDate = () => {
+    const formatted = currentPickerDate.toISOString().split("T")[0];
+    setFormData({ ...formData, [datePickerField]: formatted });
+    setShowDatePicker(false);
+  };
 
   // Load patient list
   useEffect(() => {
@@ -343,6 +388,61 @@ export default function ThresholdsScreen() {
     }
   };
 
+  const renderDatePicker = () => {
+    if (!showDatePicker) return null;
+
+    if (Platform.OS === "ios") {
+      return (
+        <Modal
+          transparent
+          animationType="fade"
+          visible={showDatePicker}
+          onRequestClose={() => setShowDatePicker(false)}
+        >
+          <View style={styles.pickerModalOverlay}>
+            <View style={styles.pickerModalContent}>
+              <View style={styles.pickerModalHeader}>
+                <Text style={styles.pickerModalTitle}>
+                  {datePickerField === "effectiveFrom" ? "Chọn ngày bắt đầu" : "Chọn ngày kết thúc"}
+                </Text>
+                <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                  <Ionicons name="close" size={22} color="#4B5563" />
+                </TouchableOpacity>
+              </View>
+
+              <View style={{ alignItems: "center", marginVertical: 10 }}>
+                <DateTimePicker
+                  value={currentPickerDate}
+                  mode="date"
+                  display="spinner"
+                  onChange={handleDateChange}
+                  textColor="#1F2937"
+                />
+              </View>
+
+              <TouchableOpacity
+                style={styles.confirmButtonIOS}
+                onPress={handleConfirmIOSDate}
+              >
+                <Text style={styles.confirmButtonTextIOS}>Xác nhận</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      );
+    }
+
+    // Android Dialog
+    return (
+      <DateTimePicker
+        value={currentPickerDate}
+        mode="date"
+        display="default"
+        onChange={handleDateChange}
+      />
+    );
+  };
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -376,77 +476,17 @@ export default function ThresholdsScreen() {
       </View>
 
       {/* Searchable Patient Picker Modal */}
-      <Modal
+      <PatientSelectorModal
         visible={showPatientModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowPatientModal(false)}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Chọn bệnh nhân</Text>
-              <TouchableOpacity onPress={() => setShowPatientModal(false)} style={styles.modalCloseBtn}>
-                <Ionicons name="close" size={24} color="#374151" />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.searchBarContainer}>
-              <Ionicons name="search" size={18} color="#9CA3AF" style={{ marginRight: 8 }} />
-              <TextInput
-                style={styles.searchBarInput}
-                placeholder="Tìm theo tên hoặc mã bệnh án..."
-                placeholderTextColor="#9CA3AF"
-                value={patientSearchQuery}
-                onChangeText={setPatientSearchQuery}
-              />
-              {patientSearchQuery ? (
-                <TouchableOpacity onPress={() => setPatientSearchQuery("")}>
-                  <Ionicons name="close-circle" size={18} color="#9CA3AF" />
-                </TouchableOpacity>
-              ) : null}
-            </View>
-
-            {loadingPatients ? (
-              <ActivityIndicator size="large" color="#2563EB" style={{ marginVertical: 24 }} />
-            ) : (
-              <ScrollView style={styles.modalList} keyboardShouldPersistTaps="handled">
-                {filteredPatients.length === 0 ? (
-                  <Text style={styles.modalEmptyText}>Không tìm thấy bệnh nhân nào.</Text>
-                ) : (
-                  filteredPatients.map((p, idx) => {
-                    const isSelected = p.patientId === selectedPatientId;
-                    return (
-                      <TouchableOpacity
-                        key={p.patientId || p.id || `patient-${idx}`}
-                        style={[styles.modalItem, isSelected && styles.modalItemActive]}
-                        onPress={() => {
-                          setSelectedPatientId(p.patientId);
-                          setShowPatientModal(false);
-                        }}
-                      >
-                        <View style={{ flex: 1 }}>
-                          <Text style={[styles.modalItemName, isSelected && styles.modalItemNameActive]}>
-                            {p.patientName || p.name}
-                          </Text>
-                          {p.patientCode ? (
-                            <Text style={[styles.modalItemCode, isSelected && styles.modalItemCodeActive]}>
-                              Mã HS: {p.patientCode}
-                            </Text>
-                          ) : null}
-                        </View>
-                        {isSelected ? (
-                          <Ionicons name="checkmark" size={18} color="#2563EB" />
-                        ) : null}
-                      </TouchableOpacity>
-                    );
-                  })
-                )}
-              </ScrollView>
-            )}
-          </View>
-        </View>
-      </Modal>
+        onClose={() => setShowPatientModal(false)}
+        patients={patients}
+        selectedPatientId={selectedPatientId}
+        onSelect={(patientId) => {
+          setSelectedPatientId(patientId);
+          setShowPatientModal(false);
+        }}
+        loading={loadingPatients}
+      />
 
       <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
 
@@ -746,21 +786,29 @@ export default function ThresholdsScreen() {
                 <View style={styles.row}>
                   <View style={styles.col}>
                     <Text style={styles.inputLabel}>Bắt đầu từ</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="YYYY-MM-DD"
-                      value={formData.effectiveFrom}
-                      onChangeText={(val) => setFormData({ ...formData, effectiveFrom: val })}
-                    />
+                    <TouchableOpacity
+                      style={[styles.input, styles.datePickerBtn]}
+                      onPress={() => openDatePicker("effectiveFrom")}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.datePickerBtnText}>
+                        {formData.effectiveFrom || "Chọn ngày"}
+                      </Text>
+                      <Ionicons name="calendar-outline" size={16} color="#6B7280" />
+                    </TouchableOpacity>
                   </View>
                   <View style={styles.col}>
                     <Text style={styles.inputLabel}>Kết thúc lúc (Tùy chọn)</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="YYYY-MM-DD"
-                      value={formData.effectiveTo}
-                      onChangeText={(val) => setFormData({ ...formData, effectiveTo: val })}
-                    />
+                    <TouchableOpacity
+                      style={[styles.input, styles.datePickerBtn]}
+                      onPress={() => openDatePicker("effectiveTo")}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.datePickerBtnText}>
+                        {formData.effectiveTo || "Không thời hạn"}
+                      </Text>
+                      <Ionicons name="calendar-outline" size={16} color="#6B7280" />
+                    </TouchableOpacity>
                   </View>
                 </View>
               </View>
@@ -834,6 +882,8 @@ export default function ThresholdsScreen() {
           </View>
         )}
       </ScrollView>
+
+      {renderDatePicker()}
 
       <Toast
         visible={!!successMessage}
@@ -1162,4 +1212,62 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   successText: { fontSize: 12, color: "#065F46", flex: 1 },
+  datePickerBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  datePickerBtnText: {
+    fontSize: 13,
+    color: "#1F2937",
+    fontWeight: "500",
+  },
+  pickerModalOverlay: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 9999,
+  },
+  pickerModalContent: {
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    width: "85%",
+    padding: 16,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  pickerModalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
+    paddingBottom: 10,
+    marginBottom: 10,
+  },
+  pickerModalTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#1F2937",
+  },
+  confirmButtonIOS: {
+    backgroundColor: "#2563EB",
+    height: 40,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 10,
+  },
+  confirmButtonTextIOS: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 13,
+  },
 });

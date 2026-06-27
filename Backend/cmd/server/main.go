@@ -20,6 +20,7 @@ import (
 	"log"
 	"os"
 	"time"
+	_ "time/tzdata" // embed timezone database so LoadLocation works on minimal images (alpine/scratch)
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/config"
 	_ "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/docs"

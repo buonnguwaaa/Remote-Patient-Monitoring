@@ -1256,23 +1256,36 @@ export default function PrescriptionPage() {
       {/* ── Adherence Panel ── */}
       {selectedPatientId && (
         <div className="mb-6 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-semibold text-gray-800 dark:text-slate-100">
-                📊 {t("prescriptions.adherencePanel")}
-              </h2>
-              <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
-                {t("prescriptions.adherencePanelDesc")}
-              </p>
-            </div>
+        <div className="mb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-800 dark:text-slate-100">
+              📊 {t("prescriptions.adherencePanel")}
+            </h2>
+            <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
+              {t("prescriptions.adherencePanelDesc")}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <select
+              value={adherenceDays}
+              onChange={(e) => setAdherenceDays(Number(e.target.value))}
+              className="rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-1.5 text-sm text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {ADHERENCE_RANGES.map((r) => (
+                <option key={r.value} value={r.value}>
+                  {t(r.labelKey)}
+                </option>
+              ))}
+            </select>
             <button
               type="button"
               onClick={() => void loadAdherence()}
-              className="text-xs text-blue-600 dark:text-blue-400 underline"
+              className="text-xs text-blue-600 dark:text-blue-400 underline ml-1"
             >
               {t("common.refresh")}
             </button>
           </div>
+        </div>
 
           {loadingAdherence ? (
             <div className="text-sm text-slate-500 dark:text-slate-400">

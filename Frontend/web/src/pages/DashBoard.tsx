@@ -24,6 +24,8 @@ import {
   calculateHealthStatistics,
   type PatientReportData,
 } from "../utils/export/healthReportExporter";
+import { exportComplianceToExcel } from "../utils/export/complianceExporter";
+import { getAdherence } from "../services/patientService";
 import { useTranslation } from "react-i18next";
 
 interface KpiDef {
@@ -225,11 +227,6 @@ function buildDashboardChartData(
 
   const chartStats: ChartStatItem[] = [
     {
-      id: "all",
-      label: t("dashboard.chartCurrent"),
-      value: assignments.length,
-    },
-    {
       id: "month",
       label: t("dashboard.chartThisMonth"),
       value:
@@ -396,6 +393,12 @@ const DashBoard = () => {
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [reportProgress, setReportProgress] = useState({ current: 0, total: 0 });
 
+  // Compliance report modal state
+  const [showComplianceModal, setShowComplianceModal] = useState(false);
+  const [compliancePatientId, setCompliancePatientId] = useState<string>("");
+  const [complianceDays, setComplianceDays] = useState<number>(30);
+  const [isGeneratingCompliance, setIsGeneratingCompliance] = useState(false);
+
   const dateRange = `${new Date(startDate).toLocaleDateString("vi-VN", {
     day: "2-digit",
     month: "short",
@@ -539,7 +542,6 @@ const DashBoard = () => {
     () =>
       loading
         ? [
-          { id: "all", label: t("dashboard.filterAll"), value: "..." },
           { id: "month", label: t("patientDetail.month"), value: "..." },
           { id: "week", label: t("patientDetail.week"), value: "..." },
         ]
@@ -678,6 +680,36 @@ const DashBoard = () => {
     // Data will be automatically filtered by useMemo
   };
 
+  // Open compliance report modal
+  const handleOpenComplianceModal = () => {
+    setShowExportMenu(false);
+    setCompliancePatientId(assignments.length > 0 ? assignments[0].patientId : "");
+    setComplianceDays(30);
+    setShowComplianceModal(true);
+  };
+
+  // Generate compliance report for a single patient
+  const handleGenerateComplianceReport = async () => {
+    if (!compliancePatientId) return;
+    const patient = assignments.find(a => a.patientId === compliancePatientId);
+    setIsGeneratingCompliance(true);
+    try {
+      const adherence = await getAdherence({ patientId: compliancePatientId, days: complianceDays });
+      await exportComplianceToExcel({
+        adherence,
+        patientName: patient?.patientName || "Bệnh nhân",
+        patientCode: patient?.patientCode || patient?.patientPublicId || "-",
+        daysCount: complianceDays,
+      });
+      setShowComplianceModal(false);
+    } catch (err) {
+      console.error("Compliance export failed", err);
+      alert("Có lỗi xảy ra khi tạo báo cáo. Vui lòng thử lại.");
+    } finally {
+      setIsGeneratingCompliance(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#f5f6fa] font-sans dark:bg-slate-900">
       <div className="mx-auto max-w-screen-2xl space-y-4 px-6 py-6">
@@ -797,10 +829,17 @@ const DashBoard = () => {
                   </button>
                   <button
                     onClick={handleOpenHealthReportModal}
-                    className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-50 dark:text-slate-300 dark:hover:bg-slate-700 rounded-b-xl border-t border-gray-100 dark:border-slate-700"
+                    className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-50 dark:text-slate-300 dark:hover:bg-slate-700 border-t border-gray-100 dark:border-slate-700"
                   >
                     <FaDownload size={12} className="text-blue-500" />
                     <span>{t("dashboard.exportHealthReport")}</span>
+                  </button>
+                  <button
+                    onClick={handleOpenComplianceModal}
+                    className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-50 dark:text-slate-300 dark:hover:bg-slate-700 rounded-b-xl border-t border-gray-100 dark:border-slate-700"
+                  >
+                    <FaDownload size={12} className="text-emerald-500" />
+                    <span>{t("dashboard.exportComplianceReport")}</span>
                   </button>
                 </div>
               )}
@@ -997,6 +1036,122 @@ const DashBoard = () => {
                 className="rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-600 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isGeneratingReport ? t("dashboard.generating") : `Xuất báo cáo (${selectedPatients.size})`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Compliance Report Modal */}
+      {showComplianceModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-800 shadow-xl overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-gray-200 dark:border-slate-700 px-6 py-4">
+              <div>
+                <h2 className="text-base font-bold text-gray-900 dark:text-white">
+                  {t("dashboard.exportComplianceReport")}
+                </h2>
+                <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+                  Xuất file xlsx báo cáo chi tiết tuân thủ dùng thuốc
+                </p>
+              </div>
+              <button
+                onClick={() => setShowComplianceModal(false)}
+                disabled={isGeneratingCompliance}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-50"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="px-6 py-5 space-y-5">
+              {/* Patient selector */}
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-gray-900 dark:text-white">
+                  Chọn bệnh nhân
+                </label>
+                <select
+                  value={compliancePatientId}
+                  onChange={e => setCompliancePatientId(e.target.value)}
+                  disabled={isGeneratingCompliance}
+                  className="w-full rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50"
+                >
+                  {assignments.length === 0 ? (
+                    <option value="">Không có bệnh nhân</option>
+                  ) : (
+                    assignments.map(a => (
+                      <option key={a.patientId} value={a.patientId}>
+                        {a.patientName || "Không rõ"} {a.patientCode ? `— ${a.patientCode}` : ""}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+
+              {/* Days range */}
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-gray-900 dark:text-white">
+                  Khoảng thời gian
+                </label>
+                <div className="flex gap-2">
+                  {[7, 14, 30, 60].map(d => (
+                    <button
+                      key={d}
+                      onClick={() => setComplianceDays(d)}
+                      disabled={isGeneratingCompliance}
+                      className={`flex-1 rounded-lg py-2 text-sm font-semibold transition-all disabled:opacity-50 ${
+                        complianceDays === d
+                          ? "bg-emerald-600 text-white shadow-sm"
+                          : "bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-600"
+                      }`}
+                    >
+                      {d} ngày
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Info box */}
+              <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/40 p-3">
+                <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">
+                  File xlsx gồm 4 sheet:
+                </p>
+                <ul className="mt-1 text-xs text-emerald-600 dark:text-emerald-500 space-y-0.5 list-disc list-inside">
+                  <li>Tổng quan — tỷ lệ tuân thủ từng ngày</li>
+                  <li>Chi tiết — từng liều thuốc đã uống/bỏ lỡ</li>
+                  <li>Thống kê theo thuốc — tổng hợp từng loại</li>
+                  <li>Thông tin báo cáo</li>
+                </ul>
+              </div>
+
+              {/* Progress */}
+              {isGeneratingCompliance && (
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-900/30 p-3 flex items-center gap-3">
+                  <div className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-emerald-500 border-r-transparent" />
+                  <p className="text-sm text-emerald-700 dark:text-emerald-300">
+                    Đang tạo báo cáo, vui lòng đợi...
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-3 border-t border-gray-200 dark:border-slate-700 px-6 py-4">
+              <button
+                onClick={() => setShowComplianceModal(false)}
+                disabled={isGeneratingCompliance}
+                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700 disabled:opacity-50"
+              >
+                {t("common.cancel")}
+              </button>
+              <button
+                onClick={handleGenerateComplianceReport}
+                disabled={isGeneratingCompliance || !compliancePatientId}
+                className="rounded-lg bg-emerald-600 hover:bg-emerald-700 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isGeneratingCompliance ? "Đang xuất..." : "Xuất báo cáo"}
               </button>
             </div>
           </div>
