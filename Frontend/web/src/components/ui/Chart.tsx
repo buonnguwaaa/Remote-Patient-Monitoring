@@ -176,7 +176,7 @@ export const Chart: React.FC<ChartProps> = ({
 }) => {
   const { isDark } = useTheme();
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState<string>("all");
+  const [activeTab, setActiveTab] = useState<string>("month");
 
   const chartData = activeTab === "week" ? weeklyChartData : monthlyChartData;
   const footerBorder = isDark ? "#334155" : "#e5e7eb";

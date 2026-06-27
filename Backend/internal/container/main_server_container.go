@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/config"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/fcm"
 	domain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/handler"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/realtime"
@@ -122,6 +123,14 @@ func NewMainServerContainer() *MainServerContainer {
 		log.Printf("[WARN] failed to ensure message indexes: %v", err)
 	}
 
+	// Initialize FCM client for push notifications
+	var fcmClient service.PushProvider
+	if client, err := fcm.NewClientFromEnv(); err != nil {
+		log.Printf("[WARN] FCM client not configured: %v", err)
+	} else {
+		fcmClient = client
+	}
+
 	c.AuthService = service.NewAuthService(c.BaseUserRepo, c.PatientRepo, c.DoctorRepo, c.NurseRepo, c.TokenRepo, c.JWTManager)
 	c.UserService = service.NewUserService(c.BaseUserRepo, c.PatientRepo, c.NurseRepo, c.DoctorRepo)
 	c.MeasurementService = service.NewMeasurementService(c.PatientRepo, c.MeasurementRepo)
@@ -134,7 +143,7 @@ func NewMainServerContainer() *MainServerContainer {
 	c.MedicationIntakeService = service.NewMedicationIntakeService(c.PatientRepo, c.PrescriptionRepo, c.MedicationIntakeRepo, c.ReminderRepo)
 	c.FollowUpAppointmentService = service.NewFollowUpAppointmentService(c.PatientRepo, c.AssignmentRepo, c.FollowUpAppointmentRepo)
 	c.ChatService = service.NewChatService(c.ConversationRepo, c.MessageRepo, c.AssignmentRepo)
-	c.NotificationService = service.NewNotificationService(c.NotificationTokenRepo, c.NotificationRepo, nil)
+	c.NotificationService = service.NewNotificationService(c.NotificationTokenRepo, c.NotificationRepo, fcmClient)
 	c.VideoSessionService = service.NewVideoSessionService(c.VideoSessionRepo, c.AssignmentRepo, c.ChatService, nil) // RealtimePublisher wired below
 
 	c.AuthHandler = handler.NewAuthHandler(c.AuthService)
@@ -180,7 +189,7 @@ func NewMainServerContainer() *MainServerContainer {
 	c.VideoSessionService = service.NewVideoSessionService(c.VideoSessionRepo, c.AssignmentRepo, c.ChatService, c.RealtimePublisher)
 	c.VideoSessionHandler = handler.NewVideoSessionHandler(c.VideoSessionService)
 
-	c.WSChatHandler = ws.NewHandler(c.Hub, c.ChatService, c.RealtimePublisher, c.ChatService)
+	c.WSChatHandler = ws.NewHandler(c.Hub, c.ChatService, c.RealtimePublisher, c.ChatService, c.NotificationService, c.UserService)
 
 	if cldClient, err := config.NewCloudinaryClient(); err != nil {
 		println("[WARN] Cloudinary not configured:", err.Error())

@@ -11,7 +11,8 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o worker cmd/worker/main.go
 
 FROM alpine:3.20
 
-RUN apk add --no-cache ca-certificates
+RUN apk add --no-cache ca-certificates tzdata
+ENV TZ=Asia/Ho_Chi_Minh
 
 COPY --from=builder /build/server /server
 COPY --from=builder /build/worker /worker

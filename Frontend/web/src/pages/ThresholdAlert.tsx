@@ -9,6 +9,8 @@ import {
   FaInfoCircle,
   FaRegClock,
   FaSyncAlt,
+  FaChevronLeft,
+  FaChevronRight,
 } from "react-icons/fa";
 
 import Toast from "../components/ui/Toast";
@@ -34,6 +36,7 @@ const ThresholdAlert = () => {
   const [currentAlert, setCurrentAlert] = useState<AlertResponse | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [expandedAlerts, setExpandedAlerts] = useState<Set<string>>(new Set());
+  const [currentPage, setCurrentPage] = useState(1);
 
   const { toast, showToast, hideToast } = useToast();
 
@@ -83,6 +86,7 @@ const ThresholdAlert = () => {
       }
 
       setAlerts(finalAlerts);
+      setCurrentPage(1);
       setLastUpdated(new Date().toISOString());
     } catch (error) {
       console.error("Failed to load alerts", error);
@@ -438,6 +442,14 @@ const ThresholdAlert = () => {
     },
   ];
 
+  const itemsPerPage = 8;
+  const totalPages = Math.ceil(alerts.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedAlerts = useMemo(() => {
+    return alerts.slice(startIndex, endIndex);
+  }, [alerts, startIndex, endIndex]);
+
   return (
     <>
       <div className="min-h-screen bg-gray-50 p-4 pb-24 dark:bg-slate-950 sm:p-6 sm:pb-24">
@@ -495,7 +507,90 @@ const ThresholdAlert = () => {
               {t("alerts.noAlerts")}
             </div>
           ) : (
-            alerts.map((alert) => renderAlertCard(alert))
+            <>
+              {paginatedAlerts.map((alert) => renderAlertCard(alert))}
+
+              {/* Mobile Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="mt-6 flex flex-col items-center justify-between gap-3 border-t border-slate-200 dark:border-slate-700 pt-4">
+                  <div className="text-xs text-slate-500 dark:text-slate-400">
+                    {t("common.showing")} {startIndex + 1}-{Math.min(endIndex, alerts.length)} {t("common.of")} {alerts.length}
+                  </div>
+                  
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 p-2 text-xs disabled:opacity-50"
+                    >
+                      <FaChevronLeft />
+                    </button>
+                    
+                    {(() => {
+                      const pages: (number | string)[] = [];
+                      const maxVisible = 5;
+                      if (totalPages <= maxVisible) {
+                        for (let i = 1; i <= totalPages; i++) pages.push(i);
+                      } else {
+                        pages.push(1);
+                        if (currentPage > 2) pages.push("...");
+                        const start = Math.max(2, currentPage);
+                        const end = Math.min(totalPages - 1, currentPage);
+                        for (let i = start; i <= end; i++) {
+                          if (i > 1 && i < totalPages) pages.push(i);
+                        }
+                        if (currentPage < totalPages - 1) pages.push("...");
+                        pages.push(totalPages);
+                      }
+                      
+                      const filteredPages: (number | string)[] = [];
+                      pages.forEach((p) => {
+                        if (p === "..." && filteredPages[filteredPages.length - 1] === "...") return;
+                        filteredPages.push(p);
+                      });
+
+                      return filteredPages.map((page, idx) => {
+                        if (page === "...") {
+                          return (
+                            <span
+                              key={`ellipsis-${idx}`}
+                              className="flex w-8 h-8 items-center justify-center text-xs text-slate-400 dark:text-slate-500"
+                            >
+                              ...
+                            </span>
+                          );
+                        }
+                        const pageNum = page as number;
+                        return (
+                          <button
+                            key={pageNum}
+                            type="button"
+                            onClick={() => setCurrentPage(pageNum)}
+                            className={`inline-flex items-center justify-center w-8 h-8 rounded-lg text-xs font-medium transition ${
+                              pageNum === currentPage
+                                ? "bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900"
+                                : "border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50"
+                            }`}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      });
+                    })()}
+                    
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 p-2 text-xs disabled:opacity-50"
+                    >
+                      <FaChevronRight />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
 

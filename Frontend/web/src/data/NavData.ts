@@ -7,7 +7,6 @@ import { TiMessage } from "react-icons/ti";
 import {
   MdOutlineDataThresholding,
   MdOutlineNotificationsActive,
-  MdOutlineDoneAll,
 } from "react-icons/md";
 import { BsCalendarCheck } from "react-icons/bs";
 
@@ -53,10 +52,5 @@ export const getNavData = (t: (key: string) => string): NavigationItem[] => [
     label: t("nav.appointments"),
     path: "/appointments",
     icon: React.createElement(BsCalendarCheck),
-  },
-  {
-    label: t("nav.compliance"),
-    path: "/compliance",
-    icon: React.createElement(MdOutlineDoneAll),
   },
 ];

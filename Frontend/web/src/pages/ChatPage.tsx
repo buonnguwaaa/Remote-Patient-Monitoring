@@ -1032,13 +1032,22 @@ const ChatPage = ({
           </div>
 
           {onClose ? (
-            <button
-              className="rounded-full p-2 text-gray-500 transition hover:bg-gray-100 dark:text-slate-400 dark:hover:bg-slate-800"
-              onClick={onClose}
-              aria-label={t("chat.closeQuickChat")}
-            >
-              <X size={20} />
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                className="rounded-full p-2 text-blue-500 transition hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20"
+                onClick={() => setVideoCallOpen(true)}
+                title="Gọi video"
+              >
+                <FaVideo size={20} />
+              </button>
+              <button
+                className="rounded-full p-2 text-gray-500 transition hover:bg-gray-100 dark:text-slate-400 dark:hover:bg-slate-800"
+                onClick={onClose}
+                aria-label={t("chat.closeQuickChat")}
+              >
+                <X size={20} />
+              </button>
+            </div>
           ) : (
             <div className="flex items-center gap-1">
               <button
