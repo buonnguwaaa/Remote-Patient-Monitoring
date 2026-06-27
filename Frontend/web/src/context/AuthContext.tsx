@@ -2,12 +2,18 @@ import { createContext, useContext, useState, useEffect } from "react";
 import type { ReactNode } from "react";
 import api from "../services/api";
 
-export type UserRole = "doctor";
+export type UserRole = "doctor" | "nurse";
+
+export type LoginResult = {
+  success: boolean;
+  message?: string;
+  role?: UserRole;
+};
 
 interface AuthContextType {
   isAuthenticated: boolean;
   user: { id: string; username: string; role: UserRole; avatarUrl?: string } | null;
-  login: (username: string, password: string) => Promise<UserRole | null>;
+  login: (username: string, password: string) => Promise<LoginResult>;
   isLoading: boolean;
   logout: () => void;
   getUserRole: () => UserRole | null;
@@ -22,6 +28,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const mapRole = (backendRole: string): UserRole | null => {
     if (backendRole === "user.doctor") return "doctor";
+    if (backendRole === "user.nurse") return "nurse";
     return null;
   };
 
@@ -50,7 +57,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     checkAuth();
   }, []);
 
-  const login = async (email: string, password: string): Promise<UserRole | null> => {
+  const login = async (email: string, password: string): Promise<LoginResult> => {
     try {
       await api.post("/auth/login", { email, password });
 
@@ -61,7 +68,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (!role) {
         await api.post("/auth/logout");
-        return null;
+        return { success: false, message: "Bạn không có quyền truy cập hệ thống này." };
       }
 
       localStorage.removeItem("accessToken");
@@ -70,10 +77,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       setIsAuthenticated(true);
       setUser({ id: userData.id, username: userData.name, role });
-      return role;
-    } catch (error) {
+      return { success: true, role };
+    } catch (error: any) {
       console.error("Login error:", error);
-      return null;
+      
+      // Determine error message
+      if (!error.response) {
+        return { success: false, message: "Lỗi kết nối máy chủ hoặc lỗi CORS. Vui lòng thử lại." };
+      }
+      
+      const status = error.response.status;
+      if (status === 401 || status === 400) {
+        return { success: false, message: "Email hoặc mật khẩu không đúng." };
+      } else if (status === 403) {
+        return { success: false, message: "Bạn không có quyền truy cập." };
+      }
+      
+      return { success: false, message: "Đã xảy ra lỗi không xác định." };
     }
   };
 

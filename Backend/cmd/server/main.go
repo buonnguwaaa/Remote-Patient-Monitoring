@@ -89,7 +89,7 @@ func main() {
 	}
 
 	corsConfig := cors.Config{
-		AllowOrigins:     []string{webURL, adminURL, "http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001", "http://127.0.0.1:3001", "http://localhost:8081", "http://127.0.0.1:8081", "http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:5174", "http://127.0.0.1:5174", "http://192.168.1.24:3000", "http://192.168.1.24:8080", "http://192.168.1.4:8081", "http://192.168.1.4:3000"},
+		AllowOrigins:     []string{webURL, adminURL, "https://remotepatientmonitoring.xyz", "https://www.remotepatientmonitoring.xyz", "http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001", "http://127.0.0.1:3001", "http://localhost:8081", "http://127.0.0.1:8081", "http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:5174", "http://127.0.0.1:5174", "http://192.168.1.24:3000", "http://192.168.1.24:8080", "http://192.168.1.4:8081", "http://192.168.1.4:3000"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},

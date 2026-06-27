@@ -96,7 +96,7 @@ const reminderStatusOptions: Array<{
 ];
 
 const timezoneOptions = [
-  { value: "Asia/Saigon", label: t("reminders.timezoneRecommended") },
+  { value: "Asia/Ho_Chi_Minh", label: t("reminders.timezoneRecommended") },
   { value: "UTC", label: "UTC" },
   { value: "Asia/Bangkok", label: "Asia/Bangkok" },
 ];
@@ -112,7 +112,7 @@ const createDefaultFormData = (patientId = ""): ReminderFormData => {
     message: "",
     time: "08:00",
     daysOfWeek: [1, 2, 3, 4, 5, 6, 0],
-    timezone: "Asia/Saigon",
+    timezone: "Asia/Ho_Chi_Minh",
     startDate: today.toISOString().split("T")[0],
     endDate: endDate.toISOString().split("T")[0],
     status: "active",

@@ -245,7 +245,7 @@ const createDefaultFormData = (patientId = ""): PrescriptionFormData => {
   return {
     patientId,
     medications: [createDefaultMedication()],
-    timezone: "Asia/Saigon",
+    timezone: "Asia/Ho_Chi_Minh",
     daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
     startDate: todayStr,
     endDate: endDateStr,

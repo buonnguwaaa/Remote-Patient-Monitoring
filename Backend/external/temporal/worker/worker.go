@@ -10,6 +10,7 @@ import (
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/helper/measurement_helper"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/workflow"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/container"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/service"
 	"go.temporal.io/sdk/worker"
 )
 
@@ -38,14 +39,17 @@ func Start() error {
 		}
 	}()
 
-	var pushClient *fcm.Client
-	pushClient, err = fcm.NewClientFromEnv()
+	var pushProvider service.PushProvider
+	var pushClientRaw *fcm.Client
+	pushClientRaw, err = fcm.NewClientFromEnv()
 	if err != nil {
 		log.Printf("[WARN] FCM client not configured, push delivery disabled: %v", err)
-		pushClient = nil
+		pushProvider = nil // explicit nil interface, not typed nil pointer
+	} else {
+		pushProvider = pushClientRaw
 	}
 
-	container := container.NewTemporalWorkerContainer(pushClient)
+	container := container.NewTemporalWorkerContainer(pushProvider)
 	publisher := measurement_helper.NewRedisChatEventPublisher(config.Redis.Client)
 	userEventPublisher := measurement_helper.NewRedisUserEventPublisher(config.Redis.Client)
 	alertActs := activity.NewProcessingAlertActivity(
