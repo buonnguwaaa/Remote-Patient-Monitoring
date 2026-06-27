@@ -26,7 +26,7 @@ This command will download and organize all necessary dependencies specified in 
 This is the recommended approach for local development. It starts both the Temporal infrastructure and the application components.
 
 ```bash
-# Start Temporal container
+# Start necessary services
 docker compose up -d
 
 # Start both server and worker
