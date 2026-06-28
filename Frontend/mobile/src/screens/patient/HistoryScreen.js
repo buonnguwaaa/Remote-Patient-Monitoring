@@ -636,7 +636,6 @@ export default function HistoryScreen({ route, isEmbedded }) {
                 data={{
                   labels: chartLabels,
                   datasets: chartDatasets,
-                  legend,
                 }}
                 width={dynamicChartWidth}
                 height={200}
@@ -683,6 +682,36 @@ export default function HistoryScreen({ route, isEmbedded }) {
           const statusColor = getMeasurementStatusColor(m, threshold, tab);
           const dynamicBorderStyle = { borderLeftWidth: 4, borderLeftColor: statusColor };
 
+          let sysAlert = false;
+          let diaAlert = false;
+          let hrAlert = false;
+          let glucAlert = false;
+          let spo2Alert = false;
+          let tempAlert = false;
+          let rrAlert = false;
+
+          if (threshold) {
+            if (tab === "bp") {
+              const sys = m.bloodPressure?.systolic || m.systolic || 0;
+              const dia = m.bloodPressure?.diastolic || m.diastolic || 0;
+              const hr = m.heartRate || m.pulse || 0;
+              sysAlert = sys > threshold.sysMax || sys < threshold.sysMin;
+              diaAlert = dia > threshold.diaMax || dia < threshold.diaMin;
+              hrAlert = hr > threshold.heartRateMax || hr < threshold.heartRateMin;
+            } else if (tab === "glucose") {
+              const glucVal = m.glucose ? (typeof m.glucose === "object" ? m.glucose.bloodGlucose : m.glucose) : 0;
+              glucAlert = glucVal > threshold.glucoseMax || glucVal < threshold.glucoseMin;
+            } else if (tab === "spo2") {
+              spo2Alert = m.spo2 < threshold.spo2Min;
+            } else if (tab === "temp") {
+              tempAlert = m.temperature > threshold.temperatureMax || m.temperature < threshold.temperatureMin;
+            } else if (tab === "heartRate") {
+              hrAlert = m.heartRate > threshold.heartRateMax || m.heartRate < threshold.heartRateMin;
+            } else if (tab === "respiratoryRate") {
+              rrAlert = m.respiratoryRate > threshold.respiratoryRateMax || m.respiratoryRate < threshold.respiratoryRateMin;
+            }
+          }
+
           return (
             <View key={m.id} style={[styles.recordCard, dynamicBorderStyle]}>
               <View style={styles.recordHeader}>
@@ -703,17 +732,29 @@ export default function HistoryScreen({ route, isEmbedded }) {
                 {tab === "bp" && (
                   <>
                     <View style={styles.recordValueBox}>
-                      <Text style={styles.recordValueNumber}>{m.bloodPressure?.systolic || m.systolic}</Text>
+                      <View style={sysAlert ? styles.valueAlertBadge : null}>
+                        <Text style={[styles.recordValueNumber, sysAlert && styles.recordValueNumberAlert]}>
+                          {m.bloodPressure?.systolic || m.systolic}
+                        </Text>
+                      </View>
                       <Text style={styles.recordValueUnit}>mmHg</Text>
                       <Text style={styles.recordValueLabel}>Tâm thu</Text>
                     </View>
                     <View style={styles.recordValueBox}>
-                      <Text style={styles.recordValueNumber}>{m.bloodPressure?.diastolic || m.diastolic}</Text>
+                      <View style={diaAlert ? styles.valueAlertBadge : null}>
+                        <Text style={[styles.recordValueNumber, diaAlert && styles.recordValueNumberAlert]}>
+                          {m.bloodPressure?.diastolic || m.diastolic}
+                        </Text>
+                      </View>
                       <Text style={styles.recordValueUnit}>mmHg</Text>
                       <Text style={styles.recordValueLabel}>Tâm trương</Text>
                     </View>
                     <View style={styles.recordValueBox}>
-                      <Text style={styles.recordValueNumber}>{m.heartRate || m.pulse}</Text>
+                      <View style={hrAlert ? styles.valueAlertBadge : null}>
+                        <Text style={[styles.recordValueNumber, hrAlert && styles.recordValueNumberAlert]}>
+                          {m.heartRate || m.pulse}
+                        </Text>
+                      </View>
                       <Text style={styles.recordValueUnit}>bpm</Text>
                       <Text style={styles.recordValueLabel}>Mạch</Text>
                     </View>
@@ -722,9 +763,11 @@ export default function HistoryScreen({ route, isEmbedded }) {
 
                 {tab === "glucose" && (
                   <View style={styles.recordValueBox}>
-                    <Text style={styles.recordValueNumber}>
-                      {m.glucose ? (typeof m.glucose === "object" ? m.glucose.bloodGlucose : m.glucose) : "--"}
-                    </Text>
+                    <View style={glucAlert ? styles.valueAlertBadge : null}>
+                      <Text style={[styles.recordValueNumber, glucAlert && styles.recordValueNumberAlert]}>
+                        {m.glucose ? (typeof m.glucose === "object" ? m.glucose.bloodGlucose : m.glucose) : "--"}
+                      </Text>
+                    </View>
                     <Text style={styles.recordValueUnit}>mg/dL</Text>
                     <Text style={styles.recordValueLabel}>Đường huyết</Text>
                   </View>
@@ -732,7 +775,9 @@ export default function HistoryScreen({ route, isEmbedded }) {
 
                 {tab === "spo2" && (
                   <View style={styles.recordValueBox}>
-                    <Text style={styles.recordValueNumber}>{m.spo2}</Text>
+                    <View style={spo2Alert ? styles.valueAlertBadge : null}>
+                      <Text style={[styles.recordValueNumber, spo2Alert && styles.recordValueNumberAlert]}>{m.spo2}</Text>
+                    </View>
                     <Text style={styles.recordValueUnit}>%</Text>
                     <Text style={styles.recordValueLabel}>SpO₂</Text>
                   </View>
@@ -740,7 +785,9 @@ export default function HistoryScreen({ route, isEmbedded }) {
 
                 {tab === "temp" && (
                   <View style={styles.recordValueBox}>
-                    <Text style={styles.recordValueNumber}>{m.temperature}</Text>
+                    <View style={tempAlert ? styles.valueAlertBadge : null}>
+                      <Text style={[styles.recordValueNumber, tempAlert && styles.recordValueNumberAlert]}>{m.temperature}</Text>
+                    </View>
                     <Text style={styles.recordValueUnit}>°C</Text>
                     <Text style={styles.recordValueLabel}>Nhiệt độ</Text>
                   </View>
@@ -748,7 +795,9 @@ export default function HistoryScreen({ route, isEmbedded }) {
 
                 {tab === "heartRate" && (
                   <View style={styles.recordValueBox}>
-                    <Text style={styles.recordValueNumber}>{m.heartRate}</Text>
+                    <View style={hrAlert ? styles.valueAlertBadge : null}>
+                      <Text style={[styles.recordValueNumber, hrAlert && styles.recordValueNumberAlert]}>{m.heartRate}</Text>
+                    </View>
                     <Text style={styles.recordValueUnit}>bpm</Text>
                     <Text style={styles.recordValueLabel}>Nhịp tim</Text>
                   </View>
@@ -756,7 +805,9 @@ export default function HistoryScreen({ route, isEmbedded }) {
 
                 {tab === "respiratoryRate" && (
                   <View style={styles.recordValueBox}>
-                    <Text style={styles.recordValueNumber}>{m.respiratoryRate}</Text>
+                    <View style={rrAlert ? styles.valueAlertBadge : null}>
+                      <Text style={[styles.recordValueNumber, rrAlert && styles.recordValueNumberAlert]}>{m.respiratoryRate}</Text>
+                    </View>
                     <Text style={styles.recordValueUnit}>lần/phút</Text>
                     <Text style={styles.recordValueLabel}>Nhịp thở</Text>
                   </View>
@@ -825,7 +876,6 @@ export default function HistoryScreen({ route, isEmbedded }) {
                     data={{
                       labels: modalChartLabels,
                       datasets: modalChartDatasets,
-                      legend,
                     }}
                     width={modalChartWidth}
                     height={400}
@@ -1282,5 +1332,48 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700",
     color: "#111827",
+  },
+  chartLegendContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 12,
+    gap: 8,
+    paddingHorizontal: 8,
+  },
+  chartLegendItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F3F4F6",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  legendLineColor: {
+    width: 14,
+    height: 4,
+    borderRadius: 2,
+    marginRight: 6,
+  },
+  legendLineText: {
+    fontSize: 11,
+    color: "#4B5563",
+    fontWeight: "600",
+  },
+  valueAlertBadge: {
+    backgroundColor: "#FEF2F2",
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderWidth: 1,
+    borderColor: "#FCA5A5",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  recordValueNumberAlert: {
+    color: "#DC2626",
   },
 });
