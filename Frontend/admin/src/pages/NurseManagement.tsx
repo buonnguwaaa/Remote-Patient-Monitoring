@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { FaUserNurse, FaEdit, FaTrash, FaPlus, FaSearch } from "react-icons/fa";
+import { FaUserNurse, FaEdit, FaTrash, FaPlus, FaSearch, FaEye } from "react-icons/fa";
 import { useTranslation } from "react-i18next";
 import api from "../services/api";
 import { uploadAvatar } from "../services/uploadService";
 import { useToast } from "../hooks/useToast";
 import Toast from "../components/ui/Toast";
 import AvatarUploader from "../components/ui/AvatarUploader";
+import Pagination from "../components/ui/Pagination";
 import type { Department, Nurse } from "../types";
 import { mapGenderToDisplay, mapGenderToApi } from "../utils/genderConverter";
 import { adminPrimaryButtonClass, adminSecondaryButtonClass } from "../styles/buttonStyles";
@@ -44,7 +45,10 @@ const NurseManagement: React.FC = () => {
   const [nurses, setNurses] = useState<Nurse[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [showModal, setShowModal] = useState(false);
+  const [modalMode, setModalMode] = useState<"add" | "edit" | "view">("add");
   const [editingNurse, setEditingNurse] = useState<Nurse | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const { toast, showToast, hideToast } = useToast();
@@ -52,7 +56,7 @@ const NurseManagement: React.FC = () => {
   const fetchPageData = async () => {
     try {
       const [nurseResponse, departmentResponse] = await Promise.all([
-        api.get("/users/nurses"),
+        api.get("/users/nurses?limit=1000&sortOrder=desc"),
         api.get("/departments").catch(() => ({ data: { data: [] } })),
       ]);
 
@@ -88,6 +92,14 @@ const NurseManagement: React.FC = () => {
   const handleEdit = (nurse: Nurse) => {
     setEditingNurse(nurse);
     setAvatarFile(null);
+    setModalMode("edit");
+    setShowModal(true);
+  };
+
+  const handleView = (nurse: Nurse) => {
+    setEditingNurse(nurse);
+    setAvatarFile(null);
+    setModalMode("view");
     setShowModal(true);
   };
 
@@ -107,6 +119,7 @@ const NurseManagement: React.FC = () => {
   const handleAdd = () => {
     setEditingNurse(null);
     setAvatarFile(null);
+    setModalMode("add");
     setShowModal(true);
   };
 
@@ -115,6 +128,16 @@ const NurseManagement: React.FC = () => {
     nurse.department?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     nurse.workplace.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const totalPages = Math.ceil(filteredNurses.length / itemsPerPage);
+  const paginatedNurses = filteredNurses.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
   const renderNurseCard = (nurse: Nurse) => {
     return (
@@ -176,6 +199,13 @@ const NurseManagement: React.FC = () => {
         </div>
 
         <div className="mt-4 flex items-center justify-end gap-2">
+          <button
+            onClick={() => handleView(nurse)}
+            className="rounded-lg p-2 text-green-600 transition hover:bg-green-50 hover:text-green-900 dark:hover:bg-green-900/20"
+            aria-label={t("common.viewDetails") || "View"}
+          >
+            <FaEye />
+          </button>
           <button
             onClick={() => handleEdit(nurse)}
             className="rounded-lg p-2 text-blue-600 transition hover:bg-blue-50 hover:text-blue-900 dark:hover:bg-blue-900/20"
@@ -292,12 +322,12 @@ const NurseManagement: React.FC = () => {
       </div>
 
       <div className="space-y-4 md:hidden">
-        {filteredNurses.length === 0 ? (
+        {paginatedNurses.length === 0 ? (
           <div className="rounded-lg bg-white p-6 text-center text-gray-500 shadow-md dark:bg-gray-800 dark:text-gray-400">
             {t("common.noData")}
           </div>
         ) : (
-          filteredNurses.map((nurse) => renderNurseCard(nurse))
+          paginatedNurses.map((nurse) => renderNurseCard(nurse))
         )}
       </div>
 
@@ -313,11 +343,11 @@ const NurseManagement: React.FC = () => {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t("nurseManagement.fields.yearsOfExperience")}</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t("nurseManagement.fields.status")}</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t("nurseManagement.fields.contact")}</th>
-              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t("common.edit")}</th>
+              <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">{t("common.actions")}</th>
             </tr>
           </thead>
           <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-            {filteredNurses.map((nurse) => (
+            {paginatedNurses.map((nurse) => (
               <tr key={nurse.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                 <td className="px-6 py-4" style={{ minWidth: "250px" }}>
                   <div className="flex items-center">
@@ -348,6 +378,7 @@ const NurseManagement: React.FC = () => {
                   <div className="text-gray-500 dark:text-gray-400">{nurse.phone}</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                  <button onClick={() => handleView(nurse)} className="text-green-600 hover:text-green-900 mr-3" title={t("common.viewDetails") || "View details"}><FaEye className="inline" /></button>
                   <button onClick={() => handleEdit(nurse)} className="text-blue-600 hover:text-blue-900 mr-3"><FaEdit className="inline" /></button>
                   <button onClick={() => handleDelete(nurse.id)} className="text-red-600 hover:text-red-900"><FaTrash className="inline" /></button>
                 </td>
@@ -358,19 +389,28 @@ const NurseManagement: React.FC = () => {
         </div>
       </div>
 
+      <div className="mt-4">
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+        />
+      </div>
+
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
           <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white p-4 md:p-6 dark:bg-gray-800">
-            <h2 className="mb-4 text-xl font-bold dark:text-white md:text-2xl">{editingNurse ? t("nurseManagement.editNurse") : t("nurseManagement.addNewNurse")}</h2>
+            <h2 className="mb-4 text-xl font-bold dark:text-white md:text-2xl">{modalMode === "view" ? t("common.viewDetails") || "Chi tiết" : modalMode === "edit" ? t("nurseManagement.editNurse") : t("nurseManagement.addNewNurse")}</h2>
             <form className="space-y-4" onSubmit={handleSubmit}>
               <AvatarUploader
                 currentUrl={editingNurse?.profileImageUrl}
                 onFileSelect={(file) => setAvatarFile(file)}
+                disabled={modalMode === "view"}
               />
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t("nurseManagement.fields.name")}</label>
-                  <input name="name" type="text" required className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" defaultValue={editingNurse?.name} />
+                  <input name="name" type="text" required disabled={modalMode === "view"} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-70" defaultValue={editingNurse?.name} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t("nurseManagement.fields.department")}</label>
@@ -385,34 +425,34 @@ const NurseManagement: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t("nurseManagement.fields.licenseNumber")}</label>
-                  <input name="licenseNumber" type="text" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" defaultValue={editingNurse?.licenseNumber} />
+                  <input name="licenseNumber" type="text" disabled={modalMode === "view"} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-70" defaultValue={editingNurse?.licenseNumber} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t("nurseManagement.fields.workplace")}</label>
-                  <input name="workplace" type="text" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" defaultValue={editingNurse?.workplace} />
+                  <input name="workplace" type="text" disabled={modalMode === "view"} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-70" defaultValue={editingNurse?.workplace} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{t("nurseManagement.fields.yearsOfExperience")}</label>
-                  <input name="yearsOfExperience" type="number" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" defaultValue={editingNurse?.yearsOfExperience} />
+                  <input name="yearsOfExperience" type="number" disabled={modalMode === "view"} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-70" defaultValue={editingNurse?.yearsOfExperience} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t("nurseManagement.fields.email")}</label>
-                  <input name="email" type="email" required className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" defaultValue={editingNurse?.email} />
+                  <input name="email" type="email" required disabled={modalMode === "view"} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-70" defaultValue={editingNurse?.email} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t("nurseManagement.fields.phone")}</label>
-                  <input name="phone" type="tel" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" defaultValue={editingNurse?.phone} />
+                  <input name="phone" type="tel" disabled={modalMode === "view"} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-70" defaultValue={editingNurse?.phone} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t("nurseManagement.fields.gender")}</label>
-                  <select name="gender" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" defaultValue={editingNurse?.gender}>
+                  <select name="gender" disabled={modalMode === "view"} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-70" defaultValue={editingNurse?.gender}>
                     <option value="Nam">{t("common.male")}</option>
                     <option value="Nữ">{t("common.female")}</option>
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t("nurseManagement.fields.status")}</label>
-                  <select name="status" className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" defaultValue={editingNurse?.status || "active"}>
+                  <select name="status" disabled={modalMode === "view"} className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-70" defaultValue={editingNurse?.status || "active"}>
                     <option value="active">{t("common.active")}</option>
                     <option value="inactive">{t("common.inactive")}</option>
                   </select>
@@ -425,8 +465,10 @@ const NurseManagement: React.FC = () => {
                 )}
               </div>
               <div className="mt-6 flex flex-col-reverse gap-3 md:flex-row md:justify-end md:space-x-3">
-                <button type="button" onClick={() => setShowModal(false)} className={`${adminSecondaryButtonClass} w-full md:w-auto`}>{t("common.cancel")}</button>
-                <button type="submit" className={`${adminPrimaryButtonClass} w-full md:w-auto`}>{editingNurse ? t("common.update") : t("common.add")}</button>
+                <button type="button" onClick={() => setShowModal(false)} className={`${adminSecondaryButtonClass} w-full md:w-auto`}>{modalMode === "view" ? t("common.close") || "Close" : t("common.cancel")}</button>
+                {modalMode !== "view" && (
+                  <button type="submit" className={`${adminPrimaryButtonClass} w-full md:w-auto`}>{editingNurse ? t("common.update") : t("common.add")}</button>
+                )}
               </div>
             </form>
           </div>

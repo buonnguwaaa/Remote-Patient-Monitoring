@@ -7,9 +7,10 @@ const DEFAULT_AVATAR = "/avartar.jpg";
 interface AvatarUploaderProps {
     currentUrl?: string;
     onFileSelect: (file: File, previewUrl: string) => void;
+    disabled?: boolean;
 }
 
-const AvatarUploader: React.FC<AvatarUploaderProps> = ({ currentUrl, onFileSelect }) => {
+const AvatarUploader: React.FC<AvatarUploaderProps> = ({ currentUrl, onFileSelect, disabled = false }) => {
     const { t } = useTranslation();
     const [localPreview, setLocalPreview] = useState<string>("");
     const [selectedFileName, setSelectedFileName] = useState<string>("");
@@ -43,27 +44,31 @@ const AvatarUploader: React.FC<AvatarUploaderProps> = ({ currentUrl, onFileSelec
                     onClick={() => setLightboxOpen(true)}
                     title={t("doctorManagement.clickToViewImage")}
                 />
-                <button
-                    type="button"
-                    onClick={() => inputRef.current?.click()}
-                    className="absolute inset-0 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 cursor-pointer"
-                    title={t("avatarUploader.updateAvatar")}
-                >
-                    <FaCamera className="text-white text-xl drop-shadow" />
-                </button>
+                {!disabled && (
+                    <button
+                        type="button"
+                        onClick={() => inputRef.current?.click()}
+                        className="absolute inset-0 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 cursor-pointer"
+                        title={t("avatarUploader.updateAvatar")}
+                    >
+                        <FaCamera className="text-white text-xl drop-shadow" />
+                    </button>
+                )}
             </div>
 
             <div className="flex flex-col gap-2">
                 <p className="text-sm font-semibold text-gray-700">{t("avatarUploader.title")}</p>
 
-                <button
-                    type="button"
-                    onClick={() => inputRef.current?.click()}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-blue-500 text-blue-600 text-sm font-medium hover:bg-blue-50 active:scale-95 transition-all duration-150"
-                >
-                    <FaCamera className="text-sm" />
-                    {t("avatarUploader.updateAvatar")}
-                </button>
+                {!disabled && (
+                    <button
+                        type="button"
+                        onClick={() => inputRef.current?.click()}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-blue-500 text-blue-600 text-sm font-medium hover:bg-blue-50 active:scale-95 transition-all duration-150"
+                    >
+                        <FaCamera className="text-sm" />
+                        {t("avatarUploader.updateAvatar")}
+                    </button>
+                )}
 
                 {selectedFileName ? (
                     <p className="text-xs text-green-600 flex items-center gap-1">
