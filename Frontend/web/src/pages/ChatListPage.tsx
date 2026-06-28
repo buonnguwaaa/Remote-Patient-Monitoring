@@ -239,9 +239,9 @@ const ChatListPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-2 dark:bg-slate-950 sm:p-4">
-      <div className="grid gap-2 lg:grid-cols-[360px_1fr]">
-        <section className="rounded border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+    <div className="h-full min-h-screen bg-gray-50 p-2 dark:bg-slate-950 sm:p-4">
+      <div className="grid h-full gap-2 lg:grid-cols-[360px_1fr]">
+        <section className="h-full rounded border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
           <div className="border-b border-slate-200 p-3 dark:border-slate-800">
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
@@ -268,6 +268,7 @@ const ChatListPage = () => {
             {loading ? (
               <div className="p-4 text-center text-sm text-slate-500 dark:text-slate-400">
                 {t("chat.loadingConversations")}
+              
               </div>
             ) : error ? (
               <div className="p-4 text-sm text-red-600 dark:text-red-400">
@@ -276,6 +277,7 @@ const ChatListPage = () => {
             ) : filteredConversations.length === 0 ? (
               <div className="p-4 text-center text-sm text-slate-500 dark:text-slate-400">
                 {t("chat.noConversations")}
+               
               </div>
             ) : (
               filteredConversations.map((conversation) => {
@@ -332,9 +334,9 @@ const ChatListPage = () => {
           {selectedPatientId ? (
             <ChatPage />
           ) : (
-            <div className="rounded-lg border border-slate-200 bg-white p-6 text-center text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
+            <div className="flex h-full flex-col items-center justify-center rounded-lg border border-slate-200 bg-white p-6 text-center text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
               <FaCommentDots className="mb-3 text-3xl text-slate-300 dark:text-slate-600" />
-              {t("chat.selectConversation")}
+                {t("chat.selectConversation")}
             </div>
           )}
         </section>

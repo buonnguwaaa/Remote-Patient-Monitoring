@@ -1403,58 +1403,72 @@ const ChatPage = ({
                     </div>
 
                     <div
-                      className={`max-w-[78%] rounded-lg px-4 py-3 text-sm shadow-sm ${isMe
-                        ? "rounded-tr-sm bg-blue-600 text-white dark:bg-blue-500"
-                        : "rounded-tl-sm border border-gray-100 bg-white text-gray-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-                        } ${isActiveAlertMessage ? "ring-2 ring-amber-300 ring-offset-2 dark:ring-amber-400/70 dark:ring-offset-slate-950" : ""} ${hasAlertTag ? "cursor-pointer transition hover:ring-2 hover:ring-amber-400/50 hover:shadow-md" : ""
-                        }`}
+                      className={`w-fit max-w-[80vw] md:max-w-[28rem] flex flex-col rounded-lg px-4 py-3 text-sm shadow-sm ${
+                        isMe
+                          ? "items-end rounded-tr-sm bg-blue-600 text-white dark:bg-blue-500"
+                          : "items-start rounded-tl-sm border border-gray-100 bg-white text-gray-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                      } ${
+                        isActiveAlertMessage
+                          ? "ring-2 ring-amber-300 ring-offset-2 dark:ring-amber-400/70 dark:ring-offset-slate-950"
+                          : ""
+                      } ${
+                        hasAlertTag
+                          ? "cursor-pointer transition hover:ring-2 hover:ring-amber-400/50 hover:shadow-md"
+                          : ""
+                      }`}
                       onClick={() => {
                         if (hasAlertTag && item.message.relatedAlertId) {
                           const nextParams = new URLSearchParams(searchParams);
-                          nextParams.set("alertId", item.message.relatedAlertId);
+                          nextParams.set(
+                            "alertId",
+                            item.message.relatedAlertId,
+                          );
                           setSearchParams(nextParams, { replace: true });
                         }
                       }}
                     >
                       {hasAlertTag ? (
                         <div
-                          className={`mb-3 inline-flex rounded-md px-2.5 py-1 text-[11px] font-medium ${isMe
-                            ? "bg-white/15 text-blue-50 dark:bg-white/10 dark:text-blue-100"
-                            : "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-200"
-                            }`}
+                          className={`mb-3 inline-flex rounded-md px-2.5 py-1 text-[11px] font-medium ${
+                            isMe
+                              ? "bg-white/15 text-blue-50 dark:bg-white/10 dark:text-blue-100"
+                              : "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-200"
+                          }`}
                         >
                           {isActiveAlertMessage
-                            ? t("chat.viewingFromThisAlert") : t("chat.messageLinkedToAlert")}
+                            ? t("chat.viewingFromThisAlert")
+                            : t("chat.messageLinkedToAlert")}
                         </div>
                       ) : null}
 
-                      {hasAlertTag &&
-                        alertMessage?.hasStructuredAlertSummary ? (
+                      {hasAlertTag && alertMessage?.hasStructuredAlertSummary ? (
                         <div className="space-y-3">
                           <div
-                            className={`rounded-lg border px-3 py-3 ${isMe
-                              ? "border-white/15 bg-white/10 text-blue-50"
-                              : "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-100"
-                              }`}
+                            className={`rounded-lg border px-3 py-3 ${
+                              isMe
+                                ? "border-white/15 bg-white/10 text-blue-50 text-right"
+                                : "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-100 text-left"
+                            }`}
                           >
                             <div
-                              className={`mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] ${isMe
-                                ? "text-blue-100"
-                                : "text-amber-700 dark:text-amber-300"
-                                }`}
+                              className={`mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] ${
+                                isMe
+                                  ? "justify-end text-blue-100"
+                                  : "justify-start text-amber-700 dark:text-amber-300"
+                              }`}
                             >
                               <AlertTriangle size={14} />
                               {t("chat.alertInfo")}
                             </div>
                             <p className="whitespace-pre-wrap leading-relaxed">
-                              {alertMessage.alertSummary ||
-                                t("chat.alertMessage")}
+                              {alertMessage.alertSummary || t("chat.alertMessage")}
                             </p>
                             <div
-                              className={`mt-3 text-[11px] ${isMe
-                                ? "text-blue-100/90"
-                                : "text-amber-700/80 dark:text-amber-300/80"
-                                }`}
+                              className={`mt-3 text-[11px] ${
+                                isMe
+                                  ? "text-blue-100/90"
+                                  : "text-amber-700/80 dark:text-amber-300/80"
+                              }`}
                             >
                               Alert #{alertMessage.shortAlertId}
                             </div>
@@ -1462,16 +1476,18 @@ const ChatPage = ({
 
                           {alertMessage.note ? (
                             <div
-                              className={`rounded-lg px-3 py-3 ${isMe
-                                ? "bg-white/12 text-white"
-                                : "border border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-200"
-                                }`}
+                              className={`rounded-lg px-3 py-3 ${
+                                isMe
+                                  ? "bg-white/12 text-white text-right"
+                                  : "border border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-200 text-left"
+                              }`}
                             >
                               <div
-                                className={`mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] ${isMe
-                                  ? "text-blue-100"
-                                  : "text-slate-500 dark:text-slate-400"
-                                  }`}
+                                className={`mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] ${
+                                  isMe
+                                    ? "text-blue-100"
+                                    : "text-slate-500 dark:text-slate-400"
+                                }`}
                               >
                                 {t("chat.doctorNote")}
                               </div>
@@ -1485,16 +1501,18 @@ const ChatPage = ({
                         <>
                           {repliedMessage ? (
                             <div
-                              className={`mb-3 rounded-lg border-l-4 px-3 py-2 ${isMe
-                                ? "border-white/55 bg-white/12 text-blue-50"
-                                : "border-blue-300 bg-slate-50 text-slate-600 dark:border-blue-500/60 dark:bg-slate-900 dark:text-slate-300"
-                                }`}
+                              className={`mb-3 w-full rounded-lg px-3 py-2 ${
+                                isMe
+                                  ? "border-r-4 border-white/55 bg-white/12 text-blue-50 text-right"
+                                  : "border-l-4 border-blue-300 bg-slate-50 text-slate-600 dark:border-blue-500/60 dark:bg-slate-900 dark:text-slate-300 text-left"
+                              }`}
                             >
                               <div
-                                className={`text-[11px] font-semibold ${isMe
-                                  ? "text-blue-100"
-                                  : "text-blue-700 dark:text-blue-300"
-                                  }`}
+                                className={`text-[11px] font-semibold ${
+                                  isMe
+                                    ? "text-blue-100"
+                                    : "text-blue-700 dark:text-blue-300"
+                                }`}
                               >
                                 {repliedSenderLabel}
                               </div>
@@ -1504,14 +1522,23 @@ const ChatPage = ({
                             </div>
                           ) : null}
                           {(() => {
-                            if (item.message.content.startsWith("{") && item.message.content.includes('"type":"video_call_invite"')) {
+                            if (
+                              item.message.content.startsWith("{") &&
+                              item.message.content.includes('"type":"video_call_invite"')
+                            ) {
                               try {
                                 const payload = JSON.parse(item.message.content);
                                 if (payload.type === "video_call_invite") {
                                   return (
-                                    <div className="flex items-center gap-2 font-medium">
+                                    <div
+                                      className={`flex w-full items-center gap-2 font-medium ${
+                                        isMe ? "flex-row-reverse" : "flex-row"
+                                      }`}
+                                    >
                                       <FaVideo className="text-current opacity-80" />
-                                      <span>{t("chat.videoCallInvite", "Đã gửi lời mời gọi video")}</span>
+                                      <span>
+                                        {t("chat.videoCallInvite", "Đã gửi lời mời gọi video")}
+                                      </span>
                                     </div>
                                   );
                                 }
@@ -1520,7 +1547,11 @@ const ChatPage = ({
                               }
                             }
                             return (
-                              <p className="whitespace-pre-wrap leading-relaxed">
+                              <p
+                                className={`whitespace-pre-wrap break-words leading-relaxed ${
+                                  isMe ? "text-right" : "text-left"
+                                }`}
+                              >
                                 {item.message.content}
                               </p>
                             );
@@ -1529,10 +1560,11 @@ const ChatPage = ({
                       )}
 
                       <div
-                        className={`mt-3 flex items-center justify-end gap-1 text-[11px] ${isMe
-                          ? "text-blue-100"
-                          : "text-gray-400 dark:text-slate-500"
-                          }`}
+                        className={`mt-3 flex w-full items-center gap-1 text-[11px] ${
+                          isMe
+                            ? "justify-end text-blue-100"
+                            : "justify-start text-gray-400 dark:text-slate-500"
+                        }`}
                       >
                         <span>{formatTime(item.message.createdAt)}</span>
                         {isMe ? (
