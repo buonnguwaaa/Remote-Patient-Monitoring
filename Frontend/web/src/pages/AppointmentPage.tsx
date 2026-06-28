@@ -329,7 +329,7 @@ function DayScheduleChart({
 
       {conflict && (
         <p className="mt-2 text-xs font-medium text-rose-600 dark:text-rose-400">
-          ⚠ Giờ này đã có lịch — bạn vẫn có thể đặt nhưng nên kiểm tra lại.
+          ⚠ Giờ này đã có lịch — không thể tạo lịch trùng giờ.
         </p>
       )}
       {existingItems.length === 0 && (
@@ -1397,6 +1397,14 @@ export default function AppointmentPage() {
     const scheduledAt = toISOFromLocalInputs(form.date, form.time);
     if (new Date(scheduledAt) <= new Date()) {
       showToast("Thời gian tái khám phải sau thời điểm hiện tại.", "error");
+      return;
+    }
+
+    const isConflict = appointmentsOnFormDate.some(
+      (a) => toLocalTimeString(a.scheduledAt) === form.time
+    );
+    if (isConflict) {
+      showToast("Giờ này đã có lịch, vui lòng chọn giờ khác.", "error");
       return;
     }
 
