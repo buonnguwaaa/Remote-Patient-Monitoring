@@ -11,7 +11,7 @@ func RegisterThresholdRoutes(r *gin.Engine, c *container.MainServerContainer) {
 	thresholdGroup := r.Group("/thresholds")
 	thresholdGroup.Use(middleware.JWTAuthMiddleware(c.JWTManager))
 	{
-		thresholdGroup.GET("", middleware.RequireRoles(domain.RoleDoctor), c.ThresholdHandler.GetThresholds)
+		thresholdGroup.GET("", middleware.RequireRoles(domain.RoleDoctor, domain.RoleNurse, domain.RolePatient), c.ThresholdHandler.GetThresholds)
 		thresholdGroup.POST("", middleware.RequireRoles(domain.RoleDoctor), c.ThresholdHandler.CreateThreshold)
 		thresholdGroup.PATCH("/:id", middleware.RequireRoles(domain.RoleDoctor), c.ThresholdHandler.UpdateThreshold)
 	}

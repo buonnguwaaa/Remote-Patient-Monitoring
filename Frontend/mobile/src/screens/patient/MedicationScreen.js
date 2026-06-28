@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -14,6 +13,7 @@ import { useFocusEffect } from "@react-navigation/native";
 
 import { getMyPrescriptions, getMedicationAdherence } from "../../api/prescriptionApi";
 import { recordMedicationIntake } from "../../api/medicationIntakeApi";
+import { useSnackbar } from "../../hooks/useSnackbar";
 
 // ---- Helpers ----
 const formatTime = (h, m) => {
@@ -34,7 +34,8 @@ const renderMealTimingLabel = (mt) => {
   return "";
 };
 
-export default function MedicationScreen({ navigation }) {
+export default function MedicationScreen({ navigation, route }) {
+  const { showSuccess, showError, showInfo } = useSnackbar();
   const [prescriptions, setPrescriptions] = useState([]);
   const [adherence, setAdherence] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -42,6 +43,17 @@ export default function MedicationScreen({ navigation }) {
 
   // Tabs: "today" | "history" | "prescriptions"
   const [activeTab, setActiveTab] = useState("today");
+  
+  // Time of day filter: "all" | "morning" | "noon" | "evening"
+  const [timeOfDayFilter, setTimeOfDayFilter] = useState("all");
+
+  // Get timeOfDay from navigation params
+  useEffect(() => {
+    if (route?.params?.timeOfDay) {
+      setTimeOfDayFilter(route.params.timeOfDay);
+      setActiveTab("today");
+    }
+  }, [route?.params?.timeOfDay]);
 
   const loadData = async () => {
     try {
@@ -54,7 +66,7 @@ export default function MedicationScreen({ navigation }) {
       setAdherence(adhData);
     } catch (err) {
       console.error(err);
-      Alert.alert("Lỗi", "Không thể tải dữ liệu thuốc: " + err.message);
+      showError("Không thể tải dữ liệu thuốc: " + err.message);
     } finally {
       setLoading(false);
     }
@@ -88,12 +100,66 @@ export default function MedicationScreen({ navigation }) {
         dose: dosePayload,
         takenAt: new Date().toISOString(),
       });
-      Alert.alert("Thành công", `Đã ghi nhận uống ${drugName}.`);
+      showSuccess(`Đã ghi nhận uống ${drugName}`);
       await loadData();
     } catch (err) {
-      Alert.alert("Lỗi", err.message);
+      showError(err.message || "Không thể ghi nhận uống thuốc");
     } finally {
       setRecordingId(null);
+    }
+  };
+
+  const handleTakeAllInSession = async (timeOfDay) => {
+    const todayStr = adherence?.to;
+    const todayData = adherence?.days?.find(d => d.date === todayStr);
+    if (!todayData) return;
+
+    // Count untaken medications in this session
+    let untakenCount = 0;
+    todayData.medications.forEach((med) => {
+      untakenCount += med.slots.filter(
+        slot => slot.timeOfDay === timeOfDay && slot.status !== "taken"
+      ).length;
+    });
+
+    if (untakenCount === 0) {
+      showInfo("Bạn đã uống hết thuốc cho buổi này");
+      return;
+    }
+
+    try {
+      const promises = [];
+      todayData.medications.forEach((med) => {
+        med.slots
+          .filter(slot => slot.timeOfDay === timeOfDay && slot.status !== "taken")
+          .forEach(slot => {
+            const dosePayload = {
+              timeOfDay: slot.timeOfDay,
+              pillCount: slot.pillCount,
+            };
+            if (slot.hour !== undefined && slot.minute !== undefined) {
+              dosePayload.hour = slot.hour;
+              dosePayload.minute = slot.minute;
+            }
+            if (slot.mealTiming) {
+              dosePayload.mealTiming = slot.mealTiming;
+            }
+            promises.push(
+              recordMedicationIntake({
+                prescriptionId: med.prescriptionId,
+                drugName: med.drugName,
+                dose: dosePayload,
+                takenAt: new Date().toISOString(),
+              })
+            );
+          });
+      });
+
+      await Promise.all(promises);
+      showSuccess("Đã ghi nhận uống hết tất cả thuốc");
+      await loadData();
+    } catch (err) {
+      showError(err.message || "Không thể ghi nhận uống thuốc");
     }
   };
 
@@ -132,9 +198,74 @@ export default function MedicationScreen({ navigation }) {
       );
     }
 
+    // Filter medications by timeOfDay if not "all"
+    let filteredMedications = todayData.medications;
+    if (timeOfDayFilter !== "all") {
+      filteredMedications = todayData.medications
+        .map(med => ({
+          ...med,
+          slots: med.slots.filter(slot => slot.timeOfDay === timeOfDayFilter),
+        }))
+        .filter(med => med.slots.length > 0)
+        .map(med => ({
+          ...med,
+          taken: med.slots.filter(s => s.status === "taken").length,
+          expected: med.slots.length,
+        }));
+    }
+
+    if (filteredMedications.length === 0) {
+      return (
+        <View style={styles.emptyContainer}>
+          <Ionicons name="medical-outline" size={48} color="#CBD5E1" />
+          <Text style={styles.emptyText}>
+            Không có thuốc nào cho buổi {renderTimeOfDayLabel(timeOfDayFilter)}.
+          </Text>
+        </View>
+      );
+    }
+
     return (
       <View style={styles.section}>
-        {todayData.medications.map((med, mi) => (
+        {timeOfDayFilter !== "all" && (() => {
+          // Check if all medications in this session are taken
+          const todayStr = adherence?.to;
+          const todayData = adherence?.days?.find(d => d.date === todayStr);
+          let untakenCount = 0;
+          if (todayData) {
+            todayData.medications.forEach((med) => {
+              untakenCount += med.slots.filter(
+                slot => slot.timeOfDay === timeOfDayFilter && slot.status !== "taken"
+              ).length;
+            });
+          }
+          const allTaken = untakenCount === 0;
+
+          return (
+            <TouchableOpacity
+              style={[
+                styles.takeAllButton,
+                allTaken && styles.takeAllButtonDisabled
+              ]}
+              onPress={() => handleTakeAllInSession(timeOfDayFilter)}
+              disabled={allTaken}
+            >
+              <Ionicons 
+                name={allTaken ? "checkmark-done-circle" : "checkmark-done-circle-outline"} 
+                size={22} 
+                color="#FFFFFF" 
+              />
+              <Text style={styles.takeAllButtonText}>
+                {allTaken 
+                  ? "Bạn đã uống hết thuốc cho buổi này"
+                  : `Đã uống hết buổi ${renderTimeOfDayLabel(timeOfDayFilter)}`
+                }
+              </Text>
+            </TouchableOpacity>
+          );
+        })()}
+
+        {filteredMedications.map((med, mi) => (
           <View key={mi} style={styles.card}>
             <View style={styles.cardHeader}>
               <View style={styles.medIconContainer}>
@@ -154,7 +285,6 @@ export default function MedicationScreen({ navigation }) {
             <View style={styles.slotsContainer}>
               {med.slots.map((slot, si) => {
                 const isTaken = slot.status === "taken";
-                const isMissed = slot.status === "missed";
                 const isRecording = recordingId === `${med.prescriptionId}_${med.drugName}_${slot.timeOfDay}`;
 
                 const timeStr = slot.time || formatTime(slot.hour, slot.minute);
@@ -180,21 +310,6 @@ export default function MedicationScreen({ navigation }) {
                         <Ionicons name="checkmark-circle" size={20} color="#10B981" />
                         <Text style={styles.takenText}>Đã uống</Text>
                       </View>
-                    ) : isMissed ? (
-                      <TouchableOpacity
-                        style={[styles.actionBtn, styles.missedBtn]}
-                        onPress={() => handleTakeMedication(med.prescriptionId, med.drugName, slot)}
-                        disabled={isRecording}
-                      >
-                        {isRecording ? (
-                          <ActivityIndicator size="small" color="#EF4444" />
-                        ) : (
-                          <>
-                            <Ionicons name="alert-circle" size={16} color="#EF4444" />
-                            <Text style={styles.missedText}>Uống bù</Text>
-                          </>
-                        )}
-                      </TouchableOpacity>
                     ) : (
                       <TouchableOpacity
                         style={[styles.actionBtn, styles.takeBtn]}
@@ -204,7 +319,7 @@ export default function MedicationScreen({ navigation }) {
                         {isRecording ? (
                           <ActivityIndicator size="small" color="#fff" />
                         ) : (
-                          <Text style={styles.takeBtnText}>Uống ngay</Text>
+                          <Text style={styles.takeBtnText}>Uống</Text>
                         )}
                       </TouchableOpacity>
                     )}
@@ -329,6 +444,35 @@ export default function MedicationScreen({ navigation }) {
 
       {renderTabs()}
 
+      {activeTab === "today" && (
+        <View style={styles.timeOfDayFilterContainer}>
+          {[
+            { id: "all", label: "Tất cả" },
+            { id: "morning", label: "Sáng" },
+            { id: "noon", label: "Trưa" },
+            { id: "evening", label: "Tối" },
+          ].map((filter) => (
+            <TouchableOpacity
+              key={filter.id}
+              style={[
+                styles.timeOfDayFilterTab,
+                timeOfDayFilter === filter.id && styles.timeOfDayFilterTabActive,
+              ]}
+              onPress={() => setTimeOfDayFilter(filter.id)}
+            >
+              <Text
+                style={[
+                  styles.timeOfDayFilterText,
+                  timeOfDayFilter === filter.id && styles.timeOfDayFilterTextActive,
+                ]}
+              >
+                {filter.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#2563EB" />
@@ -392,6 +536,32 @@ const styles = StyleSheet.create({
   activeTabText: {
     color: "#2563EB",
   },
+  timeOfDayFilterContainer: {
+    flexDirection: "row",
+    backgroundColor: "#F1F5F9",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    gap: 8,
+  },
+  timeOfDayFilterTab: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: "transparent",
+    alignItems: "center",
+  },
+  timeOfDayFilterTabActive: {
+    backgroundColor: "#2563EB",
+  },
+  timeOfDayFilterText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#64748B",
+  },
+  timeOfDayFilterTextActive: {
+    color: "#FFFFFF",
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
@@ -407,6 +577,30 @@ const styles = StyleSheet.create({
   },
   section: {
     gap: 16,
+  },
+  takeAllButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#10B981",
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    gap: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  takeAllButtonDisabled: {
+    backgroundColor: "#6B7280",
+    opacity: 0.7,
+  },
+  takeAllButtonText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "700",
   },
   emptyContainer: {
     padding: 40,

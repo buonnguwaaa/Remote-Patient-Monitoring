@@ -7,7 +7,7 @@ const extras =
   Constants?.manifest?.extra || Constants?.expoConfig?.extra || {};
 
 let envBaseUrl = process.env.EXPO_PUBLIC_BASE_URL || extras.BASE_URL || "";
-export const BASE_URL = Platform.OS === "web" ? "http://localhost:8080" : envBaseUrl;
+export const BASE_URL = envBaseUrl
 
 async function parseResponse(response) {
   const text = await response.text();
