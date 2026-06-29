@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { DeviceEventEmitter, Alert } from "react-native";
-import * as SecureStore from "expo-secure-store";
+import * as SecureStore from "../utils/secureStoreHelper";
 import * as LocalAuthentication from "expo-local-authentication";
 import * as authApi from "../api/authApi";
 import { setAuthFailureHandler } from "../api/httpClient";

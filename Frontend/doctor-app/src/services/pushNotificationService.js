@@ -1,6 +1,6 @@
 import * as Application from "expo-application";
 import * as Notifications from "expo-notifications";
-import * as SecureStore from "expo-secure-store";
+import * as SecureStore from "../utils/secureStoreHelper";
 import { Platform } from "react-native";
 import {
   registerNotificationToken,

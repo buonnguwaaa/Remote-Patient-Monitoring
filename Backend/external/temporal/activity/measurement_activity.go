@@ -170,7 +170,9 @@ func (a *ProcessingAlertActivity) SendAlertPushActivity(ctx context.Context, ale
 		DedupKey: fmt.Sprintf("alert:%s", alert.ID.Hex()),
 	})
 	if err != nil {
-		return fmt.Errorf("failed to send alert push: %w", err)
+		// Best-effort: push notification is non-critical, log and continue
+		log.Printf("[WARN] failed to send alert push (non-fatal) for alert=%s: %v", alertID, err)
+		return nil
 	}
 
 	log.Printf("[INFO] alert push sent for alert=%s patient=%s", alert.ID.Hex(), alert.PatientID.Hex())
@@ -232,7 +234,13 @@ func (a *ProcessingAlertActivity) SendAlertMessageActivity(ctx context.Context, 
 		return nil, fmt.Errorf("failed to get/create conversation: %w", err)
 	}
 
-	messageContent := fmt.Sprintf("A new %s alert was generated. Please have suitable action taken.", alert.Severity)
+	severityVN := "nghiêm trọng"
+	if alert.Severity == domain.SeverityMedium {
+		severityVN = "trung bình"
+	} else if alert.Severity == domain.SeverityLow {
+		severityVN = "nhẹ"
+	}
+	messageContent := fmt.Sprintf("Hệ thống vừa phát hiện một số chỉ số vượt ngưỡng ở mức %s. Vui lòng kiểm tra và có biện pháp xử lý phù hợp.", strings.ToUpper(severityVN))
 	message := &chatDomain.Message{
 		ConversationID: conversation.ID,
 		MessageSource:  chatDomain.SystemMessage,

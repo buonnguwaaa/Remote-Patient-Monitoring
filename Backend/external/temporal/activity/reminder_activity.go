@@ -3,6 +3,7 @@ package activity
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -103,7 +104,8 @@ func (a *ReminderActivity) SendReminderActivity(ctx context.Context, reminderID 
 		DedupKey: fmt.Sprintf("reminder:%s:%s", reminder.ID.Hex(), scheduledAt.UTC().Format(time.RFC3339)),
 	})
 	if err != nil {
-		return false, fmt.Errorf("failed to publish reminder push: %w", err)
+		log.Printf("[WARN] failed to publish reminder push (non-fatal) for reminder=%s: %v", reminder.ID.Hex(), err)
+		return false, nil
 	}
 
 	return false, nil

@@ -32,8 +32,16 @@ func AlertWorkflow(ctx workflow.Context, input dto.MeasurementAlertInput) (strin
 		return createResult.AlertID, nil
 	}
 
-	if err := workflow.ExecuteActivity(ctx, "SendAlertPushActivity", createResult.AlertID).Get(ctx, nil); err != nil {
-		return "", err
+	// Push notification is best-effort: use a separate context with MaxAttempts=1
+	// and a very short timeout so it never blocks the rest of the workflow
+	pushCtx := workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
+		StartToCloseTimeout: time.Second * 5,
+		RetryPolicy: &temporal.RetryPolicy{
+			MaximumAttempts: 1,
+		},
+	})
+	if err := workflow.ExecuteActivity(pushCtx, "SendAlertPushActivity", createResult.AlertID).Get(pushCtx, nil); err != nil {
+		workflow.GetLogger(ctx).Warn("Failed to send alert push (non-fatal)", "error", err)
 	}
 
 	var sendResult dto.SendAlertMessageResult

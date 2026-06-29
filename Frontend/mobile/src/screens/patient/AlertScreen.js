@@ -149,10 +149,12 @@ function buildAlertSummary(alert) {
     };
   }
   if (labels.length === 1) {
+    const dir = getViolationDirection(violations[0]);
+    const summaryText = dir === "Cao" ? "Chỉ số quá cao so với ngưỡng" : (dir === "Thấp" ? "Chỉ số quá thấp so với ngưỡng" : "Chỉ số vượt ngưỡng an toàn");
     return {
       title: labels[0],
       iconName: getViolationIcon(violations[0]?.type),
-      summary: violations[0]?.rule || "Chỉ số đã vượt ngưỡng cấu hình.",
+      summary: summaryText,
       labels,
     };
   }

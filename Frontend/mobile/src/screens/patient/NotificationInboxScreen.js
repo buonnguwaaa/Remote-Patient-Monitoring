@@ -89,15 +89,17 @@ export default function NotificationInboxScreen({ isEmbedded }) {
   const handledSelectedIdRef = useRef(null);
 
   const filteredNotifications = useMemo(() => {
+    const nonAlerts = notifications.filter((item) => item?.type !== "alert");
+
     if (filterMode === "measure") {
-      return notifications.filter((item) => item?.data?.reminderKind === "measure");
+      return nonAlerts.filter((item) => item?.data?.reminderKind === "measure");
     }
     if (filterMode === "medicine") {
-      return notifications.filter(
+      return nonAlerts.filter(
         (item) => item?.type === "reminder" && item?.data?.reminderKind !== "measure"
       );
     }
-    return notifications;
+    return nonAlerts;
   }, [notifications, filterMode]);
 
   const updateNotificationInState = useCallback((nextItem) => {

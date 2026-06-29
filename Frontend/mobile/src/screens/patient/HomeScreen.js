@@ -334,13 +334,13 @@ export default function HomeScreen() {
     [recentAlerts]
   );
 
-  // Compare latest vital values directly against threshold — same logic as doctor app PatientDetailModal
+  // Check if vital breached threshold AND is not yet acknowledged
   const vitalAlerts = useMemo(() => {
     const t = thresholds;
     const v = latestVitals;
     if (!t) return {};
 
-    const check = (val, min, max) => {
+    const checkThreshold = (val, min, max) => {
       const n = parseFloat(val);
       if (isNaN(n)) return false;
       if (min !== undefined && n < min) return true;
@@ -348,24 +348,54 @@ export default function HomeScreen() {
       return false;
     };
 
+    const isAlertOpen = (measurement, typePrefixes) => {
+      if (!measurement) return false;
+      const mId = measurement.id || measurement._id;
+      
+      // Find if there is ANY alert for this measurement and type
+      const relatedAlerts = recentAlerts.filter(a => 
+        (a.measurementId === mId) &&
+        a.violations?.some(vi => typePrefixes.some(prefix => vi.type?.startsWith(prefix)))
+      );
+      
+      // If we found alerts from the backend for this measurement, 
+      // ONLY return true if at least one is still open.
+      if (relatedAlerts.length > 0) {
+        return relatedAlerts.some(a => a.status === 'open');
+      }
+
+      // If backend hasn't created an alert yet, fallback to local threshold check
+      return null;
+    };
+
     const sys = parseFloat(v.bp?.bloodPressure?.systolic);
     const dia = parseFloat(v.bp?.bloodPressure?.diastolic);
-    const bpAlert =
-      (!isNaN(sys) && (check(sys, t.sysMin, t.sysMax))) ||
-      (!isNaN(dia) && (check(dia, t.diaMin, t.diaMax)));
+    const localBp = (!isNaN(sys) && checkThreshold(sys, t.sysMin, t.sysMax)) || (!isNaN(dia) && checkThreshold(dia, t.diaMin, t.diaMax));
 
     const rawGluc = v.glucose?.glucose;
     const glucVal = rawGluc ? (typeof rawGluc === "object" ? rawGluc.bloodGlucose : rawGluc) : null;
+    const localGlucose = checkThreshold(glucVal, t.glucoseMin, t.glucoseMax);
+
+    const localSpo2 = t.spo2Min !== undefined && parseFloat(v.spo2?.spo2) < t.spo2Min;
+    const localTemp = checkThreshold(v.temperature?.temperature, t.temperatureMin, t.temperatureMax);
+    const localHr = checkThreshold(v.heartRate?.heartRate, t.heartRateMin, t.heartRateMax);
+    const localRr = checkThreshold(v.respiratoryRate?.respiratoryRate, t.respiratoryRateMin, t.respiratoryRateMax);
+
+    const getFinalAlert = (measurement, typePrefixes, localBreach) => {
+      const openStatus = isAlertOpen(measurement, typePrefixes);
+      if (openStatus !== null) return openStatus;
+      return localBreach;
+    };
 
     return {
-      bp: bpAlert,
-      glucose: check(glucVal, t.glucoseMin, t.glucoseMax),
-      spo2: t.spo2Min !== undefined && parseFloat(v.spo2?.spo2) < t.spo2Min,
-      temperature: check(v.temperature?.temperature, t.temperatureMin, t.temperatureMax),
-      heartRate: check(v.heartRate?.heartRate, t.heartRateMin, t.heartRateMax),
-      respiratoryRate: check(v.respiratoryRate?.respiratoryRate, t.respiratoryRateMin, t.respiratoryRateMax),
+      bp: getFinalAlert(v.bp, ['blood_pressure'], localBp),
+      glucose: getFinalAlert(v.glucose, ['glucose'], localGlucose),
+      spo2: getFinalAlert(v.spo2, ['spo2'], localSpo2),
+      temperature: getFinalAlert(v.temperature, ['temperature'], localTemp),
+      heartRate: getFinalAlert(v.heartRate, ['heart_rate'], localHr),
+      respiratoryRate: getFinalAlert(v.respiratoryRate, ['respiratory_rate', 'respiratoryRate'], localRr),
     };
-  }, [thresholds, latestVitals]);
+  }, [thresholds, latestVitals, recentAlerts]);
 
   const displayName = profile?.name || user?.name || user?.username || "Bệnh nhân";
   const insuranceNumber = profile?.insuranceNumber || "Chưa cập nhật";
@@ -427,17 +457,22 @@ export default function HomeScreen() {
             </View>
           </View>
           
-          {openAlertCount > 0 ? (
-            <View style={styles.greetingAlertBox}>
-              <Ionicons name="warning" size={16} color="#DC2626" />
-              <Text style={styles.greetingAlertText}>Hôm nay bạn có {openAlertCount} cảnh báo cần chú ý</Text>
-            </View>
-          ) : (
-            <View style={[styles.greetingAlertBox, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]}>
-              <Ionicons name="checkmark-circle" size={16} color="#16A34A" />
-              <Text style={[styles.greetingAlertText, { color: '#16A34A' }]}>Sức khỏe của bạn đang ổn định</Text>
-            </View>
-          )}
+          <TouchableOpacity 
+            activeOpacity={0.8}
+            onPress={() => navigation.navigate("PatientAlerts")}
+          >
+            {openAlertCount > 0 ? (
+              <View style={styles.greetingAlertBox}>
+                <Ionicons name="warning" size={16} color="#DC2626" />
+                <Text style={styles.greetingAlertText}>Hôm nay bạn có {openAlertCount} cảnh báo cần chú ý</Text>
+              </View>
+            ) : (
+              <View style={[styles.greetingAlertBox, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]}>
+                <Ionicons name="checkmark-circle" size={16} color="#16A34A" />
+                <Text style={[styles.greetingAlertText, { color: '#16A34A' }]}>Sức khỏe của bạn đang ổn định</Text>
+              </View>
+            )}
+          </TouchableOpacity>
         </View>
 
         {/* ---- Medication Card ---- */}
@@ -697,7 +732,7 @@ export default function HomeScreen() {
                     activeOpacity={0.92}
                     style={[
                       styles.warningItem,
-                      alert.isHigh && styles.warningItemHigh,
+                      (alert.isHigh && !alert.isAcknowledged) && styles.warningItemHigh,
                     ]}
                     onPress={() =>
                       navigation.navigate("PatientAlerts", {
@@ -710,7 +745,7 @@ export default function HomeScreen() {
                         <Ionicons
                           name={alert.iconName}
                           size={18}
-                          color={alert.isHigh ? "#D63031" : "#1A8F4A"}
+                          color={alert.isAcknowledged ? "#9CA3AF" : (alert.isHigh ? "#D63031" : "#1A8F4A")}
                         />
                         <Text style={styles.warnLabel}>
                           {alert.title} · {alert.observedText}
@@ -719,16 +754,16 @@ export default function HomeScreen() {
 
                       <View
                         style={
-                          alert.isHigh
-                            ? styles.alertStatusPillHigh
-                            : styles.alertStatusPillNormal
+                          alert.isAcknowledged
+                            ? styles.alertStatusPillNormal
+                            : (alert.isHigh ? styles.alertStatusPillHigh : styles.alertStatusPillNormal)
                         }
                       >
                         <Text
                           style={
-                            alert.isHigh
-                              ? styles.alertStatusTextHigh
-                              : styles.alertStatusTextNormal
+                            alert.isAcknowledged
+                              ? { ...styles.alertStatusTextNormal, color: "#6B7280" }
+                              : (alert.isHigh ? styles.alertStatusTextHigh : styles.alertStatusTextNormal)
                           }
                         >
                           {alert.severityText}

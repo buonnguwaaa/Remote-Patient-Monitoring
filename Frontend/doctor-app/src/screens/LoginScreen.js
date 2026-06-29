@@ -14,7 +14,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../context/AuthContext";
-import * as SecureStore from "expo-secure-store";
+import * as SecureStore from "../utils/secureStoreHelper";
 import * as LocalAuthentication from "expo-local-authentication";
 
 export default function LoginScreen() {
