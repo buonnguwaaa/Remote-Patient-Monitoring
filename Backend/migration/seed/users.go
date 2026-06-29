@@ -249,7 +249,7 @@ func (s *Seeder) seedBaseUsers(
 		return nil, err
 	}
 
-	domainRole := userDomain.RoleAdmin
+	var domainRole userDomain.Role
 	switch role {
 	case "admin":
 		domainRole = userDomain.RoleAdmin
