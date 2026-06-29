@@ -23,24 +23,31 @@ const PatientList = () => {
         setLoading(true);
         setError(null);
 
-        const [assignments, alerts] = await Promise.all([getMyPatients(), getAlerts()]);
+        const [assignments, alerts] = await Promise.all([
+          getMyPatients(),
+          getAlerts({ limit: 1000, page: 1, sortOrder: "desc" })
+        ]);
 
-        const latestAlertByPatient = new Map<string, (typeof alerts)[number]>();
-        const sortedAlerts = [...alerts].sort(
-          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        );
+        const patientSeverity = new Map<string, string>();
 
-        sortedAlerts.forEach((alert) => {
-          if (!latestAlertByPatient.has(alert.patientId)) {
-            latestAlertByPatient.set(alert.patientId, alert);
+        alerts.forEach((alert) => {
+          if (alert.status === "open") {
+            const curr = patientSeverity.get(alert.patientId);
+            if (
+              !curr ||
+              (curr !== "high" && alert.severity === "high") ||
+              (curr === "low" && alert.severity === "medium")
+            ) {
+              patientSeverity.set(alert.patientId, alert.severity);
+            }
           }
         });
 
         const patientItems: PatientItem[] = assignments.map((assignment) => {
           let status: PatientItem["status"] = t("patients.normal");
 
-          const latestAlert = latestAlertByPatient.get(assignment.patientId);
-          if (latestAlert && (latestAlert.severity === "high" || latestAlert.severity === "medium") && latestAlert.status === "open") {
+          const severity = patientSeverity.get(assignment.patientId);
+          if (severity === "high" || severity === "medium") {
             status = t("patients.warning");
           }
 

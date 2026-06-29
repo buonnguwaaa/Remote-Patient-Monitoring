@@ -4,10 +4,9 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   FaChevronDown,
@@ -18,23 +17,20 @@ import {
   FaPlus,
   FaSyncAlt,
   FaTimes,
+  FaBan,
+  FaFilePrescription,
+  FaListUl,
   FaTrash,
-  FaCheckCircle,
-  FaTimesCircle,
-  FaClock,
 } from "react-icons/fa";
-import { MdOutlineNotificationsActive } from "react-icons/md";
 
 import Toast from "../components/ui/Toast";
 import { useToast } from "../hooks/useToast";
 import { getMyPatients } from "../services/patientService";
-import { getReminders, type ReminderRecord } from "../services/reminderService";
 import {
   getPrescriptions,
   createPrescription,
   updatePrescription,
   updatePrescriptionStatus,
-  getMedicationAdherence,
   toStartOfDayIso,
   toEndOfDayIso,
 } from "../services/prescriptionService";
@@ -42,35 +38,27 @@ import type { AssignmentResponse } from "../types/patient";
 import type {
   Prescription,
   PrescriptionStatus,
-  MedicationDose,
   TimeOfDay,
   MealTiming,
-  MedicationAdherence,
 } from "../types/index";
 
 // ---- Constants ----
 const WEEKDAY_OPTIONS = [
-  { value: 1, labelKey: "prescriptions.mon" },
-  { value: 2, labelKey: "prescriptions.tue" },
-  { value: 3, labelKey: "prescriptions.wed" },
-  { value: 4, labelKey: "prescriptions.thu" },
-  { value: 5, labelKey: "prescriptions.fri" },
-  { value: 6, labelKey: "prescriptions.sat" },
-  { value: 0, labelKey: "prescriptions.sun" },
+  { value: 1, labelKey: "prescriptions.mon", label: "T2" },
+  { value: 2, labelKey: "prescriptions.tue", label: "T3" },
+  { value: 3, labelKey: "prescriptions.wed", label: "T4" },
+  { value: 4, labelKey: "prescriptions.thu", label: "T5" },
+  { value: 5, labelKey: "prescriptions.fri", label: "T6" },
+  { value: 6, labelKey: "prescriptions.sat", label: "T7" },
+  { value: 0, labelKey: "prescriptions.sun", label: "CN" },
 ];
 
-const STATUS_OPTIONS: Array<{ value: PrescriptionStatus | ""; labelKey: string }> = [
-  { value: "", labelKey: "prescriptions.allStatuses" },
-  { value: "active", labelKey: "prescriptions.active" },
-  { value: "completed", labelKey: "prescriptions.completed" },
-  { value: "discontinued", labelKey: "prescriptions.discontinued" },
-  { value: "expired", labelKey: "prescriptions.expired" },
-];
-
-const ADHERENCE_RANGES = [
-  { value: 7, labelKey: "prescriptions.last7Days" },
-  { value: 14, labelKey: "prescriptions.last14Days" },
-  { value: 30, labelKey: "prescriptions.last30Days" },
+const STATUS_OPTIONS: Array<{ value: PrescriptionStatus | ""; label: string }> = [
+  { value: "", label: "Tất cả trạng thái" },
+  { value: "active", label: "Đang hiệu lực" },
+  { value: "completed", label: "Đã hoàn thành" },
+  { value: "discontinued", label: "Đã dừng" },
+  { value: "expired", label: "Hết hạn" },
 ];
 
 const ITEMS_PER_PAGE = 5;
@@ -94,70 +82,11 @@ const drug = (
 const DRUG_SUGGESTIONS: DrugSuggestion[] = [
   drug("Paracetamol", "500mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, noon: { customTime: "12:00", mealTiming: "post_meal", pillCount: 1 }, evening: { customTime: "20:00", mealTiming: "post_meal", pillCount: 1 } }),
   drug("Ibuprofen", "400mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, noon: { customTime: "12:00", mealTiming: "post_meal", pillCount: 1 }, evening: { customTime: "20:00", mealTiming: "post_meal", pillCount: 1 } }),
-  drug("Aspirin", "500mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, noon: { customTime: "12:00", mealTiming: "post_meal", pillCount: 1 } }),
-  drug("Diclofenac", "50mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, evening: { customTime: "20:00", mealTiming: "post_meal", pillCount: 1 } }),
-  drug("Meloxicam", "7.5mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 } }),
   drug("Amoxicillin", "500mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, noon: { customTime: "14:00", mealTiming: "post_meal", pillCount: 1 }, evening: { customTime: "20:00", mealTiming: "post_meal", pillCount: 1 } }),
-  drug("Ampicillin", "500mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, noon: { customTime: "14:00", mealTiming: "post_meal", pillCount: 1 }, evening: { customTime: "20:00", mealTiming: "post_meal", pillCount: 1 } }),
-  drug("Azithromycin", "500mg", { morning: { customTime: "08:00", mealTiming: "", pillCount: 1 } }),
-  drug("Clarithromycin", "500mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, evening: { customTime: "20:00", mealTiming: "post_meal", pillCount: 1 } }),
-  drug("Ciprofloxacin", "500mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, evening: { customTime: "20:00", mealTiming: "post_meal", pillCount: 1 } }),
-  drug("Metronidazole", "500mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, noon: { customTime: "14:00", mealTiming: "post_meal", pillCount: 1 }, evening: { customTime: "20:00", mealTiming: "post_meal", pillCount: 1 } }),
-  drug("Doxycycline", "100mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, evening: { customTime: "20:00", mealTiming: "post_meal", pillCount: 1 } }),
-  drug("Cefuroxime", "500mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, evening: { customTime: "20:00", mealTiming: "post_meal", pillCount: 1 } }),
-  drug("Ceftriaxone", "1g"),
-  drug("Cephalexin", "500mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, noon: { customTime: "14:00", mealTiming: "post_meal", pillCount: 1 }, evening: { customTime: "20:00", mealTiming: "post_meal", pillCount: 1 } }),
   drug("Omeprazole", "20mg", { morning: { customTime: "07:00", mealTiming: "pre_meal", pillCount: 1 } }),
-  drug("Pantoprazole", "40mg", { morning: { customTime: "07:00", mealTiming: "pre_meal", pillCount: 1 } }),
-  drug("Esomeprazole", "40mg", { morning: { customTime: "07:00", mealTiming: "pre_meal", pillCount: 1 } }),
-  drug("Ranitidine", "150mg", { morning: { customTime: "08:00", mealTiming: "pre_meal", pillCount: 1 }, evening: { customTime: "20:00", mealTiming: "pre_meal", pillCount: 1 } }),
-  drug("Antacid", "1 gói", { morning: { customTime: "08:30", mealTiming: "post_meal", pillCount: 1 }, noon: { customTime: "12:30", mealTiming: "post_meal", pillCount: 1 }, evening: { customTime: "20:30", mealTiming: "post_meal", pillCount: 1 } }),
   drug("Metformin", "500mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, noon: { customTime: "12:00", mealTiming: "post_meal", pillCount: 1 }, evening: { customTime: "20:00", mealTiming: "post_meal", pillCount: 1 } }),
-  drug("Glibenclamide", "5mg", { morning: { customTime: "07:30", mealTiming: "pre_meal", pillCount: 1 } }),
-  drug("Gliclazide", "80mg", { morning: { customTime: "07:30", mealTiming: "pre_meal", pillCount: 1 } }),
-  drug("Insulin Aspart"),
-  drug("Insulin Glargine", "", { evening: { customTime: "22:00", mealTiming: "", pillCount: 1 } }),
   drug("Amlodipine", "5mg", { morning: { customTime: "08:00", mealTiming: "", pillCount: 1 } }),
-  drug("Nifedipine", "30mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 } }),
-  drug("Atenolol", "50mg", { morning: { customTime: "08:00", mealTiming: "", pillCount: 1 } }),
-  drug("Metoprolol", "50mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, evening: { customTime: "20:00", mealTiming: "post_meal", pillCount: 1 } }),
-  drug("Bisoprolol", "5mg", { morning: { customTime: "08:00", mealTiming: "", pillCount: 1 } }),
   drug("Losartan", "50mg", { morning: { customTime: "08:00", mealTiming: "", pillCount: 1 } }),
-  drug("Valsartan", "80mg", { morning: { customTime: "08:00", mealTiming: "", pillCount: 1 } }),
-  drug("Lisinopril", "10mg", { morning: { customTime: "08:00", mealTiming: "", pillCount: 1 } }),
-  drug("Enalapril", "10mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 } }),
-  drug("Ramipril", "5mg", { morning: { customTime: "08:00", mealTiming: "", pillCount: 1 } }),
-  drug("Atorvastatin", "20mg", { evening: { customTime: "21:00", mealTiming: "", pillCount: 1 } }),
-  drug("Rosuvastatin", "10mg", { evening: { customTime: "21:00", mealTiming: "", pillCount: 1 } }),
-  drug("Simvastatin", "20mg", { evening: { customTime: "21:00", mealTiming: "", pillCount: 1 } }),
-  drug("Aspirin 81mg", "81mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 } }),
-  drug("Clopidogrel", "75mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 } }),
-  drug("Warfarin", "5mg", { evening: { customTime: "18:00", mealTiming: "", pillCount: 1 } }),
-  drug("Furosemide", "40mg", { morning: { customTime: "07:00", mealTiming: "", pillCount: 1 } }),
-  drug("Hydrochlorothiazide", "25mg", { morning: { customTime: "07:00", mealTiming: "post_meal", pillCount: 1 } }),
-  drug("Spironolactone", "25mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 } }),
-  drug("Prednisolone", "5mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 } }),
-  drug("Dexamethasone", "0.5mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 } }),
-  drug("Methylprednisolone", "4mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, noon: { customTime: "12:00", mealTiming: "post_meal", pillCount: 1 } }),
-  drug("Cetirizine", "10mg", { evening: { customTime: "21:00", mealTiming: "", pillCount: 1 } }),
-  drug("Loratadine", "10mg", { morning: { customTime: "08:00", mealTiming: "", pillCount: 1 } }),
-  drug("Fexofenadine", "120mg", { morning: { customTime: "08:00", mealTiming: "", pillCount: 1 } }),
-  drug("Salbutamol", "4mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, noon: { customTime: "12:00", mealTiming: "post_meal", pillCount: 1 }, evening: { customTime: "20:00", mealTiming: "post_meal", pillCount: 1 } }),
-  drug("Montelukast", "10mg", { evening: { customTime: "21:00", mealTiming: "", pillCount: 1 } }),
-  drug("Fluticasone"),
-  drug("Levothyroxine", "50mcg", { morning: { customTime: "07:00", mealTiming: "pre_meal", pillCount: 1 } }),
-  drug("Methimazole", "10mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, noon: { customTime: "14:00", mealTiming: "post_meal", pillCount: 1 }, evening: { customTime: "20:00", mealTiming: "post_meal", pillCount: 1 } }),
-  drug("Diazepam", "5mg", { evening: { customTime: "21:00", mealTiming: "", pillCount: 1 } }),
-  drug("Alprazolam", "0.25mg", { evening: { customTime: "21:00", mealTiming: "", pillCount: 1 } }),
-  drug("Clonazepam", "0.5mg", { evening: { customTime: "21:00", mealTiming: "", pillCount: 1 } }),
-  drug("Vitamin B1", "10mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 } }),
-  drug("Vitamin B6", "10mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 } }),
-  drug("Vitamin B12", "500mcg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 } }),
-  drug("Vitamin C", "500mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 } }),
-  drug("Vitamin D3", "1000IU", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 } }),
-  drug("Sắt (II) sulfate", "60mg", { morning: { customTime: "07:30", mealTiming: "pre_meal", pillCount: 1 } }),
-  drug("Acid folic", "5mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 } }),
-  drug("Canxi carbonat", "500mg", { morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }, evening: { customTime: "20:00", mealTiming: "post_meal", pillCount: 1 } }),
 ];
 
 const ROUTE_OPTIONS = [
@@ -265,18 +194,6 @@ const formatDate = (value: string) =>
 const formatTime = (h: number, m: number) =>
   `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 
-const buildWeekdaySummary = (days: number[], t: (key: string) => string) => {
-  if (days.length === 7) return "Mỗi ngày";
-  const order = [1, 2, 3, 4, 5, 6, 0];
-  return order
-    .filter((d) => days.includes(d))
-    .map((d) => {
-      const opt = WEEKDAY_OPTIONS.find((o) => o.value === d);
-      return opt ? t(opt.labelKey) : "";
-    })
-    .join(" • ");
-};
-
 const slotToDosePayload = (
   timeOfDay: TimeOfDay,
   customTime: string,
@@ -342,65 +259,65 @@ const prescriptionFromForm = (form: PrescriptionFormData) => {
   };
 };
 
-// Pre-fill form from existing prescription
 const formFromPrescription = (p: Prescription): PrescriptionFormData => {
-  const meds: MedicationFormData[] = p.medications.map((med) => {
+  const meds: MedicationFormData[] = (p.medications || []).map((med) => {
     const schedule = createDefaultSchedule();
     const usedSlots = { morning: false, noon: false, evening: false };
-    for (const dose of med.schedule) {
+    for (const dose of (med.schedule || [])) {
       const tod = dose.timeOfDay as "morning" | "noon" | "evening";
       const ct =
         dose.hour !== undefined && dose.minute !== undefined
           ? formatTime(dose.hour, dose.minute)
           : (dose as any).time ?? "";
-      if (!usedSlots[tod]) {
-        usedSlots[tod] = true;
-        schedule[tod] = { enabled: true, customTime: ct, mealTiming: (dose.mealTiming as MealTiming | "") ?? "", pillCount: dose.pillCount };
+      if (tod === "morning" || tod === "noon" || tod === "evening") {
+        if (!usedSlots[tod]) {
+          usedSlots[tod] = true;
+          schedule[tod] = { enabled: true, customTime: ct, mealTiming: (dose.mealTiming as MealTiming | "") ?? "", pillCount: dose.pillCount };
+        } else {
+          schedule.extras.push({ customTime: ct, mealTiming: (dose.mealTiming as MealTiming | "") ?? "", pillCount: dose.pillCount });
+        }
       } else {
         schedule.extras.push({ customTime: ct, mealTiming: (dose.mealTiming as MealTiming | "") ?? "", pillCount: dose.pillCount });
       }
     }
-    return { drugName: med.drugName, dosage: med.dosage, route: med.route ?? "", instructions: med.instructions ?? "", schedule };
+    return { drugName: med.drugName || "", dosage: med.dosage || "", route: med.route ?? "", instructions: med.instructions ?? "", schedule };
   });
 
   return {
     patientId: p.patientId,
     medications: meds,
     timezone: p.timezone,
-    daysOfWeek: p.daysOfWeek,
-    startDate: p.startDate.split("T")[0],
+    daysOfWeek: p.daysOfWeek || [],
+    startDate: p.startDate ? p.startDate.split("T")[0] : "",
     endDate: p.endDate ? p.endDate.split("T")[0] : "",
   };
 };
 
-// ---- Status styles ----
+const getStatusLabel = (status: PrescriptionStatus) => {
+  switch (status) {
+    case "active": return "Đang hiệu lực";
+    case "completed": return "Đã hoàn thành";
+    case "discontinued": return "Đã dừng";
+    case "expired": return "Hết hạn";
+  }
+};
+
 const getStatusClasses = (status: PrescriptionStatus) => {
   switch (status) {
     case "active":
-      return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300";
+      return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800";
     case "completed":
-      return "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300";
+      return "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800";
     case "discontinued":
-      return "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300";
+      return "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300 border border-rose-200 dark:border-rose-800";
     case "expired":
-      return "bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300";
+      return "bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600";
   }
 };
 
-const getAdherenceSlotClasses = (status: string) => {
-  switch (status) {
-    case "taken":
-      return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300";
-    case "missed":
-      return "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300";
-    default:
-      return "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400";
-  }
-};
-
-// ---- Main Component ----
 export default function PrescriptionPage() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const { toast, showToast, hideToast } = useToast();
 
@@ -410,16 +327,11 @@ export default function PrescriptionPage() {
   const [patients, setPatients] = useState<AssignmentResponse[]>([]);
   const [selectedPatientId, setSelectedPatientId] = useState(initialPatientId);
   const [statusFilter, setStatusFilter] = useState<PrescriptionStatus | "">("");
-  const [adherenceDays, setAdherenceDays] = useState(7);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
-  const [reminders, setReminders] = useState<ReminderRecord[]>([]);
-  const [adherence, setAdherence] = useState<MedicationAdherence | null>(null);
-
   const [loadingPatients, setLoadingPatients] = useState(true);
   const [loadingPrescriptions, setLoadingPrescriptions] = useState(false);
-  const [loadingReminders, setLoadingReminders] = useState(false);
-  const [loadingAdherence, setLoadingAdherence] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const [isFormVisible, setIsFormVisible] = useState(false);
@@ -429,11 +341,7 @@ export default function PrescriptionPage() {
   );
 
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
-  const [expandedAdherenceDays, setExpandedAdherenceDays] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
-
-  // Flow panel state — track after last create
-  // Flow panel state — track after last create
 
   // ---- Derived ----
   const patientOptions = useMemo(() => {
@@ -452,33 +360,55 @@ export default function PrescriptionPage() {
         p.patientId,
         {
           name: p.patientName || p.patientId,
-          code: p.patientCode || p.patientPublicId || t("common.notUpdated"),
+          code: p.patientCode || p.patientPublicId || "N/A",
         },
       ])
     );
-  }, [patientOptions, t]);
+  }, [patientOptions]);
 
-  const totalPages = Math.ceil(prescriptions.length / ITEMS_PER_PAGE);
+  // Group by patient
+  const patientGroups = useMemo(() => {
+    const term = searchTerm.toLowerCase();
+    
+    // Filter first
+    const filtered = prescriptions.filter(p => {
+      const pt = patientDisplayMap.get(p.patientId);
+      const matchName = pt?.name.toLowerCase().includes(term);
+      const matchCode = pt?.code.toLowerCase().includes(term);
+      const matchDrug = p.medications.some(m => m.drugName.toLowerCase().includes(term));
+      
+      return matchName || matchCode || matchDrug;
+    });
+
+    const groups = new Map<string, Prescription[]>();
+    filtered.forEach(p => {
+      if (!groups.has(p.patientId)) groups.set(p.patientId, []);
+      groups.get(p.patientId)!.push(p);
+    });
+
+    // Sort prescriptions inside each group
+    const sortedGroups = Array.from(groups.entries()).map(([patientId, list]) => {
+      list.sort((a, b) => {
+        if (a.status === "active" && b.status !== "active") return -1;
+        if (a.status !== "active" && b.status === "active") return 1;
+        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+      });
+      return { patientId, list };
+    });
+
+    // Sort groups by patient name
+    sortedGroups.sort((a, b) => {
+      const nameA = patientDisplayMap.get(a.patientId)?.name || "";
+      const nameB = patientDisplayMap.get(b.patientId)?.name || "";
+      return nameA.localeCompare(nameB);
+    });
+
+    return sortedGroups;
+  }, [prescriptions, searchTerm, patientDisplayMap]);
+
+  const totalPages = Math.ceil(patientGroups.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const currentPrescriptions = prescriptions.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-
-  const remindersByPrescription = useMemo(() => {
-    const map = new Map<string, ReminderRecord[]>();
-    const noPrescription: ReminderRecord[] = [];
-    for (const r of reminders) {
-      if (r.prescriptionId) {
-        const list = map.get(r.prescriptionId) ?? [];
-        list.push(r);
-        map.set(r.prescriptionId, list);
-      } else {
-        noPrescription.push(r);
-      }
-    }
-    return { byPrescription: map, noPrescription };
-  }, [reminders]);
-
-  // Flow verification
-  // Flow verification
+  const currentGroups = patientGroups.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
   // ---- Data loading ----
   const loadPatients = async () => {
@@ -517,70 +447,28 @@ export default function PrescriptionPage() {
     }
   }, [selectedPatientId, statusFilter, patientOptions]);
 
-  const loadReminders = useCallback(async () => {
-    if (!selectedPatientId) {
-      setReminders([]);
-      return;
-    }
-    try {
-      setLoadingReminders(true);
-      const list = await getReminders({ patientId: selectedPatientId, kind: "medication" });
-      setReminders(list);
-    } catch {
-      showToast("Không thể tải nhắc nhở thuốc.", "error");
-    } finally {
-      setLoadingReminders(false);
-    }
-  }, [selectedPatientId]);
-
-  const loadAdherence = useCallback(async () => {
-    if (!selectedPatientId) {
-      setAdherence(null);
-      return;
-    }
-    try {
-      setLoadingAdherence(true);
-      const data = await getMedicationAdherence({
-        patientId: selectedPatientId,
-        days: adherenceDays,
-      });
-      setAdherence(data);
-    } catch {
-      showToast("Không thể tải lịch sử uống thuốc.", "error");
-    } finally {
-      setLoadingAdherence(false);
-    }
-  }, [selectedPatientId, adherenceDays]);
-
-  const refreshAll = useCallback(async () => {
-    await Promise.all([loadPrescriptions(), loadReminders(), loadAdherence()]);
-  }, [loadPrescriptions, loadReminders, loadAdherence]);
-
-  useEffect(() => {
-    void loadPatients();
-  }, []);
-
+  useEffect(() => { void loadPatients(); }, []);
   useEffect(() => {
     if (!loadingPatients && patientOptions.length > 0) {
-      void refreshAll();
+      void loadPrescriptions();
     }
-  }, [loadingPatients, patientOptions.length, selectedPatientId, statusFilter, adherenceDays]);
+  }, [loadingPatients, patientOptions.length, selectedPatientId, statusFilter]);
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [selectedPatientId, statusFilter]);
+  useEffect(() => { setCurrentPage(1); }, [selectedPatientId, statusFilter, searchTerm]);
 
-  // ---- Form handlers ----
-  const handleOpenCreate = () => {
-    setFormData(createDefaultFormData(selectedPatientId));
+  // ---- Handlers ----
+  const handleOpenCreate = (patientId = selectedPatientId) => {
+    setFormData(createDefaultFormData(patientId));
     setEditingPrescriptionId(null);
     setIsFormVisible(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleOpenEdit = (prescription: Prescription) => {
     setFormData(formFromPrescription(prescription));
     setEditingPrescriptionId(prescription.id);
     setIsFormVisible(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleCloseForm = () => {
@@ -588,14 +476,35 @@ export default function PrescriptionPage() {
     setEditingPrescriptionId(null);
   };
 
-  const handleFormChange = (
-    e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
-  ) => {
+  const toggleCardExpansion = (patientId: string) => {
+    setExpandedCards(prev => {
+      const next = new Set(prev);
+      if (next.has(patientId)) next.delete(patientId);
+      else next.add(patientId);
+      return next;
+    });
+  };
+
+  const handleStopPrescription = async (p: Prescription) => {
+    if (!window.confirm("Bạn có chắc chắn muốn dừng đơn thuốc này? Lịch nhắc thuốc liên quan cũng sẽ bị dừng.")) return;
+    try {
+      setSaving(true);
+      await updatePrescriptionStatus(p.id, "discontinued");
+      showToast("Đã dừng đơn thuốc.", "success");
+      await loadPrescriptions();
+    } catch (e: any) {
+      showToast(e?.response?.data?.error || "Không thể dừng đơn thuốc.", "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Form Field Handlers
+  const handleFormChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Medication handlers
   const handleDrugSelect = (medIdx: number, suggestion: DrugSuggestion) => {
     setFormData((prev) => ({
       ...prev,
@@ -633,20 +542,13 @@ export default function PrescriptionPage() {
     }));
   };
 
-  const handleMedChange = (
-    medIdx: number,
-    field: keyof Omit<MedicationFormData, "schedule">,
-    value: string
-  ) => {
+  const handleMedChange = (medIdx: number, field: keyof Omit<MedicationFormData, "schedule">, value: string) => {
     setFormData((prev) => ({
       ...prev,
-      medications: prev.medications.map((med, i) =>
-        i === medIdx ? { ...med, [field]: value } : med
-      ),
+      medications: prev.medications.map((med, i) => i === medIdx ? { ...med, [field]: value } : med),
     }));
   };
 
-  // Schedule slot handlers
   const handleToggleSlot = (medIdx: number, tod: "morning" | "noon" | "evening") => {
     setFormData((prev) => ({
       ...prev,
@@ -658,12 +560,7 @@ export default function PrescriptionPage() {
     }));
   };
 
-  const handleSlotChange = (
-    medIdx: number,
-    tod: "morning" | "noon" | "evening",
-    field: keyof Omit<SlotFormData, "enabled">,
-    value: string | number
-  ) => {
+  const handleSlotChange = (medIdx: number, tod: "morning" | "noon" | "evening", field: keyof Omit<SlotFormData, "enabled">, value: string | number) => {
     setFormData((prev) => ({
       ...prev,
       medications: prev.medications.map((med, i) =>
@@ -696,12 +593,7 @@ export default function PrescriptionPage() {
     }));
   };
 
-  const handleExtraChange = (
-    medIdx: number,
-    extraIdx: number,
-    field: keyof ExtraSlotFormData,
-    value: string | number
-  ) => {
+  const handleExtraChange = (medIdx: number, extraIdx: number, field: keyof ExtraSlotFormData, value: string | number) => {
     setFormData((prev) => ({
       ...prev,
       medications: prev.medications.map((med, i) =>
@@ -717,66 +609,41 @@ export default function PrescriptionPage() {
       ),
     }));
   };
+  
+  const handleToggleWeekday = (dayValue: number) => {
+    setFormData((current) => {
+      const exists = current.daysOfWeek.includes(dayValue);
+      return {
+        ...current,
+        daysOfWeek: exists
+          ? current.daysOfWeek.filter((item) => item !== dayValue)
+          : [...current.daysOfWeek, dayValue],
+      };
+    });
+  };
 
-  // ---- Validation ----
   const validateForm = (): boolean => {
-    if (!formData.patientId) {
-      showToast(t("prescriptions.patientRequired"), "error");
-      return false;
-    }
-    if (formData.medications.length === 0) {
-      showToast("Cần ít nhất một loại thuốc.", "error");
-      return false;
-    }
-    if (formData.daysOfWeek.length === 0) {
-      showToast("Cần chọn ít nhất một ngày trong tuần.", "error");
-      return false;
-    }
+    if (!formData.patientId) { showToast("Vui lòng chọn bệnh nhân", "error"); return false; }
+    if (formData.medications.length === 0) { showToast("Cần ít nhất một loại thuốc.", "error"); return false; }
+    if (formData.daysOfWeek.length === 0) { showToast("Cần chọn ít nhất một ngày trong tuần.", "error"); return false; }
 
     for (let i = 0; i < formData.medications.length; i++) {
       const med = formData.medications[i];
-      if (!med.drugName.trim()) {
-        showToast(`Thuốc #${i + 1}: ${t("prescriptions.drugNameRequired")}`, "error");
-        return false;
+      if (!med.drugName.trim() || med.drugName.trim().length < 2) { 
+        showToast(`Thuốc #${i + 1}: Tên thuốc phải có ít nhất 2 ký tự`, "error"); 
+        return false; 
       }
-      if (!med.dosage.trim()) {
-        showToast(`Thuốc #${i + 1}: ${t("prescriptions.dosageRequired")}`, "error");
-        return false;
-      }
+      if (!med.dosage.trim()) { showToast(`Thuốc #${i + 1}: Vui lòng nhập liều lượng`, "error"); return false; }
       const { morning, noon, evening, extras } = med.schedule;
       const enabledCount = [morning, noon, evening].filter((s) => s.enabled).length + extras.length;
-      if (enabledCount === 0) {
-        showToast(`Thuốc #${i + 1}: ${t("prescriptions.scheduleRequired")}`, "error");
-        return false;
-      }
-      for (const [label, slot] of [["Sáng", morning], ["Trưa", noon], ["Tối", evening]] as const) {
-        if (!slot.enabled) continue;
-        if (slot.pillCount <= 0) {
-          showToast(`Thuốc #${i + 1} (${label}): ${t("prescriptions.pillCountRequired")}`, "error");
-          return false;
-        }
-      }
-      for (let j = 0; j < extras.length; j++) {
-        const extra = extras[j];
-        if (!extra.customTime) {
-          showToast(`Thuốc #${i + 1}, giờ khác #${j + 1}: Vui lòng chọn giờ uống.`, "error");
-          return false;
-        }
-        if (extra.pillCount <= 0) {
-          showToast(`Thuốc #${i + 1}, giờ khác #${j + 1}: ${t("prescriptions.pillCountRequired")}`, "error");
-          return false;
-        }
-      }
+      if (enabledCount === 0) { showToast(`Thuốc #${i + 1}: Cần có ít nhất 1 giờ uống`, "error"); return false; }
     }
-
     if (formData.endDate && formData.startDate > formData.endDate) {
-      showToast(t("prescriptions.endDateBeforeStart"), "error");
-      return false;
+      showToast("Ngày kết thúc không hợp lệ", "error"); return false;
     }
     return true;
   };
 
-  // ---- Submit ----
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
@@ -786,1164 +653,425 @@ export default function PrescriptionPage() {
       const base = prescriptionFromForm(formData);
 
       if (editingPrescriptionId) {
-        // Full update — must include status
         const existing = prescriptions.find((p) => p.id === editingPrescriptionId);
-        await updatePrescription(editingPrescriptionId, {
-          ...base,
-          status: existing?.status ?? "active",
-        });
-        showToast(t("prescriptions.updateSuccess"), "success");
+        await updatePrescription(editingPrescriptionId, { ...base, status: existing?.status ?? "active" });
+        showToast("Cập nhật thành công", "success");
       } else {
         await createPrescription(base);
-
-        showToast(t("prescriptions.createSuccess"), "success");
+        showToast("Tạo mới thành công", "success");
       }
-
-      setIsFormVisible(false);
-      setEditingPrescriptionId(null);
-      await refreshAll();
-    } catch (err: any) {
-      showToast(err?.response?.data?.error || t("prescriptions.saveError"), "error");
+      await loadPrescriptions();
+      handleCloseForm();
+    } catch (error: any) {
+      showToast(error?.response?.data?.error || "Lỗi lưu", "error");
     } finally {
       setSaving(false);
     }
   };
 
-  // ---- Status change ----
-  const handleStatusChange = async (prescription: Prescription, newStatus: PrescriptionStatus) => {
-    if (prescription.status === newStatus) return;
-    const confirmed = window.confirm(`Đổi trạng thái đơn thuốc sang "${newStatus}"?`);
-    if (!confirmed) return;
-
-    try {
-      setSaving(true);
-      await updatePrescriptionStatus(prescription.id, newStatus);
-      showToast(t("prescriptions.statusUpdateSuccess"), "success");
-      await refreshAll();
-    } catch (err: any) {
-      showToast(err?.response?.data?.error || t("prescriptions.statusUpdateError"), "error");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const toggleCard = (id: string) => {
-    setExpandedCards((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  };
-
-  const toggleAdherenceDay = (date: string) => {
-    setExpandedAdherenceDays((prev) => {
-      const next = new Set(prev);
-      next.has(date) ? next.delete(date) : next.add(date);
-      return next;
-    });
-  };
-
-  // ---- Render helpers ----
-  const renderTimeOfDayLabel = (tod: string) => {
-    if (tod === "morning") return t("prescriptions.morning");
-    if (tod === "noon") return t("prescriptions.noon");
-    if (tod === "evening") return t("prescriptions.evening");
-    return tod;
-  };
-
-  const renderMealTimingLabel = (mt?: string) => {
-    if (mt === "pre_meal") return t("prescriptions.preMeal");
-    if (mt === "post_meal") return t("prescriptions.postMeal");
-    return "";
-  };
-
-  const renderSlotSummary = (dose: MedicationDose) => {
-    const parts: string[] = [renderTimeOfDayLabel(dose.timeOfDay)];
-    if (dose.time) parts.push(`${t("prescriptions.at")} ${dose.time}`);
-    else if (dose.hour !== undefined && dose.minute !== undefined)
-      parts.push(`${t("prescriptions.at")} ${formatTime(dose.hour, dose.minute)}`);
-    const meal = renderMealTimingLabel(dose.mealTiming);
-    if (meal) parts.push(meal);
-    parts.push(`${dose.pillCount}v`);
-    return parts.join(" · ");
-  };
-
-  const renderReminderStatusBadge = (status: string) => {
-    const cls =
-      status === "active"
-        ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
-        : status === "paused"
-          ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
-          : "bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400";
-    return (
-      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${cls}`}>
-        {status}
-      </span>
-    );
-  };
-
-  // ---- Render ----
   return (
-    <div className="mx-auto p-6 pb-24">
-      <Toast toast={toast} onClose={hideToast} />
+    <div className="w-full px-4 py-8 pb-24 sm:px-6 lg:px-8">
+      {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
 
-      {/* ── Header ── */}
-      <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <h1 className="flex items-center gap-3 text-2xl font-bold tracking-tight text-slate-800 dark:text-slate-100">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
-              <FaNotesMedical size={20} />
-            </div>
-            {selectedPatientId
-              ? `Đơn thuốc của ${patientDisplayMap.get(selectedPatientId)?.name || "bệnh nhân"}`
-              : "Danh sách đơn thuốc"}
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm text-slate-500 dark:text-slate-400">
-            {selectedPatientId
-              ? "Theo dõi các đơn thuốc, lịch uống và trạng thái điều trị của bệnh nhân này."
-              : "Các đơn thuốc được kê cho bệnh nhân trong phạm vi quản lý của bạn."}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-3">
-          <button
-            type="button"
-            onClick={handleOpenCreate}
-            className="inline-flex items-center rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
-          >
-            <FaPlus className="mr-2" />
-            {t("prescriptions.createPrescription")}
-          </button>
-          <button
-            type="button"
-            onClick={() => void refreshAll()}
-            disabled={loadingPrescriptions}
-            className="inline-flex items-center rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-60"
-          >
-            <FaSyncAlt className={`mr-2 ${loadingPrescriptions ? "animate-spin" : ""}`} />
-            {t("common.refresh")}
-          </button>
-        </div>
-      </div>
-
-      {/* ── Filters ── */}
-      <div className="mb-6 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
-          <div className="flex-1">
-            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
-              {t("prescriptions.filterByPatient")}
-            </label>
-            <PatientSearchSelect
-              value={selectedPatientId}
-              onChange={setSelectedPatientId}
-              patients={patientOptions}
-              disabled={loadingPatients}
-              placeholderEmpty={t("prescriptions.allPatients")}
-              placeholderSearch={loadingPatients ? t("prescriptions.loadingPatients") : "Tìm theo tên hoặc mã bệnh nhân..."}
-            />
-          </div>
-
-          <div className="lg:w-56">
-            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
-              {t("prescriptions.filterByStatus")}
-            </label>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as PrescriptionStatus | "")}
-              className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {STATUS_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {t(o.labelKey)}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="lg:w-56">
-            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
-              {t("prescriptions.adherenceRange")}
-            </label>
-            <select
-              value={adherenceDays}
-              onChange={(e) => setAdherenceDays(Number(e.target.value))}
-              className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {ADHERENCE_RANGES.map((r) => (
-                <option key={r.value} value={r.value}>
-                  {t(r.labelKey)}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
-
-
-
-      {/* ── Prescription List ── */}
-      <div className="mb-6 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-800 dark:text-slate-100">
-              {t("prescriptions.prescriptionList")}
-            </h2>
-            <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
-              {t("prescriptions.prescriptionListDesc")}
-            </p>
-          </div>
-
-        </div>
-
-        {loadingPrescriptions ? (
-          <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 px-4 py-6 text-sm text-slate-500 dark:text-slate-400">
-            {t("prescriptions.loading")}
-          </div>
-        ) : prescriptions.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 px-4 py-8 text-center text-sm text-slate-500 dark:text-slate-400">
-            <FaNotesMedical className="mx-auto mb-3 text-3xl text-slate-300" />
-            {statusFilter ? t("prescriptions.noResults") : t("prescriptions.noPrescriptions")}
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {currentPrescriptions.map((pres) => {
-              const patientInfo = patientDisplayMap.get(pres.patientId);
-              const isExpanded = expandedCards.has(pres.id);
-
-              let medTitle = "Đơn thuốc chưa có tên thuốc";
-              if (pres.medications && pres.medications.length > 0) {
-                if (pres.medications.length === 1) {
-                  medTitle = pres.medications[0].drugName;
-                } else {
-                  medTitle = `${pres.medications.length} loại thuốc: ${pres.medications.slice(0, 2).map(m => m.drugName).join(", ")}${pres.medications.length > 2 ? "..." : ""}`;
-                }
-              }
-
-              return (
-                <div
-                  key={pres.id}
-                  className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden"
-                >
-                  {/* Card header (Outer row) */}
-                  <div
-                    className="grid cursor-pointer grid-cols-1 gap-4 p-4 transition-all hover:bg-slate-50 dark:hover:bg-slate-800/60 md:grid-cols-12 md:items-center"
-                    onClick={() => toggleCard(pres.id)}
-                  >
-                    {/* Left: Medicine Title & Patient (optional) */}
-                    <div className="md:col-span-5">
-                      <div className="flex flex-col items-start gap-2">
-                        <span className="text-base font-bold text-blue-700 dark:text-blue-400">
-                          {medTitle}
-                        </span>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span
-                            className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider ${getStatusClasses(pres.status)}`}
-                          >
-                            {t(`prescriptions.${pres.status}`)}
-                          </span>
-                          {!selectedPatientId && patientInfo && (
-                            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                              • {patientInfo.name} {patientInfo.code ? `(${patientInfo.code})` : ""}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Middle: Schedule & Meta */}
-                    <div className="flex flex-col gap-1 text-xs text-slate-500 dark:text-slate-400 md:col-span-4">
-                      <div className="flex items-center gap-1.5">
-                        <FaClock className="shrink-0 text-slate-400 dark:text-slate-500" />
-                        <span className="line-clamp-1">
-                          {formatDate(pres.startDate)}
-                          {pres.endDate ? ` - ${formatDate(pres.endDate)}` : " - Vô thời hạn"}
-                        </span>
-                      </div>
-                      <div className="flex items-center">
-                        <span className="font-medium text-slate-600 dark:text-slate-300">
-                          {buildWeekdaySummary(pres.daysOfWeek, t)}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Right: Medications count & Actions */}
-                    <div className="flex items-center justify-between gap-4 md:col-span-3 md:justify-end">
-                      <div className="flex shrink-0 items-center justify-center rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                        {pres.medications.length} loại
-                      </div>
-                      <div className="flex shrink-0 items-center gap-3 border-l border-slate-200 pl-3 dark:border-slate-700">
-                        <span className="hidden text-xs font-medium text-blue-600 hover:underline dark:text-blue-400 sm:inline-block">
-                          Xem chi tiết
-                        </span>
-                        {isExpanded ? (
-                          <FaChevronDown className="text-slate-400" />
-                        ) : (
-                          <FaChevronRight className="text-slate-400" />
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Expanded details */}
-                  {isExpanded && (
-                    <div className="border-t border-slate-100 dark:border-slate-700 p-4">
-                      {/* Medications */}
-                      <div className="mb-4 space-y-3">
-                        {pres.medications.map((med, mi) => (
-                          <div key={mi} className="rounded-lg bg-slate-50 dark:bg-slate-800 p-3">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="font-semibold text-gray-900 dark:text-slate-100">
-                                {med.drugName}
-                              </span>
-                              <span className="text-sm text-slate-600 dark:text-slate-300">
-                                {med.dosage}
-                              </span>
-                              {med.route && (
-                                <span className="text-xs text-slate-400">· {med.route}</span>
-                              )}
-                            </div>
-                            {med.instructions && (
-                              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                                📝 {med.instructions}
-                              </p>
-                            )}
-                            <div className="mt-2 flex flex-wrap gap-2">
-                              {med.schedule.map((dose, di) => (
-                                <span
-                                  key={di}
-                                  className="inline-flex items-center rounded-full bg-blue-50 dark:bg-blue-900/30 px-2.5 py-1 text-xs font-medium text-blue-700 dark:text-blue-300"
-                                >
-                                  {renderSlotSummary(dose)}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Actions */}
-                      <div className="flex flex-wrap gap-2">
-                        {pres.status === "active" && (
-                          <button
-                            type="button"
-                            onClick={() => handleOpenEdit(pres)}
-                            disabled={saving}
-                            className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
-                          >
-                            <FaEdit className="mr-1" />
-                            {t("prescriptions.edit")}
-                          </button>
-                        )}
-
-                        <div className="flex items-center gap-1">
-                          <span className="text-xs text-slate-400">{t("prescriptions.changeStatus")}:</span>
-                          {(["active", "completed", "discontinued", "expired"] as PrescriptionStatus[])
-                            .filter((s) => s !== pres.status)
-                            .map((s) => (
-                              <button
-                                key={s}
-                                type="button"
-                                onClick={() => void handleStatusChange(pres, s)}
-                                disabled={saving}
-                                className={`rounded-full px-2.5 py-1 text-xs font-semibold transition ${getStatusClasses(s)} opacity-70 hover:opacity-100`}
-                              >
-                                {t(`prescriptions.${s}`)}
-                              </button>
-                            ))}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="mt-5 flex items-center justify-end border-t border-slate-200 dark:border-slate-700 pt-4">
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setCurrentPage((p) => p - 1)}
-                disabled={currentPage === 1}
-                className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm disabled:opacity-50"
-              >
-                <FaChevronLeft className="mr-1" />
-                {t("common.previous")}
-              </button>
-              <span className="text-sm text-slate-600 dark:text-slate-300">
-                {currentPage} / {totalPages}
-              </span>
-              <button
-                type="button"
-                onClick={() => setCurrentPage((p) => p + 1)}
-                disabled={currentPage === totalPages}
-                className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm disabled:opacity-50"
-              >
-                {t("common.next")}
-                <FaChevronRight className="ml-1" />
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* ── Medication Reminders Panel ── */}
-      {selectedPatientId && (
-        <div className="mb-6 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
-          <div className="mb-4 flex items-center justify-between">
+      {!isFormVisible ? (
+        <>
+          <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <h2 className="flex items-center gap-2 text-xl font-semibold text-gray-800 dark:text-slate-100">
-                <MdOutlineNotificationsActive className="text-purple-500" />
-                {t("prescriptions.remindersPanel")}
-              </h2>
-              <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
-                {t("prescriptions.remindersPanelDesc")}
-              </p>
+              <h1 className="text-3xl font-bold text-gray-800 dark:text-slate-100">Đơn Thuốc</h1>
+              <p className="mt-2 text-gray-600 dark:text-slate-400">Quản lý toàn bộ lịch trình điều trị bằng thuốc của bệnh nhân.</p>
             </div>
-            <button
-              type="button"
-              onClick={() => void loadReminders()}
-              className="text-xs text-blue-600 dark:text-blue-400 underline"
-            >
-              {t("common.refresh")}
-            </button>
+            <div className="flex flex-wrap gap-3">
+              <button onClick={() => handleOpenCreate()} className="inline-flex items-center rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 shadow-sm">
+                <FaPlus className="mr-2" /> Tạo đơn thuốc mới
+              </button>
+              <button onClick={loadPrescriptions} disabled={loadingPrescriptions} className="inline-flex items-center rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 disabled:opacity-60">
+                <FaSyncAlt className={`mr-2 ${loadingPrescriptions ? "animate-spin" : ""}`} /> Làm mới
+              </button>
+            </div>
           </div>
 
-          {loadingReminders ? (
-            <div className="text-sm text-slate-500 dark:text-slate-400">
-              {t("prescriptions.loadingReminders")}
-            </div>
-          ) : reminders.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 px-4 py-6 text-sm text-slate-500 dark:text-slate-400">
-              {t("prescriptions.noReminders")}
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {/* Grouped by prescriptionId */}
-              {Array.from(remindersByPrescription.byPrescription.entries()).map(
-                ([prescId, rems]) => {
-                  const pres = prescriptions.find((p) => p.id === prescId);
-                  return (
-                    <div
-                      key={prescId}
-                      className="rounded-lg border border-purple-100 dark:border-purple-900/30 bg-purple-50 dark:bg-purple-900/10 p-3"
-                    >
-                      {pres && (
-                        <div className="mb-2 text-xs font-semibold text-purple-700 dark:text-purple-300">
-                          📋 {pres.medications.map((m) => m.drugName).join(", ")}
-                        </div>
-                      )}
-                      <div className="space-y-2">
-                        {rems.map((r) => (
-                          <ReminderRow key={r.id} reminder={r} formatTime={formatTime} renderReminderStatusBadge={renderReminderStatusBadge} t={t} />
-                        ))}
-                      </div>
-                    </div>
-                  );
-                }
-              )}
-              {/* Reminders without prescriptionId */}
-              {remindersByPrescription.noPrescription.map((r) => (
-                <ReminderRow key={r.id} reminder={r} formatTime={formatTime} renderReminderStatusBadge={renderReminderStatusBadge} t={t} />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── Adherence Panel ── */}
-      {selectedPatientId && (
-        <div className="mb-6 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
-        <div className="mb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-800 dark:text-slate-100">
-              📊 {t("prescriptions.adherencePanel")}
-            </h2>
-            <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
-              {t("prescriptions.adherencePanelDesc")}
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <select
-              value={adherenceDays}
-              onChange={(e) => setAdherenceDays(Number(e.target.value))}
-              className="rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-1.5 text-sm text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {ADHERENCE_RANGES.map((r) => (
-                <option key={r.value} value={r.value}>
-                  {t(r.labelKey)}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              onClick={() => void loadAdherence()}
-              className="text-xs text-blue-600 dark:text-blue-400 underline ml-1"
-            >
-              {t("common.refresh")}
-            </button>
-          </div>
-        </div>
-
-          {loadingAdherence ? (
-            <div className="text-sm text-slate-500 dark:text-slate-400">
-              {t("prescriptions.loadingAdherence")}
-            </div>
-          ) : !adherence || adherence.summary.expected === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 px-4 py-6 text-sm text-slate-500 dark:text-slate-400">
-              {t("prescriptions.noAdherence")}
-            </div>
-          ) : (
-            <>
-              {/* Summary Cards */}
-              <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <SummaryCard label={t("prescriptions.expectedDoses")} value={adherence.summary.expected} color="blue" />
-                <SummaryCard label={t("prescriptions.takenDoses")} value={adherence.summary.taken} color="green" />
-                <SummaryCard label={t("prescriptions.missedDoses")} value={adherence.summary.missed} color="red" />
-                <SummaryCard
-                  label={t("prescriptions.adherenceRate")}
-                  value={`${Math.round(adherence.summary.adherenceRate * 100)}%`}
-                  color="purple"
+          <div className="mb-8 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-sm">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-slate-300">Tìm kiếm</label>
+                <input 
+                  type="text" 
+                  placeholder="Tên, mã, tên thuốc..."
+                  value={searchTerm}
+                  onChange={e => setSearchTerm(e.target.value)}
+                  className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 py-2.5 px-3 text-sm text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 outline-none"
                 />
               </div>
-
-              {/* Progress Bar */}
-              <div className="mb-5">
-                <div className="mb-1 flex justify-between text-xs text-slate-500 dark:text-slate-400">
-                  <span>{t("prescriptions.adherenceRate")}</span>
-                  <span>{Math.round(adherence.summary.adherenceRate * 100)}%</span>
-                </div>
-                <div className="h-3 w-full rounded-full bg-slate-200 dark:bg-slate-700">
-                  <div
-                    className="h-3 rounded-full bg-emerald-500 transition-all"
-                    style={{ width: `${Math.min(100, Math.round(adherence.summary.adherenceRate * 100))}%` }}
-                  />
-                </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-slate-300">Bệnh nhân</label>
+                <select value={selectedPatientId} onChange={(e) => setSelectedPatientId(e.target.value)} className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-sm text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 outline-none">
+                  <option value="">Tất cả bệnh nhân</option>
+                  {patientOptions.map((p) => (
+                    <option key={p.patientId} value={p.patientId}>
+                      {(p.patientName || p.patientId) + (p.patientCode ? ` • ${p.patientCode}` : "")}
+                    </option>
+                  ))}
+                </select>
               </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-slate-300">Trạng thái</label>
+                <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as any)} className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-sm text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 outline-none">
+                  {STATUS_OPTIONS.map((o) => (<option key={o.label} value={o.value}>{o.label}</option>))}
+                </select>
+              </div>
+            </div>
+          </div>
 
-              {/* Daily breakdown */}
-              <div className="space-y-2">
-                {adherence.days.map((day) => {
-                  const isOpen = expandedAdherenceDays.has(day.date);
-                  return (
-                    <div
-                      key={day.date}
-                      className="rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden"
+          <div className="space-y-6">
+            {loadingPrescriptions ? (
+              <div className="py-12 text-center text-slate-500">Đang tải dữ liệu...</div>
+            ) : currentGroups.length === 0 ? (
+              <div className="py-12 text-center text-slate-500 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">Không tìm thấy đơn thuốc nào.</div>
+            ) : (
+              currentGroups.map(({ patientId, list }) => {
+                const pt = patientDisplayMap.get(patientId);
+                const isExpanded = expandedCards.has(patientId);
+                const activeCount = list.filter(p => p.status === "active").length;
+                
+                // Get sample active drugs
+                const sampleDrugs = Array.from(new Set(
+                  list.filter(p => p.status === "active")
+                      .flatMap(p => p.medications.map(m => m.drugName))
+                ));
+
+                return (
+                  <div key={patientId} className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <div 
+                      className={`p-5 flex items-center justify-between cursor-pointer transition ${isExpanded ? 'bg-slate-50 dark:bg-slate-700/50' : 'hover:bg-slate-50 dark:hover:bg-slate-700/50'}`}
+                      onClick={() => toggleCardExpansion(patientId)}
                     >
-                      <div
-                        className="flex cursor-pointer items-center justify-between gap-2 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-700/50"
-                        onClick={() => toggleAdherenceDay(day.date)}
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className="font-semibold text-sm text-gray-800 dark:text-slate-100">
-                            {new Date(day.date).toLocaleDateString("vi-VN", {
-                              weekday: "short",
-                              day: "2-digit",
-                              month: "2-digit",
-                            })}
+                      <div className="flex-1 flex flex-col md:flex-row md:items-center gap-4">
+                        <div className="min-w-[200px]">
+                          <h3 className="text-lg font-bold text-blue-700 dark:text-blue-400">{pt?.name || patientId}</h3>
+                          <p className="text-sm text-slate-500">Mã BN: {pt?.code}</p>
+                        </div>
+                        <div className="flex flex-wrap gap-2 items-center">
+                          <span className={`px-2.5 py-1 text-xs font-semibold rounded-md ${activeCount > 0 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400'}`}>
+                            {activeCount} đơn đang hiệu lực
                           </span>
-                          <span className="text-xs text-slate-400">
-                            {day.taken}/{day.expected} liều
+                          <span className="px-2.5 py-1 text-xs font-semibold rounded-md bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400">
+                            Tổng {list.length} đơn
                           </span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          {day.missed > 0 && (
-                            <span className="rounded-full bg-rose-100 dark:bg-rose-900/30 px-2 py-0.5 text-xs font-semibold text-rose-600 dark:text-rose-300">
-                              {day.missed} bỏ lỡ
-                            </span>
-                          )}
-                          {day.taken === day.expected && day.expected > 0 && (
-                            <FaCheckCircle className="text-emerald-500" />
-                          )}
-                          {isOpen ? (
-                            <FaChevronDown className="text-slate-400 text-xs" />
-                          ) : (
-                            <FaChevronRight className="text-slate-400 text-xs" />
-                          )}
+                        {sampleDrugs.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 ml-auto md:ml-4">
+                            {sampleDrugs.slice(0, 3).map((d, i) => (
+                              <span key={i} className="text-xs px-2 py-0.5 rounded border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20">
+                                {d}
+                              </span>
+                            ))}
+                            {sampleDrugs.length > 3 && (
+                              <span className="text-xs px-2 py-0.5 text-slate-500">+{sampleDrugs.length - 3}</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <div className="ml-4 flex items-center gap-3">
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); handleOpenCreate(patientId); }}
+                          className="hidden md:inline-flex px-3 py-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50"
+                        >
+                          <FaPlus className="mr-1 mt-0.5" /> Tạo đơn
+                        </button>
+                        <div className="text-slate-400 bg-slate-100 dark:bg-slate-700 p-1.5 rounded-full">
+                          {isExpanded ? <FaChevronDown /> : <FaChevronRight />}
                         </div>
                       </div>
+                    </div>
 
-                      {isOpen && (
-                        <div className="border-t border-slate-100 dark:border-slate-700 px-4 pb-3 pt-2 space-y-3">
-                          {day.medications.map((med, mi) => (
-                            <div key={mi}>
-                              <div className="mb-1 text-xs font-semibold text-slate-700 dark:text-slate-300">
-                                {med.drugName} {med.dosage}
-                              </div>
-                              <div className="flex flex-wrap gap-2">
-                                {med.slots.map((slot, si) => (
-                                  <div
-                                    key={si}
-                                    className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${getAdherenceSlotClasses(slot.status)}`}
-                                  >
-                                    {slot.status === "taken" ? (
-                                      <FaCheckCircle className="shrink-0" />
-                                    ) : slot.status === "missed" ? (
-                                      <FaTimesCircle className="shrink-0" />
-                                    ) : (
-                                      <FaClock className="shrink-0" />
-                                    )}
-                                    <span>
-                                      {renderTimeOfDayLabel(slot.timeOfDay)}
-                                      {slot.time ? ` ${slot.time}` : ""}
-                                      {slot.mealTiming ? ` · ${renderMealTimingLabel(slot.mealTiming)}` : ""}
-                                      {` · ${slot.pillCount}v`}
+                    {isExpanded && (
+                      <div className="border-t border-slate-200 dark:border-slate-700 p-0 overflow-x-auto">
+                        <table className="w-full text-left text-sm text-slate-600 dark:text-slate-300">
+                          <thead className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700">
+                            <tr>
+                              <th className="px-5 py-3 font-semibold w-1/3">Thuốc</th>
+                              <th className="px-5 py-3 font-semibold">Thời gian</th>
+                              <th className="px-5 py-3 font-semibold">Trạng thái</th>
+                              <th className="px-5 py-3 font-semibold text-right">Thao tác</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                            {list.map(p => {
+                              const drugsStr = p.medications.slice(0, 2).map(m => m.drugName).join(", ");
+                              const hasMore = p.medications.length > 2;
+                              return (
+                                <tr 
+                                  key={p.id} 
+                                  className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition cursor-pointer relative group"
+                                  onClick={() => navigate(`/prescriptions/${p.id}`)}
+                                >
+                                  <td className="px-5 py-4">
+                                    <div className="font-medium text-slate-800 dark:text-slate-200">
+                                      {drugsStr} {hasMore && <span className="text-slate-400 text-xs italic"> +{p.medications.length - 2} thuốc khác</span>}
+                                    </div>
+                                    <div className="text-xs text-slate-500 mt-1">{p.medications.length} loại thuốc</div>
+                                    {/* Hover tooltip */}
+                                    <div className="absolute left-1/4 top-[80%] hidden w-72 z-50 group-hover:block bg-slate-800 text-slate-100 p-4 rounded-xl shadow-xl text-xs border border-slate-700 pointer-events-none">
+                                      <h4 className="font-bold mb-2 text-sm text-blue-300">Chi tiết đơn thuốc:</h4>
+                                      <ul className="space-y-1.5 mb-2">
+                                         {(p.medications || []).map((m, i) => (
+                                           <li key={i}><span className="font-semibold text-white">{m.drugName}</span> - {m.dosage} ({(m.schedule || []).length} lần/ngày)</li>
+                                         ))}
+                                      </ul>
+                                      <div className="mt-2 pt-2 border-t border-slate-600 text-slate-400 italic">Click để xem toàn bộ thông tin đơn thuốc</div>
+                                    </div>
+                                  </td>
+                                  <td className="px-5 py-4">
+                                    <div className="text-slate-700 dark:text-slate-300">{formatDate(p.startDate)} {p.endDate && `- ${formatDate(p.endDate)}`}</div>
+                                    <div className="text-xs text-slate-500 mt-1 truncate max-w-[200px]" title={p.daysOfWeek.map(d => WEEKDAY_OPTIONS.find(o=>o.value===d)?.label).join(", ")}>
+                                      Lặp lại: {p.daysOfWeek.length===7 ? "Mỗi ngày" : p.daysOfWeek.map(d => WEEKDAY_OPTIONS.find(o=>o.value===d)?.label).join(", ")}
+                                    </div>
+                                  </td>
+                                  <td className="px-5 py-4">
+                                    <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${getStatusClasses(p.status)}`}>
+                                      {getStatusLabel(p.status)}
                                     </span>
-                                    {slot.status === "taken" && slot.takenAt && (
-                                      <span className="text-slate-400">
-                                        ({t("prescriptions.takenAt")}{" "}
-                                        {new Date(slot.takenAt).toLocaleTimeString("vi-VN", {
-                                          hour: "2-digit",
-                                          minute: "2-digit",
-                                        })}
-                                        )
-                                      </span>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
+                                  </td>
+                                  <td className="px-5 py-4 text-right">
+                                    <div className="flex justify-end gap-2">
+                                      <Link 
+                                        to={`/prescriptions/${p.id}`}
+                                        className="p-1.5 text-blue-600 bg-blue-50 rounded hover:bg-blue-100 dark:text-blue-400 dark:bg-blue-900/30 transition"
+                                        title="Xem chi tiết"
+                                      >
+                                        <FaListUl />
+                                      </Link>
+                                      {p.status === "active" && (
+                                        <>
+                                          <button 
+                                            onClick={(e) => { e.stopPropagation(); handleOpenEdit(p); }}
+                                            className="p-1.5 text-amber-600 bg-amber-50 rounded hover:bg-amber-100 dark:text-amber-400 dark:bg-amber-900/30 transition"
+                                            title="Sửa đơn thuốc"
+                                          >
+                                            <FaEdit />
+                                          </button>
+                                          <button 
+                                            onClick={(e) => { e.stopPropagation(); handleStopPrescription(p); }}
+                                            className="p-1.5 text-rose-600 bg-rose-50 rounded hover:bg-rose-100 dark:text-rose-400 dark:bg-rose-900/30 transition"
+                                            title="Dừng đơn thuốc"
+                                          >
+                                            <FaBan />
+                                          </button>
+                                        </>
+                                      )}
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {totalPages > 1 && (
+            <div className="mt-8 flex items-center justify-between border-t border-slate-200 dark:border-slate-700 pt-5">
+              <div className="text-sm text-slate-500">Trang {currentPage} / {totalPages}</div>
+              <div className="flex gap-2">
+                <button onClick={() => setCurrentPage(c => Math.max(1, c - 1))} disabled={currentPage === 1} className="px-3 py-1.5 rounded bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-sm disabled:opacity-50"><FaChevronLeft/></button>
+                <button onClick={() => setCurrentPage(c => Math.min(totalPages, c + 1))} disabled={currentPage === totalPages} className="px-3 py-1.5 rounded bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-sm disabled:opacity-50"><FaChevronRight/></button>
+              </div>
+            </div>
+          )}
+        </>
+      ) : (
+        // Form
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 lg:p-8">
+          <div className="flex justify-between items-center mb-6 pb-4 border-b border-slate-200 dark:border-slate-700">
+            <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+              <FaFilePrescription className="text-blue-500" />
+              {editingPrescriptionId ? "Sửa đơn thuốc" : "Tạo đơn thuốc mới"}
+            </h2>
+            <button onClick={handleCloseForm} className="text-slate-400 hover:text-slate-600"><FaTimes size={24}/></button>
+          </div>
+          
+          <form onSubmit={handleSubmit} className="space-y-8">
+             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 bg-slate-50 dark:bg-slate-900/50 p-5 rounded-xl border border-slate-100 dark:border-slate-700/50">
+               <div className="md:col-span-2">
+                 <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Bệnh nhân *</label>
+                 {editingPrescriptionId ? (
+                   <div className="w-full rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-100 dark:bg-slate-700/50 px-4 py-2.5 text-sm text-slate-600 dark:text-slate-400 cursor-not-allowed">
+                     {patientDisplayMap.get(formData.patientId)?.name || formData.patientId}
+                     {patientDisplayMap.get(formData.patientId)?.code && ` • ${patientDisplayMap.get(formData.patientId)?.code}`}
+                   </div>
+                 ) : (
+                   <select
+                     name="patientId"
+                     value={formData.patientId}
+                     onChange={handleFormChange}
+                     className="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-sm text-gray-900 dark:text-slate-100 focus:ring-blue-500"
+                   >
+                     <option value="">Chọn bệnh nhân</option>
+                     {patientOptions.map((p) => (
+                       <option key={p.patientId} value={p.patientId}>
+                         {(p.patientName || p.patientId) + (p.patientCode ? ` • ${p.patientCode}` : "")}
+                       </option>
+                     ))}
+                   </select>
+                 )}
+               </div>
+               
+               <div>
+                 <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Ngày bắt đầu *</label>
+                 <input type="date" name="startDate" value={formData.startDate} onChange={handleFormChange} required className="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-sm focus:ring-blue-500" />
+               </div>
+               <div>
+                 <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Ngày kết thúc</label>
+                 <input type="date" name="endDate" value={formData.endDate} onChange={handleFormChange} className="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-sm focus:ring-blue-500" />
+               </div>
+               
+               <div className="md:col-span-4">
+                 <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Lặp lại các ngày trong tuần *</label>
+                 <div className="flex flex-wrap gap-2">
+                   {WEEKDAY_OPTIONS.map((day) => (
+                     <button
+                       key={day.value} type="button" onClick={() => handleToggleWeekday(day.value)}
+                       className={`px-4 py-2 rounded-lg text-sm font-medium transition ${formData.daysOfWeek.includes(day.value) ? 'bg-blue-600 text-white' : 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-50 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-300'}`}
+                     >
+                       {day.label}
+                     </button>
+                   ))}
+                 </div>
+               </div>
+             </div>
+
+             <div className="space-y-6">
+                <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-2">
+                  Danh sách Thuốc
+                  <button type="button" onClick={handleAddMedication} className="text-sm bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition font-semibold flex items-center gap-1 dark:bg-blue-900/30 dark:text-blue-400">
+                    <FaPlus /> Thêm thuốc
+                  </button>
+                </h3>
+                
+                {formData.medications.map((med, idx) => (
+                  <div key={idx} className="border border-slate-200 dark:border-slate-700 rounded-xl p-5 bg-white dark:bg-slate-800 relative shadow-sm">
+                    {formData.medications.length > 1 && (
+                      <button type="button" onClick={() => handleRemoveMedication(idx)} className="absolute top-4 right-4 text-rose-500 hover:text-rose-700 p-2 hover:bg-rose-50 rounded-lg transition"><FaTrash/></button>
+                    )}
+                    <h4 className="font-bold text-slate-800 dark:text-slate-200 mb-4">Thuốc #{idx + 1}</h4>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                      <div className="relative group lg:col-span-2">
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Tên thuốc *</label>
+                        <input type="text" value={med.drugName} onChange={e => handleMedChange(idx, "drugName", e.target.value)} required placeholder="VD: Paracetamol" className="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-sm focus:ring-blue-500" />
+                        <div className="hidden group-focus-within:block absolute z-10 w-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+                          <div className="p-2 text-xs font-semibold text-slate-500 bg-slate-50 dark:bg-slate-900/50 sticky top-0">Gợi ý nhanh</div>
+                          {DRUG_SUGGESTIONS.filter(d => d.name.toLowerCase().includes(med.drugName.toLowerCase())).slice(0,10).map((d, i) => (
+                            <button key={i} type="button" onMouseDown={() => handleDrugSelect(idx, d)} className="w-full text-left px-4 py-2 text-sm hover:bg-blue-50 dark:hover:bg-blue-900/30 text-slate-700 dark:text-slate-200">
+                              <span className="font-semibold">{d.name}</span> {d.dosage && <span className="text-slate-400 text-xs ml-2">{d.dosage}</span>}
+                            </button>
                           ))}
                         </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </>
-          )}
-        </div>
-      )}
-
-      {/* ── Form Modal ── */}
-      {isFormVisible && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4 backdrop-blur-sm">
-          <div className="my-8 w-full max-w-3xl rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xl">
-            {/* Modal header */}
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 px-6 py-4">
-              <h2 className="text-xl font-semibold text-gray-800 dark:text-slate-100">
-                <FaNotesMedical className="mr-2 inline text-blue-500" />
-                {editingPrescriptionId
-                  ? t("prescriptions.editPrescription")
-                  : t("prescriptions.createPrescription")}
-              </h2>
-              <button type="button" onClick={handleCloseForm} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
-                <FaTimes size={18} />
-              </button>
-            </div>
-
-            <form onSubmit={(e) => void handleSubmit(e)} className="p-6 space-y-6">
-              {/* Patient */}
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-slate-300">
-                  {t("prescriptions.patientLabel")} *
-                </label>
-                <PatientSearchSelect
-                  value={formData.patientId}
-                  onChange={(id) => setFormData((prev) => ({ ...prev, patientId: id }))}
-                  patients={patientOptions}
-                  disabled={!!editingPrescriptionId}
-                  placeholderEmpty={t("prescriptions.selectPatient")}
-                  placeholderSearch="Tìm theo tên hoặc mã bệnh nhân..."
-                />
-              </div>
-
-              {/* Dates */}
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-slate-300">
-                    {t("prescriptions.startDateLabel")} *
-                  </label>
-                  <input
-                    type="date"
-                    name="startDate"
-                    value={formData.startDate}
-                    onChange={handleFormChange}
-                    className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-slate-300">
-                    {t("prescriptions.endDateLabel")}
-                  </label>
-                  <input
-                    type="date"
-                    name="endDate"
-                    value={formData.endDate}
-                    onChange={handleFormChange}
-                    className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-
-              {/* Medications */}
-              <div>
-                <div className="mb-3">
-                  <label className="text-sm font-semibold text-gray-700 dark:text-slate-300">
-                    {t("prescriptions.medications")} *
-                  </label>
-                </div>
-
-                <div className="space-y-4">
-                  {formData.medications.map((med, mi) => (
-                    <div
-                      key={mi}
-                      className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-4"
-                    >
-                      <div className="mb-3 flex items-center justify-between">
-                        <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                          {t("prescriptions.medications")} #{mi + 1}
-                        </span>
-                        {formData.medications.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveMedication(mi)}
-                            className="text-xs text-rose-500 hover:underline"
-                          >
-                            <FaTrash className="mr-1 inline" />
-                            {t("prescriptions.removeMedication")}
-                          </button>
-                        )}
                       </div>
-
-                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <div>
-                          <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
-                            {t("prescriptions.drugName")} *
-                          </label>
-                          <DrugNameCombobox
-                            value={med.drugName}
-                            onChange={(v) => handleMedChange(mi, "drugName", v)}
-                            onSelect={(s) => handleDrugSelect(mi, s)}
-                            suggestions={DRUG_SUGGESTIONS}
-                            placeholder="VD: Amlodipine"
-                          />
-                        </div>
-                        <div>
-                          <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
-                            {t("prescriptions.dosage")} *
-                          </label>
-                          <input
-                            type="text"
-                            value={med.dosage}
-                            onChange={(e) => handleMedChange(mi, "dosage", e.target.value)}
-                            placeholder="VD: 5mg"
-                            className="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                        </div>
-                        <div>
-                          <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
-                            {t("prescriptions.route")}
-                          </label>
-                          <select
-                            value={med.route}
-                            onChange={(e) => handleMedChange(mi, "route", e.target.value)}
-                            className="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          >
-                            <option value="">-- Chọn đường dùng --</option>
-                            {ROUTE_OPTIONS.map((r) => (
-                              <option key={r} value={r}>{r}</option>
-                            ))}
-                          </select>
-                        </div>
-                        <div>
-                          <label className="mb-1 block text-xs font-medium text-gray-600 dark:text-slate-400">
-                            {t("prescriptions.instructions")}
-                          </label>
-                          <input
-                            type="text"
-                            value={med.instructions}
-                            onChange={(e) => handleMedChange(mi, "instructions", e.target.value)}
-                            placeholder="VD: Uống sau bữa sáng"
-                            className="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                        </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Liều lượng *</label>
+                        <input type="text" value={med.dosage} onChange={e => handleMedChange(idx, "dosage", e.target.value)} required placeholder="VD: 500mg, 1 viên" className="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-sm focus:ring-blue-500" />
                       </div>
-
-                      {/* Schedule */}
-                      <div className="mt-4">
-                        <span className="mb-2 block text-xs font-semibold text-slate-600 dark:text-slate-400">
-                          {t("prescriptions.schedule")} *
-                        </span>
-
-                        {/* Preset slots: Sáng / Trưa / Tối */}
-                        <div className="grid grid-cols-3 gap-2 mb-3">
-                          {(
-                            [
-                              { tod: "morning", label: t("prescriptions.morning") },
-                              { tod: "noon", label: t("prescriptions.noon") },
-                              { tod: "evening", label: t("prescriptions.evening") },
-                            ] as const
-                          ).map(({ tod, label }) => {
-                            const slot = med.schedule[tod];
-                            return (
-                              <div
-                                key={tod}
-                                className={`rounded-lg border p-3 transition-all ${slot.enabled
-                                    ? "border-slate-300 dark:border-slate-500 bg-white dark:bg-slate-700"
-                                    : "border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
-                                  }`}
-                              >
-                                <div
-                                  className="flex cursor-pointer items-center justify-between"
-                                  onClick={() => handleToggleSlot(mi, tod)}
-                                >
-                                  <span className={`text-xs font-medium ${slot.enabled ? "text-slate-700 dark:text-slate-200" : "text-slate-400 dark:text-slate-500"}`}>
-                                    {label}
-                                  </span>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => { e.stopPropagation(); handleToggleSlot(mi, tod); }}
-                                    className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${slot.enabled ? "bg-slate-600 dark:bg-slate-400" : "bg-slate-200 dark:bg-slate-600"
-                                      }`}
-                                  >
-                                    <span
-                                      className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${slot.enabled ? "translate-x-4" : "translate-x-1"
-                                        }`}
-                                    />
-                                  </button>
-                                </div>
-
-                                {slot.enabled && (
-                                  <div className="mt-2.5 space-y-1.5">
-                                    <input
-                                      type="time"
-                                      value={slot.customTime}
-                                      onChange={(e) => handleSlotChange(mi, tod, "customTime", e.target.value)}
-                                      className="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1 text-xs text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-400"
-                                    />
-                                    <div className="flex items-center gap-1.5">
-                                      <input
-                                        type="number"
-                                        value={slot.pillCount}
-                                        min={0.5}
-                                        step={0.5}
-                                        onChange={(e) => handleSlotChange(mi, tod, "pillCount", Number(e.target.value))}
-                                        className="w-14 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1 text-center text-xs text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-400"
-                                      />
-                                      <span className="text-xs text-slate-400">{t("prescriptions.pillCount")}</span>
-                                    </div>
-                                    <select
-                                      value={slot.mealTiming}
-                                      onChange={(e) => handleSlotChange(mi, tod, "mealTiming", e.target.value)}
-                                      className="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1 text-xs text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-400"
-                                    >
-                                      <option value="">{t("prescriptions.noMealTiming")}</option>
-                                      <option value="pre_meal">{t("prescriptions.preMeal")}</option>
-                                      <option value="post_meal">{t("prescriptions.postMeal")}</option>
-                                    </select>
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-
-                        {/* Extra custom-time slots */}
-                        {med.schedule.extras.length > 0 && (
-                          <div className="mb-2 space-y-2">
-                            {med.schedule.extras.map((extra, ei) => (
-                              <div key={ei} className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 p-2.5">
-                                <span className="text-xs text-slate-500 dark:text-slate-400 shrink-0">Giờ khác</span>
-                                <input
-                                  type="time"
-                                  value={extra.customTime}
-                                  onChange={(e) => handleExtraChange(mi, ei, "customTime", e.target.value)}
-                                  className="w-24 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-xs text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
-                                <select
-                                  value={extra.mealTiming}
-                                  onChange={(e) => handleExtraChange(mi, ei, "mealTiming", e.target.value)}
-                                  className="rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-xs text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                >
-                                  <option value="">{t("prescriptions.noMealTiming")}</option>
-                                  <option value="pre_meal">{t("prescriptions.preMeal")}</option>
-                                  <option value="post_meal">{t("prescriptions.postMeal")}</option>
-                                </select>
-                                <div className="flex items-center gap-1">
-                                  <input
-                                    type="number"
-                                    value={extra.pillCount}
-                                    min={0.5}
-                                    step={0.5}
-                                    onChange={(e) => handleExtraChange(mi, ei, "pillCount", Number(e.target.value))}
-                                    className="w-14 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-center text-xs text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                  />
-                                  <span className="text-xs text-slate-400">{t("prescriptions.pillCount")}</span>
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveExtra(mi, ei)}
-                                  className="ml-auto text-rose-400 hover:text-rose-600"
-                                >
-                                  <FaTimes size={12} />
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        <button
-                          type="button"
-                          onClick={() => handleAddExtra(mi)}
-                          className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
-                        >
-                          <FaPlus className="mr-1 inline" />
-                          Thêm giờ khác
-                        </button>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Đường dùng</label>
+                        <input type="text" list={`routes-${idx}`} value={med.route} onChange={e => handleMedChange(idx, "route", e.target.value)} placeholder="VD: Uống" className="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-sm focus:ring-blue-500" />
+                        <datalist id={`routes-${idx}`}>{ROUTE_OPTIONS.map(r => <option key={r} value={r} />)}</datalist>
+                      </div>
+                      <div className="md:col-span-2 lg:col-span-4">
+                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Hướng dẫn thêm</label>
+                        <input type="text" value={med.instructions} onChange={e => handleMedChange(idx, "instructions", e.target.value)} placeholder="VD: Uống nhiều nước" className="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-sm focus:ring-blue-500" />
                       </div>
                     </div>
-                  ))}
-                </div>
 
-                <button
-                  type="button"
-                  onClick={handleAddMedication}
-                  className="mt-3 flex w-full items-center justify-center rounded-lg border border-dashed border-slate-300 dark:border-slate-600 py-2 text-slate-500 dark:text-slate-400 hover:border-slate-400 dark:hover:border-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition"
-                >
-                  <FaPlus size={12} />
+                    <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700">
+                       <h5 className="font-semibold text-slate-700 dark:text-slate-300 mb-3 text-sm">Lịch uống</h5>
+                       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                         {(["morning", "noon", "evening"] as const).map(tod => {
+                           const slot = med.schedule[tod];
+                           const label = tod === "morning" ? "Sáng" : tod === "noon" ? "Trưa" : "Tối";
+                           return (
+                             <div key={tod} className={`p-3 rounded-lg border ${slot.enabled ? 'bg-white border-blue-200 dark:bg-slate-800 dark:border-blue-900/50 shadow-sm' : 'bg-transparent border-slate-200 dark:border-slate-700 opacity-60'}`}>
+                               <label className="flex items-center gap-2 mb-3 cursor-pointer">
+                                 <input type="checkbox" checked={slot.enabled} onChange={() => handleToggleSlot(idx, tod)} className="w-4 h-4 rounded text-blue-600" />
+                                 <span className="font-semibold text-slate-800 dark:text-slate-200">{label}</span>
+                               </label>
+                               {slot.enabled && (
+                                 <div className="space-y-3">
+                                   <div className="grid grid-cols-2 gap-2">
+                                     <div>
+                                       <div className="text-[10px] text-slate-500 mb-1">Giờ (Tùy chọn)</div>
+                                       <input type="time" value={slot.customTime} onChange={e=>handleSlotChange(idx, tod, "customTime", e.target.value)} className="w-full p-1.5 text-sm rounded border border-slate-300 dark:border-slate-600 dark:bg-slate-700" />
+                                     </div>
+                                     <div>
+                                       <div className="text-[10px] text-slate-500 mb-1">Số viên/lần</div>
+                                       <input type="number" min="0.25" step="0.25" value={slot.pillCount} onChange={e=>handleSlotChange(idx, tod, "pillCount", Number(e.target.value))} className="w-full p-1.5 text-sm rounded border border-slate-300 dark:border-slate-600 dark:bg-slate-700" required />
+                                     </div>
+                                   </div>
+                                   <div>
+                                      <select value={slot.mealTiming} onChange={e=>handleSlotChange(idx, tod, "mealTiming", e.target.value)} className="w-full p-1.5 text-sm rounded border border-slate-300 dark:border-slate-600 dark:bg-slate-700">
+                                        <option value="">Không chỉ định ăn</option>
+                                        <option value="pre_meal">Trước ăn</option>
+                                        <option value="post_meal">Sau ăn</option>
+                                      </select>
+                                   </div>
+                                 </div>
+                               )}
+                             </div>
+                           );
+                         })}
+                       </div>
+                       
+                       {/* Extras */}
+                       {med.schedule.extras.length > 0 && (
+                         <div className="mt-4 space-y-3 border-t border-slate-200 dark:border-slate-700 pt-4">
+                           {med.schedule.extras.map((ex, exIdx) => (
+                             <div key={exIdx} className="flex flex-wrap md:flex-nowrap items-end gap-3 bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700">
+                               <div className="flex-1 min-w-[120px]">
+                                 <label className="block text-xs text-slate-500 mb-1">Giờ uống *</label>
+                                 <input type="time" required value={ex.customTime} onChange={e=>handleExtraChange(idx, exIdx, "customTime", e.target.value)} className="w-full p-1.5 text-sm rounded border border-slate-300 dark:border-slate-600 dark:bg-slate-700" />
+                               </div>
+                               <div className="flex-1 min-w-[120px]">
+                                 <label className="block text-xs text-slate-500 mb-1">Bữa ăn</label>
+                                 <select value={ex.mealTiming} onChange={e=>handleExtraChange(idx, exIdx, "mealTiming", e.target.value)} className="w-full p-1.5 text-sm rounded border border-slate-300 dark:border-slate-600 dark:bg-slate-700">
+                                   <option value="">-</option>
+                                   <option value="pre_meal">Trước ăn</option>
+                                   <option value="post_meal">Sau ăn</option>
+                                 </select>
+                               </div>
+                               <div className="flex-1 min-w-[80px]">
+                                 <label className="block text-xs text-slate-500 mb-1">Số lượng *</label>
+                                 <input type="number" required min="0.25" step="0.25" value={ex.pillCount} onChange={e=>handleExtraChange(idx, exIdx, "pillCount", Number(e.target.value))} className="w-full p-1.5 text-sm rounded border border-slate-300 dark:border-slate-600 dark:bg-slate-700" />
+                               </div>
+                               <button type="button" onClick={() => handleRemoveExtra(idx, exIdx)} className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg"><FaTrash size={14}/></button>
+                             </div>
+                           ))}
+                         </div>
+                       )}
+                       <button type="button" onClick={() => handleAddExtra(idx)} className="mt-3 text-sm text-blue-600 font-medium hover:underline flex items-center gap-1">
+                         <FaPlus size={12}/> Thêm khung giờ khác
+                       </button>
+                    </div>
+                  </div>
+                ))}
+             </div>
+             
+             <div className="flex justify-end gap-3 pt-6 border-t border-slate-200 dark:border-slate-700">
+                <button type="button" onClick={handleCloseForm} className="px-6 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-700 font-medium hover:bg-slate-50 transition dark:bg-slate-800 dark:border-slate-600 dark:text-slate-200">
+                  Hủy
                 </button>
-              </div>
-
-              {/* Submit */}
-              <div className="flex items-center justify-end gap-3 border-t border-slate-200 dark:border-slate-700 pt-4">
-                <button
-                  type="button"
-                  onClick={handleCloseForm}
-                  className="rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-5 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50"
-                >
-                  {t("common.cancel")}
+                <button type="submit" disabled={saving} className="px-6 py-2.5 rounded-xl bg-blue-600 text-white font-medium hover:bg-blue-700 transition flex items-center gap-2 disabled:opacity-50">
+                  {saving && <FaSyncAlt className="animate-spin" />}
+                  Lưu Đơn Thuốc
                 </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="rounded-xl bg-blue-600 px-6 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
-                >
-                  {saving
-                    ? t("prescriptions.saving")
-                    : editingPrescriptionId
-                      ? t("prescriptions.updatePrescription")
-                      : t("prescriptions.savePrescription")}
-                </button>
-              </div>
-            </form>
-          </div>
+             </div>
+          </form>
         </div>
       )}
-    </div>
-  );
-}
-
-// ---- Sub-components ----
-function ReminderRow({
-  reminder,
-  formatTime,
-  renderReminderStatusBadge,
-  t,
-}: {
-  reminder: ReminderRecord;
-  formatTime: (h: number, m: number) => string;
-  renderReminderStatusBadge: (status: string) => React.ReactNode;
-  t: (key: string) => string;
-}) {
-  return (
-    <div className="flex flex-wrap items-start gap-3 rounded-lg bg-white dark:bg-slate-800 p-3">
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-gray-800 dark:text-slate-100 line-clamp-2">
-          {reminder.message}
-        </p>
-        <div className="mt-1 flex flex-wrap gap-2 text-xs text-slate-500 dark:text-slate-400">
-          <span>⏰ {formatTime(reminder.hour, reminder.minute)}</span>
-          {reminder.timeOfDay && <span>· {reminder.timeOfDay}</span>}
-          {reminder.mealTiming && (
-            <span>· {reminder.mealTiming === "pre_meal" ? t("prescriptions.preMeal") : t("prescriptions.postMeal")}</span>
-          )}
-        </div>
-      </div>
-      {renderReminderStatusBadge(reminder.status)}
-    </div>
-  );
-}
-
-function DrugNameCombobox({
-  value,
-  onChange,
-  onSelect,
-  suggestions,
-  placeholder,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  onSelect?: (s: DrugSuggestion) => void;
-  suggestions: DrugSuggestion[];
-  placeholder?: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  const filtered = suggestions.filter((s) =>
-    value ? s.name.toLowerCase().includes(value.toLowerCase()) : true
-  );
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  return (
-    <div ref={ref} className="relative">
-      <input
-        type="text"
-        value={value}
-        onChange={(e) => { onChange(e.target.value); setOpen(true); }}
-        onFocus={() => setOpen(true)}
-        placeholder={placeholder}
-        className="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-      />
-      {open && filtered.length > 0 && (
-        <div className="absolute z-50 mt-1 max-h-48 w-full overflow-auto rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 shadow-lg">
-          {filtered.map((s) => (
-            <div
-              key={s.name}
-              onMouseDown={() => { onChange(s.name); onSelect?.(s); setOpen(false); }}
-              className={`flex cursor-pointer items-center justify-between px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 ${s.name === value
-                  ? "font-medium text-slate-900 dark:text-slate-100"
-                  : "text-gray-900 dark:text-slate-100"
-                }`}
-            >
-              <span>{s.name}</span>
-              {s.dosage && (
-                <span className="ml-2 shrink-0 text-xs text-slate-400">{s.dosage}</span>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function PatientSearchSelect({
-  value,
-  onChange,
-  patients,
-  disabled,
-  placeholderEmpty,
-  placeholderSearch,
-}: {
-  value: string;
-  onChange: (id: string) => void;
-  patients: AssignmentResponse[];
-  disabled?: boolean;
-  placeholderEmpty: string;
-  placeholderSearch: string;
-}) {
-  const [query, setQuery] = useState("");
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  const selectedPatient = patients.find((p) => p.patientId === value);
-  const inputDisplayValue = open
-    ? query
-    : selectedPatient
-      ? `${selectedPatient.patientName || selectedPatient.patientId}${selectedPatient.patientCode ? ` • ${selectedPatient.patientCode}` : ""}`
-      : "";
-
-  const filtered = patients.filter((p) => {
-    if (!query) return true;
-    const q = query.toLowerCase();
-    return (
-      (p.patientName || "").toLowerCase().includes(q) ||
-      (p.patientCode || "").toLowerCase().includes(q) ||
-      (p.patientPublicId || "").toLowerCase().includes(q)
-    );
-  });
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-        setQuery("");
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const handleSelect = (id: string) => {
-    onChange(id);
-    setOpen(false);
-    setQuery("");
-  };
-
-  return (
-    <div ref={ref} className="relative">
-      <input
-        type="text"
-        value={inputDisplayValue}
-        onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
-        onClick={() => { if (!disabled) setOpen(true); }}
-        disabled={disabled}
-        placeholder={placeholderSearch}
-        className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60"
-      />
-      {open && !disabled && (
-        <div className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 shadow-lg">
-          <div
-            onMouseDown={() => handleSelect("")}
-            className="cursor-pointer px-4 py-2.5 text-sm text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700"
-          >
-            {placeholderEmpty}
-          </div>
-          {filtered.length === 0 ? (
-            <div className="px-4 py-2.5 text-sm text-slate-400">Không tìm thấy bệnh nhân</div>
-          ) : (
-            filtered.map((p) => (
-              <div
-                key={p.patientId}
-                onMouseDown={() => handleSelect(p.patientId)}
-                className={`cursor-pointer px-4 py-2.5 text-sm hover:bg-blue-50 dark:hover:bg-slate-700 ${p.patientId === value
-                    ? "bg-blue-50 dark:bg-blue-900/20 font-medium text-blue-700 dark:text-blue-300"
-                    : "text-gray-900 dark:text-slate-100"
-                  }`}
-              >
-                {p.patientName || p.patientId}
-                {p.patientCode && (
-                  <span className="ml-1.5 text-xs text-slate-400">• {p.patientCode}</span>
-                )}
-              </div>
-            ))
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function SummaryCard({
-  label,
-  value,
-  color,
-}: {
-  label: string;
-  value: number | string;
-  color: "blue" | "green" | "red" | "purple";
-}) {
-  const colorMap = {
-    blue: "border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200",
-    green: "border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-200",
-    red: "border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-900/20 text-rose-800 dark:text-rose-200",
-    purple: "border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-900/20 text-purple-800 dark:text-purple-200",
-  };
-  return (
-    <div className={`rounded-xl border p-4 text-center ${colorMap[color]}`}>
-      <div className="text-2xl font-bold">{value}</div>
-      <div className="mt-1 text-xs font-medium opacity-80">{label}</div>
     </div>
   );
 }

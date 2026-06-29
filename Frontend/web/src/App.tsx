@@ -33,6 +33,7 @@ const ChatListPage = lazy(() => import("./pages/ChatListPage.tsx"));
 const ChatPage = lazy(() => import("./pages/ChatPage.tsx"));
 const DocterProfile = lazy(() => import("./pages/DocterProfile.tsx"));
 const PrescriptionPage = lazy(() => import("./pages/PrescriptionPage.tsx"));
+const PrescriptionDetailPage = lazy(() => import("./pages/PrescriptionDetailPage.tsx"));
 const AppointmentPage = lazy(() => import("./pages/AppointmentPage.tsx"));
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -83,6 +84,7 @@ function App() {
                 />
                 <Route path="/settings" element={<SettingPage />} />
                 <Route path="/prescriptions" element={<PrescriptionPage />} />
+                <Route path="/prescriptions/:id" element={<PrescriptionDetailPage />} />
                 <Route path="/appointments" element={<AppointmentPage />} />
               </Route>
 

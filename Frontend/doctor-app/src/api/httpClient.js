@@ -1,5 +1,5 @@
 import Constants from "expo-constants";
-import * as SecureStore from "expo-secure-store";
+import * as SecureStore from "../utils/secureStoreHelper";
 
 const extras = Constants?.manifest?.extra || Constants?.expoConfig?.extra || {};
 export const BASE_URL =

@@ -124,12 +124,18 @@ function buildAlertsSummaryMap(alerts = []) {
     const currentSummary = summaryMap.get(patientId) || {
       total: 0,
       high: 0,
+      medium: 0,
+      low: 0,
       lastAlertAt: null,
     };
 
     currentSummary.total += 1;
-    if (alert?.severity === "high" || alert?.severity === "medium") {
+    if (alert?.severity === "high") {
       currentSummary.high += 1;
+    } else if (alert?.severity === "medium") {
+      currentSummary.medium += 1;
+    } else if (alert?.severity === "low") {
+      currentSummary.low += 1;
     }
 
     const currentLastAt = new Date(currentSummary.lastAlertAt || 0).getTime();
@@ -167,6 +173,8 @@ function buildPatientListItem(profile, latestMeasurement, alertsSummary) {
     alertsSummary: alertsSummary || {
       total: 0,
       high: 0,
+      medium: 0,
+      low: 0,
       lastAlertAt: null,
     },
   };
@@ -340,8 +348,12 @@ export function useNursePatientListData(currentUser) {
         const nextPatients = patientFetchResults
           .map((result) => result.item)
           .sort((left, right) => {
-            const alertDiff = right.alertsSummary.high - left.alertsSummary.high;
-            if (alertDiff !== 0) return alertDiff;
+            const highDiff = right.alertsSummary.high - left.alertsSummary.high;
+            if (highDiff !== 0) return highDiff;
+            const medDiff = right.alertsSummary.medium - left.alertsSummary.medium;
+            if (medDiff !== 0) return medDiff;
+            const lowDiff = right.alertsSummary.low - left.alertsSummary.low;
+            if (lowDiff !== 0) return lowDiff;
             return left.user.name.localeCompare(right.user.name, "vi");
           });
 

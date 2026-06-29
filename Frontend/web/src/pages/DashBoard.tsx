@@ -17,6 +17,7 @@ import Chart, {
 } from "../components/ui/Chart";
 import { getAlerts, getMyPatients, getMeasurements } from "../services/patientService";
 import { getThresholds } from "../services/thresholdService";
+import { getMyAppointments, type FollowUpAppointment } from "../services/appointmentService";
 import type { AlertResponse, AssignmentResponse } from "../types/patient";
 import { exportAlertsToExcel } from "../utils/export/alertExporter";
 import {
@@ -34,6 +35,7 @@ interface KpiDef {
   change?: number;
   up?: boolean;
   Icon: React.ElementType;
+  variant?: "danger" | "warning" | "success" | "info" | "default";
 }
 
 const CHART_BUCKETS = 4;
@@ -53,25 +55,40 @@ const Badge: React.FC<{ value: number; up: boolean }> = ({ value, up }) => (
   </span>
 );
 
-const KpiCard: React.FC<KpiDef> = ({ label, value, change, up, Icon }) => (
-  <div className="rounded-2xl border border-gray-100 bg-white p-5 dark:border-slate-700/60 dark:bg-slate-800">
-    <div className="mb-3 flex items-center justify-between">
-      <div className="flex items-center gap-2 text-gray-400 dark:text-slate-500">
-        <Icon size={14} />
-        <span className="text-xs font-medium">{label}</span>
+const KpiCard: React.FC<KpiDef> = ({ label, value, change, up, Icon, variant = "default" }) => {
+  const bgClass =
+    variant === "danger" ? "bg-red-50 dark:bg-red-900/10" :
+    variant === "warning" ? "bg-amber-50 dark:bg-amber-900/10" :
+    variant === "success" ? "bg-emerald-50 dark:bg-emerald-900/10" :
+    variant === "info" ? "bg-blue-50 dark:bg-blue-900/10" :
+    "bg-white dark:bg-slate-800";
+
+  const iconClass =
+    variant === "danger" ? "text-red-500" :
+    variant === "warning" ? "text-amber-500" :
+    variant === "success" ? "text-emerald-500" :
+    variant === "info" ? "text-blue-500" :
+    "text-gray-400 dark:text-slate-500";
+    
+  return (
+    <div className={`rounded-2xl border border-gray-100 p-5 dark:border-slate-700/60 ${bgClass}`}>
+      <div className="mb-3 flex items-center justify-between">
+        <div className={`flex items-center gap-2 ${iconClass}`}>
+          <Icon size={14} />
+          <span className="text-xs font-medium">{label}</span>
+        </div>
       </div>
-      <div className="h-1.5 w-1.5 rounded-full bg-gray-200 dark:bg-slate-600" />
+      <div className="flex items-end gap-2">
+        <span className={`text-3xl font-bold leading-none ${variant === "default" ? "text-gray-900 dark:text-white" : iconClass}`}>
+          {value}
+        </span>
+        {typeof change === "number" && typeof up === "boolean" ? (
+          <Badge value={change} up={up} />
+        ) : null}
+      </div>
     </div>
-    <div className="flex items-end gap-2">
-      <span className="text-3xl font-bold leading-none text-gray-900 dark:text-white">
-        {value}
-      </span>
-      {typeof change === "number" && typeof up === "boolean" ? (
-        <Badge value={change} up={up} />
-      ) : null}
-    </div>
-  </div>
-);
+  );
+};
 
 const SectionHeader: React.FC<{
   title: string;
@@ -105,7 +122,7 @@ function ago(ds: string, t: any) {
 }
 
 function isAttentionAlert(alert: AlertResponse) {
-  return (alert.severity === "high" || alert.severity === "medium") && alert.status === "open";
+  return alert.severity === "high" && alert.status === "open";
 }
 
 function endOfMonth(date: Date) {
@@ -162,6 +179,8 @@ function getPatientCountsAtDate(
 ) {
   let normalPatients = 0;
   let warningPatients = 0;
+  let criticalPatients = 0;
+  let lowPatients = 0;
   const snapshotTime = snapshotAt.getTime();
 
   assignments.forEach((assignment) => {
@@ -174,15 +193,23 @@ function getPatientCountsAtDate(
       (alert) => new Date(alert.createdAt).getTime() <= snapshotTime,
     );
 
-    if (latestAlert && isAttentionAlert(latestAlert)) {
-      warningPatients += 1;
-      return;
+    if (latestAlert && latestAlert.status === "open") {
+      if (latestAlert.severity === "high") {
+        criticalPatients += 1;
+        return;
+      } else if (latestAlert.severity === "medium") {
+        warningPatients += 1;
+        return;
+      } else if (latestAlert.severity === "low") {
+        lowPatients += 1;
+        return;
+      }
     }
 
     normalPatients += 1;
   });
 
-  return { normalPatients, warningPatients };
+  return { normalPatients, warningPatients, criticalPatients, lowPatients };
 }
 
 function buildDashboardChartData(
@@ -230,15 +257,17 @@ function buildDashboardChartData(
       id: "month",
       label: t("dashboard.chartThisMonth"),
       value:
-        (monthlyChartData[monthlyChartData.length - 1]?.normalPatients ?? 0) +
-        (monthlyChartData[monthlyChartData.length - 1]?.warningPatients ?? 0),
+        (monthlyChartData[monthlyChartData.length - 1]?.warningPatients ?? 0) +
+        (monthlyChartData[monthlyChartData.length - 1]?.criticalPatients ?? 0) +
+        (monthlyChartData[monthlyChartData.length - 1]?.lowPatients ?? 0),
     },
     {
       id: "week",
       label: t("dashboard.chartThisWeek"),
       value:
-        (weeklyChartData[weeklyChartData.length - 1]?.normalPatients ?? 0) +
-        (weeklyChartData[weeklyChartData.length - 1]?.warningPatients ?? 0),
+        (weeklyChartData[weeklyChartData.length - 1]?.warningPatients ?? 0) +
+        (weeklyChartData[weeklyChartData.length - 1]?.criticalPatients ?? 0) +
+        (weeklyChartData[weeklyChartData.length - 1]?.lowPatients ?? 0),
     },
   ];
 
@@ -248,6 +277,78 @@ function buildDashboardChartData(
     chartStats,
   };
 }
+
+const TodoList: React.FC<{
+  alerts: AlertResponse[];
+  appointments: FollowUpAppointment[];
+  loading: boolean;
+}> = ({ alerts, appointments, loading }) => {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+
+  const pendingAlerts = useMemo(() => alerts.filter(a => a.status === "open").slice(0, 5), [alerts]);
+
+  return (
+    <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white dark:border-slate-700/60 dark:bg-slate-800">
+      <div className="px-5 pb-3 pt-5">
+        <SectionHeader
+          icon={<span className="text-[13px]">✅</span>}
+          title="Việc cần làm hôm nay"
+        />
+      </div>
+
+      <div className="flex-1 overflow-auto border-t border-gray-50 dark:border-slate-700/40">
+        {loading ? (
+          <p className="py-8 text-center text-xs text-gray-400">Đang tải...</p>
+        ) : pendingAlerts.length === 0 && appointments.length === 0 ? (
+          <p className="py-8 text-center text-xs text-gray-400">Không có việc cần xử lý hôm nay.</p>
+        ) : (
+          <div className="space-y-4 p-4">
+            {pendingAlerts.length > 0 && (
+              <div>
+                <h4 className="mb-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider dark:text-slate-400">Cảnh báo chưa xử lý</h4>
+                <div className="space-y-2">
+                  {pendingAlerts.map((alert) => (
+                    <div key={alert.id} className="flex items-center justify-between rounded-lg bg-red-50 p-3 dark:bg-red-900/10">
+                      <div>
+                        <p className="text-xs font-semibold text-gray-800 dark:text-slate-200">{alert.patientName || "Chưa rõ"}</p>
+                        <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-0.5">Mức độ: {alert.severity === 'high' ? 'Nguy hiểm' : alert.severity === 'medium' ? 'Cảnh báo' : 'Thấp'}</p>
+                      </div>
+                      <button onClick={() => navigate("/threshold-alerts")} className="rounded bg-red-100 px-2 py-1 text-[10px] font-medium text-red-600 hover:bg-red-200 dark:bg-red-500/20 dark:text-red-400 dark:hover:bg-red-500/30">
+                        Xử lý
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {appointments.length > 0 && (
+              <div>
+                <h4 className="mb-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider dark:text-slate-400">Lịch khám hôm nay</h4>
+                <div className="space-y-2">
+                  {appointments.map((appt) => (
+                    <div key={appt.id} className="flex items-center justify-between rounded-lg bg-blue-50 p-3 dark:bg-blue-900/10">
+                      <div>
+                        <p className="text-xs font-semibold text-gray-800 dark:text-slate-200">
+                          {new Date(appt.scheduledAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                        </p>
+                        <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-0.5">{appt.notes || "Khám định kỳ"}</p>
+                      </div>
+                      <div className="rounded bg-blue-100 px-2 py-1 text-[10px] font-medium text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
+                        Sắp diễn ra
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 const RecentAlerts: React.FC<{
   alerts: AlertResponse[];
@@ -347,9 +448,11 @@ const RecentAlerts: React.FC<{
                 </div>
 
                 <div
-                  className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${alert.status === "ack" ? "bg-teal-400" : "bg-red-400"
+                  className={`shrink-0 rounded px-2 py-0.5 text-[10px] font-semibold ${alert.status === "ack" ? "bg-teal-100 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400" : "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"
                     }`}
-                />
+                >
+                  {alert.status === "ack" ? "Đã xử lý" : "Chờ xử lý"}
+                </div>
               </div>
             );
           })
@@ -364,6 +467,7 @@ const DashBoard = () => {
 
   const [assignments, setAssignments] = useState<AssignmentResponse[]>([]);
   const [alerts, setAlerts] = useState<AlertResponse[]>([]);
+  const [appointments, setAppointments] = useState<FollowUpAppointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -413,17 +517,28 @@ const DashBoard = () => {
         setLoading(true);
         setError(null);
 
-        const [assignmentList, alertList] = await Promise.all([
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const todayStart = today.toISOString();
+        today.setHours(23, 59, 59, 999);
+        const todayEnd = today.toISOString();
+
+        const [assignmentList, alertList, appointmentList] = await Promise.all([
           getMyPatients(),
           getAlerts({
             limit: MAX_ALERT_FETCH,
             page: 1,
             sortOrder: "desc",
           }),
+          getMyAppointments({
+            from: todayStart,
+            to: todayEnd,
+          }),
         ]);
 
         setAssignments(assignmentList);
         setAlerts(alertList);
+        setAppointments(appointmentList);
       } catch (loadError: any) {
         console.error("Failed to load doctor dashboard", loadError);
         setError(
@@ -433,6 +548,7 @@ const DashBoard = () => {
         );
         setAssignments([]);
         setAlerts([]);
+        setAppointments([]);
       } finally {
         setLoading(false);
       }
@@ -498,7 +614,9 @@ const DashBoard = () => {
       return {
         total: undefined,
         stable: undefined,
-        attention: undefined,
+        warning: undefined,
+        critical: undefined,
+        low: undefined,
       };
     }
 
@@ -506,22 +624,47 @@ const DashBoard = () => {
       return {
         total: null,
         stable: null,
-        attention: null,
+        warning: null,
+        critical: null,
+        low: null,
       };
     }
 
     const total = assignments.length;
 
-    const attention = new Set(
-      Array.from(latestAlertsByPatient.values())
-        .filter(isAttentionAlert)
-        .map((a) => a.patientId),
-    ).size;
+    let warning = 0;
+    let critical = 0;
+    let low = 0;
+
+    const patientSeverity = new Map<string, string>();
+
+    const allAssignedAlerts = alerts.filter(a => assignedPatientIds.has(a.patientId));
+
+    allAssignedAlerts.forEach((alert) => {
+      if (alert.status === "open") {
+        const curr = patientSeverity.get(alert.patientId);
+        if (
+          !curr ||
+          (curr !== "high" && alert.severity === "high") ||
+          (curr === "low" && alert.severity === "medium")
+        ) {
+          patientSeverity.set(alert.patientId, alert.severity);
+        }
+      }
+    });
+
+    Array.from(patientSeverity.values()).forEach((severity) => {
+      if (severity === "high") critical++;
+      else if (severity === "medium") warning++;
+      else if (severity === "low") low++;
+    });
 
     return {
       total,
-      stable: Math.max(total - attention, 0),
-      attention,
+      stable: Math.max(total - warning - critical - low, 0),
+      warning,
+      critical,
+      low,
     };
   }, [assignments, error, latestAlertsByPatient, loading]);
 
@@ -555,16 +698,31 @@ const DashBoard = () => {
         label: t("dashboard.totalPatients"),
         value: formatKpiValue(dashboardStats.total),
         Icon: FaUserFriends,
+        variant: "default",
       },
       {
-        label: t("dashboard.stablePatients"),
+        label: t("dashboard.criticalPatients", "Bệnh nhân nguy hiểm"),
+        value: formatKpiValue(dashboardStats.critical),
+        Icon: FaExclamationTriangle,
+        variant: "danger",
+      },
+      {
+        label: t("dashboard.warningPatients", "Bệnh nhân cảnh báo"),
+        value: formatKpiValue(dashboardStats.warning),
+        Icon: FaInfoCircle,
+        variant: "warning",
+      },
+      {
+        label: t("dashboard.lowPatients", "Bệnh nhân cần lưu ý"),
+        value: formatKpiValue(dashboardStats.low),
+        Icon: FaEye,
+        variant: "info",
+      },
+      {
+        label: t("dashboard.stablePatients", "Bệnh nhân ổn định"),
         value: formatKpiValue(dashboardStats.stable),
         Icon: FaHeartbeat,
-      },
-      {
-        label: t("dashboard.needAttention"),
-        value: formatKpiValue(dashboardStats.attention),
-        Icon: FaEye,
+        variant: "success",
       },
     ],
     [dashboardStats],
@@ -712,9 +870,9 @@ const DashBoard = () => {
 
   return (
     <div className="min-h-screen bg-[#f5f6fa] font-sans dark:bg-slate-900">
-      <div className="mx-auto max-w-screen-2xl space-y-4 px-6 py-6">
+      <div className="w-full space-y-4 px-4 py-8 pb-24 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-3xl font-bold text-gray-800 dark:text-slate-100">
             {t("dashboard.title")}
           </h1>
           <div className="flex items-center gap-2">
@@ -853,7 +1011,7 @@ const DashBoard = () => {
           </div>
         ) : null}
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           {kpis.map((kpi) => (
             <KpiCard key={kpi.label} {...kpi} />
           ))}
@@ -873,8 +1031,13 @@ const DashBoard = () => {
             />
           </div>
 
-          <div className="lg:col-span-2">
-            <RecentAlerts alerts={recentAlerts} loading={loading} />
+          <div className="flex flex-col gap-3 lg:col-span-2 h-full">
+            <div className="h-[300px]">
+              <TodoList alerts={alerts} appointments={appointments} loading={loading} />
+            </div>
+            <div className="flex-1 min-h-[300px]">
+              <RecentAlerts alerts={recentAlerts} loading={loading} />
+            </div>
           </div>
         </div>
       </div>

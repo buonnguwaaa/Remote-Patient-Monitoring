@@ -1,5 +1,5 @@
-import { type ChangeEvent, type FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { FaChevronDown, FaChevronLeft, FaChevronRight, FaEdit, FaPlus, FaSave, FaSearch, FaStopCircle, FaTimes, FaUndo, FaSyncAlt } from "react-icons/fa";
+import React, { useState, useEffect, useMemo, type ChangeEvent, type FormEvent } from "react";
+import { FaPlus, FaSyncAlt, FaEdit, FaStopCircle, FaTimes, FaSave, FaSearch } from "react-icons/fa";
 import { useTranslation } from "react-i18next";
 
 import Toast from "../components/ui/Toast";
@@ -14,6 +14,7 @@ import {
   type ThresholdRecord,
 } from "../services/thresholdService";
 import type { AssignmentResponse } from "../types/patient";
+import PatientSearchSelect from "../components/common/PatientSearchSelect";
 
 interface ThresholdFormData {
   patientId: string;
@@ -34,899 +35,737 @@ interface ThresholdFormData {
   effectiveTo: string;
 }
 
-interface PatientSearchSelectProps {
-  value: string;
-  options: { patientId: string; patientName?: string; patientCode?: string }[];
-  onChange: (patientId: string) => void;
-  disabled?: boolean;
-  loadingLabel?: string;
-  placeholder?: string;
-  searchPlaceholder?: string;
-  noResultsLabel?: string;
-  className?: string;
-}
-
-const PatientSearchSelect = ({
-  value,
-  options,
-  onChange,
-  disabled,
-  loadingLabel,
-  placeholder,
-  searchPlaceholder,
-  noResultsLabel,
-  className,
-}: PatientSearchSelectProps) => {
-  const [inputValue, setInputValue] = useState("");
-  const [open, setOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const selected = options.find((o) => o.patientId === value);
-  const selectedDisplayText = selected
-    ? `${selected.patientName || selected.patientId}${selected.patientCode ? ` • ${selected.patientCode}` : ""}`
-    : "";
-
-  // Sync input display with selection when closed
-  useEffect(() => {
-    if (!open) setInputValue(selectedDisplayText);
-  }, [open, selectedDisplayText]);
-
-  const filtered = useMemo(() => {
-    const q = inputValue.trim().toLowerCase();
-    if (!q || !open) return options;
-    return options.filter(
-      (o) =>
-        (o.patientName || "").toLowerCase().includes(q) ||
-        (o.patientCode || "").toLowerCase().includes(q),
-    );
-  }, [options, inputValue, open]);
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  const handleFocus = () => {
-    setInputValue("");
-    setOpen(true);
-  };
-
-  const handleSelect = (patientId: string) => {
-    onChange(patientId);
-    setOpen(false);
-  };
-
-  return (
-    <div ref={containerRef} className={`relative ${className ?? ""}`}>
-      <div className="relative">
-        <FaSearch className="pointer-events-none absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-        <input
-          ref={inputRef}
-          type="text"
-          value={disabled ? (loadingLabel ?? placeholder ?? "") : inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
-          onFocus={handleFocus}
-          placeholder={open ? (searchPlaceholder ?? "Tìm kiếm...") : (placeholder ?? "")}
-          disabled={disabled}
-          className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 py-2.5 pl-9 pr-9 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-70"
-        />
-        <FaChevronDown
-          onClick={() => !disabled && (open ? setOpen(false) : inputRef.current?.focus())}
-          className={`absolute right-3.5 top-1/2 h-3 w-3 -translate-y-1/2 cursor-pointer text-slate-400 transition-transform ${open ? "rotate-180" : ""}`}
-        />
-      </div>
-
-      {open && (
-        <div className="absolute z-20 mt-1 w-full rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 shadow-lg">
-          <div className="max-h-52 overflow-y-auto py-1">
-            {filtered.length === 0 ? (
-              <div className="px-3 py-4 text-center text-sm text-slate-400">
-                {noResultsLabel ?? "Không tìm thấy"}
-              </div>
-            ) : (
-              filtered.map((o) => (
-                <button
-                  key={o.patientId}
-                  type="button"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => handleSelect(o.patientId)}
-                  className={`flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm transition hover:bg-blue-50 dark:hover:bg-slate-700 ${
-                    o.patientId === value
-                      ? "bg-blue-50 font-semibold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
-                      : "text-gray-700 dark:text-slate-200"
-                  }`}
-                >
-                  <span className="flex-1 truncate">{o.patientName || o.patientId}</span>
-                  {o.patientCode && (
-                    <span className="shrink-0 text-xs text-slate-400">• {o.patientCode}</span>
-                  )}
-                </button>
-              ))
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
+const HISTORY_PAGE_SIZE = 10;
 
 const createDefaultFormData = (patientId = ""): ThresholdFormData => ({
   patientId,
-  temperatureMin: "36.5",
-  temperatureMax: "37.2",
+  temperatureMin: "36.0",
+  temperatureMax: "37.5",
   systolicMin: "90",
-  systolicMax: "120",
+  systolicMax: "140",
   diastolicMin: "60",
-  diastolicMax: "80",
+  diastolicMax: "90",
   pulseMin: "60",
-  pulseMax: "90",
+  pulseMax: "100",
   glucoseMin: "70",
   glucoseMax: "125",
   spo2Min: "95",
   respiratoryRateMin: "12",
-  respiratoryRateMax: "18",
-  effectiveFrom: new Date().toISOString().split("T")[0],
-  effectiveTo: "",
+  effectiveFrom: new Date().toISOString().slice(0, 16),
 });
 
-const toDateInputValue = (value?: string | null) => (value ? value.slice(0, 10) : "");
-const toStartOfDayIso = (value: string) => new Date(`${value}T00:00:00`).toISOString();
-const toEndOfDayIso = (value: string) => new Date(`${value}T23:59:59`).toISOString();
-const toNumber = (value: string) => Number.parseFloat(value || "0");
-const HISTORY_PAGE_SIZE = 5;
-
-const ThresholdSettingsPage = () => {
-  const { user } = useAuth();
-  const { t } = useTranslation();
-
-const formatDateTime = (value?: string | null) => {
-  if (!value) return t("thresholds.unlimited");
-
-  return new Date(value).toLocaleString("vi-VN", {
-    hour: "2-digit",
-    minute: "2-digit",
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-};
-
-const thresholdSections = [
-  {
-    title: t("thresholds.temperature"),
-    minKey: "temperatureMin" as const,
-    maxKey: "temperatureMax" as const,
-    step: "0.1",
-  },
-  {
-    title: t("thresholds.systolic"),
-    minKey: "systolicMin" as const,
-    maxKey: "systolicMax" as const,
-    step: "1",
-  },
-  {
-    title: t("thresholds.diastolic"),
-    minKey: "diastolicMin" as const,
-    maxKey: "diastolicMax" as const,
-    step: "1",
-  },
-  {
-    title: t("thresholds.heartRate"),
-    minKey: "pulseMin" as const,
-    maxKey: "pulseMax" as const,
-    step: "1",
-  },
-  {
-    title: t("thresholds.glucose"),
-    minKey: "glucoseMin" as const,
-    maxKey: "glucoseMax" as const,
-    step: "1",
-  },
-  {
-    title: t("thresholds.respiratoryRate"),
-    minKey: "respiratoryRateMin" as const,
-    maxKey: "respiratoryRateMax" as const,
-    step: "1",
-  },
-];
-
-const buildHistoryChips = (item: ThresholdRecord) => {
-  const chips = [
-    `HATT: ${item.sysMin}-${item.sysMax}`,
-    `HATTr: ${item.diaMin}-${item.diaMax}`,
-    `${t("alerts.heartRate")}: ${item.heartRateMin}-${item.heartRateMax}`,
-    `${t("alerts.temperature")}: ${item.temperatureMin}-${item.temperatureMax}`,
-    `${t("alerts.respiratoryRate")}: ${item.respiratoryRateMin}-${item.respiratoryRateMax}`,
-    `SpO2 >= ${item.spo2Min}%`,
-  ];
-
-  if (item.glucoseMin != null || item.glucoseMax != null) {
-    chips.push(`${t("alerts.glucose")}: ${item.glucoseMin ?? "-"}-${item.glucoseMax ?? "-"}`);
+const formatDateTime = (isoString: string | null) => {
+  if (!isoString) return "";
+  try {
+    const d = new Date(isoString);
+    const h = d.getHours().toString().padStart(2, '0');
+    const m = d.getMinutes().toString().padStart(2, '0');
+    const dd = d.getDate().toString().padStart(2, '0');
+    const mm = (d.getMonth() + 1).toString().padStart(2, '0');
+    const yyyy = d.getFullYear();
+    return `${h}:${m} ${dd}/${mm}/${yyyy}`;
+  } catch (e) {
+    return isoString;
   }
-
-  return chips;
 };
 
+const checkIsActive = (threshold: ThresholdRecord) => {
+  const now = new Date().getTime();
+  const start = new Date(threshold.effectiveFrom).getTime();
+  if (start > now) return false;
+  if (!threshold.effectiveTo) return true;
+  const end = new Date(threshold.effectiveTo).getTime();
+  return end > now;
+};
+
+const checkIsArchived = (threshold: ThresholdRecord) => {
+  if (!threshold.effectiveTo) return false;
+  const now = new Date().getTime();
+  const end = new Date(threshold.effectiveTo).getTime();
+  return end <= now;
+};
+
+export default function ThresholdSettingsPage() {
+  const { t } = useTranslation();
+  const { user } = useAuth();
   const { toast, showToast, hideToast } = useToast();
 
   const [patients, setPatients] = useState<AssignmentResponse[]>([]);
-  const [formData, setFormData] = useState<ThresholdFormData>(createDefaultFormData());
-  const [activeThreshold, setActiveThreshold] = useState<ThresholdRecord | null>(null);
-  const [thresholdHistory, setThresholdHistory] = useState<ThresholdRecord[]>([]);
+  const [allThresholds, setAllThresholds] = useState<ThresholdRecord[]>([]);
+  
   const [loadingPatients, setLoadingPatients] = useState(true);
   const [loadingThresholds, setLoadingThresholds] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [editingThresholdId, setEditingThresholdId] = useState<string | null>(null);
-  const [historyPage, setHistoryPage] = useState(1);
+  
+  const [activeTab, setActiveTab] = useState<"MISSING" | "ACTIVE" | "HISTORY">("MISSING");
+  
   const [isFormVisible, setIsFormVisible] = useState(false);
+  const [formData, setFormData] = useState<ThresholdFormData>(createDefaultFormData());
+  const [saving, setSaving] = useState(false);
+  const [editingPatientId, setEditingPatientId] = useState<string | null>(null);
 
-  const patientOptions = useMemo(() => {
-    const patientMap = new Map<string, AssignmentResponse>();
+  // History filtering
+  const [filterPatientId, setFilterPatientId] = useState("");
+  const [missingSearchTerm, setMissingSearchTerm] = useState("");
 
-    patients.forEach((item) => {
-      if (!patientMap.has(item.patientId)) {
-        patientMap.set(item.patientId, item);
-      }
-    });
-
-    return Array.from(patientMap.values()).sort((left, right) =>
-      (left.patientName || "").localeCompare(right.patientName || "")
-    );
-  }, [patients]);
-
-  const selectedPatient = useMemo(
-    () => patientOptions.find((item) => item.patientId === formData.patientId) || null,
-    [formData.patientId, patientOptions]
-  );
-
-  const modeLabel = editingThresholdId ? t("thresholds.updateCurrent") : t("thresholds.createNew");
-  const reusableHistoryCount = thresholdHistory.filter((item) => item.id !== activeThreshold?.id).length;
-  const totalHistoryPages = Math.max(1, Math.ceil(thresholdHistory.length / HISTORY_PAGE_SIZE));
-  const paginatedHistory = useMemo(() => {
-    const startIndex = (historyPage - 1) * HISTORY_PAGE_SIZE;
-    return thresholdHistory.slice(startIndex, startIndex + HISTORY_PAGE_SIZE);
-  }, [historyPage, thresholdHistory]);
-
-  const applyThresholdToForm = (threshold: ThresholdRecord, mode: "edit" | "clone" = "edit") => {
-    setFormData({
-      patientId: threshold.patientId,
-      temperatureMin: String(threshold.temperatureMin),
-      temperatureMax: String(threshold.temperatureMax),
-      systolicMin: String(threshold.sysMin),
-      systolicMax: String(threshold.sysMax),
-      diastolicMin: String(threshold.diaMin),
-      diastolicMax: String(threshold.diaMax),
-      pulseMin: String(threshold.heartRateMin),
-      pulseMax: String(threshold.heartRateMax),
-      glucoseMin: threshold.glucoseMin != null ? String(threshold.glucoseMin) : "",
-      glucoseMax: threshold.glucoseMax != null ? String(threshold.glucoseMax) : "",
-      spo2Min: String(threshold.spo2Min),
-      respiratoryRateMin: String(threshold.respiratoryRateMin),
-      respiratoryRateMax: String(threshold.respiratoryRateMax),
-      effectiveFrom:
-        mode === "clone" ? new Date().toISOString().split("T")[0] : toDateInputValue(threshold.effectiveFrom),
-      effectiveTo: mode === "clone" ? "" : toDateInputValue(threshold.effectiveTo),
-    });
-    setEditingThresholdId(mode === "edit" ? threshold.id : null);
-    setIsFormVisible(true);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  const resetForm = (patientId = formData.patientId) => {
-    setFormData(createDefaultFormData(patientId));
-    setEditingThresholdId(null);
-  };
-
-  const handleCloseForm = () => {
-    setIsFormVisible(false);
-    resetForm();
-  };
-
-  const handleOpenCreateForm = () => {
-    if (!formData.patientId) {
-      showToast(t("thresholds.patientRequired"), "error");
-      return;
-    }
-    // Force create new - clear editing mode
-    setFormData(createDefaultFormData(formData.patientId));
-    setEditingThresholdId(null);
-    setIsFormVisible(true);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  const buildPayload = (): ThresholdPayload | null => {
-    if (!user?.id) {
-      showToast(t("profile.loadingError"), "error");
-      return null;
-    }
-
-    if (!formData.patientId) {
-      showToast(t("thresholds.patientRequired"), "error");
-      return null;
-    }
-
-    const startDate = new Date(`${formData.effectiveFrom}T00:00:00`);
-    const now = new Date();
-
-    if (startDate.getTime() > now.getTime() && !editingThresholdId) {
-      showToast(
-        t("thresholds.futureStartDate"),
-        "error"
-      );
-      return null;
-    }
-
-    if (formData.effectiveTo) {
-      const endDate = new Date(`${formData.effectiveTo}T23:59:59`);
-      if (endDate.getTime() < startDate.getTime()) {
-        showToast(t("thresholds.endDateBeforeStart"), "error");
-        return null;
-      }
-    }
-
-    // Validate min/max thresholds
-    const temperatureMin = toNumber(formData.temperatureMin);
-    const temperatureMax = toNumber(formData.temperatureMax);
-    if (temperatureMin >= temperatureMax) {
-      showToast(t("thresholds.temperatureMinMax"), "error");
-      return null;
-    }
-
-    const systolicMin = toNumber(formData.systolicMin);
-    const systolicMax = toNumber(formData.systolicMax);
-    if (systolicMin >= systolicMax) {
-      showToast(t("thresholds.systolicMinMax"), "error");
-      return null;
-    }
-
-    const diastolicMin = toNumber(formData.diastolicMin);
-    const diastolicMax = toNumber(formData.diastolicMax);
-    if (diastolicMin >= diastolicMax) {
-      showToast(t("thresholds.diastolicMinMax"), "error");
-      return null;
-    }
-
-    const pulseMin = toNumber(formData.pulseMin);
-    const pulseMax = toNumber(formData.pulseMax);
-    if (pulseMin >= pulseMax) {
-      showToast(t("thresholds.heartRateMinMax"), "error");
-      return null;
-    }
-
-    const respiratoryRateMin = toNumber(formData.respiratoryRateMin);
-    const respiratoryRateMax = toNumber(formData.respiratoryRateMax);
-    if (respiratoryRateMin >= respiratoryRateMax) {
-      showToast(t("thresholds.respiratoryRateMinMax"), "error");
-      return null;
-    }
-
-    // Validate glucose if both values are provided
-    if (formData.glucoseMin && formData.glucoseMax) {
-      const glucoseMin = toNumber(formData.glucoseMin);
-      const glucoseMax = toNumber(formData.glucoseMax);
-      if (glucoseMin >= glucoseMax) {
-        showToast(t("thresholds.glucoseMinMax"), "error");
-        return null;
-      }
-    }
-
-    return {
-      patientId: formData.patientId,
-      doctorId: user.id,
-      temperatureMin,
-      temperatureMax,
-      heartRateMin: pulseMin,
-      heartRateMax: pulseMax,
-      respiratoryRateMin,
-      respiratoryRateMax,
-      spo2Min: toNumber(formData.spo2Min),
-      sysMin: systolicMin,
-      sysMax: systolicMax,
-      diaMin: diastolicMin,
-      diaMax: diastolicMax,
-      glucoseMin: formData.glucoseMin ? toNumber(formData.glucoseMin) : null,
-      glucoseMax: formData.glucoseMax ? toNumber(formData.glucoseMax) : null,
-      effectiveFrom: toStartOfDayIso(formData.effectiveFrom),
-      effectiveTo: formData.effectiveTo ? toEndOfDayIso(formData.effectiveTo) : null,
-    };
-  };
-
-  const loadPatientThresholds = async (patientId: string) => {
-    if (!patientId || !user?.id) {
-      setActiveThreshold(null);
-      setThresholdHistory([]);
-      setEditingThresholdId(null);
-      setHistoryPage(1);
-      return;
-    }
-
+  const loadData = async () => {
+    if (!user?.id) return;
     try {
+      setLoadingPatients(true);
       setLoadingThresholds(true);
-      const [latest, history] = await Promise.all([
-        getThresholds({ patientId, doctorId: user.id, latest: true }),
-        getThresholds({ patientId, doctorId: user.id }),
+      const [patientsRes, thresholdsRes] = await Promise.all([
+        getMyPatients(),
+        getThresholds({ doctorId: user.id }),
       ]);
-
-      const latestThreshold = latest[0] || null;
-      setActiveThreshold(latestThreshold);
-      setThresholdHistory(history);
-      setHistoryPage(1);
-
-      // Don't auto-open modal or change form when loading thresholds
-      // User needs to explicitly click "Edit" or "Create" button
+      setPatients(patientsRes);
+      setAllThresholds(thresholdsRes);
     } catch (error) {
-      console.error("Failed to load thresholds", error);
-      showToast(t("common.error"), "error");
+      console.error("Failed to load data", error);
+      showToast(t("common.error", "Có lỗi xảy ra khi tải dữ liệu"), "error");
     } finally {
+      setLoadingPatients(false);
       setLoadingThresholds(false);
     }
   };
 
   useEffect(() => {
-    const loadPatients = async () => {
-      try {
-        setLoadingPatients(true);
-        const response = await getMyPatients();
-        setPatients(response);
-      } catch (error) {
-        console.error("Failed to load patients", error);
-        showToast(t("profile.loadingError"), "error");
-      } finally {
-        setLoadingPatients(false);
+    void loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+  const patientOptions = useMemo(() => {
+    const patientMap = new Map<string, AssignmentResponse>();
+    patients.forEach((item) => {
+      if (!patientMap.has(item.patientId)) {
+        patientMap.set(item.patientId, item);
       }
-    };
-
-    void loadPatients();
-  }, []);
-
-  useEffect(() => {
-    if (!formData.patientId) {
-      setActiveThreshold(null);
-      setThresholdHistory([]);
-      setEditingThresholdId(null);
-      setHistoryPage(1);
-      return;
-    }
-
-    void loadPatientThresholds(formData.patientId);
-  }, [formData.patientId, user?.id]);
-
-  useEffect(() => {
-    if (historyPage > totalHistoryPages) {
-      setHistoryPage(totalHistoryPages);
-    }
-  }, [historyPage, totalHistoryPages]);
-
-  const handleChange = (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = event.target;
-    setFormData((current) => ({
-      ...current,
-      [name]: value,
-    }));
-  };
-
-  const handleSubmit = async (event: FormEvent) => {
-    event.preventDefault();
-
-    const payload = buildPayload();
-    if (!payload) return;
-
-    try {
-      setSaving(true);
-
-      if (editingThresholdId) {
-        await updateThreshold(editingThresholdId, payload);
-        showToast(t("thresholds.updateSuccess"), "success");
-      } else {
-        await createThreshold(payload);
-        showToast(t("thresholds.createSuccess"), "success");
-      }
-
-      await loadPatientThresholds(payload.patientId);
-    } catch (error: any) {
-      console.error("Failed to save threshold", error);
-      showToast(error?.response?.data?.error || t("thresholds.saveError"), "error");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleArchiveActiveThreshold = async () => {
-    if (!activeThreshold || !user?.id) return;
-
-    const confirmed = window.confirm(
-      t("thresholds.stopConfirm")
+    });
+    return Array.from(patientMap.values()).sort((a, b) =>
+      (a.patientName || "").localeCompare(b.patientName || "")
     );
+  }, [patients]);
+
+  const historyPatientOptions = useMemo(() => {
+    return [{ patientId: "", patientName: t("common.allPatients", "Tất cả bệnh nhân") }, ...patientOptions];
+  }, [patientOptions, t]);
+
+  // Coverage logic
+  const { activeThresholds, missingPatients, activePatients } = useMemo(() => {
+    const activeByPatient = new Map<string, ThresholdRecord>();
+    const archivedByPatient: ThresholdRecord[] = [];
+    const futureByPatient: ThresholdRecord[] = [];
+
+    // Sort thresholds descending by effectiveFrom so we easily pick the latest active
+    const sorted = [...allThresholds].sort((a, b) => new Date(b.effectiveFrom).getTime() - new Date(a.effectiveFrom).getTime());
+
+    sorted.forEach((t) => {
+      if (checkIsActive(t)) {
+        if (!activeByPatient.has(t.patientId)) {
+          activeByPatient.set(t.patientId, t);
+        }
+      } else if (checkIsArchived(t)) {
+        archivedByPatient.push(t);
+      } else {
+        futureByPatient.push(t);
+      }
+    });
+
+    const activeList = Array.from(activeByPatient.values());
+    const activePatientIds = new Set(activeList.map(t => t.patientId));
+
+    const missingList = patientOptions.filter(p => !activePatientIds.has(p.patientId));
+    const activePtList = patientOptions.filter(p => activePatientIds.has(p.patientId));
+
+    return {
+      activeThresholds: activeByPatient,
+      missingPatients: missingList,
+      activePatients: activePtList,
+      archivedThresholds: archivedByPatient,
+      futureThresholds: futureByPatient,
+    };
+  }, [allThresholds, patientOptions]);
+
+  // Default tab logic
+  useEffect(() => {
+    if (!loadingPatients && !loadingThresholds) {
+      if (missingPatients.length > 0) {
+        setActiveTab("MISSING");
+      } else {
+        setActiveTab("ACTIVE");
+      }
+    }
+  }, [loadingPatients, loadingThresholds]); // Only on initial load
+
+  const handleOpenCreateForm = (patientId = "") => {
+    setFormData(createDefaultFormData(patientId));
+    setEditingPatientId(null);
+    setIsFormVisible(true);
+  };
+
+  const handleEditActiveThreshold = (threshold: ThresholdRecord) => {
+    setFormData({
+      patientId: threshold.patientId,
+      temperatureMin: threshold.temperatureMin?.toString() ?? "",
+      temperatureMax: threshold.temperatureMax?.toString() ?? "",
+      systolicMin: threshold.sysMin?.toString() ?? "",
+      systolicMax: threshold.sysMax?.toString() ?? "",
+      diastolicMin: threshold.diaMin?.toString() ?? "",
+      diastolicMax: threshold.diaMax?.toString() ?? "",
+      pulseMin: threshold.heartRateMin?.toString() ?? "",
+      pulseMax: threshold.heartRateMax?.toString() ?? "",
+      glucoseMin: threshold.glucoseMin?.toString() ?? "70",
+      glucoseMax: threshold.glucoseMax?.toString() ?? "125",
+      spo2Min: threshold.spo2Min?.toString() ?? "",
+      respiratoryRateMin: threshold.respiratoryRateMin?.toString() ?? "",
+      respiratoryRateMax: threshold.respiratoryRateMax?.toString() ?? "",
+      effectiveFrom: new Date().toISOString().slice(0, 16),
+      effectiveTo: "",
+    });
+    setEditingPatientId(threshold.patientId);
+    setIsFormVisible(true);
+  };
+
+  const handleCloneArchived = (threshold: ThresholdRecord) => {
+    handleEditActiveThreshold(threshold);
+    setEditingPatientId(null); // Clone implies creating a new one without explicitly closing an "active" one
+  };
+
+  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleStopActive = async (threshold: ThresholdRecord) => {
+    const confirmed = window.confirm(t("thresholds.stopConfirm", "Bạn có chắc chắn muốn ngừng áp dụng cấu hình này?"));
     if (!confirmed) return;
 
     try {
       setSaving(true);
-      await updateThreshold(activeThreshold.id, {
-        patientId: activeThreshold.patientId,
-        doctorId: activeThreshold.doctorId,
-        temperatureMin: activeThreshold.temperatureMin,
-        temperatureMax: activeThreshold.temperatureMax,
-        heartRateMin: activeThreshold.heartRateMin,
-        heartRateMax: activeThreshold.heartRateMax,
-        respiratoryRateMin: activeThreshold.respiratoryRateMin,
-        respiratoryRateMax: activeThreshold.respiratoryRateMax,
-        spo2Min: activeThreshold.spo2Min,
-        sysMin: activeThreshold.sysMin,
-        sysMax: activeThreshold.sysMax,
-        diaMin: activeThreshold.diaMin,
-        diaMax: activeThreshold.diaMax,
-        glucoseMin: activeThreshold.glucoseMin,
-        glucoseMax: activeThreshold.glucoseMax,
-        effectiveFrom: activeThreshold.effectiveFrom,
+      await updateThreshold(threshold.id, {
+        patientId: threshold.patientId,
+        doctorId: threshold.doctorId,
+        temperatureMin: threshold.temperatureMin,
+        temperatureMax: threshold.temperatureMax,
+        heartRateMin: threshold.heartRateMin,
+        heartRateMax: threshold.heartRateMax,
+        respiratoryRateMin: threshold.respiratoryRateMin,
+        respiratoryRateMax: threshold.respiratoryRateMax,
+        spo2Min: threshold.spo2Min,
+        sysMin: threshold.sysMin,
+        sysMax: threshold.sysMax,
+        diaMin: threshold.diaMin,
+        diaMax: threshold.diaMax,
+        glucoseMin: threshold.glucoseMin,
+        glucoseMax: threshold.glucoseMax,
+        effectiveFrom: threshold.effectiveFrom,
         effectiveTo: new Date().toISOString(),
       });
-
-      showToast(t("thresholds.stopSuccess"), "success");
-      await loadPatientThresholds(activeThreshold.patientId);
-      setFormData(createDefaultFormData(activeThreshold.patientId));
+      showToast(t("thresholds.stopSuccess", "Ngừng áp dụng thành công"), "success");
+      await loadData();
     } catch (error: any) {
-      console.error("Failed to archive threshold", error);
-      showToast(error?.response?.data?.error || t("thresholds.stopError"), "error");
+      console.error("Failed to stop threshold", error);
+      showToast(error?.response?.data?.error || t("thresholds.stopError", "Có lỗi xảy ra"), "error");
     } finally {
       setSaving(false);
     }
   };
 
-  return (
-    <div className="mx-auto p-6">
-      {/* Header */}
-      <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <h1 className="text-3xl font-semibold text-slate-900 dark:text-slate-100">{t("thresholds.title")}</h1>
-          <p className="mt-1 text-base text-slate-500 dark:text-slate-400">{t("thresholds.description")}</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={handleOpenCreateForm}
-            className="inline-flex items-center rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 dark:hover:bg-slate-700"
-          >
-            <FaPlus className="mr-2 h-3 w-3" />{t("thresholds.createConfig")}
-          </button>
-          <button
-            type="button"
-            onClick={() => formData.patientId && void loadPatientThresholds(formData.patientId)}
-            disabled={loadingThresholds || !formData.patientId}
-            className="inline-flex items-center rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-sm font-medium text-slate-500 dark:text-slate-400 transition hover:bg-slate-50 dark:hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <FaSyncAlt className={`mr-2 h-3 w-3 ${loadingThresholds ? "animate-spin" : ""}`} />{t("common.refresh")}
-          </button>
-        </div>
-      </div>
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!formData.patientId || !user?.id) {
+      showToast(t("thresholds.selectPatientFirst", "Vui lòng chọn bệnh nhân"), "error");
+      return;
+    }
 
-      {/* Stats */}
-      <div className="mb-5 grid gap-3 md:grid-cols-3">
-        {[
-          { label: t("thresholds.managedPatients"), value: patientOptions.length },
-          { label: t("thresholds.activeConfigs"), value: activeThreshold ? 1 : 0 },
-          { label: t("thresholds.historyConfigs"), value: reusableHistoryCount },
-        ].map(({ label, value }) => (
-          <div key={label} className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-5 py-4">
-            <div className="text-sm font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">{label}</div>
-            <div className="mt-2 text-3xl font-semibold text-slate-900 dark:text-slate-100">{value}</div>
-          </div>
-        ))}
-      </div>
+    try {
+      setSaving(true);
+      const payload: ThresholdPayload = {
+        patientId: formData.patientId,
+        doctorId: user.id,
+        temperatureMin: parseFloat(formData.temperatureMin),
+        temperatureMax: parseFloat(formData.temperatureMax),
+        heartRateMin: parseInt(formData.pulseMin, 10),
+        heartRateMax: parseInt(formData.pulseMax, 10),
+        respiratoryRateMin: parseInt(formData.respiratoryRateMin, 10),
+        respiratoryRateMax: parseInt(formData.respiratoryRateMax, 10),
+        spo2Min: parseInt(formData.spo2Min, 10),
+        sysMin: parseInt(formData.systolicMin, 10),
+        sysMax: parseInt(formData.systolicMax, 10),
+        diaMin: parseInt(formData.diastolicMin, 10),
+        diaMax: parseInt(formData.diastolicMax, 10),
+        glucoseMin: formData.glucoseMin ? parseFloat(formData.glucoseMin) : null,
+        glucoseMax: formData.glucoseMax ? parseFloat(formData.glucoseMax) : null,
+        effectiveFrom: new Date(formData.effectiveFrom).toISOString(),
+        effectiveTo: formData.effectiveTo ? new Date(formData.effectiveTo).toISOString() : null,
+      };
 
-      {/* Patient selector */}
-      <div className="mb-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-5 py-4">
-        <label className="mb-2 block text-base font-medium text-slate-700 dark:text-slate-300">{t("thresholds.filterByPatient")}</label>
-        <PatientSearchSelect
-          value={formData.patientId}
-          options={patientOptions}
-          onChange={(patientId) => setFormData(createDefaultFormData(patientId))}
-          disabled={loadingPatients}
-          loadingLabel={t("thresholds.loadingPatients")}
-          placeholder={t("thresholds.selectPatient")}
-          searchPlaceholder={t("thresholds.searchPatient")}
-          noResultsLabel={t("thresholds.noPatientFound")}
-        />
-      </div>
+      // If we are editing an active threshold, we should archive the current one first
+      if (editingPatientId) {
+        const active = activeThresholds.get(editingPatientId);
+        if (active) {
+          await updateThreshold(active.id, {
+            patientId: active.patientId,
+            doctorId: active.doctorId,
+            temperatureMin: active.temperatureMin,
+            temperatureMax: active.temperatureMax,
+            heartRateMin: active.heartRateMin,
+            heartRateMax: active.heartRateMax,
+            respiratoryRateMin: active.respiratoryRateMin,
+            respiratoryRateMax: active.respiratoryRateMax,
+            spo2Min: active.spo2Min,
+            sysMin: active.sysMin,
+            sysMax: active.sysMax,
+            diaMin: active.diaMin,
+            diaMax: active.diaMax,
+            glucoseMin: active.glucoseMin,
+            glucoseMax: active.glucoseMax,
+            effectiveFrom: active.effectiveFrom,
+            effectiveTo: new Date().toISOString(), // Close it now
+          });
+        }
+      }
 
-      {/* Config list */}
-      <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 px-5 py-4">
-          <div>
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t("thresholds.configList")}</h2>
-            <p className="mt-0.5 text-sm text-slate-400 dark:text-slate-500">{t("thresholds.configListDesc")}</p>
-          </div>
-          <span className="text-sm text-slate-400 dark:text-slate-500">
-            {thresholdHistory.length} {t("thresholds.configsCount")}
-          </span>
-        </div>
+      await createThreshold(payload);
+      showToast(t("thresholds.saveSuccess", "Lưu cấu hình thành công"), "success");
+      setIsFormVisible(false);
+      await loadData();
+    } catch (error: any) {
+      console.error("Failed to save threshold", error);
+      showToast(error?.response?.data?.error || t("thresholds.saveError", "Có lỗi xảy ra"), "error");
+    } finally {
+      setSaving(false);
+    }
+  };
 
-        <div className="divide-y divide-slate-100 dark:divide-slate-700/60">
-          {loadingThresholds && (
-            <div className="px-5 py-8 text-base text-slate-400 dark:text-slate-500">{t("thresholds.loadingConfigs")}</div>
-          )}
-          {!loadingThresholds && !formData.patientId && (
-            <div className="px-5 py-8 text-base text-slate-400 dark:text-slate-500">{t("thresholds.selectPatientFirst")}</div>
-          )}
-          {!loadingThresholds && formData.patientId && thresholdHistory.length === 0 && (
-            <div className="px-5 py-8 text-base text-slate-400 dark:text-slate-500">{t("thresholds.noConfigs")}</div>
-          )}
+  const renderActiveCard = (threshold: ThresholdRecord, ptName: string, ptCode?: string) => {
+    return (
+      <div key={threshold.id} className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm p-5 border-l-4 border-l-emerald-500 transition-all">
+        <div className="flex flex-col lg:flex-row justify-between gap-4">
+          <div className="flex-1">
+            <div className="flex items-center gap-3">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{ptName}</h3>
+              {ptCode && <span className="text-sm text-slate-500">#{ptCode}</span>}
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                {t("common.active", "Đang áp dụng")}
+              </span>
+            </div>
+            <div className="mt-1 text-sm text-slate-500 dark:text-slate-400 flex flex-wrap gap-x-4">
+               <span>Cập nhật: {formatDateTime(threshold.updatedAt)}</span>
+               <span>Từ: {formatDateTime(threshold.effectiveFrom)}</span>
+            </div>
 
-          {paginatedHistory.map((threshold, index) => {
-            const absoluteIndex = (historyPage - 1) * HISTORY_PAGE_SIZE + index;
-            const isActive = threshold.id === activeThreshold?.id;
-            const canEdit = isActive;
-
-            return (
-              <div key={threshold.id} className="px-5 py-4">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                  <div className="min-w-0 flex-1">
-                    {/* Status + version */}
-                    <div className="flex flex-wrap items-center gap-3">
-                      {isActive && (
-                        <span className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-600 dark:text-emerald-400">
-                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                          {t("thresholds.currentlyActive")}
-                        </span>
-                      )}
-                      <span className="text-sm text-slate-400 dark:text-slate-500">
-                        {t("thresholds.configVersion")} #{thresholdHistory.length - absoluteIndex}
-                      </span>
-                    </div>
-
-                    {/* Patient name */}
-                    <div className="mt-1.5 flex items-center gap-2">
-                      <span className="text-base font-medium text-slate-800 dark:text-slate-100">
-                        {selectedPatient?.patientName || threshold.patientId}
-                      </span>
-                      {selectedPatient?.patientCode && (
-                        <span className="text-sm text-slate-400 dark:text-slate-500">{selectedPatient.patientCode}</span>
-                      )}
-                    </div>
-
-                    {/* Threshold chips */}
-                    <div className="mt-3 flex flex-wrap gap-1.5">
-                      {buildHistoryChips(threshold).map((chip, idx) => (
-                        <span
-                          key={`${threshold.id}-chip-${idx}`}
-                          className="rounded border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 px-2 py-0.5 text-sm text-slate-600 dark:text-slate-300"
-                        >
-                          {chip}
-                        </span>
-                      ))}
-                    </div>
-
-                    {/* Date info */}
-                    <div className="mt-3 flex flex-wrap gap-5 text-sm">
-                      <div>
-                        <span className="text-slate-400 dark:text-slate-500">{t("thresholds.validFrom")}: </span>
-                        <span className="font-medium text-slate-700 dark:text-slate-300">{formatDateTime(threshold.effectiveFrom)}</span>
-                      </div>
-                      <div>
-                        <span className="text-slate-400 dark:text-slate-500">{t("thresholds.validTo")}: </span>
-                        <span className="font-medium text-slate-700 dark:text-slate-300">{formatDateTime(threshold.effectiveTo)}</span>
-                      </div>
-                      <div>
-                        <span className="text-slate-400 dark:text-slate-500">{t("thresholds.updated")}: </span>
-                        <span className="font-medium text-slate-700 dark:text-slate-300">{formatDateTime(threshold.updatedAt)}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex flex-wrap gap-1.5 lg:justify-end">
-                    <button
-                      type="button"
-                      onClick={() => applyThresholdToForm(threshold, "edit")}
-                      disabled={!canEdit || saving}
-                      className="inline-flex items-center rounded-md border border-slate-200 dark:border-slate-600 px-3 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-300 transition hover:bg-slate-50 dark:hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      <FaEdit className="mr-1.5 h-3 w-3" />{t("thresholds.edit")}
-                    </button>
-                    {isActive && (
-                      <button
-                        type="button"
-                        onClick={handleArchiveActiveThreshold}
-                        disabled={saving}
-                        className="inline-flex items-center rounded-md border border-slate-200 dark:border-slate-600 px-3 py-1.5 text-sm font-medium text-slate-500 dark:text-slate-400 transition hover:bg-slate-50 dark:hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        <FaStopCircle className="mr-1.5 h-3 w-3" />{t("thresholds.stopValidity")}
-                      </button>
-                    )}
-                  </div>
+            <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-3">
+              <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-2.5 border border-slate-100 dark:border-slate-600">
+                <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Huyết áp (mmHg)</div>
+                <div className="font-medium text-slate-800 dark:text-slate-200">{threshold.sysMin}-{threshold.sysMax} / {threshold.diaMin}-{threshold.diaMax}</div>
+              </div>
+              <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-2.5 border border-slate-100 dark:border-slate-600">
+                <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Nhịp tim (bpm)</div>
+                <div className="font-medium text-slate-800 dark:text-slate-200">{threshold.heartRateMin}-{threshold.heartRateMax}</div>
+              </div>
+              <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-2.5 border border-slate-100 dark:border-slate-600">
+                <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">SpO2 (%)</div>
+                <div className="font-medium text-slate-800 dark:text-slate-200">&ge; {threshold.spo2Min}</div>
+              </div>
+              <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-2.5 border border-slate-100 dark:border-slate-600">
+                <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Đường huyết (mg/dL)</div>
+                <div className="font-medium text-slate-800 dark:text-slate-200">
+                  {threshold.glucoseMin != null ? `${threshold.glucoseMin}-${threshold.glucoseMax}` : "N/A"}
                 </div>
               </div>
-            );
-          })}
-        </div>
-
-        {/* Pagination */}
-        {totalHistoryPages > 1 && (
-          <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-700 px-5 py-3">
-            <span className="text-sm text-slate-400 dark:text-slate-500">
-              {t("common.page")} {historyPage}/{totalHistoryPages}
-            </span>
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => setHistoryPage((p) => Math.max(1, p - 1))}
-                disabled={historyPage === 1}
-                className="inline-flex items-center rounded-md border border-slate-200 dark:border-slate-600 px-2.5 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-300 transition hover:bg-slate-50 dark:hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                <FaChevronLeft className="mr-1 h-2.5 w-2.5" />{t("common.previous")}
-              </button>
-              <button
-                type="button"
-                onClick={() => setHistoryPage((p) => Math.min(totalHistoryPages, p + 1))}
-                disabled={historyPage === totalHistoryPages}
-                className="inline-flex items-center rounded-md border border-slate-200 dark:border-slate-600 px-2.5 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-300 transition hover:bg-slate-50 dark:hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                {t("common.next")}<FaChevronRight className="ml-1 h-2.5 w-2.5" />
-              </button>
+              <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-2.5 border border-slate-100 dark:border-slate-600">
+                <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Nhiệt độ (°C)</div>
+                <div className="font-medium text-slate-800 dark:text-slate-200">{threshold.temperatureMin}-{threshold.temperatureMax}</div>
+              </div>
+              <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-2.5 border border-slate-100 dark:border-slate-600">
+                <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Nhịp thở (lần/ph)</div>
+                <div className="font-medium text-slate-800 dark:text-slate-200">{threshold.respiratoryRateMin}-{threshold.respiratoryRateMax}</div>
+              </div>
             </div>
           </div>
+          <div className="flex flex-row lg:flex-col gap-2 shrink-0 justify-end">
+            <button
+              onClick={() => handleEditActiveThreshold(threshold)}
+              className="px-4 py-2 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded-lg text-sm font-medium transition flex items-center justify-center"
+            >
+              <FaEdit className="mr-2 h-3 w-3" /> Chỉnh sửa
+            </button>
+            <button
+              onClick={() => handleStopActive(threshold)}
+              className="px-4 py-2 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg text-sm font-medium transition flex items-center justify-center"
+            >
+              <FaStopCircle className="mr-2 h-3 w-3" /> Ngừng hiệu lực
+            </button>
+            <button
+              onClick={() => { setFilterPatientId(threshold.patientId); setActiveTab("HISTORY"); }}
+              className="px-4 py-2 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg text-sm font-medium transition flex items-center justify-center"
+            >
+              Xem lịch sử
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderArchivedCard = (threshold: ThresholdRecord, ptName: string, ptCode?: string) => {
+    return (
+      <div key={threshold.id} className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 p-4 transition-all">
+        <div className="flex flex-col lg:flex-row justify-between gap-4">
+          <div className="flex-1">
+            <div className="flex items-center gap-3 mb-2">
+              <span className="font-medium text-slate-700 dark:text-slate-200">{ptName}</span>
+              {ptCode && <span className="text-xs text-slate-500">#{ptCode}</span>}
+              <span className="inline-flex items-center rounded-full bg-slate-100 dark:bg-slate-700 px-2 py-0.5 text-xs font-medium text-slate-500 dark:text-slate-400">
+                Đã lưu trữ
+              </span>
+            </div>
+            <div className="text-sm text-slate-500 dark:text-slate-400 mb-3 flex flex-wrap gap-x-4">
+               <span>Từ: {formatDateTime(threshold.effectiveFrom)}</span>
+               <span>Đến: {formatDateTime(threshold.effectiveTo)}</span>
+            </div>
+            <div className="text-sm text-slate-600 dark:text-slate-400 flex flex-wrap gap-x-4 gap-y-1">
+               <span>HATT: {threshold.sysMin}-{threshold.sysMax}</span>
+               <span>HATTr: {threshold.diaMin}-{threshold.diaMax}</span>
+               <span>Tim: {threshold.heartRateMin}-{threshold.heartRateMax}</span>
+               <span>SpO2: &ge;{threshold.spo2Min}</span>
+               {threshold.glucoseMin != null && <span>Đường: {threshold.glucoseMin}-{threshold.glucoseMax}</span>}
+            </div>
+          </div>
+          <div className="flex items-center">
+            <button
+              onClick={() => handleCloneArchived(threshold)}
+              className="px-4 py-1.5 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 rounded-lg text-sm transition flex items-center"
+            >
+              <FaPlus className="mr-1.5 h-3 w-3" /> Sao chép tạo mới
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const thresholdSections = [
+    { title: t("thresholds.bloodPressure", "Huyết áp tâm thu (mmHg)"), minKey: "systolicMin", maxKey: "systolicMax", step: "1" },
+    { title: t("thresholds.diastolic", "Huyết áp tâm trương (mmHg)"), minKey: "diastolicMin", maxKey: "diastolicMax", step: "1" },
+    { title: t("thresholds.heartRate", "Nhịp tim (bpm)"), minKey: "pulseMin", maxKey: "pulseMax", step: "1" },
+    { title: t("thresholds.respiratory", "Nhịp thở (lần/phút)"), minKey: "respiratoryRateMin", maxKey: "respiratoryRateMax", step: "1" },
+    { title: t("thresholds.temperature", "Nhiệt độ (°C)"), minKey: "temperatureMin", maxKey: "temperatureMax", step: "0.1" },
+    { title: t("thresholds.glucose", "Đường huyết (mg/dL)"), minKey: "glucoseMin", maxKey: "glucoseMax", step: "0.1" },
+  ] as const;
+
+  return (
+    <div className="w-full px-4 py-8 sm:px-6 lg:px-8">
+      {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
+
+      {/* Stats Bar */}
+      <div className="mb-8 grid gap-4 grid-cols-3">
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-sm">
+          <div className="text-sm font-medium text-slate-500 dark:text-slate-400">Bệnh nhân đang quản lý</div>
+          <div className="mt-2 text-3xl font-semibold text-slate-900 dark:text-slate-100">{patientOptions.length}</div>
+        </div>
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-sm">
+          <div className="text-sm font-medium text-slate-500 dark:text-slate-400">Đã có ngưỡng</div>
+          <div className="mt-2 text-3xl font-semibold text-emerald-600 dark:text-emerald-400">{activePatients.length}</div>
+        </div>
+        <div className={`rounded-xl border p-5 shadow-sm transition-colors ${missingPatients.length > 0 ? 'border-amber-200 bg-amber-50 dark:border-amber-900/40 dark:bg-amber-900/10' : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800'}`}>
+          <div className={`text-sm font-medium ${missingPatients.length > 0 ? 'text-amber-800 dark:text-amber-400' : 'text-slate-500 dark:text-slate-400'}`}>Chưa có ngưỡng</div>
+          <div className={`mt-2 text-3xl font-semibold ${missingPatients.length > 0 ? 'text-amber-600 dark:text-amber-500' : 'text-slate-900 dark:text-slate-100'}`}>
+            {missingPatients.length}
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content Area */}
+      <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Quản trị ngưỡng cảnh báo</h1>
+        <div className="flex gap-2">
+          <button
+            onClick={() => handleOpenCreateForm()}
+            className="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          >
+            <FaPlus className="mr-2 h-3.5 w-3.5" /> Tạo cấu hình
+          </button>
+          <button
+            onClick={() => void loadData()}
+            disabled={loadingThresholds || loadingPatients}
+            className="inline-flex items-center rounded-lg border border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-800 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+          >
+            <FaSyncAlt className={`mr-2 h-3.5 w-3.5 ${loadingThresholds ? "animate-spin" : ""}`} /> Làm mới
+          </button>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="mb-6 flex space-x-1 rounded-xl bg-slate-100/80 dark:bg-slate-800/80 p-1 backdrop-blur-sm w-fit border border-slate-200 dark:border-slate-700">
+        <button
+          onClick={() => setActiveTab("MISSING")}
+          className={`relative flex items-center rounded-lg px-5 py-2 text-sm font-medium transition-all outline-none ${activeTab === "MISSING" ? "bg-white dark:bg-slate-700 text-amber-600 dark:text-amber-400 shadow-sm" : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"}`}
+        >
+          Cần cấu hình
+          {missingPatients.length > 0 && (
+            <span className="ml-2 rounded-full bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 text-xs text-amber-700 dark:text-amber-400 font-bold">{missingPatients.length}</span>
+          )}
+        </button>
+        <button
+          onClick={() => setActiveTab("ACTIVE")}
+          className={`flex items-center rounded-lg px-5 py-2 text-sm font-medium transition-all outline-none ${activeTab === "ACTIVE" ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm" : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"}`}
+        >
+          Đã có ngưỡng
+        </button>
+        <button
+          onClick={() => setActiveTab("HISTORY")}
+          className={`flex items-center rounded-lg px-5 py-2 text-sm font-medium transition-all outline-none ${activeTab === "HISTORY" ? "bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200 shadow-sm" : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"}`}
+        >
+          Lịch sử thay đổi
+        </button>
+      </div>
+
+      {/* Tab Contents */}
+      <div className="w-full">
+        {loadingPatients || loadingThresholds ? (
+          <div className="py-12 text-center text-slate-500 dark:text-slate-400">Đang tải dữ liệu...</div>
+        ) : (
+          <>
+            {activeTab === "MISSING" && (
+              <div className="space-y-4">
+                <div className="max-w-md mb-2">
+                  <div className="relative">
+                    <FaSearch className="pointer-events-none absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Tìm kiếm theo tên hoặc mã bệnh nhân..."
+                      value={missingSearchTerm}
+                      onChange={(e) => setMissingSearchTerm(e.target.value)}
+                      className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 py-2.5 pl-9 pr-4 text-sm text-gray-900 dark:text-slate-100 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {missingPatients
+                  .filter(pt => {
+                    const q = missingSearchTerm.toLowerCase();
+                    if (!q) return true;
+                    return (pt.patientName || "").toLowerCase().includes(q) || (pt.patientCode || "").toLowerCase().includes(q);
+                  })
+                  .length === 0 && missingPatients.length > 0 ? (
+                    <div className="col-span-full py-8 text-center text-slate-500 dark:text-slate-400">
+                      Không tìm thấy bệnh nhân nào khớp với từ khóa "{missingSearchTerm}"
+                    </div>
+                  ) : missingPatients.length === 0 ? (
+                  <div className="col-span-full py-12 text-center text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                    Tuyệt vời! Tất cả bệnh nhân đều đã được cấu hình ngưỡng.
+                  </div>
+                ) : (
+                  missingPatients
+                    .filter(pt => {
+                      const q = missingSearchTerm.toLowerCase();
+                      if (!q) return true;
+                      return (pt.patientName || "").toLowerCase().includes(q) || (pt.patientCode || "").toLowerCase().includes(q);
+                    })
+                    .map(pt => (
+                    <div key={pt.patientId} className="rounded-xl border border-amber-200 dark:border-amber-900/50 bg-white dark:bg-slate-800 p-5 shadow-sm flex flex-col justify-between h-full">
+                      <div>
+                        <h3 className="font-semibold text-slate-900 dark:text-slate-100 text-lg">{pt.patientName || pt.patientId}</h3>
+                        {pt.patientCode && <p className="text-sm text-slate-500 mb-3">Mã BN: {pt.patientCode}</p>}
+                        <span className="inline-block bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 text-xs px-2 py-1 rounded-md mb-4 font-medium">Chưa có ngưỡng</span>
+                      </div>
+                      <button
+                        onClick={() => handleOpenCreateForm(pt.patientId)}
+                        className="w-full mt-2 bg-amber-500 hover:bg-amber-600 text-white py-2 rounded-lg text-sm font-medium transition"
+                      >
+                        Tạo ngưỡng ngay
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+            )}
+
+            {activeTab === "ACTIVE" && (
+              <div className="space-y-4">
+                {activePatients.length === 0 ? (
+                  <div className="py-12 text-center text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                    Chưa có bệnh nhân nào có cấu hình ngưỡng.
+                  </div>
+                ) : (
+                  activePatients.map(pt => {
+                    const threshold = activeThresholds.get(pt.patientId);
+                    if (!threshold) return null;
+                    return renderActiveCard(threshold, pt.patientName || pt.patientId, pt.patientCode);
+                  })
+                )}
+              </div>
+            )}
+
+            {activeTab === "HISTORY" && (
+              <div className="space-y-4">
+                <div className="max-w-md mb-6">
+                  <PatientSearchSelect
+                    value={filterPatientId}
+                    options={historyPatientOptions}
+                    onChange={(patientId) => setFilterPatientId(patientId)}
+                    placeholder="Lọc theo bệnh nhân..."
+                  />
+                </div>
+                
+                {allThresholds
+                  .filter(t => !checkIsActive(t))
+                  .filter(t => !filterPatientId || t.patientId === filterPatientId)
+                  .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+                  .map(threshold => {
+                    const pt = patientOptions.find(p => p.patientId === threshold.patientId);
+                    return renderArchivedCard(threshold, pt?.patientName || threshold.patientId, pt?.patientCode);
+                  })}
+                
+                {allThresholds.filter(t => !checkIsActive(t) && (!filterPatientId || t.patientId === filterPatientId)).length === 0 && (
+                  <div className="py-12 text-center text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                    Không có dữ liệu lịch sử.
+                  </div>
+                )}
+              </div>
+            )}
+          </>
         )}
       </div>
 
-      {/* Form modal */}
+      {/* Modal Form */}
       {isFormVisible && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
-          onClick={handleCloseForm}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="threshold-form-title"
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-2xl max-h-[90vh] overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"
-          >
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 px-5 py-3.5">
-              <h2 id="threshold-form-title" className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                {modeLabel}
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm sm:p-6">
+          <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white dark:bg-slate-800 shadow-2xl flex flex-col">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 px-6 py-4 sticky top-0 bg-white dark:bg-slate-800 z-10">
+              <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">
+                {editingPatientId ? "Chỉnh sửa cấu hình" : "Tạo cấu hình ngưỡng mới"}
               </h2>
               <button
                 type="button"
-                onClick={handleCloseForm}
-                className="rounded p-1.5 text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-800"
+                onClick={() => setIsFormVisible(false)}
+                className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
               >
-                <FaTimes className="h-3.5 w-3.5" />
+                <FaTimes className="h-5 w-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit}>
-              <div className="max-h-[calc(90vh-120px)] overflow-y-auto px-5 py-4 space-y-4">
-                {/* Patient */}
+            <form onSubmit={handleSubmit} className="p-6">
+              <div className="space-y-8">
+                {/* Patient selection */}
                 <div>
-                  <label className="mb-1.5 block text-base font-medium text-slate-700 dark:text-slate-300">
-                    {t("alerts.patient")} <span className="text-red-400">*</span>
+                  <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300">
+                    Bệnh nhân <span className="text-rose-500">*</span>
                   </label>
                   <PatientSearchSelect
                     value={formData.patientId}
                     options={patientOptions}
                     onChange={(patientId) => {
                       setFormData((current) => ({ ...current, patientId }));
-                      setEditingThresholdId(null);
+                      setEditingPatientId(null);
                     }}
-                    disabled={loadingPatients || Boolean(editingThresholdId)}
-                    loadingLabel={t("thresholds.loadingPatients")}
-                    placeholder={t("thresholds.selectPatient")}
-                    searchPlaceholder={t("thresholds.searchPatient")}
-                    noResultsLabel={t("thresholds.noPatientFound")}
+                    disabled={loadingPatients || Boolean(editingPatientId)}
+                    placeholder="Chọn bệnh nhân..."
                   />
+                  {editingPatientId && (
+                    <p className="mt-2 text-xs text-amber-600 dark:text-amber-500">
+                      Lưu ý: Bệnh nhân này đã có cấu hình đang áp dụng. Việc lưu cấu hình mới sẽ tự động ngừng hiệu lực cấu hình hiện tại.
+                    </p>
+                  )}
                 </div>
 
-                {/* Threshold sections — 2-col grid */}
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {thresholdSections.map((section) => (
-                    <div key={section.title} className="rounded-lg border border-slate-100 dark:border-slate-700 p-4">
-                      <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    <div key={section.title} className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 p-5">
+                      <h3 className="mb-4 text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                         {section.title}
                       </h3>
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="mb-1 block text-sm text-slate-400 dark:text-slate-500">{t("thresholds.minimum")}</label>
+                          <label className="mb-1.5 block text-sm text-slate-600 dark:text-slate-400">Tối thiểu</label>
                           <input
                             type="number"
                             step={section.step}
                             name={section.minKey}
-                            value={formData[section.minKey]}
+                            value={formData[section.minKey as keyof ThresholdFormData]}
                             onChange={handleChange}
-                            className="w-full rounded-md border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-base text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-slate-400 dark:focus:ring-slate-500"
+                            className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3.5 py-2.5 text-slate-900 dark:text-slate-100 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                           />
                         </div>
                         <div>
-                          <label className="mb-1 block text-sm text-slate-400 dark:text-slate-500">{t("thresholds.maximum")}</label>
+                          <label className="mb-1.5 block text-sm text-slate-600 dark:text-slate-400">Tối đa</label>
                           <input
                             type="number"
                             step={section.step}
                             name={section.maxKey}
-                            value={formData[section.maxKey]}
+                            value={formData[section.maxKey as keyof ThresholdFormData]}
                             onChange={handleChange}
-                            className="w-full rounded-md border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-base text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-slate-400 dark:focus:ring-slate-500"
+                            className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3.5 py-2.5 text-slate-900 dark:text-slate-100 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                           />
                         </div>
                       </div>
                     </div>
                   ))}
 
-                  {/* SpO2 */}
-                  <div className="rounded-lg border border-slate-100 dark:border-slate-700 p-4">
-                    <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">SpO2 (%)</h3>
+                  {/* SpO2 - single value */}
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 p-5">
+                    <h3 className="mb-4 text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      SpO2 (%)
+                    </h3>
                     <div>
-                      <label className="mb-1 block text-sm text-slate-400 dark:text-slate-500">{t("thresholds.minimum")}</label>
+                      <label className="mb-1.5 block text-sm text-slate-600 dark:text-slate-400">Tối thiểu</label>
                       <input
                         type="number"
+                        step="1"
                         name="spo2Min"
                         value={formData.spo2Min}
                         onChange={handleChange}
-                        className="w-full rounded-md border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-base text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-slate-400 dark:focus:ring-slate-500"
+                        className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3.5 py-2.5 text-slate-900 dark:text-slate-100 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                       />
                     </div>
                   </div>
-
-                  {/* Validity period */}
-                  <div className="rounded-lg border border-slate-100 dark:border-slate-700 p-4 sm:col-span-2">
-                    <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                      {t("thresholds.validityPeriod")}
+                  
+                  {/* Effective Dates */}
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 p-5">
+                    <h3 className="mb-4 text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      Thời gian hiệu lực
                     </h3>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="mb-1 block text-sm text-slate-400 dark:text-slate-500">
-                          {t("thresholds.fromDate")} <span className="text-red-400">*</span>
-                        </label>
+                        <label className="mb-1.5 block text-sm text-slate-600 dark:text-slate-400">Bắt đầu từ</label>
                         <input
-                          type="date"
+                          type="datetime-local"
                           name="effectiveFrom"
                           value={formData.effectiveFrom}
                           onChange={handleChange}
-                          required
-                          className="w-full rounded-md border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-base text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-slate-400 dark:focus:ring-slate-500"
+                          className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3.5 py-2.5 text-slate-900 dark:text-slate-100 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                         />
                       </div>
                       <div>
-                        <label className="mb-1 block text-sm text-slate-400 dark:text-slate-500">{t("thresholds.toDate")}</label>
+                        <label className="mb-1.5 block text-sm text-slate-600 dark:text-slate-400">Đến khi (Tùy chọn)</label>
                         <input
-                          type="date"
+                          type="datetime-local"
                           name="effectiveTo"
                           value={formData.effectiveTo}
                           onChange={handleChange}
-                          className="w-full rounded-md border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-base text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-slate-400 dark:focus:ring-slate-500"
+                          className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3.5 py-2.5 text-slate-900 dark:text-slate-100 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                         />
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-700 px-5 py-3">
-                <button
-                  type="button"
-                  onClick={() => resetForm()}
-                  className="inline-flex items-center rounded-md border border-slate-200 dark:border-slate-600 px-3 py-1.5 text-sm font-medium text-slate-500 dark:text-slate-400 transition hover:bg-slate-50 dark:hover:bg-slate-800"
-                >
-                  <FaUndo className="mr-1.5 h-3 w-3" />{t("common.reset")}
-                </button>
-                <div className="flex items-center gap-2">
+                <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-700">
                   <button
                     type="button"
-                    onClick={handleCloseForm}
-                    className="rounded-md border border-slate-200 dark:border-slate-600 px-3.5 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-300 transition hover:bg-slate-50 dark:hover:bg-slate-800"
+                    onClick={() => setIsFormVisible(false)}
+                    className="rounded-lg border border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-700 px-5 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 dark:hover:bg-slate-600"
                   >
-                    {t("common.cancel")}
+                    Hủy
                   </button>
                   <button
                     type="submit"
-                    disabled={!formData.patientId || saving}
-                    className="inline-flex items-center rounded-md bg-slate-900 dark:bg-slate-100 px-4 py-1.5 text-sm font-medium text-white dark:text-slate-900 transition hover:bg-slate-700 dark:hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
+                    disabled={saving}
+                    className="inline-flex items-center rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-50"
                   >
-                    <FaSave className="mr-1.5 h-3 w-3" />
-                    {saving ? t("thresholds.saving") : editingThresholdId ? t("thresholds.updateConfig") : t("thresholds.saveConfig")}
+                    {saving ? "Đang lưu..." : <><FaSave className="mr-2 h-4 w-4" /> Lưu cấu hình</>}
                   </button>
                 </div>
               </div>
@@ -934,10 +773,6 @@ const buildHistoryChips = (item: ThresholdRecord) => {
           </div>
         </div>
       )}
-
-      <Toast toast={toast} onClose={hideToast} />
     </div>
   );
-};
-
-export default ThresholdSettingsPage;
+}

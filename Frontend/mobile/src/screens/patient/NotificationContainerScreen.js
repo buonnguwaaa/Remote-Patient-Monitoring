@@ -30,7 +30,7 @@ export default function NotificationContainerScreen({ navigation, route }) {
             activeOpacity={0.8}
           >
             <Text style={[styles.segmentText, activeTab === "alerts" && styles.segmentTextActive]}>
-              Cảnh báo
+              Cảnh báo sức khỏe
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -39,7 +39,7 @@ export default function NotificationContainerScreen({ navigation, route }) {
             activeOpacity={0.8}
           >
             <Text style={[styles.segmentText, activeTab === "system" && styles.segmentTextActive]}>
-              Hệ thống
+              Nhắc nhở
             </Text>
           </TouchableOpacity>
         </View>
