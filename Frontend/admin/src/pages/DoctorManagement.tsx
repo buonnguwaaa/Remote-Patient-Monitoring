@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { FaUserMd, FaEdit, FaTrash, FaPlus, FaSearch } from "react-icons/fa";
+import { FaUserMd, FaEdit, FaTrash, FaPlus, FaSearch, FaEye } from "react-icons/fa";
 import { useTranslation } from "react-i18next";
 import api from "../services/api";
 import { uploadAvatar } from "../services/uploadService";
 import { useToast } from "../hooks/useToast";
 import Toast from "../components/ui/Toast";
 import AvatarUploader from "../components/ui/AvatarUploader";
+import Pagination from "../components/ui/Pagination";
 import type { Department, doctor } from "../types";
 import { mapGenderToDisplay, mapGenderToApi } from "../utils/genderConverter";
 import { adminPrimaryButtonClass, adminSecondaryButtonClass } from "../styles/buttonStyles";
@@ -44,7 +45,10 @@ const DoctorManagement: React.FC = () => {
   const [doctors, setDoctors] = useState<doctor[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [showModal, setShowModal] = useState(false);
+  const [modalMode, setModalMode] = useState<"add" | "edit" | "view">("add");
   const [editingDoctor, setEditingDoctor] = useState<doctor | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const { toast, showToast, hideToast } = useToast();
@@ -52,7 +56,7 @@ const DoctorManagement: React.FC = () => {
   const fetchPageData = async () => {
     try {
       const [doctorResponse, departmentResponse] = await Promise.all([
-        api.get("/users/doctors"),
+        api.get("/users/doctors?limit=1000&sortOrder=desc"),
         api.get("/departments").catch(() => ({ data: { data: [] } })),
       ]);
 
@@ -101,12 +105,21 @@ const DoctorManagement: React.FC = () => {
   const handleAdd = () => {
     setEditingDoctor(null);
     setAvatarFile(null);
+    setModalMode("add");
     setShowModal(true);
   };
 
   const handleEdit = (doctor: doctor) => {
     setEditingDoctor(doctor);
     setAvatarFile(null);
+    setModalMode("edit");
+    setShowModal(true);
+  };
+
+  const handleView = (doctor: doctor) => {
+    setEditingDoctor(doctor);
+    setAvatarFile(null);
+    setModalMode("view");
     setShowModal(true);
   };
 
@@ -116,6 +129,16 @@ const DoctorManagement: React.FC = () => {
     doctor.department?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     doctor.workplace.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const totalPages = Math.ceil(filteredDoctors.length / itemsPerPage);
+  const paginatedDoctors = filteredDoctors.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
   const renderDoctorCard = (doctor: doctor) => {
     return (
@@ -181,6 +204,13 @@ const DoctorManagement: React.FC = () => {
         </div>
 
         <div className="mt-4 flex items-center justify-end gap-2">
+          <button
+            onClick={() => handleView(doctor)}
+            className="rounded-lg p-2 text-green-600 transition hover:bg-green-50 hover:text-green-900 dark:hover:bg-green-900/20"
+            aria-label={t("common.viewDetails") || "View"}
+          >
+            <FaEye />
+          </button>
           <button
             onClick={() => handleEdit(doctor)}
             className="rounded-lg p-2 text-blue-600 transition hover:bg-blue-50 hover:text-blue-900 dark:hover:bg-blue-900/20"
@@ -292,12 +322,12 @@ const DoctorManagement: React.FC = () => {
       </div>
 
       <div className="space-y-4 md:hidden">
-        {filteredDoctors.length === 0 ? (
+        {paginatedDoctors.length === 0 ? (
           <div className="rounded-lg bg-white p-6 text-center text-gray-500 shadow-md dark:bg-gray-800 dark:text-gray-400">
             {t("common.noData")}
           </div>
         ) : (
-          filteredDoctors.map((doctor) => renderDoctorCard(doctor))
+          paginatedDoctors.map((doctor) => renderDoctorCard(doctor))
         )}
       </div>
 
@@ -331,12 +361,12 @@ const DoctorManagement: React.FC = () => {
                 {t("doctorManagement.fields.contact")}
               </th>
               <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                {t("common.edit")}
+                {t("common.actions")}
               </th>
             </tr>
           </thead>
           <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-            {filteredDoctors.map((doctor) => (
+            {paginatedDoctors.map((doctor) => (
               <tr key={doctor.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                 <td className="px-6 py-4" style={{ minWidth: '250px' }}>
                   <div className="flex items-center">
@@ -383,6 +413,13 @@ const DoctorManagement: React.FC = () => {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                   <button
+                    onClick={() => handleView(doctor)}
+                    className="text-green-600 hover:text-green-900 mr-3"
+                    title={t("common.viewDetails") || "View details"}
+                  >
+                    <FaEye className="inline" />
+                  </button>
+                  <button
                     onClick={() => handleEdit(doctor)}
                     className="text-blue-600 hover:text-blue-900 mr-3"
                   >
@@ -402,16 +439,25 @@ const DoctorManagement: React.FC = () => {
         </div>
       </div>
 
+      <div className="mt-4">
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+        />
+      </div>
+
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
           <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white p-4 md:p-6 dark:bg-gray-800">
             <h2 className="mb-4 text-xl font-bold dark:text-white md:text-2xl">
-              {editingDoctor ? t("doctorManagement.editDoctor") : t("doctorManagement.addNewDoctor")}
+              {modalMode === "view" ? t("common.viewDetails") || "Chi tiết" : modalMode === "edit" ? t("doctorManagement.editDoctor") : t("doctorManagement.addNewDoctor")}
             </h2>
             <form className="space-y-4" onSubmit={handleSubmit}>
               <AvatarUploader
                 currentUrl={editingDoctor?.profileImageUrl}
                 onFileSelect={(file) => setAvatarFile(file)}
+                disabled={modalMode === "view"}
               />
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -423,7 +469,8 @@ const DoctorManagement: React.FC = () => {
                     name="name"
                     type="text"
                     required
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    disabled={modalMode === "view"}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-70"
                     defaultValue={editingDoctor?.name}
                   />
                 </div>
@@ -448,7 +495,8 @@ const DoctorManagement: React.FC = () => {
                     name="specialization"
                     type="text"
                     required
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    disabled={modalMode === "view"}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-70"
                     defaultValue={editingDoctor?.specialization}
                   />
                 </div>
@@ -460,7 +508,8 @@ const DoctorManagement: React.FC = () => {
                     name="licenseNumber"
                     type="text"
                     required
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    disabled={modalMode === "view"}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-70"
                     defaultValue={editingDoctor?.licenseNumber}
                   />
                 </div>
@@ -472,7 +521,8 @@ const DoctorManagement: React.FC = () => {
                     name="workplace"
                     type="text"
                     required
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    disabled={modalMode === "view"}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-70"
                     defaultValue={editingDoctor?.workplace}
                   />
                 </div>
@@ -484,7 +534,8 @@ const DoctorManagement: React.FC = () => {
                     name="yearsOfExperience"
                     type="number"
                     required
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    disabled={modalMode === "view"}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-70"
                     defaultValue={editingDoctor?.yearsOfExperience}
                   />
                 </div>
@@ -496,7 +547,8 @@ const DoctorManagement: React.FC = () => {
                     name="email"
                     type="email"
                     required
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    disabled={modalMode === "view"}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-70"
                     defaultValue={editingDoctor?.email}
                   />
                 </div>
@@ -508,7 +560,8 @@ const DoctorManagement: React.FC = () => {
                     name="phone"
                     type="tel"
                     required
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    disabled={modalMode === "view"}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-70"
                     defaultValue={editingDoctor?.phone}
                   />
                 </div>
@@ -518,7 +571,8 @@ const DoctorManagement: React.FC = () => {
                   </label>
                   <select
                     name="gender"
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    disabled={modalMode === "view"}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-70"
                     defaultValue={editingDoctor?.gender}
                   >
                     <option value="Nam">{t("common.male")}</option>
@@ -531,7 +585,8 @@ const DoctorManagement: React.FC = () => {
                   </label>
                   <select
                     name="status"
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    disabled={modalMode === "view"}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-70"
                     defaultValue={editingDoctor?.status || "active"}
                   >
                     <option value="active">{t("common.active")}</option>
@@ -560,14 +615,16 @@ const DoctorManagement: React.FC = () => {
                   onClick={() => setShowModal(false)}
                   className={`${adminSecondaryButtonClass} w-full md:w-auto`}
                 >
-                  {t("common.cancel")}
+                  {modalMode === "view" ? t("common.close") || "Close" : t("common.cancel")}
                 </button>
-                <button
-                  type="submit"
-                  className={`${adminPrimaryButtonClass} w-full md:w-auto`}
-                >
-                  {editingDoctor ? t("common.update") : t("common.add")}
-                </button>
+                {modalMode !== "view" && (
+                  <button
+                    type="submit"
+                    className={`${adminPrimaryButtonClass} w-full md:w-auto`}
+                  >
+                    {modalMode === "edit" ? t("common.update") : t("common.add")}
+                  </button>
+                )}
               </div>
             </form>
           </div>

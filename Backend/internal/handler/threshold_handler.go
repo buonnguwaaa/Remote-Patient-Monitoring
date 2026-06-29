@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 
+	domain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/service"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecase"
@@ -83,15 +84,30 @@ func (h *ThresholdHandler) CreateThreshold(c *gin.Context) {
 // @Failure 500 {object} map[string]string "Internal server error"
 // @Router /thresholds [get]
 func (h *ThresholdHandler) GetThresholds(c *gin.Context) {
+	roleVal, roleExists := c.Get("role")
+	var userRole domain.Role
+	if roleExists {
+		if r, ok := roleVal.(domain.Role); ok {
+			userRole = r
+		}
+	}
+
 	doctorID := c.Query("doctorId")
-	if doctorID == "" {
+	if doctorID == "" && userRole == domain.RoleDoctor {
 		if currentUserID, exists := c.Get("userId"); exists {
 			doctorID = currentUserID.(string)
 		}
 	}
 
+	patientID := c.Query("patientId")
+	if userRole == domain.RolePatient {
+		if currentUserID, exists := c.Get("userId"); exists {
+			patientID = currentUserID.(string)
+		}
+	}
+
 	input := &usecase.GetThresholdsInput{
-		PatientID: c.Query("patientId"),
+		PatientID: patientID,
 		DoctorID:  doctorID,
 		IsLatest:  c.Query("latest") == "true",
 	}
