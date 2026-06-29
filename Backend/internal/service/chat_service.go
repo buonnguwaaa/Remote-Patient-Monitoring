@@ -449,7 +449,6 @@ func mapParticipantsToDTO(participants []chatDomain.Participant) []dto.Conversat
 	return results
 }
 
-
 func mapMessageToDTO(m *chatDomain.Message) *dto.MessageResponse {
 	if m == nil {
 		return nil

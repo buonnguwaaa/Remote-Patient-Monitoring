@@ -2356,13 +2356,13 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Prescription status (active, completed, discontinued, expired)",
+                        "description": "Prescription status (active, completed, discontinued). Active uses startDate/endDate to determine current prescriptions.",
                         "name": "status",
                         "in": "query"
                     },
                     {
                         "type": "boolean",
-                        "description": "Return only the latest prescription",
+                        "description": "Return only the current open prescription for the patient",
                         "name": "latest",
                         "in": "query"
                     },
@@ -2490,13 +2490,13 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Prescription status (active, completed, discontinued, expired)",
+                        "description": "Prescription status (active, completed, discontinued). Active uses startDate/endDate to determine current prescriptions.",
                         "name": "status",
                         "in": "query"
                     },
                     {
                         "type": "boolean",
-                        "description": "Return only the latest prescription",
+                        "description": "Return only the current open prescription for the patient",
                         "name": "latest",
                         "in": "query"
                     }
@@ -2767,52 +2767,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not found",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/realtime/ws": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Upgrade HTTP request to WebSocket for user-level realtime notifications (e.g., new chat messages, health alerts). Doctor role only.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "realtime"
-                ],
-                "summary": "Open realtime WebSocket connection",
-                "responses": {
-                    "101": {
-                        "description": "Switching Protocols",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -4532,14 +4486,12 @@ const docTemplate = `{
             "enum": [
                 "active",
                 "completed",
-                "discontinued",
-                "expired"
+                "discontinued"
             ],
             "x-enum-varnames": [
                 "PrescriptionStatusActive",
                 "PrescriptionStatusCompleted",
-                "PrescriptionStatusDiscontinued",
-                "PrescriptionStatusExpired"
+                "PrescriptionStatusDiscontinued"
             ]
         },
         "domain.ReminderStatus": {
@@ -4739,6 +4691,9 @@ const docTemplate = `{
             "properties": {
                 "doctorId": {
                     "type": "string"
+                },
+                "durationMinutes": {
+                    "type": "integer"
                 },
                 "location": {
                     "type": "string"
@@ -5313,6 +5268,9 @@ const docTemplate = `{
         "dto.UpdateFollowUpAppointmentRequest": {
             "type": "object",
             "properties": {
+                "durationMinutes": {
+                    "type": "integer"
+                },
                 "location": {
                     "type": "string"
                 },

@@ -78,8 +78,8 @@ func (h *PrescriptionHandler) CreatePrescription(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param patientId query string false "Patient ID"
-// @Param status query string false "Prescription status (active, completed, discontinued, expired)"
-// @Param latest query bool false "Return only the latest prescription"
+// @Param status query string false "Prescription status (active, completed, discontinued). Active uses startDate/endDate to determine current prescriptions."
+// @Param latest query bool false "Return only the current open prescription for the patient"
 // @Param doctorId query string false "Filter prescriptions for patients assigned to this doctor"
 // @Param nurseId query string false "Filter prescriptions for patients assigned to this nurse"
 // @Param prescribedBy query string false "Filter prescriptions written by this doctor"
@@ -133,8 +133,8 @@ func (h *PrescriptionHandler) GetPrescriptions(c *gin.Context) {
 // @Tags prescriptions
 // @Accept json
 // @Produce json
-// @Param status query string false "Prescription status (active, completed, discontinued, expired)"
-// @Param latest query bool false "Return only the latest prescription"
+// @Param status query string false "Prescription status (active, completed, discontinued). Active uses startDate/endDate to determine current prescriptions."
+// @Param latest query bool false "Return only the current open prescription for the patient"
 // @Success 200 {object} map[string]interface{} "Prescriptions retrieved successfully"
 // @Failure 401 {object} map[string]string "Unauthorized"
 // @Failure 403 {object} map[string]string "Forbidden"

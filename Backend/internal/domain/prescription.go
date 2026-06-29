@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"fmt"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -12,7 +13,6 @@ const (
 	PrescriptionStatusActive       PrescriptionStatus = "active"
 	PrescriptionStatusCompleted    PrescriptionStatus = "completed"
 	PrescriptionStatusDiscontinued PrescriptionStatus = "discontinued"
-	PrescriptionStatusExpired      PrescriptionStatus = "expired"
 )
 
 type TimeOfDay string
@@ -64,13 +64,47 @@ type Prescription struct {
 	UpdatedAt    time.Time                `json:"updatedAt" bson:"updatedAt"`
 }
 
+// PrescriptionEffectiveEndDate returns the inclusive end boundary for scheduling.
+// When EndDate is nil, a one-year course from StartDate is assumed.
+func PrescriptionEffectiveEndDate(end *time.Time, start time.Time) time.Time {
+	if end != nil {
+		return end.UTC()
+	}
+	return start.UTC().AddDate(1, 0, 0)
+}
+
+// IsPrescriptionOpen reports whether the prescription is currently in effect by status and date range.
+func IsPrescriptionOpen(p *Prescription, now time.Time) bool {
+	if p == nil || p.Status != PrescriptionStatusActive {
+		return false
+	}
+
+	now = now.UTC()
+	start := p.StartDate.UTC()
+	if now.Before(start) {
+		return false
+	}
+
+	return now.Before(PrescriptionEffectiveEndDate(p.EndDate, p.StartDate))
+}
+
+// ValidatePrescriptionStatus rejects unknown or derived-only status values.
+func ValidatePrescriptionStatus(status PrescriptionStatus) error {
+	switch status {
+	case PrescriptionStatusActive, PrescriptionStatusCompleted, PrescriptionStatusDiscontinued:
+		return nil
+	default:
+		return fmt.Errorf("invalid prescription status: %s", status)
+	}
+}
+
 // ReminderStatusForPrescription maps prescription status to the reminder status applied
 // when a prescription status changes. This is one-way: reminder changes do not affect prescriptions.
 func ReminderStatusForPrescription(status PrescriptionStatus) (ReminderStatus, bool) {
 	switch status {
 	case PrescriptionStatusActive:
 		return ReminderStatusActive, true
-	case PrescriptionStatusCompleted, PrescriptionStatusExpired:
+	case PrescriptionStatusCompleted:
 		return ReminderStatusExpired, true
 	case PrescriptionStatusDiscontinued:
 		return ReminderStatusCanceled, true
