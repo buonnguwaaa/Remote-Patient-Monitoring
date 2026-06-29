@@ -12,8 +12,8 @@ import (
 	"strconv"
 	"time"
 
-	chatDomain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/chat"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
+	chatDomain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/chat"
 	userDomain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/realtime"
@@ -45,9 +45,9 @@ type VideoSessionService interface {
 }
 
 type videoSessionService struct {
-	videoRepo       repository.VideoSessionRepository
-	assignmentRepo  repository.AssignmentRepository
-	chatService     ChatService
+	videoRepo         repository.VideoSessionRepository
+	assignmentRepo    repository.AssignmentRepository
+	chatService       ChatService
 	realtimePublisher *realtime.RedisUserEventPublisher
 }
 

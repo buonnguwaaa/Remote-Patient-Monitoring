@@ -19,7 +19,9 @@ import {
   getUnreadNotificationCount,
   markNotificationRead,
 } from "../../api/notificationsApi";
+import { recordMedicationIntake } from "../../api/medicationIntakeApi";
 import { subscribeNotificationEvents } from "../../services/notificationEvents";
+import { useSnackbar } from "../../hooks/useSnackbar";
 
 function extractData(response) {
   if (!response?.ok) return null;
@@ -75,6 +77,7 @@ function buildNotificationMeta(item) {
 export default function NotificationInboxScreen({ isEmbedded }) {
   const navigation = useNavigation();
   const route = useRoute();
+  const { showSuccess, showError } = useSnackbar();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -82,6 +85,7 @@ export default function NotificationInboxScreen({ isEmbedded }) {
   const [error, setError] = useState("");
   const [selectedNotification, setSelectedNotification] = useState(null);
   const [filterMode, setFilterMode] = useState("all"); // "all" | "measure" | "medicine"
+  const [takingMedicationForNotificationId, setTakingMedicationForNotificationId] = useState(null);
   const handledSelectedIdRef = useRef(null);
 
   const filteredNotifications = useMemo(() => {
@@ -185,6 +189,44 @@ export default function NotificationInboxScreen({ isEmbedded }) {
     [navigation, updateNotificationInState]
   );
 
+  const handleTakeMedicationFromNotification = useCallback(
+    async (item) => {
+      if (!item?.id || !item?.data) return;
+      
+      const { prescriptionId, drugName, dose } = item.data;
+      if (!prescriptionId || !drugName || !dose) {
+        showError("Thông tin thuốc không đầy đủ");
+        return;
+      }
+
+      try {
+        setTakingMedicationForNotificationId(item.id);
+        await recordMedicationIntake({
+          prescriptionId,
+          drugName,
+          dose,
+          takenAt: new Date().toISOString(),
+        });
+        showSuccess(`Đã ghi nhận uống ${drugName}`);
+        
+        // Mark as read
+        if (!item.isRead) {
+          const response = await markNotificationRead(item.id);
+          const updated = extractData(response);
+          if (response?.ok && updated) {
+            updateNotificationInState(normalizeNotification(updated));
+            setUnreadCount((current) => Math.max(0, current - 1));
+          }
+        }
+      } catch (err) {
+        showError(err.message || "Không thể ghi nhận uống thuốc");
+      } finally {
+        setTakingMedicationForNotificationId(null);
+      }
+    },
+    [updateNotificationInState, showSuccess, showError]
+  );
+
   useEffect(() => {
     const selectedNotificationId = route?.params?.selectedNotificationId;
     if (!selectedNotificationId || notifications.length === 0) return;
@@ -273,30 +315,54 @@ export default function NotificationInboxScreen({ isEmbedded }) {
         ) : (
           filteredNotifications.map((item) => {
             const meta = buildNotificationMeta(item);
+            const isMedicineReminder = item.type === "reminder" && item?.data?.reminderKind !== "measure";
+            const isLoading = takingMedicationForNotificationId === item.id;
+
             return (
-              <TouchableOpacity
+              <View
                 key={item.id}
                 style={[styles.notificationCard, !item.isRead && styles.notificationCardUnread]}
-                activeOpacity={0.85}
-                onPress={() => void handleOpenNotification(item)}
               >
-                <View style={[styles.iconWrap, { backgroundColor: `${meta.iconColor}15` }]}> 
-                  <Ionicons name={meta.iconName} size={22} color={meta.iconColor} />
-                </View>
-                <View style={styles.notificationBody}>
-                  <View style={styles.rowBetween}>
-                    <Text style={styles.notificationTitle}>{meta.title}</Text>
-                    {!item.isRead ? <View style={styles.unreadDot} /> : null}
+                <TouchableOpacity
+                  style={styles.notificationMainContent}
+                  activeOpacity={0.85}
+                  onPress={() => void handleOpenNotification(item)}
+                >
+                  <View style={[styles.iconWrap, { backgroundColor: `${meta.iconColor}15` }]}> 
+                    <Ionicons name={meta.iconName} size={22} color={meta.iconColor} />
                   </View>
-                  <Text style={styles.notificationSubtitle}>{meta.subtitle}</Text>
-                  <View style={styles.rowBetween}>
-                    <View style={styles.pill}>
-                      <Text style={styles.pillText}>{meta.pillText}</Text>
+                  <View style={styles.notificationBody}>
+                    <View style={styles.rowBetween}>
+                      <Text style={styles.notificationTitle}>{meta.title}</Text>
+                      {!item.isRead ? <View style={styles.unreadDot} /> : null}
                     </View>
-                    <Text style={styles.timestamp}>{formatDateTime(item.createdAt)}</Text>
+                    <Text style={styles.notificationSubtitle}>{meta.subtitle}</Text>
+                    <View style={styles.rowBetween}>
+                      <View style={styles.pill}>
+                        <Text style={styles.pillText}>{meta.pillText}</Text>
+                      </View>
+                      <Text style={styles.timestamp}>{formatDateTime(item.createdAt)}</Text>
+                    </View>
                   </View>
-                </View>
-              </TouchableOpacity>
+                </TouchableOpacity>
+
+                {isMedicineReminder && item?.data?.prescriptionId && item?.data?.drugName && item?.data?.dose && (
+                  <TouchableOpacity
+                    style={styles.quickActionButton}
+                    onPress={() => void handleTakeMedicationFromNotification(item)}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <>
+                        <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" />
+                        <Text style={styles.quickActionButtonText}>Uống</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                )}
+              </View>
             );
           })
         )}
@@ -355,6 +421,8 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     padding: 14,
     marginBottom: 12,
+  },
+  notificationMainContent: {
     flexDirection: "row",
     alignItems: "flex-start",
     gap: 12,
@@ -385,6 +453,22 @@ const styles = StyleSheet.create({
   },
   pillText: { fontSize: 11, fontWeight: "700", color: "#1D4ED8" },
   timestamp: { marginTop: 12, fontSize: 11, color: "#6B7280" },
+  quickActionButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#10B981",
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    gap: 6,
+    marginTop: 12,
+  },
+  quickActionButtonText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "700",
+  },
   modalBackdrop: {
     flex: 1,
     backgroundColor: "rgba(17,24,39,0.45)",

@@ -152,19 +152,19 @@ func (s *assignmentService) mapToResponseWithNames(a *domain.Assignment, userInf
 	nurse := userInfoMap[a.NurseID]
 
 	return &dto.AssignmentResponse{
-		ID:              a.ID,
-		PatientID:       a.PatientID,
-		PatientPublicID: patient.PublicID,
-		PatientName:     patient.Name,
-		DoctorID:        a.DoctorID,
-		DoctorPublicID:  doctor.PublicID,
-		DoctorName:      doctor.Name,
-		NurseID:         a.NurseID,
-		NursePublicID:   nurse.PublicID,
-		NurseName:       nurse.Name,
-		AssignedBy:      a.AssignedBy,
-		CreatedAt:       a.CreatedAt,
-		UpdatedAt:       a.UpdatedAt,
+		ID:                  a.ID,
+		PatientID:           a.PatientID,
+		PatientPublicID:     patient.PublicID,
+		PatientName:         patient.Name,
+		DoctorID:            a.DoctorID,
+		DoctorPublicID:      doctor.PublicID,
+		DoctorName:          doctor.Name,
+		NurseID:             a.NurseID,
+		NursePublicID:       nurse.PublicID,
+		NurseName:           nurse.Name,
+		AssignedBy:          a.AssignedBy,
+		CreatedAt:           a.CreatedAt,
+		UpdatedAt:           a.UpdatedAt,
 		PatientDiseaseTypes: &patient.DiseaseTypes,
 	}
 }
