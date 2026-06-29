@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { FaSearch, FaChevronDown } from "react-icons/fa";
 
 export interface PatientSearchSelectProps {

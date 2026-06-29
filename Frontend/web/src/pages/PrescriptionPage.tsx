@@ -7,13 +7,11 @@ import {
   useState,
 } from "react";
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
-import { useTranslation } from "react-i18next";
 import {
   FaChevronDown,
   FaChevronRight,
   FaChevronLeft,
   FaEdit,
-  FaNotesMedical,
   FaPlus,
   FaSyncAlt,
   FaTimes,
@@ -318,7 +316,7 @@ const getStatusClasses = (status: PrescriptionStatus) => {
 export default function PrescriptionPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  // const { t } = useTranslation();
   const { toast, showToast, hideToast } = useToast();
 
   const initialPatientId = searchParams.get("patientId") ?? "";
@@ -671,7 +669,7 @@ export default function PrescriptionPage() {
 
   return (
     <div className="w-full px-4 py-8 pb-24 sm:px-6 lg:px-8">
-      {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
+      {toast && <Toast toast={toast} onClose={hideToast} />}
 
       {!isFormVisible ? (
         <>

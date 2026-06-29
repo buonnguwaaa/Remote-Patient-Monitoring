@@ -340,7 +340,7 @@ const PatientDetailPage = () => {
   const [videoCallOpen, setVideoCallOpen] = useState(false);
   const [thresholdExpanded, setThresholdExpanded] = useState(false);
   const [tableItemsPerPage, setTableItemsPerPage] = useState(5);
-  const [showAllAlerts, setShowAllAlerts] = useState(false);
+  // const [showAllAlerts, setShowAllAlerts] = useState(false);
 
   const loadMeasurements = useCallback(async (isPolling = false) => {
     if (!patientId) return;

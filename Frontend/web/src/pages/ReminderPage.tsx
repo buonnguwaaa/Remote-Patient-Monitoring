@@ -8,12 +8,8 @@ import {
 import { useSearchParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
-  FaEdit,
-  FaPauseCircle,
-  FaPlayCircle,
   FaPlus,
   FaRegClock,
-  FaStopCircle,
   FaSyncAlt,
   FaTimes,
   FaChevronLeft,
@@ -123,12 +119,12 @@ const ReminderPage = () => {
   const toStartOfDayIso = (value: string) => new Date(`${value}T00:00:00`).toISOString();
   const toEndOfDayIso = (value: string) => new Date(`${value}T23:59:59`).toISOString();
 
-  const formatDate = (value: string) =>
-    new Date(value).toLocaleDateString("vi-VN", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
+  // const formatDate = (value: string) =>
+  //   new Date(value).toLocaleDateString("vi-VN", {
+  //     day: "2-digit",
+  //     month: "2-digit",
+  //     year: "numeric",
+  //   });
 
   const formatTime = (hour: number, minute: number) =>
     `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
@@ -491,7 +487,7 @@ const ReminderPage = () => {
 
   return (
     <div className="w-full px-4 py-8 pb-24 sm:px-6 lg:px-8">
-      {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
+      {toast && <Toast toast={toast} onClose={hideToast} />}
 
       <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
@@ -582,7 +578,7 @@ const ReminderPage = () => {
         ) : aggregatedItems.length === 0 ? (
           <div className="col-span-full py-12 text-center text-slate-500 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">Không tìm thấy nhắc nhở nào phù hợp.</div>
         ) : (
-          currentItems.map((item, index) => {
+          currentItems.map((item) => {
             if (item.type === "group") {
               // Medication Group Card
               return (
@@ -960,9 +956,7 @@ const ReminderPage = () => {
                 >
                   {saving ? (
                     <FaSyncAlt className="mr-2 animate-spin" />
-                  ) : (
-                    <FaSave className="mr-2" />
-                  )}
+                  ) : null}
                   {editingReminderId ? "Cập nhật" : "Tạo mới"}
                 </button>
               </div>

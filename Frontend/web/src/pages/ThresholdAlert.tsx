@@ -3,19 +3,13 @@ import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   FaCheckCircle,
-  FaChevronUp,
-  FaChevronDown,
   FaCommentDots,
   FaExclamationTriangle,
   FaInfoCircle,
   FaRegClock,
   FaSyncAlt,
-  FaChevronLeft,
-  FaChevronRight,
   FaUserInjured,
   FaSearch,
-  FaFilter,
-  FaIdCard,
 } from "react-icons/fa";
 
 import Toast from "../components/ui/Toast";
@@ -28,11 +22,11 @@ import {
 } from "../services/patientService";
 import type { AlertResponse } from "../types/patient";
 
-export enum AlertSeverity {
-  LOW = "low",
-  MEDIUM = "medium",
-  HIGH = "high",
-}
+export const AlertSeverity = {
+  LOW: "low",
+  MEDIUM: "medium",
+  HIGH: "high",
+} as const;
 
 // Map english severity to vietnamese per user request
 export const getSeverityLabel = (level: string) => {
@@ -90,7 +84,7 @@ const ThresholdAlert = () => {
   const [activeTab, setActiveTab] = useState<TabType>("PENDING");
   const [searchQuery, setSearchQuery] = useState("");
   const [severityFilter, setSeverityFilter] = useState<string>("ALL");
-  const [currentPage, setCurrentPage] = useState(1);
+  // const [currentPage, setCurrentPage] = useState(1);
   
   const [expandedPatients, setExpandedPatients] = useState<Set<string>>(new Set());
   
@@ -309,9 +303,9 @@ const ThresholdAlert = () => {
   }, [alerts]);
 
   // Pagination for ALL / RESOLVED tabs
-  const itemsPerPage = 10;
-  const totalPages = Math.ceil(filteredAlerts.length / itemsPerPage);
-  const paginatedAlerts = filteredAlerts.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  // const itemsPerPage = 10;
+  // const totalPages = Math.ceil(filteredAlerts.length / itemsPerPage);
+  // const paginatedAlerts = filteredAlerts.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const renderStats = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -349,7 +343,7 @@ const ThresholdAlert = () => {
             return (
               <button
                 key={tab}
-                onClick={() => { setActiveTab(tab); setCurrentPage(1); }}
+                onClick={() => { setActiveTab(tab);  }}
                 className={`px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors ${
                   activeTab === tab
                     ? "bg-white dark:bg-slate-600 text-blue-600 dark:text-blue-400 shadow-sm"
@@ -630,7 +624,7 @@ const ThresholdAlert = () => {
         </button>
       </div>
 
-      {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
+      {toast && <Toast toast={toast} onClose={hideToast} />}
 
       {renderStats()}
       {renderFilters()}

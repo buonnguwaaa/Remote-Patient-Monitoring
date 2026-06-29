@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, type ChangeEvent, type FormEvent } from "react";
+import { useState, useEffect, useMemo, type ChangeEvent, type FormEvent } from "react";
 import { FaPlus, FaSyncAlt, FaEdit, FaStopCircle, FaTimes, FaSave, FaSearch } from "react-icons/fa";
 import { useTranslation } from "react-i18next";
 
@@ -35,7 +35,7 @@ interface ThresholdFormData {
   effectiveTo: string;
 }
 
-const HISTORY_PAGE_SIZE = 10;
+// const HISTORY_PAGE_SIZE = 10;
 
 const createDefaultFormData = (patientId = ""): ThresholdFormData => ({
   patientId,
@@ -51,7 +51,9 @@ const createDefaultFormData = (patientId = ""): ThresholdFormData => ({
   glucoseMax: "125",
   spo2Min: "95",
   respiratoryRateMin: "12",
+  respiratoryRateMax: "20",
   effectiveFrom: new Date().toISOString().slice(0, 16),
+  effectiveTo: "",
 });
 
 const formatDateTime = (isoString: string | null) => {
@@ -456,7 +458,7 @@ export default function ThresholdSettingsPage() {
 
   return (
     <div className="w-full px-4 py-8 sm:px-6 lg:px-8">
-      {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
+      {toast && <Toast toast={toast} onClose={hideToast} />}
 
       {/* Stats Bar */}
       <div className="mb-8 grid gap-4 grid-cols-3">

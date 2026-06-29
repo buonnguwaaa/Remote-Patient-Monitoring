@@ -1,9 +1,7 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useTranslation } from "react-i18next";
 import {
   FaArrowLeft,
-  FaFilePrescription,
   FaUserInjured,
   FaClock,
   FaCalendarAlt,
@@ -146,7 +144,7 @@ export default function PrescriptionDetailPage() {
 
   return (
     <div className="w-full px-4 py-8 pb-24 sm:px-6 lg:px-8">
-      {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} />}
+      {toast && <Toast toast={toast} onClose={hideToast} />}
       
       <button onClick={() => navigate("/prescriptions")} className="flex items-center text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 mb-6 transition font-medium">
         <FaArrowLeft className="mr-2"/> Quay lại danh sách

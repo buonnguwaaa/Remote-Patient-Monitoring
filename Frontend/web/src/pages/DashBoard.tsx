@@ -121,10 +121,6 @@ function ago(ds: string, t: any) {
   });
 }
 
-function isAttentionAlert(alert: AlertResponse) {
-  return alert.severity === "high" && alert.status === "open";
-}
-
 function endOfMonth(date: Date) {
   return new Date(
     date.getFullYear(),
@@ -283,7 +279,6 @@ const TodoList: React.FC<{
   appointments: FollowUpAppointment[];
   loading: boolean;
 }> = ({ alerts, appointments, loading }) => {
-  const { t } = useTranslation();
   const navigate = useNavigate();
 
   const pendingAlerts = useMemo(() => alerts.filter(a => a.status === "open").slice(0, 5), [alerts]);
@@ -735,7 +730,7 @@ const DashBoard = () => {
     exportAlertsToExcel({
       allAlerts: filteredAlerts,
       assignments,
-      dashboardStats,
+      dashboardStats: { total: dashboardStats.total, stable: dashboardStats.stable, attention: (dashboardStats.warning || 0) + (dashboardStats.critical || 0) + (dashboardStats.low || 0) },
       dateRange,
     });
   };
