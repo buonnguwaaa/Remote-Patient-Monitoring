@@ -17,10 +17,10 @@ import (
 )
 
 var (
-	ErrMedicationIntakeNotFound     = errors.New("medication intake not found")
-	ErrMedicationSlotNotFound       = errors.New("medication dose slot not found in prescription")
-	ErrPrescriptionNotActiveToday   = errors.New("prescription is not active for today")
-	ErrMedicationIntakeAccessDenied = errors.New("access denied")
+	ErrMedicationIntakeNotFound     = errors.New("Không tìm thấy lịch sử uống thuốc")
+	ErrMedicationSlotNotFound       = errors.New("Không tìm thấy lịch uống trong đơn thuốc")
+	ErrPrescriptionNotActiveToday   = errors.New("Đơn thuốc không có hiệu lực trong ngày hôm nay")
+	ErrMedicationIntakeAccessDenied = errors.New("Không có quyền truy cập")
 )
 
 type medicationIntakeService struct {
@@ -53,12 +53,12 @@ func NewMedicationIntakeService(
 func (s *medicationIntakeService) CreateMedicationIntake(ctx context.Context, input *usecase.CreateMedicationIntakeInput) (*dto.MedicationIntakeResponse, error) {
 	patientID, err := primitive.ObjectIDFromHex(input.PatientID)
 	if err != nil {
-		return nil, errors.New("invalid patient ID")
+		return nil, errors.New("ID bệnh nhân không hợp lệ")
 	}
 
 	prescriptionID, err := primitive.ObjectIDFromHex(input.PrescriptionID)
 	if err != nil {
-		return nil, errors.New("invalid prescription ID")
+		return nil, errors.New("ID đơn thuốc không hợp lệ")
 	}
 
 	prescription, err := s.prescriptionRepo.FindByID(ctx, prescriptionID)
@@ -142,12 +142,12 @@ func (s *medicationIntakeService) finalizeIntake(ctx context.Context, prescripti
 func (s *medicationIntakeService) GetTodayMedications(ctx context.Context, input *usecase.GetTodayMedicationsInput) ([]dto.TodayMedicationResponse, error) {
 	patientID, err := primitive.ObjectIDFromHex(input.PatientID)
 	if err != nil {
-		return nil, errors.New("invalid patient ID")
+		return nil, errors.New("ID bệnh nhân không hợp lệ")
 	}
 
 	exists, err := s.patientRepo.ExistsByIDAndRole(ctx, patientID, userDomain.RolePatient)
 	if err != nil || !exists {
-		return nil, errors.New("user not found or not patient")
+		return nil, errors.New("Không tìm thấy người dùng hoặc người dùng không phải bệnh nhân")
 	}
 
 	prescriptions, err := s.prescriptionRepo.FindWithFilter(ctx, repository.PrescriptionFilter{
@@ -232,12 +232,12 @@ func (s *medicationIntakeService) GetTodayMedications(ctx context.Context, input
 func (s *medicationIntakeService) GetMedicationAdherence(ctx context.Context, input *usecase.GetMedicationAdherenceInput) (*dto.MedicationAdherenceResponse, error) {
 	patientID, err := primitive.ObjectIDFromHex(input.PatientID)
 	if err != nil {
-		return nil, errors.New("invalid patient ID")
+		return nil, errors.New("ID bệnh nhân không hợp lệ")
 	}
 
 	exists, err := s.patientRepo.ExistsByIDAndRole(ctx, patientID, userDomain.RolePatient)
 	if err != nil || !exists {
-		return nil, errors.New("user not found or not patient")
+		return nil, errors.New("Không tìm thấy người dùng hoặc người dùng không phải bệnh nhân")
 	}
 
 	prescriptions, err := s.prescriptionRepo.FindWithFilter(ctx, repository.PrescriptionFilter{
@@ -373,7 +373,7 @@ func filterPrescriptionsForAdherence(prescriptions []domain.Prescription) []doma
 func resolveAdherenceRange(input *usecase.GetMedicationAdherenceInput, timezone string) (time.Time, time.Time, error) {
 	loc, err := time.LoadLocation(timezone)
 	if err != nil {
-		return time.Time{}, time.Time{}, fmt.Errorf("invalid timezone: %w", err)
+		return time.Time{}, time.Time{}, fmt.Errorf("múi giờ không hợp lệ: %w", err)
 	}
 
 	if input.From != nil && input.To != nil {
@@ -386,7 +386,7 @@ func resolveAdherenceRange(input *usecase.GetMedicationAdherenceInput, timezone 
 			return time.Time{}, time.Time{}, err
 		}
 		if to.Before(from) {
-			return time.Time{}, time.Time{}, errors.New("to must be on or after from")
+			return time.Time{}, time.Time{}, errors.New("Thời điểm kết thúc phải sau hoặc bằng thời điểm bắt đầu")
 		}
 		return from, to, nil
 	}
@@ -527,7 +527,7 @@ func effectivePrescriptionEndDate(end *time.Time, start time.Time) time.Time {
 func startOfDayInTimezone(t time.Time, timezone string) (time.Time, error) {
 	loc, err := time.LoadLocation(timezone)
 	if err != nil {
-		return time.Time{}, fmt.Errorf("invalid timezone: %w", err)
+		return time.Time{}, fmt.Errorf("múi giờ không hợp lệ: %w", err)
 	}
 
 	local := t.In(loc)

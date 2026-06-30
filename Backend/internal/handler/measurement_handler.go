@@ -67,7 +67,7 @@ func (h *MeasurementHandler) CreateMeasurement(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": resp, "message": "Measurement added successfully"})
+	c.JSON(http.StatusOK, gin.H{"data": resp, "message": "Thêm chỉ số đo thành công"})
 }
 
 // UpdateMeasurement handles updating an existing measurement
@@ -120,7 +120,7 @@ func (h *MeasurementHandler) UpdateMeasurement(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": resp, "message": "Measurement updated successfully"})
+	c.JSON(http.StatusOK, gin.H{"data": resp, "message": "Cập nhật chỉ số đo thành công"})
 }
 
 // GetMeasurements retrieves measurements based on query parameters
@@ -151,5 +151,5 @@ func (h *MeasurementHandler) GetMeasurements(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": resp, "message": "Measurements retrieved successfully"})
+	c.JSON(http.StatusOK, gin.H{"data": resp, "message": "Lấy danh sách chỉ số đo thành công"})
 }

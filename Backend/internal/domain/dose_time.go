@@ -61,13 +61,13 @@ func TimeOfDayForClock(hour, minute int) (TimeOfDay, bool) {
 // ValidateDoseTime ensures timeOfDay is set and optional custom clock fits the bucket.
 func ValidateDoseTime(dose MedicationDose) error {
 	if !dose.TimeOfDay.IsValid() {
-		return fmt.Errorf("invalid time of day: %s", dose.TimeOfDay)
+		return fmt.Errorf("buổi uống thuốc không hợp lệ: %s", dose.TimeOfDay)
 	}
 
 	hasHour := dose.Hour != nil
 	hasMinute := dose.Minute != nil
 	if hasHour != hasMinute {
-		return fmt.Errorf("hour and minute must both be set or both be omitted")
+		return fmt.Errorf("giờ và phút phải cùng được nhập hoặc cùng để trống")
 	}
 
 	if !hasHour {
@@ -132,7 +132,7 @@ func ReminderTimeOfDay(reminder *Reminder) (TimeOfDay, bool) {
 func ReminderSlotTime(scheduledDate time.Time, timezone string, hour, minute int) (time.Time, error) {
 	loc, err := time.LoadLocation(timezone)
 	if err != nil {
-		return time.Time{}, fmt.Errorf("invalid timezone: %w", err)
+		return time.Time{}, fmt.Errorf("múi giờ không hợp lệ: %w", err)
 	}
 
 	localDay := scheduledDate.In(loc)

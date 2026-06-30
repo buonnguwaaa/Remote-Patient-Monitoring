@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/constant"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/service"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecase"
@@ -59,14 +60,14 @@ func (h *ChatHandler) CreateConversation(c *gin.Context) {
 		case service.ErrChatAssignmentMismatch:
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		default:
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": constant.MsgInternalServerError})
 		}
 		return
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
 		"data":    conversation,
-		"message": "Conversation created successfully",
+		"message": "Tạo cuộc trò chuyện thành công",
 	})
 }
 
@@ -98,7 +99,7 @@ func (h *ChatHandler) GetConversations(c *gin.Context) {
 	if rawCursor != "" {
 		cursor, err = time.Parse(time.RFC3339Nano, rawCursor)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid cursor"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": constant.MsgInvalidCursor})
 			return
 		}
 	}
@@ -116,13 +117,13 @@ func (h *ChatHandler) GetConversations(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": constant.MsgInternalServerError})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"data":    resp,
-		"message": "Conversations retrieved successfully",
+		"message": "Lấy danh sách cuộc trò chuyện thành công",
 	})
 }
 
@@ -149,7 +150,7 @@ func (h *ChatHandler) GetMessages(c *gin.Context) {
 
 	conversationID, err := primitive.ObjectIDFromHex(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid conversation id"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": constant.MsgInvalidConversationID})
 		return
 	}
 
@@ -163,7 +164,7 @@ func (h *ChatHandler) GetMessages(c *gin.Context) {
 	if rawCursor != "" {
 		cursor, err = primitive.ObjectIDFromHex(rawCursor)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid cursor"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": constant.MsgInvalidCursor})
 			return
 		}
 	}
@@ -186,33 +187,33 @@ func (h *ChatHandler) GetMessages(c *gin.Context) {
 		case service.ErrChatForbidden:
 			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
 		default:
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": constant.MsgInternalServerError})
 		}
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"data":    resp,
-		"message": "Messages retrieved successfully",
+		"message": "Lấy tin nhắn thành công",
 	})
 }
 
 func getUserIDFromContext(c *gin.Context) (primitive.ObjectID, bool) {
 	rawUserID, exists := c.Get("userId")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": constant.MsgUnauthorized})
 		return primitive.NilObjectID, false
 	}
 
 	userIDHex, ok := rawUserID.(string)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": constant.MsgUnauthorized})
 		return primitive.NilObjectID, false
 	}
 
 	userID, err := primitive.ObjectIDFromHex(userIDHex)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid userId"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": constant.MsgInvalidUserID})
 		return primitive.NilObjectID, false
 	}
 

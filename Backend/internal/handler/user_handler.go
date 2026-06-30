@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/constant"
 	domain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
 
@@ -74,7 +75,7 @@ func (h *UserHandler) GetBaseUsers(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": users, "message": "List of users retrieved successfully"})
+	c.JSON(http.StatusOK, gin.H{"data": users, "message": "Lấy danh sách người dùng thành công"})
 }
 
 // GetBaseUserByID retrieves a base user by ID
@@ -99,7 +100,7 @@ func (h *UserHandler) GetBaseUserByID(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": u, "message": "User retrieved successfully"})
+	c.JSON(http.StatusOK, gin.H{"data": u, "message": "Lấy thông tin người dùng thành công"})
 }
 
 // UpdateBaseUserByID updates a base user by ID
@@ -139,7 +140,7 @@ func (h *UserHandler) UpdateBaseUserByID(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "User updated successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": "Cập nhật người dùng thành công"})
 }
 
 // UpdateBaseUserStatusByID updates only a user's status by ID
@@ -175,7 +176,7 @@ func (h *UserHandler) UpdateBaseUserStatusByID(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "User status updated successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": "Cập nhật trạng thái người dùng thành công"})
 }
 
 // DeleteBaseUserByID deletes a base user by ID
@@ -204,7 +205,7 @@ func (h *UserHandler) DeleteBaseUserByID(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "User deleted successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": "Xóa người dùng thành công"})
 }
 
 // UploadAvatar handles avatar upload for a user
@@ -227,7 +228,7 @@ func (h *UserHandler) UploadAvatar(c *gin.Context) {
 func (h *UserHandler) UploadMyPatientAvatar(c *gin.Context) {
 	userID, exists := c.Get("userId")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": constant.MsgUnauthorized})
 		return
 	}
 
@@ -244,14 +245,14 @@ func (h *UserHandler) uploadAvatarForUser(c *gin.Context, userID string) {
 	if fileHeader.Header.Get("Content-Type") != "" {
 		contentType := fileHeader.Header.Get("Content-Type")
 		if len(contentType) < 6 || contentType[:6] != "image/" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Only image files are allowed"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": constant.MsgOnlyImageFilesAllowed})
 			return
 		}
 	}
 
 	file, err := fileHeader.Open()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot open file: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": constant.MsgCannotOpenFile + ": " + err.Error()})
 		return
 	}
 	defer file.Close()
@@ -266,12 +267,12 @@ func (h *UserHandler) uploadAvatarForUser(c *gin.Context, userID string) {
 
 	avatarUrl, err := h.cloudinarySvc.UploadAvatar(ctx, file, "rpm/avatars")
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Upload failed: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": constant.MsgUploadFailed + ": " + err.Error()})
 		return
 	}
 
 	if err := h.service.UpdateBaseUser(ctx, &usecase.UpdateUserInfoInput{ID: userID, AvatarUrl: avatarUrl}); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save avatar: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": constant.MsgFailedSaveAvatar + ": " + err.Error()})
 		return
 	}
 
@@ -290,7 +291,7 @@ func (h *UserHandler) uploadAvatarForUser(c *gin.Context, userID string) {
 		}
 	}
 
-	c.JSON(http.StatusOK, gin.H{"avatarUrl": avatarUrl, "message": "Avatar uploaded successfully"})
+	c.JSON(http.StatusOK, gin.H{"avatarUrl": avatarUrl, "message": "Tải ảnh đại diện thành công"})
 }
 
 // GetMyPatientProfile retrieves the authenticated patient's profile
@@ -306,7 +307,7 @@ func (h *UserHandler) uploadAvatarForUser(c *gin.Context, userID string) {
 func (h *UserHandler) GetMyPatientProfile(c *gin.Context) {
 	userID, exists := c.Get("userId")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": constant.MsgUnauthorized})
 		return
 	}
 
@@ -319,7 +320,7 @@ func (h *UserHandler) GetMyPatientProfile(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": patient, "message": "Patient profile retrieved successfully"})
+	c.JSON(http.StatusOK, gin.H{"data": patient, "message": "Lấy hồ sơ bệnh nhân thành công"})
 }
 
 // UpdateMyPatientProfile updates the authenticated patient's profile
@@ -337,7 +338,7 @@ func (h *UserHandler) GetMyPatientProfile(c *gin.Context) {
 func (h *UserHandler) UpdateMyPatientProfile(c *gin.Context) {
 	userID, exists := c.Get("userId")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": constant.MsgUnauthorized})
 		return
 	}
 
@@ -393,7 +394,7 @@ func (h *UserHandler) UpdateMyPatientProfile(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": patient, "message": "Patient profile updated successfully"})
+	c.JSON(http.StatusOK, gin.H{"data": patient, "message": "Cập nhật hồ sơ bệnh nhân thành công"})
 }
 
 // GetPatients retrieves a list of patients
@@ -445,7 +446,7 @@ func (h *UserHandler) GetPatients(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": patients, "message": "list of patients retrieved successfully"})
+	c.JSON(http.StatusOK, gin.H{"data": patients, "message": "Lấy danh sách bệnh nhân thành công"})
 }
 
 // GetPatientByID retrieves a patient by ID
@@ -470,7 +471,7 @@ func (h *UserHandler) GetPatientByID(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": patient, "message": "patient retrieved successfully"})
+	c.JSON(http.StatusOK, gin.H{"data": patient, "message": "Lấy thông tin bệnh nhân thành công"})
 }
 
 // UpdatePatientByID updates a patient by ID
@@ -519,7 +520,7 @@ func (h *UserHandler) UpdatePatientByID(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Patient updated successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": "Cập nhật bệnh nhân thành công"})
 }
 
 // GetDoctors retrieves a list of doctors
@@ -567,7 +568,7 @@ func (h *UserHandler) GetDoctors(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": doctors, "message": "list of doctors retrieved successfully"})
+	c.JSON(http.StatusOK, gin.H{"data": doctors, "message": "Lấy danh sách bác sĩ thành công"})
 }
 
 // GetDoctorByID retrieves a doctor by ID
@@ -593,7 +594,7 @@ func (h *UserHandler) GetDoctorByID(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": doctor, "message": "doctor retrieved successfully"})
+	c.JSON(http.StatusOK, gin.H{"data": doctor, "message": "Lấy thông tin bác sĩ thành công"})
 }
 
 // UpdateDoctorByID updates a doctor by ID
@@ -642,7 +643,7 @@ func (h *UserHandler) UpdateDoctorByID(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Doctor updated successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": "Cập nhật bác sĩ thành công"})
 }
 
 // GetNurses retrieves a list of nurses
@@ -690,7 +691,7 @@ func (h *UserHandler) GetNurses(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": nurses, "message": "list of nurses retrieved successfully"})
+	c.JSON(http.StatusOK, gin.H{"data": nurses, "message": "Lấy danh sách điều dưỡng thành công"})
 }
 
 // GetMyNurseProfile retrieves the authenticated nurse's profile
@@ -706,7 +707,7 @@ func (h *UserHandler) GetNurses(c *gin.Context) {
 func (h *UserHandler) GetMyNurseProfile(c *gin.Context) {
 	userID, exists := c.Get("userId")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": constant.MsgUnauthorized})
 		return
 	}
 
@@ -719,7 +720,7 @@ func (h *UserHandler) GetMyNurseProfile(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": nurse, "message": "Nurse profile retrieved successfully"})
+	c.JSON(http.StatusOK, gin.H{"data": nurse, "message": "Lấy hồ sơ điều dưỡng thành công"})
 }
 
 // GetNurseByID retrieves a nurse by ID
@@ -745,7 +746,7 @@ func (h *UserHandler) GetNurseByID(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": nurse, "message": "nurse retrieved successfully"})
+	c.JSON(http.StatusOK, gin.H{"data": nurse, "message": "Lấy thông tin điều dưỡng thành công"})
 }
 
 // UpdateNurseByID updates a nurse by ID
@@ -794,7 +795,7 @@ func (h *UserHandler) UpdateNurseByID(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Nurse updated successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": "Cập nhật điều dưỡng thành công"})
 }
 
 func parseOptionalBoolQuery(c *gin.Context, key string) *bool {

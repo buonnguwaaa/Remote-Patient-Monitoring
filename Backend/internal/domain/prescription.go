@@ -94,7 +94,7 @@ func ValidatePrescriptionStatus(status PrescriptionStatus) error {
 	case PrescriptionStatusActive, PrescriptionStatusCompleted, PrescriptionStatusDiscontinued:
 		return nil
 	default:
-		return fmt.Errorf("invalid prescription status: %s", status)
+		return fmt.Errorf("trạng thái đơn thuốc không hợp lệ: %s", status)
 	}
 }
 

@@ -40,12 +40,12 @@ func (s *reminderService) CreateReminder(ctx context.Context, input *usecase.Cre
 	// Validate patient exists
 	patientID, err := primitive.ObjectIDFromHex(input.PatientID)
 	if err != nil {
-		return nil, errors.New("invalid patient ID")
+		return nil, errors.New("ID bệnh nhân không hợp lệ")
 	}
 
 	existedPatient, err := s.patientRepo.ExistsByIDAndRole(ctx, patientID, userDomain.RolePatient)
 	if err != nil || !existedPatient {
-		return nil, errors.New("user not found or not patient")
+		return nil, errors.New("Không tìm thấy người dùng hoặc người dùng không phải bệnh nhân")
 	}
 
 	createdByID, err := primitive.ObjectIDFromHex(input.CreatedBy)
@@ -57,7 +57,7 @@ func (s *reminderService) CreateReminder(ctx context.Context, input *usecase.Cre
 	if input.PrescriptionID != "" {
 		id, err := primitive.ObjectIDFromHex(input.PrescriptionID)
 		if err != nil {
-			return nil, errors.New("invalid prescription ID")
+			return nil, errors.New("ID đơn thuốc không hợp lệ")
 		}
 		prescriptionID = &id
 	}
@@ -165,7 +165,7 @@ func (s *reminderService) UpdateReminderByID(ctx context.Context, input *usecase
 		return nil, err
 	}
 	if existingReminder == nil {
-		return nil, errors.New("reminder not found")
+		return nil, errors.New("Không tìm thấy nhắc nhở")
 	}
 
 	// Update fields
@@ -226,7 +226,7 @@ func (s *reminderService) UpdateReminderStatus(ctx context.Context, input *useca
 		return nil, err
 	}
 	if existingReminder == nil {
-		return nil, errors.New("reminder not found")
+		return nil, errors.New("Không tìm thấy nhắc nhở")
 	}
 
 	// Update status only

@@ -89,7 +89,7 @@ func (c *Client) readPump() {
 
 		var req wsRequest
 		if err := json.Unmarshal(raw, &req); err != nil {
-			c.writeError("invalid_payload", "invalid request")
+			c.writeError("invalid_payload", "Yêu cầu không hợp lệ")
 			continue
 		}
 
@@ -105,7 +105,7 @@ func (c *Client) readPump() {
 			c.handleRead(req.Data)
 
 		default:
-			c.writeError("unknown_type", "unsupported message type")
+			c.writeError("unknown_type", "Loại tin nhắn không được hỗ trợ")
 		}
 	}
 }
@@ -113,7 +113,7 @@ func (c *Client) readPump() {
 func (c *Client) handleSendMessage(data json.RawMessage) {
 	var incoming incomingMessage
 	if err := json.Unmarshal(data, &incoming); err != nil {
-		c.writeError("invalid_payload", "invalid message payload")
+		c.writeError("invalid_payload", "Dữ liệu tin nhắn không hợp lệ")
 		return
 	}
 
