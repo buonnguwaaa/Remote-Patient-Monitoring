@@ -112,7 +112,7 @@ func (h *DepartmentHandler) AddMemberToDepartment(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Member added successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": "Thêm thành viên thành công"})
 }
 
 // @Summary Update department
@@ -164,5 +164,5 @@ func (h *DepartmentHandler) DeleteDepartment(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Department deleted successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": "Xóa khoa thành công"})
 }

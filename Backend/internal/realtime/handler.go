@@ -3,6 +3,7 @@ package realtime
 import (
 	"net/http"
 
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/constant"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 )
@@ -39,13 +40,13 @@ func NewHandler(hub *Hub) *Handler {
 func (h *Handler) ServeWs(c *gin.Context) {
 	rawUserID, exists := c.Get("userId")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": constant.MsgUnauthorized})
 		return
 	}
 
 	userID, ok := rawUserID.(string)
 	if !ok || userID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid userId"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": constant.MsgInvalidUserID})
 		return
 	}
 

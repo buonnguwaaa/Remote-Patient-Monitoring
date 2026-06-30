@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/constant"
 	userDomain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/service"
@@ -26,12 +27,12 @@ func NewVideoSessionHandler(videoService service.VideoSessionService) *VideoSess
 func getRoleFromContext(c *gin.Context) (userDomain.Role, bool) {
 	roleVal, exists := c.Get("role")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": constant.MsgUnauthorized})
 		return "", false
 	}
 	role, ok := roleVal.(userDomain.Role)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid role"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": constant.MsgInvalidRole})
 		return "", false
 	}
 	return role, true
@@ -55,7 +56,7 @@ func handleVideoSessionError(c *gin.Context, err error) {
 	case service.ErrVideoSessionBadStatus:
 		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": err.Error()})
 	default:
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": constant.MsgInternalServerError})
 	}
 }
 
@@ -92,7 +93,7 @@ func (h *VideoSessionHandler) CreateVideoSession(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"data": resp, "message": "video session created"})
+	c.JSON(http.StatusCreated, gin.H{"data": resp, "message": "Tạo phiên gọi video thành công"})
 }
 
 // GetActiveVideoSession godoc
@@ -113,7 +114,7 @@ func (h *VideoSessionHandler) GetActiveVideoSession(c *gin.Context) {
 	if raw := c.Query("conversationId"); raw != "" {
 		id, err := primitive.ObjectIDFromHex(raw)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid conversationId"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": constant.MsgInvalidConversationID})
 			return
 		}
 		conversationID = &id
@@ -123,14 +124,14 @@ func (h *VideoSessionHandler) GetActiveVideoSession(c *gin.Context) {
 	if raw := c.Query("patientId"); raw != "" {
 		id, err := primitive.ObjectIDFromHex(raw)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid patientId"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": constant.MsgInvalidPatientID})
 			return
 		}
 		patientID = &id
 	}
 
 	if conversationID == nil && patientID == nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "conversationId or patientId is required"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": constant.MsgConversationIDRequired})
 		return
 	}
 
@@ -143,11 +144,11 @@ func (h *VideoSessionHandler) GetActiveVideoSession(c *gin.Context) {
 		return
 	}
 	if resp == nil {
-		c.JSON(http.StatusOK, gin.H{"data": nil, "message": "no active session"})
+		c.JSON(http.StatusOK, gin.H{"data": nil, "message": "Không có phiên đang hoạt động"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": resp, "message": "ok"})
+	c.JSON(http.StatusOK, gin.H{"data": resp, "message": "Thành công"})
 }
 
 // GetVideoSession godoc
@@ -165,7 +166,7 @@ func (h *VideoSessionHandler) GetVideoSession(c *gin.Context) {
 
 	sessionID, err := primitive.ObjectIDFromHex(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid session id"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": constant.MsgInvalidSessionID})
 		return
 	}
 
@@ -178,7 +179,7 @@ func (h *VideoSessionHandler) GetVideoSession(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": resp, "message": "ok"})
+	c.JSON(http.StatusOK, gin.H{"data": resp, "message": "Thành công"})
 }
 
 // JoinVideoSession godoc
@@ -200,7 +201,7 @@ func (h *VideoSessionHandler) JoinVideoSession(c *gin.Context) {
 
 	sessionID, err := primitive.ObjectIDFromHex(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid session id"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": constant.MsgInvalidSessionID})
 		return
 	}
 
@@ -213,7 +214,7 @@ func (h *VideoSessionHandler) JoinVideoSession(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": resp, "message": "joined"})
+	c.JSON(http.StatusOK, gin.H{"data": resp, "message": "Đã tham gia"})
 }
 
 // EndVideoSession godoc
@@ -231,7 +232,7 @@ func (h *VideoSessionHandler) EndVideoSession(c *gin.Context) {
 
 	sessionID, err := primitive.ObjectIDFromHex(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid session id"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": constant.MsgInvalidSessionID})
 		return
 	}
 
@@ -244,7 +245,7 @@ func (h *VideoSessionHandler) EndVideoSession(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": resp, "message": "session ended"})
+	c.JSON(http.StatusOK, gin.H{"data": resp, "message": "Đã kết thúc phiên"})
 }
 
 // RejectVideoSession godoc
@@ -262,7 +263,7 @@ func (h *VideoSessionHandler) RejectVideoSession(c *gin.Context) {
 
 	sessionID, err := primitive.ObjectIDFromHex(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid session id"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": constant.MsgInvalidSessionID})
 		return
 	}
 
@@ -275,5 +276,5 @@ func (h *VideoSessionHandler) RejectVideoSession(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": resp, "message": "session rejected"})
+	c.JSON(http.StatusOK, gin.H{"data": resp, "message": "Đã từ chối phiên"})
 }

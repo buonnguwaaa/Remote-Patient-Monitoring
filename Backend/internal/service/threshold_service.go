@@ -40,7 +40,7 @@ func (s *thresholdService) CreateThreshold(ctx context.Context, input *usecase.C
 	}
 	existedPatient, err := s.patientRepo.ExistsByIDAndRole(ctx, patientID, userDomain.RolePatient)
 	if err != nil || !existedPatient {
-		return nil, fmt.Errorf("user not found or not patient")
+		return nil, fmt.Errorf("Không tìm thấy người dùng hoặc người dùng không phải bệnh nhân")
 	}
 
 	doctorID, err := util.MustHexToObjectID(input.DoctorID)
@@ -49,7 +49,7 @@ func (s *thresholdService) CreateThreshold(ctx context.Context, input *usecase.C
 	}
 	existedDoctor, err := s.doctorRepo.ExistsByIDAndRole(ctx, doctorID, userDomain.RoleDoctor)
 	if err != nil || !existedDoctor {
-		return nil, fmt.Errorf("user not found or not doctor")
+		return nil, fmt.Errorf("Không tìm thấy người dùng hoặc người dùng không phải bác sĩ")
 	}
 
 	threshold := &domain.Threshold{
@@ -150,7 +150,7 @@ func (s *thresholdService) UpdateThreshold(ctx context.Context, input *usecase.U
 
 	existing, err := s.thresholdRepo.FindByID(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("threshold not found")
+		return nil, fmt.Errorf("Không tìm thấy ngưỡng")
 	}
 
 	if input.TemperatureMin != nil {

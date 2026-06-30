@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/constant"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
 	userDomain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
@@ -44,7 +45,7 @@ func (h *FollowUpAppointmentHandler) CreateFollowUpAppointment(c *gin.Context) {
 
 	userID, exists := c.Get("userId")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": constant.MsgUnauthorized})
 		return
 	}
 
@@ -78,7 +79,7 @@ func (h *FollowUpAppointmentHandler) CreateFollowUpAppointment(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"data": appointment, "message": "Follow-up appointment created successfully"})
+	c.JSON(http.StatusCreated, gin.H{"data": appointment, "message": "Tạo lịch tái khám thành công"})
 }
 
 // GetFollowUpAppointments lists follow-up appointments for staff
@@ -104,7 +105,7 @@ func (h *FollowUpAppointmentHandler) GetFollowUpAppointments(c *gin.Context) {
 	if fromStr := c.Query("from"); fromStr != "" {
 		from, err := time.Parse(time.RFC3339, fromStr)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid from date"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": constant.MsgInvalidFromDate})
 			return
 		}
 		input.From = &from
@@ -112,7 +113,7 @@ func (h *FollowUpAppointmentHandler) GetFollowUpAppointments(c *gin.Context) {
 	if toStr := c.Query("to"); toStr != "" {
 		to, err := time.Parse(time.RFC3339, toStr)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid to date"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": constant.MsgInvalidToDate})
 			return
 		}
 		input.To = &to
@@ -141,7 +142,7 @@ func (h *FollowUpAppointmentHandler) GetFollowUpAppointments(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": appointments, "message": "Follow-up appointments retrieved successfully"})
+	c.JSON(http.StatusOK, gin.H{"data": appointments, "message": "Lấy danh sách lịch tái khám thành công"})
 }
 
 // GetMyFollowUpAppointments lists follow-up appointments for the authenticated patient or doctor
@@ -159,7 +160,7 @@ func (h *FollowUpAppointmentHandler) GetFollowUpAppointments(c *gin.Context) {
 func (h *FollowUpAppointmentHandler) GetMyFollowUpAppointments(c *gin.Context) {
 	userID, exists := c.Get("userId")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": constant.MsgUnauthorized})
 		return
 	}
 
@@ -181,7 +182,7 @@ func (h *FollowUpAppointmentHandler) GetMyFollowUpAppointments(c *gin.Context) {
 	if fromStr := c.Query("from"); fromStr != "" {
 		from, err := time.Parse(time.RFC3339, fromStr)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid from date"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": constant.MsgInvalidFromDate})
 			return
 		}
 		input.From = &from
@@ -189,7 +190,7 @@ func (h *FollowUpAppointmentHandler) GetMyFollowUpAppointments(c *gin.Context) {
 	if toStr := c.Query("to"); toStr != "" {
 		to, err := time.Parse(time.RFC3339, toStr)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid to date"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": constant.MsgInvalidToDate})
 			return
 		}
 		input.To = &to
@@ -204,7 +205,7 @@ func (h *FollowUpAppointmentHandler) GetMyFollowUpAppointments(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": appointments, "message": "Follow-up appointments retrieved successfully"})
+	c.JSON(http.StatusOK, gin.H{"data": appointments, "message": "Lấy danh sách lịch tái khám thành công"})
 }
 
 // GetFollowUpAppointmentByID retrieves a follow-up appointment by ID
@@ -222,7 +223,7 @@ func (h *FollowUpAppointmentHandler) GetMyFollowUpAppointments(c *gin.Context) {
 func (h *FollowUpAppointmentHandler) GetFollowUpAppointmentByID(c *gin.Context) {
 	userID, exists := c.Get("userId")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": constant.MsgUnauthorized})
 		return
 	}
 
@@ -240,18 +241,18 @@ func (h *FollowUpAppointmentHandler) GetFollowUpAppointmentByID(c *gin.Context) 
 	appointment, err := h.appointmentService.GetFollowUpAppointmentByID(ctx, input)
 	if err != nil {
 		if errors.Is(err, service.ErrFollowUpAppointmentNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "appointment not found"})
+			c.JSON(http.StatusNotFound, gin.H{"error": constant.MsgAppointmentNotFound})
 			return
 		}
 		if errors.Is(err, service.ErrFollowUpAppointmentAccessDenied) {
-			c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
+			c.JSON(http.StatusForbidden, gin.H{"error": constant.MsgAccessDenied})
 			return
 		}
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": appointment, "message": "Follow-up appointment retrieved successfully"})
+	c.JSON(http.StatusOK, gin.H{"data": appointment, "message": "Lấy lịch tái khám thành công"})
 }
 
 // UpdateFollowUpAppointment updates a follow-up appointment
@@ -288,7 +289,7 @@ func (h *FollowUpAppointmentHandler) UpdateFollowUpAppointment(c *gin.Context) {
 	appointment, err := h.appointmentService.UpdateFollowUpAppointment(ctx, input)
 	if err != nil {
 		if errors.Is(err, service.ErrFollowUpAppointmentNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "appointment not found"})
+			c.JSON(http.StatusNotFound, gin.H{"error": constant.MsgAppointmentNotFound})
 			return
 		}
 		if errors.Is(err, service.ErrDoctorScheduleConflict) {
@@ -299,7 +300,7 @@ func (h *FollowUpAppointmentHandler) UpdateFollowUpAppointment(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": appointment, "message": "Follow-up appointment updated successfully"})
+	c.JSON(http.StatusOK, gin.H{"data": appointment, "message": "Cập nhật lịch tái khám thành công"})
 }
 
 // UpdateFollowUpAppointmentStatus updates the status of a follow-up appointment
@@ -332,12 +333,12 @@ func (h *FollowUpAppointmentHandler) UpdateFollowUpAppointmentStatus(c *gin.Cont
 	appointment, err := h.appointmentService.UpdateFollowUpAppointmentStatus(ctx, input)
 	if err != nil {
 		if errors.Is(err, service.ErrFollowUpAppointmentNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "appointment not found"})
+			c.JSON(http.StatusNotFound, gin.H{"error": constant.MsgAppointmentNotFound})
 			return
 		}
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": appointment, "message": "Follow-up appointment status updated successfully"})
+	c.JSON(http.StatusOK, gin.H{"data": appointment, "message": "Cập nhật trạng thái lịch tái khám thành công"})
 }

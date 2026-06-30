@@ -1,13 +1,13 @@
 package constant
 
 const (
-	SubjectActivateAccount = "[RPM] - Activate your account"
-	SubjectResetPassword   = "[RPM] - Reset Your Password"
+	SubjectActivateAccount = "[RPM] - Kích hoạt tài khoản"
+	SubjectResetPassword   = "[RPM] - Đặt lại mật khẩu"
 )
 
 const ActivateOTPEmailTemplate = `
 	<!DOCTYPE html>
-	<html lang="en">
+	<html lang="vi">
 	<head>
 	<meta charset="UTF-8">
 	<style>
@@ -64,13 +64,13 @@ const ActivateOTPEmailTemplate = `
 		<div class="logo">
 		<img src="https://img.icons8.com/color/96/000000/heart-monitor.png" alt="Logo">
 		</div>
-		<h1>Activate Your Account</h1>
-		<p>Hello %s,</p>
-		<p>Welcome to <strong>Remote Patient Monitoring</strong>! Use the one-time code below to activate your account.</p>
+		<h1>Kích hoạt tài khoản</h1>
+		<p>Chào %s,</p>
+		<p>Chào mừng bạn đến với <strong>Remote Patient Monitoring</strong>! Dùng mã xác thực một lần bên dưới để kích hoạt tài khoản.</p>
 
 		<span class="otp">%s</span>
 
-		<p>This code expires in %d minutes. If you didn't create this account, you can safely ignore this email.</p>
+		<p>Mã này sẽ hết hạn sau %d phút. Nếu bạn không tạo tài khoản này, vui lòng bỏ qua email.</p>
 	</div>
 	</body>
 	</html>

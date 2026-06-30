@@ -19,9 +19,9 @@ import (
 )
 
 var (
-	ErrFollowUpAppointmentNotFound     = errors.New("follow-up appointment not found")
-	ErrFollowUpAppointmentAccessDenied = errors.New("access denied")
-	ErrDoctorScheduleConflict          = errors.New("doctor already has an appointment in this time slot")
+	ErrFollowUpAppointmentNotFound     = errors.New("Không tìm thấy lịch tái khám")
+	ErrFollowUpAppointmentAccessDenied = errors.New("Không có quyền truy cập")
+	ErrDoctorScheduleConflict          = errors.New("Bác sĩ đã có lịch hẹn trong khung giờ này")
 )
 
 type FollowUpAppointmentService interface {
@@ -53,7 +53,7 @@ func NewFollowUpAppointmentService(
 func (s *followUpAppointmentService) CreateFollowUpAppointment(ctx context.Context, input *usecase.CreateFollowUpAppointmentInput) (*dto.FollowUpAppointmentResponse, error) {
 	patientID, err := primitive.ObjectIDFromHex(input.PatientID)
 	if err != nil {
-		return nil, errors.New("invalid patient ID")
+		return nil, errors.New("ID bệnh nhân không hợp lệ")
 	}
 
 	if err := s.ensurePatient(ctx, patientID); err != nil {
@@ -76,7 +76,7 @@ func (s *followUpAppointmentService) CreateFollowUpAppointment(ctx context.Conte
 
 	scheduledAt := domain.NormalizeAppointmentSlot(input.ScheduledAt.UTC())
 	if !scheduledAt.After(time.Now().UTC()) {
-		return nil, errors.New("scheduled time must be in the future")
+		return nil, errors.New("Thời gian hẹn phải ở trong tương lai")
 	}
 
 	durationMinutes, err := s.normalizeDurationMinutes(input.DurationMinutes)
@@ -89,7 +89,7 @@ func (s *followUpAppointmentService) CreateFollowUpAppointment(ctx context.Conte
 	}
 
 	if input.Timezone == "" {
-		return nil, errors.New("timezone is required")
+		return nil, errors.New("Múi giờ là bắt buộc")
 	}
 
 	created, err := s.appointmentRepo.Create(ctx, &domain.FollowUpAppointment{
@@ -163,7 +163,7 @@ func (s *followUpAppointmentService) UpdateFollowUpAppointment(ctx context.Conte
 	}
 
 	if existing.Status != domain.FollowUpAppointmentStatusScheduled {
-		return nil, errors.New("only scheduled appointments can be updated")
+		return nil, errors.New("Chỉ có thể cập nhật lịch hẹn đang ở trạng thái đã lên lịch")
 	}
 
 	reschedule := false
@@ -174,7 +174,7 @@ func (s *followUpAppointmentService) UpdateFollowUpAppointment(ctx context.Conte
 	if input.ScheduledAt != nil {
 		scheduledAt := domain.NormalizeAppointmentSlot(input.ScheduledAt.UTC())
 		if !scheduledAt.After(time.Now().UTC()) {
-			return nil, errors.New("scheduled time must be in the future")
+			return nil, errors.New("Thời gian hẹn phải ở trong tương lai")
 		}
 		candidateAt = scheduledAt
 		scheduleChanged = true
@@ -197,7 +197,7 @@ func (s *followUpAppointmentService) UpdateFollowUpAppointment(ctx context.Conte
 	}
 	if input.Timezone != nil {
 		if *input.Timezone == "" {
-			return nil, errors.New("timezone cannot be empty")
+			return nil, errors.New("Múi giờ không được để trống")
 		}
 		existing.Timezone = *input.Timezone
 	}
@@ -218,11 +218,11 @@ func (s *followUpAppointmentService) UpdateFollowUpAppointment(ctx context.Conte
 
 	if reschedule {
 		if err := temporalclient.SignalAppointmentReminderWorkflow(ctx, updated.ID.Hex()); err != nil {
-			return nil, fmt.Errorf("appointment updated but failed to reschedule reminder: %w", err)
+			return nil, fmt.Errorf("đã cập nhật lịch hẹn nhưng không thể lên lại lịch nhắc nhở: %w", err)
 		}
 	} else if scheduleChanged {
 		if err := temporalclient.SignalAppointmentReminderWorkflow(ctx, updated.ID.Hex()); err != nil {
-			return nil, fmt.Errorf("appointment updated but failed to refresh reminder workflow: %w", err)
+			return nil, fmt.Errorf("đã cập nhật lịch hẹn nhưng không thể làm mới workflow nhắc nhở: %w", err)
 		}
 	}
 
@@ -254,7 +254,7 @@ func (s *followUpAppointmentService) UpdateFollowUpAppointmentStatus(ctx context
 
 	if input.Status != domain.FollowUpAppointmentStatusScheduled {
 		if err := temporalclient.SignalAppointmentReminderWorkflow(ctx, updated.ID.Hex()); err != nil {
-			return nil, fmt.Errorf("appointment status updated but failed to update reminder workflow: %w", err)
+			return nil, fmt.Errorf("đã cập nhật trạng thái lịch hẹn nhưng không thể cập nhật workflow nhắc nhở: %w", err)
 		}
 	}
 
@@ -290,7 +290,7 @@ func (s *followUpAppointmentService) resolveDoctorID(ctx context.Context, input 
 	if input.DoctorID != "" {
 		doctorID, err := primitive.ObjectIDFromHex(input.DoctorID)
 		if err != nil {
-			return primitive.NilObjectID, errors.New("invalid doctor ID")
+			return primitive.NilObjectID, errors.New("ID bác sĩ không hợp lệ")
 		}
 		return doctorID, nil
 	}
@@ -306,12 +306,12 @@ func (s *followUpAppointmentService) resolveDoctorID(ctx context.Context, input 
 
 	patientID, err := primitive.ObjectIDFromHex(input.PatientID)
 	if err != nil {
-		return primitive.NilObjectID, errors.New("invalid patient ID")
+		return primitive.NilObjectID, errors.New("ID bệnh nhân không hợp lệ")
 	}
 
 	assignment, err := s.assignmentRepo.FindByPatientID(ctx, patientID)
 	if err != nil || assignment == nil || assignment.DoctorID.IsZero() {
-		return primitive.NilObjectID, errors.New("patient has no assigned doctor")
+		return primitive.NilObjectID, errors.New("Bệnh nhân chưa được phân công bác sĩ")
 	}
 
 	return assignment.DoctorID, nil
@@ -320,7 +320,7 @@ func (s *followUpAppointmentService) resolveDoctorID(ctx context.Context, input 
 func (s *followUpAppointmentService) ensurePatient(ctx context.Context, patientID primitive.ObjectID) error {
 	exists, err := s.patientRepo.ExistsByIDAndRole(ctx, patientID, userDomain.RolePatient)
 	if err != nil || !exists {
-		return errors.New("user not found or not patient")
+		return errors.New("Không tìm thấy người dùng hoặc người dùng không phải bệnh nhân")
 	}
 	return nil
 }
@@ -331,7 +331,7 @@ func (s *followUpAppointmentService) ensureStaffCanAccessPatient(ctx context.Con
 		return err
 	}
 	if !hasAssignment {
-		return errors.New("patient is not assigned to this doctor")
+		return errors.New("Bệnh nhân không được phân công cho bác sĩ này")
 	}
 	return nil
 }

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/constant"
 	domain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/service"
@@ -42,7 +43,7 @@ func (h *AssignmentHandler) AssignPatient(c *gin.Context) {
 
 	adminID, exists := c.Get("userId")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": constant.MsgUnauthorized})
 		return
 	}
 
@@ -78,7 +79,7 @@ func (h *AssignmentHandler) GetMyAssignments(c *gin.Context) {
 	role, existsRole := c.Get("role")
 
 	if !exists || !existsRole {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": constant.MsgUnauthorized})
 		return
 	}
 
@@ -88,7 +89,7 @@ func (h *AssignmentHandler) GetMyAssignments(c *gin.Context) {
 	roleVal := role.(domain.Role)
 
 	if roleVal != domain.RoleDoctor && roleVal != domain.RoleNurse {
-		c.JSON(http.StatusForbidden, gin.H{"error": "only doctor or nurse can see assigned patients"})
+		c.JSON(http.StatusForbidden, gin.H{"error": constant.MsgOnlyDoctorOrNurse})
 		return
 	}
 
@@ -136,7 +137,7 @@ func (h *AssignmentHandler) GetAllAssignments(c *gin.Context) {
 func (h *AssignmentHandler) DeleteAssignment(c *gin.Context) {
 	assignmentID := c.Param("id")
 	if assignmentID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "missing assignment id"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": constant.MsgMissingAssignmentID})
 		return
 	}
 
@@ -148,5 +149,5 @@ func (h *AssignmentHandler) DeleteAssignment(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Assignment deleted successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": "Đã xóa phân công thành công"})
 }
