@@ -47,7 +47,7 @@ func Start() error {
 	fcmClient, fcmErr := fcm.NewClientFromEnv()
 	if fcmErr != nil {
 		log.Printf("[WARN] FCM client not configured, push delivery disabled: %v", fcmErr)
-		pushProvider = nil
+		pushProvider = nil // explicit nil interface, not typed nil pointer
 	} else {
 		pushProvider = fcmClient
 	}

@@ -19,13 +19,13 @@ const LoginForm: React.FC = () => {
     setError("");
     setIsLoading(true);
 
-    const role = await login(username, password);
+    const result = await login(username, password);
     setIsLoading(false);
 
-    if (role) {
+    if (result.success) {
       navigate("/");
     } else {
-      setError("Email hoặc mật khẩu không đúng.");
+      setError(result.message || "Đăng nhập thất bại.");
     }
   };
 

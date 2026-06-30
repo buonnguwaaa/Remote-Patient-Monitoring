@@ -10,7 +10,7 @@ import {
   StyleSheet,
   Alert,
 } from 'react-native';
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from '../../utils/secureStoreHelper';
 import * as LocalAuthentication from 'expo-local-authentication';
 import ButtonPrimary from '../../components/ButtonPrimary';
 import { Feather, FontAwesome } from '@expo/vector-icons';

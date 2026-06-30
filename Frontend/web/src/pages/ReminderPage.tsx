@@ -5,21 +5,19 @@ import {
   useMemo,
   useState,
 } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
-  FaEdit,
-  FaPauseCircle,
-  FaPlayCircle,
   FaPlus,
   FaRegClock,
-  FaSave,
-  FaStopCircle,
   FaSyncAlt,
   FaTimes,
-  FaUndo,
   FaChevronLeft,
   FaChevronRight,
+  FaSearch,
+  FaNotesMedical,
+  FaListUl,
+  FaExternalLinkAlt,
 } from "react-icons/fa";
 
 import Toast from "../components/ui/Toast";
@@ -53,208 +51,238 @@ interface ReminderFormData {
   status: ReminderStatus;
 }
 
+interface MedicationGroup {
+  id: string; // patientId_prescriptionId
+  type: "group";
+  patientId: string;
+  prescriptionId: string;
+  reminders: ReminderRecord[];
+  status: ReminderStatus;
+  patientName: string;
+  patientCode: string;
+}
+
+type AggregatedItem = { type: "single"; reminder: ReminderRecord } | MedicationGroup;
+
 const ReminderPage = () => {
   const [searchParams] = useSearchParams();
   const { t } = useTranslation();
 
-const weekdayOptions = [
-  { value: 1, label: t("reminders.mon") },
-  { value: 2, label: t("reminders.tue") },
-  { value: 3, label: t("reminders.wed") },
-  { value: 4, label: t("reminders.thu") },
-  { value: 5, label: t("reminders.fri") },
-  { value: 6, label: t("reminders.sat") },
-  { value: 0, label: t("reminders.sun") },
-];
+  const weekdayOptions = [
+    { value: 1, label: t("reminders.mon", "T2") },
+    { value: 2, label: t("reminders.tue", "T3") },
+    { value: 3, label: t("reminders.wed", "T4") },
+    { value: 4, label: t("reminders.thu", "T5") },
+    { value: 5, label: t("reminders.fri", "T6") },
+    { value: 6, label: t("reminders.sat", "T7") },
+    { value: 0, label: t("reminders.sun", "CN") },
+  ];
 
-const reminderKindOptions: Array<{
-  value: ReminderKind;
-  label: string;
-  helper: string;
-}> = [
-  {
-    value: "measure",
-    label: t("reminders.measure"),
-    helper: t("reminders.measureHelper"),
-  },
-  {
-    value: "medication",
-    label: t("reminders.medication"),
-    helper: t("reminders.medicationHelper"),
-  },
-];
+  const reminderKindOptions: Array<{
+    value: ReminderKind;
+    label: string;
+  }> = [
+    { value: "measure", label: t("reminders.measure", "Đo chỉ số") },
+    { value: "medication", label: t("reminders.medication", "Uống thuốc") },
+  ];
 
-const reminderStatusOptions: Array<{
-  value: ReminderStatusFilter;
-  label: string;
-}> = [
-  { value: "all", label: t("reminders.allStatuses") },
-  { value: "active", label: t("reminders.active") },
-  { value: "paused", label: t("reminders.paused") },
-  { value: "expired", label: t("reminders.expired") },
-  { value: "canceled", label: t("reminders.canceled") },
-];
+  const reminderStatusOptions: Array<{
+    value: ReminderStatusFilter;
+    label: string;
+  }> = [
+    { value: "all", label: t("reminders.allStatuses", "Tất cả trạng thái") },
+    { value: "active", label: t("reminders.active", "Đang chạy") },
+    { value: "paused", label: t("reminders.paused", "Tạm dừng") },
+    { value: "expired", label: t("reminders.expired", "Hết hạn") },
+    { value: "canceled", label: t("reminders.canceled", "Đã hủy") },
+  ];
 
-const timezoneOptions = [
-  { value: "Asia/Ho_Chi_Minh", label: t("reminders.timezoneRecommended") },
-  { value: "UTC", label: "UTC" },
-  { value: "Asia/Bangkok", label: "Asia/Bangkok" },
-];
+  const createDefaultFormData = (patientId = ""): ReminderFormData => {
+    const today = new Date();
+    const endDate = new Date(today);
+    endDate.setDate(endDate.getDate() + 30);
 
-const createDefaultFormData = (patientId = ""): ReminderFormData => {
-  const today = new Date();
-  const endDate = new Date(today);
-  endDate.setDate(endDate.getDate() + 30);
-
-  return {
-    patientId,
-    kind: "measure",
-    message: "",
-    time: "08:00",
-    daysOfWeek: [1, 2, 3, 4, 5, 6, 0],
-    timezone: "Asia/Ho_Chi_Minh",
-    startDate: today.toISOString().split("T")[0],
-    endDate: endDate.toISOString().split("T")[0],
-    status: "active",
+    return {
+      patientId,
+      kind: "measure",
+      message: "",
+      time: "08:00",
+      daysOfWeek: [1, 2, 3, 4, 5, 6, 0],
+      timezone: "Asia/Ho_Chi_Minh",
+      startDate: today.toISOString().split("T")[0],
+      endDate: endDate.toISOString().split("T")[0],
+      status: "active",
+    };
   };
-};
 
-const toDateInputValue = (value: string) => value.slice(0, 10);
-const toStartOfDayIso = (value: string) =>
-  new Date(`${value}T00:00:00`).toISOString();
-const toEndOfDayIso = (value: string) =>
-  new Date(`${value}T23:59:59`).toISOString();
+  const toDateInputValue = (value: string) => value.slice(0, 10);
+  const toStartOfDayIso = (value: string) => new Date(`${value}T00:00:00`).toISOString();
+  const toEndOfDayIso = (value: string) => new Date(`${value}T23:59:59`).toISOString();
 
-const formatDate = (value: string) =>
-  new Date(value).toLocaleDateString("vi-VN", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
+  // const formatDate = (value: string) =>
+  //   new Date(value).toLocaleDateString("vi-VN", {
+  //     day: "2-digit",
+  //     month: "2-digit",
+  //     year: "numeric",
+  //   });
 
-const formatDateTime = (value: string) =>
-  new Date(value).toLocaleString("vi-VN", {
-    hour: "2-digit",
-    minute: "2-digit",
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
+  const formatTime = (hour: number, minute: number) =>
+    `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
 
-const formatTime = (hour: number, minute: number) =>
-  `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+  const getStatusLabel = (status: ReminderStatus) => {
+    switch (status) {
+      case "active": return t("reminders.active", "Đang chạy");
+      case "paused": return t("reminders.paused", "Tạm dừng");
+      case "expired": return t("reminders.expired", "Hết hạn");
+      case "canceled": return t("reminders.canceled", "Đã hủy");
+      default: return status;
+    }
+  };
 
-const getKindLabel = (kind: ReminderKind) =>
-  kind === "measure" ? t("reminders.measure") : t("reminders.medication");
+  const getStatusClasses = (status: ReminderStatus) => {
+    switch (status) {
+      case "active": return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300";
+      case "paused": return "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300";
+      case "expired": return "bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300";
+      case "canceled": return "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300";
+      default: return "bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300";
+    }
+  };
 
-const getStatusLabel = (status: ReminderStatus) => {
-  switch (status) {
-    case "active":
-      return t("reminders.active");
-    case "paused":
-      return t("reminders.paused");
-    case "expired":
-      return t("reminders.expired");
-    case "canceled":
-      return t("reminders.canceled");
-    default:
-      return status;
-  }
-};
-
-const getStatusClasses = (status: ReminderStatus) => {
-  switch (status) {
-    case "active":
-      return "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300";
-    case "paused":
-      return "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300";
-    case "expired":
-      return "bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300";
-    case "canceled":
-      return "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300";
-    default:
-      return "bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300";
-  }
-};
-
-const buildWeekdaySummary = (daysOfWeek: number[]) => {
-  const orderedDays = weekdayOptions.filter((option) =>
-    daysOfWeek.includes(option.value),
-  );
-  if (orderedDays.length === weekdayOptions.length) {
-    return t("reminders.everyday");
-  }
-
-  return orderedDays.map((option) => option.label).join(" • ");
-};
-
-
+  const buildWeekdaySummary = (daysOfWeek: number[]) => {
+    const orderedDays = weekdayOptions.filter((option) => daysOfWeek.includes(option.value));
+    if (orderedDays.length === weekdayOptions.length) {
+      return t("reminders.everyday", "Mỗi ngày");
+    }
+    return orderedDays.map((option) => option.label).join(" • ");
+  };
 
   const initialPatientId = searchParams.get("patientId") ?? "";
-
   const { toast, showToast, hideToast } = useToast();
 
   const [patients, setPatients] = useState<AssignmentResponse[]>([]);
   const [selectedPatientId, setSelectedPatientId] = useState(initialPatientId);
   const [statusFilter, setStatusFilter] = useState<ReminderStatusFilter>("all");
   const [kindFilter, setKindFilter] = useState<ReminderKindFilter>("all");
-  const [formData, setFormData] = useState<ReminderFormData>(
-    createDefaultFormData(initialPatientId),
-  );
+  const [searchTerm, setSearchTerm] = useState("");
+  
+  const [formData, setFormData] = useState<ReminderFormData>(createDefaultFormData(initialPatientId));
   const [reminders, setReminders] = useState<ReminderRecord[]>([]);
   const [loadingPatients, setLoadingPatients] = useState(true);
   const [loadingReminders, setLoadingReminders] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [editingReminderId, setEditingReminderId] = useState<string | null>(
-    null,
-  );
+  const [editingReminderId, setEditingReminderId] = useState<string | null>(null);
   const [isFormVisible, setIsFormVisible] = useState(false);
+  
+  // Modal for Viewing Group
+  const [viewingGroup, setViewingGroup] = useState<MedicationGroup | null>(null);
+
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const itemsPerPage = 6;
 
   const patientOptions = useMemo(() => {
     const patientMap = new Map<string, AssignmentResponse>();
-
     patients.forEach((item) => {
-      if (!patientMap.has(item.patientId)) {
-        patientMap.set(item.patientId, item);
-      }
+      if (!patientMap.has(item.patientId)) patientMap.set(item.patientId, item);
     });
-
     return Array.from(patientMap.values()).sort((left, right) =>
       (left.patientName || "").localeCompare(right.patientName || ""),
     );
   }, [patients]);
 
   const patientDisplayMap = useMemo(() => {
-    const entries = patientOptions.map(
-      (item) =>
-        [
-          item.patientId,
-          {
-            name: item.patientName || item.patientId,
-            code: item.patientCode || item.patientPublicId || t("common.notUpdated"),
-          },
-        ] as const,
-    );
-
-    return new Map(entries);
+    return new Map(patientOptions.map((item) => [
+      item.patientId,
+      {
+        name: item.patientName || item.patientId,
+        code: item.patientCode || item.patientPublicId || t("common.notUpdated", "N/A"),
+      },
+    ]));
   }, [patientOptions]);
 
-  const modeLabel = editingReminderId
-    ? t("reminders.editReminder")
-    : t("reminders.createNew");
+  // Aggregation Logic
+  const aggregatedItems = useMemo(() => {
+    // 1. Filter
+    const filteredList = reminders.filter(r => {
+      if (statusFilter !== "all" && r.status !== statusFilter) return false;
+      if (kindFilter !== "all" && r.kind !== kindFilter) return false;
+      
+      if (searchTerm) {
+        const pt = patientDisplayMap.get(r.patientId);
+        const term = searchTerm.toLowerCase();
+        const matchName = pt?.name?.toLowerCase().includes(term);
+        const matchCode = pt?.code?.toLowerCase().includes(term);
+        const matchMsg = r.message.toLowerCase().includes(term);
+        if (!matchName && !matchCode && !matchMsg) return false;
+      }
+      return true;
+    });
+
+    // 2. Group
+    const groups = new Map<string, MedicationGroup>();
+    const singles: AggregatedItem[] = [];
+
+    filteredList.forEach(r => {
+      if (r.kind === "medication" && r.prescriptionId) {
+        const key = `${r.patientId}_${r.prescriptionId}`;
+        if (!groups.has(key)) {
+          const pt = patientDisplayMap.get(r.patientId);
+          groups.set(key, {
+            id: key,
+            type: "group",
+            patientId: r.patientId,
+            prescriptionId: r.prescriptionId,
+            reminders: [],
+            status: "expired",
+            patientName: pt?.name || r.patientId,
+            patientCode: pt?.code || "",
+          });
+        }
+        groups.get(key)!.reminders.push(r);
+      } else {
+        singles.push({ type: "single", reminder: r });
+      }
+    });
+
+    // 3. Compute group status and sort
+    const groupArr = Array.from(groups.values());
+    groupArr.forEach(g => {
+      const statuses = g.reminders.map(r => r.status);
+      if (statuses.includes("active")) g.status = "active";
+      else if (statuses.includes("paused")) g.status = "paused";
+      else if (statuses.includes("canceled")) g.status = "canceled";
+      else g.status = "expired";
+      
+      // Sort reminders within group by time
+      g.reminders.sort((a, b) => {
+        if (a.hour !== b.hour) return a.hour - b.hour;
+        return a.minute - b.minute;
+      });
+    });
+
+    const allItems = [...groupArr, ...singles];
+    allItems.sort((a, b) => {
+      const timeA = a.type === "group" 
+        ? Math.max(...a.reminders.map(r => new Date(r.createdAt).getTime())) 
+        : new Date(a.reminder.createdAt).getTime();
+      const timeB = b.type === "group" 
+        ? Math.max(...b.reminders.map(r => new Date(r.createdAt).getTime())) 
+        : new Date(b.reminder.createdAt).getTime();
+      return timeB - timeA;
+    });
+
+    return allItems;
+  }, [reminders, statusFilter, kindFilter, searchTerm, patientDisplayMap]);
 
   // Pagination calculations
-  const totalPages = Math.ceil(reminders.length / itemsPerPage);
+  const totalPages = Math.max(1, Math.ceil(aggregatedItems.length / itemsPerPage));
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentReminders = reminders.slice(startIndex, endIndex);
+  const currentItems = aggregatedItems.slice(startIndex, endIndex);
 
-  // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedPatientId, statusFilter, kindFilter]);
+  }, [selectedPatientId, statusFilter, kindFilter, searchTerm]);
 
   const applyReminderToForm = (reminder: ReminderRecord) => {
     setFormData({
@@ -289,22 +317,17 @@ const buildWeekdaySummary = (daysOfWeek: number[]) => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const buildPayload = ():
-    | ReminderBasePayload
-    | UpdateReminderPayload
-    | null => {
+  const buildPayload = (): ReminderBasePayload | UpdateReminderPayload | null => {
     if (!formData.patientId) {
-      showToast(t("reminders.patientRequired"), "error");
+      showToast(t("reminders.patientRequired", "Vui lòng chọn bệnh nhân"), "error");
       return null;
     }
-
     if (!formData.message.trim()) {
-      showToast(t("reminders.messageRequired"), "error");
+      showToast(t("reminders.messageRequired", "Vui lòng nhập nội dung"), "error");
       return null;
     }
-
     if (formData.daysOfWeek.length === 0) {
-      showToast(t("reminders.daysRequired"), "error");
+      showToast(t("reminders.daysRequired", "Vui lòng chọn ngày"), "error");
       return null;
     }
 
@@ -313,7 +336,7 @@ const buildWeekdaySummary = (daysOfWeek: number[]) => {
     const minute = Number.parseInt(minuteText || "", 10);
 
     if (Number.isNaN(hour) || Number.isNaN(minute)) {
-      showToast(t("reminders.invalidTime"), "error");
+      showToast(t("reminders.invalidTime", "Giờ không hợp lệ"), "error");
       return null;
     }
 
@@ -321,7 +344,7 @@ const buildWeekdaySummary = (daysOfWeek: number[]) => {
     const endDate = new Date(`${formData.endDate}T23:59:59`);
 
     if (endDate.getTime() < startDate.getTime()) {
-      showToast(t("reminders.endDateBeforeStart"), "error");
+      showToast(t("reminders.endDateBeforeStart", "Ngày kết thúc phải sau ngày bắt đầu"), "error");
       return null;
     }
 
@@ -337,14 +360,8 @@ const buildWeekdaySummary = (daysOfWeek: number[]) => {
       endDate: toEndOfDayIso(formData.endDate),
     };
 
-    if (!editingReminderId) {
-      return basePayload;
-    }
-
-    return {
-      ...basePayload,
-      status: formData.status,
-    };
+    if (!editingReminderId) return basePayload;
+    return { ...basePayload, status: formData.status };
   };
 
   const loadPatients = async () => {
@@ -352,20 +369,13 @@ const buildWeekdaySummary = (daysOfWeek: number[]) => {
       setLoadingPatients(true);
       const assignments = await getMyPatients();
       setPatients(assignments);
-
-      if (
-        initialPatientId &&
-        !assignments.some((item) => item.patientId === initialPatientId)
-      ) {
+      if (initialPatientId && !assignments.some((item) => item.patientId === initialPatientId)) {
         setSelectedPatientId("");
         setFormData(createDefaultFormData());
       }
     } catch (error) {
-      console.error("Failed to load patients for reminders", error);
-      showToast(
-        "Không thể tải danh sách bệnh nhân để cấu hình nhắc nhở.",
-        "error",
-      );
+      console.error(error);
+      showToast("Không thể tải danh sách bệnh nhân.", "error");
     } finally {
       setLoadingPatients(false);
     }
@@ -374,90 +384,51 @@ const buildWeekdaySummary = (daysOfWeek: number[]) => {
   const loadReminders = async () => {
     try {
       setLoadingReminders(true);
-
-      const targetPatientIds = selectedPatientId
-        ? [selectedPatientId]
-        : patientOptions.map((item) => item.patientId);
-
+      const targetPatientIds = selectedPatientId ? [selectedPatientId] : patientOptions.map((item) => item.patientId);
       if (targetPatientIds.length === 0) {
         setReminders([]);
         return;
       }
-
       const reminderGroups = await Promise.all(
-        targetPatientIds.map((patientId) =>
-          getReminders({
-            patientId,
-            status: statusFilter === "all" ? undefined : statusFilter,
-            kind: kindFilter === "all" ? undefined : kindFilter,
-          }),
-        ),
+        targetPatientIds.map((patientId) => getReminders({ patientId }))
       );
-
       const merged = reminderGroups.flat();
-      const uniqueReminders = Array.from(
-        new Map(merged.map((item) => [item.id, item])).values(),
-      ).sort(
-        (left, right) =>
-          new Date(right.createdAt).getTime() -
-          new Date(left.createdAt).getTime(),
-      );
-
+      const uniqueReminders = Array.from(new Map(merged.map((item) => [item.id, item])).values());
       setReminders(uniqueReminders);
+      
+      // Update viewing group if modal is open
+      setViewingGroup(prev => {
+        if (!prev) return null;
+        const latestReminders = uniqueReminders.filter(r => r.patientId === prev.patientId && r.prescriptionId === prev.prescriptionId);
+        return { ...prev, reminders: latestReminders };
+      });
+      
     } catch (error) {
-      console.error("Failed to load reminders", error);
+      console.error(error);
       showToast("Không thể tải danh sách nhắc nhở.", "error");
     } finally {
       setLoadingReminders(false);
     }
   };
 
+  useEffect(() => { void loadPatients(); }, []);
   useEffect(() => {
-    void loadPatients();
-  }, []);
+    if (patientOptions.length === 0 && !loadingPatients) { setReminders([]); return; }
+    if (!loadingPatients && patientOptions.length > 0) { void loadReminders(); }
+  }, [loadingPatients, patientOptions, selectedPatientId]);
 
   useEffect(() => {
-    if (patientOptions.length === 0 && !loadingPatients) {
-      setReminders([]);
-      return;
+    if (isFormVisible || viewingGroup) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "auto";
     }
+    return () => { document.body.style.overflow = "auto"; };
+  }, [isFormVisible, viewingGroup]);
 
-    if (!loadingPatients && patientOptions.length > 0) {
-      void loadReminders();
-    }
-  }, [
-    loadingPatients,
-    patientOptions,
-    selectedPatientId,
-    statusFilter,
-    kindFilter,
-  ]);
-
-  useEffect(() => {
-    if (!isFormVisible) return;
-
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [isFormVisible]);
-
-  const handleFormChange = (
-    event: ChangeEvent<
-      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >,
-  ) => {
+  const handleFormChange = (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = event.target;
-    setFormData((current) => ({
-      ...current,
-      [name]: value,
-    }));
-  };
-
-  const handlePatientFilterChange = (event: ChangeEvent<HTMLSelectElement>) => {
-    setSelectedPatientId(event.target.value);
+    setFormData((current) => ({ ...current, [name]: value }));
   };
 
   const handleToggleWeekday = (dayValue: number) => {
@@ -474,622 +445,525 @@ const buildWeekdaySummary = (daysOfWeek: number[]) => {
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-
     const payload = buildPayload();
     if (!payload) return;
 
     try {
       setSaving(true);
-
       if (editingReminderId) {
-        await updateReminder(
-          editingReminderId,
-          payload as UpdateReminderPayload,
-        );
-        showToast(t("reminders.updateSuccess"), "success");
+        await updateReminder(editingReminderId, payload as UpdateReminderPayload);
+        showToast(t("reminders.updateSuccess", "Cập nhật thành công"), "success");
       } else {
         await createReminder(payload as ReminderBasePayload);
-        showToast(t("reminders.createSuccess"), "success");
+        showToast(t("reminders.createSuccess", "Tạo mới thành công"), "success");
       }
-
       await loadReminders();
       resetForm((payload as ReminderBasePayload).patientId);
       setIsFormVisible(false);
     } catch (error: any) {
-      console.error("Failed to save reminder", error);
-      showToast(
-        error?.response?.data?.error || t("reminders.saveError"),
-        "error",
-      );
+      console.error(error);
+      showToast(error?.response?.data?.error || t("reminders.saveError", "Lỗi lưu"), "error");
     } finally {
       setSaving(false);
     }
   };
 
-  const handleQuickStatusUpdate = async (
-    reminder: ReminderRecord,
-    nextStatus: ReminderStatus,
-  ) => {
-    const actionLabel =
-      nextStatus === "paused"
-        ? t("reminders.paused").toLowerCase()
-        : nextStatus === "active"
-          ? t("reminders.resume").toLowerCase()
-          : t("common.cancel").toLowerCase();
-
-    const confirmed = window.confirm(
-      `Bạn có muốn ${actionLabel} nhắc nhở này không?`,
-    );
-    if (!confirmed) return;
+  const handleQuickStatusUpdate = async (reminder: ReminderRecord, nextStatus: ReminderStatus) => {
+    const actionLabel = nextStatus === "paused" ? "tạm dừng" : nextStatus === "active" ? "tiếp tục" : "hủy";
+    if (!window.confirm(`Bạn có muốn ${actionLabel} nhắc nhở này không?`)) return;
 
     try {
       setSaving(true);
       await updateReminderStatus(reminder.id, nextStatus);
       await loadReminders();
       showToast(`Đã ${actionLabel} nhắc nhở thành công.`, "success");
-
-      if (editingReminderId === reminder.id) {
-        setFormData((current) => ({ ...current, status: nextStatus }));
-      }
+      if (editingReminderId === reminder.id) setFormData((c) => ({ ...c, status: nextStatus }));
     } catch (error: any) {
-      console.error("Failed to update reminder status", error);
-      showToast(
-        error?.response?.data?.error ||
-          t("reminders.statusUpdateError"),
-        "error",
-      );
+      showToast(error?.response?.data?.error || "Lỗi cập nhật", "error");
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <div className="mx-auto  p-6">
+    <div className="w-full px-4 py-8 pb-24 sm:px-6 lg:px-8">
+      {toast && <Toast toast={toast} onClose={hideToast} />}
+
       <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800 dark:text-slate-100">{t("reminders.title")}</h1>
-          <p className="mt-2 max-w-3xl text-gray-600 dark:text-slate-400">{t("reminders.description")}</p>
+          <h1 className="text-3xl font-bold text-gray-800 dark:text-slate-100">{t("reminders.title", "Quản lý Nhắc nhở")}</h1>
+          <p className="mt-2 text-gray-600 dark:text-slate-400">Thiết lập và theo dõi lịch nhắc nhở đo chỉ số, uống thuốc của bệnh nhân.</p>
         </div>
 
         <div className="flex flex-wrap gap-3">
           <button
             type="button"
             onClick={handleOpenCreateForm}
-            className="inline-flex items-center rounded-xl bg-slate-100 dark:bg-slate-700 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-200 dark:hover:bg-slate-600"
+            className="inline-flex items-center rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2 text-sm font-medium text-white transition shadow-sm"
           >
-            <FaPlus className="mr-2" />{t("reminders.createReminder")}</button>
+            <FaPlus className="mr-2" /> Tạo nhắc nhở đo chỉ số
+          </button>
           <button
             type="button"
             onClick={() => void loadReminders()}
             disabled={loadingReminders}
-            className="inline-flex items-center rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 dark:hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex items-center rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-60"
           >
-            <FaSyncAlt
-              className={`mr-2 ${loadingReminders ? "animate-spin" : ""}`}
-            />{t("common.refresh")}</button>
+            <FaSyncAlt className={`mr-2 ${loadingReminders ? "animate-spin" : ""}`} /> Làm mới
+          </button>
         </div>
       </div>
 
-      <div className="mb-6 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
-          <div className="flex-1">
-            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">{t("reminders.filterByPatient")}</label>
+      <div className="mb-8 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-sm">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-slate-300">Tìm kiếm</label>
+            <div className="relative">
+              <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input 
+                type="text" 
+                placeholder="Tên, mã, nội dung..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 py-2.5 pl-9 pr-3 text-sm text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-slate-300">Bệnh nhân</label>
             <select
               value={selectedPatientId}
-              onChange={handlePatientFilterChange}
-              disabled={loadingPatients}
-              className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              onChange={(e) => setSelectedPatientId(e.target.value)}
+              className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-sm text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 outline-none"
             >
-              <option value="">
-                {loadingPatients
-                  ? t("reminders.loadingPatients")
-                  : t("reminders.allPatients")}
-              </option>
-              {patientOptions.map((patient) => (
-                <option key={patient.patientId} value={patient.patientId}>
-                  {(patient.patientName || patient.patientId) +
-                    (patient.patientCode ? ` • ${patient.patientCode}` : "")}
+              <option value="">Tất cả bệnh nhân</option>
+              {patientOptions.map((p) => (
+                <option key={p.patientId} value={p.patientId}>
+                  {(p.patientName || p.patientId) + (p.patientCode ? ` • ${p.patientCode}` : "")}
                 </option>
               ))}
             </select>
           </div>
-
-          <div className="lg:w-64">
-            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">{t("reminders.status")}</label>
-            <select
-              value={statusFilter}
-              onChange={(event) =>
-                setStatusFilter(event.target.value as ReminderStatusFilter)
-              }
-              className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {reminderStatusOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="lg:w-64">
-            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">{t("reminders.reminderType")}</label>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-slate-300">Loại nhắc nhở</label>
             <select
               value={kindFilter}
-              onChange={(event) =>
-                setKindFilter(event.target.value as ReminderKindFilter)
-              }
-              className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              onChange={(e) => setKindFilter(e.target.value as ReminderKindFilter)}
+              className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-sm text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 outline-none"
             >
-              <option value="all">{t("reminders.allTypes")}</option>
-              {reminderKindOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
+              <option value="all">Tất cả loại</option>
+              {reminderKindOptions.map((o) => (<option key={o.value} value={o.value}>{o.label}</option>))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-slate-300">Trạng thái</label>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as ReminderStatusFilter)}
+              className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-sm text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 outline-none"
+            >
+              {reminderStatusOptions.map((o) => (<option key={o.value} value={o.value}>{o.label}</option>))}
             </select>
           </div>
         </div>
       </div>
 
-      <div className="rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-800 dark:text-slate-100">{t("reminders.reminderList")}</h2>
-            <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">{t("reminders.reminderListDesc")}</p>
-          </div>
-          <div className="flex items-center gap-3">
-            {totalPages > 1 && (
-              <div className="text-xs text-slate-500 dark:text-slate-400">
-                {t("common.page")} {currentPage} {t("common.of")} {totalPages}
-              </div>
-            )}
-            <div className="rounded-full bg-slate-100 dark:bg-slate-700 px-3 py-1 text-xs font-semibold text-slate-600 dark:text-slate-300">
-              {reminders.length} {t("reminders.remindersCount")}
-            </div>
-          </div>
-        </div>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-semibold text-gray-800 dark:text-slate-100">Nhắc nhở và đơn thuốc ({aggregatedItems.length} mục)</h2>
+      </div>
 
-        <div className="mt-5 space-y-4">
-          {loadingReminders && (
-            <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 px-4 py-6 text-sm text-slate-500 dark:text-slate-400">{t("reminders.loadingReminders")}</div>
-          )}
-
-          {!loadingReminders && reminders.length === 0 && (
-            <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 px-4 py-6 text-sm text-slate-500 dark:text-slate-400">{t("reminders.noReminders")}</div>
-          )}
-
-          {currentReminders.map((reminder) => {
-            const patientInfo = patientDisplayMap.get(reminder.patientId);
-            const canToggle =
-              reminder.status === "active" || reminder.status === "paused";
-            const canEdit =
-              reminder.status === "active" || reminder.status === "paused";
-
-            return (
-              <div
-                key={reminder.id}
-                className=" border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4"
-              >
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="inline-flex items-center rounded-full bg-blue-100 dark:bg-blue-900/30 px-3 py-1 text-xs font-semibold text-blue-700 dark:text-blue-300">
-                        {getKindLabel(reminder.kind)}
-                      </span>
-                      <span
-                        className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${getStatusClasses(reminder.status)}`}
-                      >
-                        {getStatusLabel(reminder.status)}
-                      </span>
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        {loadingReminders ? (
+          <div className="col-span-full py-12 text-center text-slate-500">Đang tải dữ liệu...</div>
+        ) : aggregatedItems.length === 0 ? (
+          <div className="col-span-full py-12 text-center text-slate-500 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">Không tìm thấy nhắc nhở nào phù hợp.</div>
+        ) : (
+          currentItems.map((item) => {
+            if (item.type === "group") {
+              // Medication Group Card
+              return (
+                <div key={item.id} className="flex flex-col h-full rounded-xl border border-indigo-200 dark:border-indigo-900/50 bg-white dark:bg-slate-800 shadow-sm overflow-hidden">
+                  <div className="bg-indigo-50 dark:bg-indigo-900/30 px-5 py-4 flex justify-between items-start border-b border-indigo-100 dark:border-indigo-900/50">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <FaNotesMedical className="text-indigo-600 dark:text-indigo-400" />
+                        <span className="font-semibold text-indigo-900 dark:text-indigo-200">Uống thuốc theo Đơn</span>
+                      </div>
+                      <h3 className="font-bold text-slate-900 dark:text-slate-100">{item.patientName}</h3>
+                      <p className="text-xs text-slate-500">Mã BN: {item.patientCode || "N/A"}</p>
                     </div>
-
-                    <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
-                      <span className="font-semibold text-gray-900 dark:text-slate-100">
-                        {patientInfo?.name || reminder.patientId}
-                      </span>
-                      <span className="text-slate-400">•</span>
-                      <span className="text-gray-500 dark:text-slate-400">
-                        {patientInfo?.code || t("common.notUpdated")}
-                      </span>
-                    </div>
-
-                    <p className="mt-3 text-sm leading-6 text-gray-700 dark:text-slate-300">
-                      {reminder.message}
-                    </p>
-
-                    <div className="mt-4 flex flex-wrap gap-3">
-                      <div className="flex-none rounded-lg bg-slate-50 dark:bg-slate-800 px-4 py-3">
-                        <div className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">{t("reminders.reminderTime")}</div>
-                        <div className="mt-1 flex items-center text-sm font-semibold text-gray-800 dark:text-slate-100">
-                          <FaRegClock className="mr-2 text-slate-400" />
-                          {formatTime(reminder.hour, reminder.minute)}
-                        </div>
-                      </div>
-
-                      <div className="flex-none rounded-lg bg-slate-50 dark:bg-slate-800 px-4 py-3">
-                        <div className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">{t("reminders.repeatDays")}</div>
-                        <div className="mt-1 text-sm font-semibold text-gray-800 dark:text-slate-100">
-                          {buildWeekdaySummary(reminder.daysOfWeek)}
-                        </div>
-                      </div>
-
-                      <div className="flex-none rounded-lg bg-slate-50 dark:bg-slate-800 px-4 py-3">
-                        <div className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">{t("reminders.validity")}</div>
-                        <div className="mt-1 whitespace-nowrap text-sm font-semibold text-gray-800 dark:text-slate-100">
-                          {formatDate(reminder.startDate)} -{" "}
-                          {formatDate(reminder.endDate)}
-                        </div>
-                      </div>
-
-                      <div className="flex-none rounded-lg bg-slate-50 dark:bg-slate-800 px-4 py-3">
-                        <div className="text-xs uppercase tracking-wide text-slate-400 dark:text-slate-500">{t("reminders.updated")}</div>
-                        <div className="mt-1 text-sm font-semibold text-gray-800 dark:text-slate-100">
-                          {formatDateTime(reminder.updatedAt)}
-                        </div>
-                      </div>
-                    </div>
+                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${getStatusClasses(item.status)}`}>
+                      {getStatusLabel(item.status)}
+                    </span>
                   </div>
-
-                  <div className="flex flex-wrap gap-2 lg:justify-end">
-                    <button
-                      type="button"
-                      onClick={() => applyReminderToForm(reminder)}
-                      disabled={!canEdit || saving}
-                      className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      <FaEdit className="mr-2" />{t("reminders.edit")}</button>
-
-                    {reminder.status === "active" && (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          void handleQuickStatusUpdate(reminder, "paused")
-                        }
-                        disabled={saving}
-                        className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                  <div className="p-5 flex-1 flex flex-col justify-between">
+                    <div>
+                      <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                        Gồm <strong className="text-slate-800 dark:text-slate-200">{item.reminders.length}</strong> nhắc nhở thuốc.
+                      </p>
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {(() => {
+                          const timeGroups = new Map<string, number>();
+                          item.reminders.forEach(r => {
+                            const t = formatTime(r.hour, r.minute);
+                            timeGroups.set(t, (timeGroups.get(t) || 0) + 1);
+                          });
+                          const timeSlots = Array.from(timeGroups.entries()).map(([t, count]) => ({ time: t, count }));
+                          
+                          return (
+                            <>
+                              {timeSlots.slice(0, 4).map((slot, i) => (
+                                <span key={i} className="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs px-2 py-1 rounded-md font-medium border border-slate-200 dark:border-slate-600">
+                                  {slot.time} • {slot.count} thuốc
+                                </span>
+                              ))}
+                              {timeSlots.length > 4 && (
+                                <span className="bg-slate-100 dark:bg-slate-700 text-slate-500 text-xs px-2 py-1 rounded-md font-medium">
+                                  +{timeSlots.length - 4} khung giờ nữa
+                                </span>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                    <div className="flex gap-2 mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
+                      <button 
+                        onClick={() => setViewingGroup(item)}
+                        className="flex-1 flex items-center justify-center gap-2 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 dark:bg-indigo-900/50 dark:hover:bg-indigo-800/50 dark:text-indigo-300 py-2 rounded-lg text-sm font-medium transition"
                       >
-                        <FaPauseCircle className="mr-2" />{t("reminders.paused")}</button>
-                    )}
-
-                    {reminder.status === "paused" && (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          void handleQuickStatusUpdate(reminder, "active")
-                        }
-                        disabled={saving}
-                        className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                        <FaListUl /> Xem lịch nhắc
+                      </button>
+                      <Link 
+                        to={`/prescriptions?patientId=${item.patientId}&prescriptionId=${item.prescriptionId}`}
+                        className="flex-1 flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-200 py-2 rounded-lg text-sm font-medium transition"
                       >
-                        <FaPlayCircle className="mr-2" />{t("reminders.resume")}</button>
-                    )}
-
-                    {canToggle && (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          void handleQuickStatusUpdate(reminder, "canceled")
-                        }
-                        disabled={saving}
-                        className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 transition hover:bg-slate-50 dark:hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        <FaStopCircle className="mr-2" />{t("reminders.cancel")}</button>
-                    )}
+                        Mở đơn thuốc <FaExternalLinkAlt className="text-xs opacity-70" />
+                      </Link>
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Pagination Controls */}
-        {totalPages > 1 && (
-          <div className="mt-6 flex items-center justify-between border-t border-slate-200 dark:border-slate-700 pt-4">
-            <div className="text-sm text-slate-500 dark:text-slate-400">
-              {t("common.showing")} {startIndex + 1}-{Math.min(endIndex, reminders.length)} {t("common.of")} {reminders.length} {t("reminders.remindersCount")}
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setCurrentPage(currentPage - 1)}
-                disabled={currentPage === 1}
-                className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 dark:hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <FaChevronLeft className="mr-1" />{t("common.previous")}</button>
+              );
+            } else {
+              // Single Reminder Card
+              const r = item.reminder;
+              const ptInfo = patientDisplayMap.get(r.patientId);
+              const canToggle = r.status === "active" || r.status === "paused";
               
-              <div className="flex items-center gap-1">
-                {(() => {
-                  const pages: (number | string)[] = [];
-                  const maxVisible = 7;
-                  if (totalPages <= maxVisible) {
-                    for (let i = 1; i <= totalPages; i++) pages.push(i);
-                  } else {
-                    pages.push(1);
-                    if (currentPage > 3) pages.push("...");
-                    const start = Math.max(2, currentPage - 1);
-                    const end = Math.min(totalPages - 1, currentPage + 1);
-                    for (let i = start; i <= end; i++) pages.push(i);
-                    if (currentPage < totalPages - 2) pages.push("...");
-                    pages.push(totalPages);
-                  }
-                  return pages.map((page, idx) => {
-                    if (page === "...") {
-                      return (
-                        <span
-                          key={`ellipsis-${idx}`}
-                          className="flex w-10 h-10 items-center justify-center text-slate-400 dark:text-slate-500"
-                        >
-                          ...
+              return (
+                <div key={r.id} className="flex flex-col h-full rounded-xl border border-sky-200 dark:border-sky-900/50 bg-white dark:bg-slate-800 shadow-sm overflow-hidden">
+                  <div className="bg-sky-50 dark:bg-sky-900/20 px-5 py-4 flex justify-between items-start border-b border-sky-100 dark:border-sky-900/50">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-sky-600 dark:text-sky-400 font-semibold text-sm">
+                           Nhắc {r.kind === "measure" ? "Đo chỉ số" : "Uống thuốc"}
                         </span>
-                      );
-                    }
-                    const pageNum = page as number;
-                    return (
-                      <button
-                        key={pageNum}
-                        type="button"
-                        onClick={() => setCurrentPage(pageNum)}
-                        className={`inline-flex items-center justify-center w-10 h-10 rounded-lg text-sm font-medium transition ${
-                          pageNum === currentPage
-                            ? "bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900"
-                            : "border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700"
-                        }`}
-                      >
-                        {pageNum}
+                      </div>
+                      <h3 className="font-bold text-slate-900 dark:text-slate-100">{ptInfo?.name || r.patientId}</h3>
+                      <p className="text-xs text-slate-500">Mã BN: {ptInfo?.code || "N/A"}</p>
+                    </div>
+                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${getStatusClasses(r.status)}`}>
+                      {getStatusLabel(r.status)}
+                    </span>
+                  </div>
+                  
+                  <div className="p-5 flex-1 flex flex-col justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-slate-800 dark:text-slate-200 mb-3">{r.message}</p>
+                      
+                      <div className="grid grid-cols-2 gap-3 mb-4">
+                        <div className="bg-slate-50 dark:bg-slate-700/50 p-2.5 rounded-lg border border-slate-100 dark:border-slate-700">
+                          <p className="text-[10px] uppercase text-slate-500 mb-1">Giờ nhắc</p>
+                          <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center"><FaRegClock className="mr-1.5 opacity-70"/> {formatTime(r.hour, r.minute)}</p>
+                        </div>
+                        <div className="bg-slate-50 dark:bg-slate-700/50 p-2.5 rounded-lg border border-slate-100 dark:border-slate-700">
+                          <p className="text-[10px] uppercase text-slate-500 mb-1">Lặp lại</p>
+                          <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate" title={buildWeekdaySummary(r.daysOfWeek)}>{buildWeekdaySummary(r.daysOfWeek)}</p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      <button onClick={() => applyReminderToForm(r)} disabled={!canToggle || saving} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-200 py-1.5 rounded-lg text-sm font-medium transition disabled:opacity-50">
+                        Sửa
                       </button>
-                    );
-                  });
-                })()}
-              </div>
-              
-              <button
-                type="button"
-                onClick={() => setCurrentPage(currentPage + 1)}
-                disabled={currentPage === totalPages}
-                className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 dark:hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Sau
-                <FaChevronRight className="ml-1" />
-              </button>
-            </div>
-          </div>
+                      {r.status === "active" && (
+                        <button onClick={() => void handleQuickStatusUpdate(r, "paused")} disabled={saving} className="flex-1 bg-amber-100 hover:bg-amber-200 text-amber-700 dark:bg-amber-900/40 dark:hover:bg-amber-800/60 dark:text-amber-400 py-1.5 rounded-lg text-sm font-medium transition disabled:opacity-50">
+                          Dừng
+                        </button>
+                      )}
+                      {r.status === "paused" && (
+                        <button onClick={() => void handleQuickStatusUpdate(r, "active")} disabled={saving} className="flex-1 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 dark:bg-emerald-900/40 dark:hover:bg-emerald-800/60 dark:text-emerald-400 py-1.5 rounded-lg text-sm font-medium transition disabled:opacity-50">
+                          Tiếp tục
+                        </button>
+                      )}
+                      {canToggle && (
+                        <button onClick={() => void handleQuickStatusUpdate(r, "canceled")} disabled={saving} className="flex-1 bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-900/20 dark:hover:bg-rose-900/40 dark:text-rose-400 py-1.5 rounded-lg text-sm font-medium transition disabled:opacity-50">
+                          Hủy
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+          })
         )}
       </div>
 
-      {isFormVisible && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-          onClick={handleCloseForm}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="reminder-form-title"
-            onClick={(event) => event.stopPropagation()}
-            className="w-full max-w-4xl max-h-[92vh] overflow-hidden rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900"
-          >
-            <div className="flex items-center justify-between  px-4 py-3">
-              <h2
-                id="reminder-form-title"
-                className="text-lg font-semibold text-gray-900 dark:text-slate-100"
-              >
-                {modeLabel}
-              </h2>
-              <button
-                type="button"
-                onClick={handleCloseForm}
-                className="p-2 items-center rounded-lg  dark:border-slate-600  text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700"
-              >
-                <FaTimes />
+      {totalPages > 1 && (
+        <div className="mt-8 flex items-center justify-between border-t border-slate-200 dark:border-slate-700 pt-5">
+          <div className="text-sm text-slate-500 dark:text-slate-400">
+            Hiển thị {startIndex + 1}-{Math.min(endIndex, aggregatedItems.length)} của {aggregatedItems.length} mục
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setCurrentPage(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 disabled:opacity-50"
+            >
+              <FaChevronLeft />
+            </button>
+            <button
+              onClick={() => setCurrentPage(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 disabled:opacity-50"
+            >
+              <FaChevronRight />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Group Modal */}
+      {viewingGroup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm overflow-y-auto">
+          <div className="relative w-full max-w-3xl rounded-2xl bg-white dark:bg-slate-800 shadow-2xl flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 px-6 py-4">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">Chi tiết nhắc uống thuốc</h3>
+                <p className="text-sm text-slate-500">Bệnh nhân: {viewingGroup.patientName}</p>
+              </div>
+              <button onClick={() => setViewingGroup(null)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+                <FaTimes size={20} />
               </button>
             </div>
+            
+            <div className="p-6 overflow-y-auto flex-1">
+              <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-900/50 rounded-xl p-4 mb-6">
+                <p className="text-sm text-indigo-800 dark:text-indigo-300 mb-2">
+                  Đây là các lịch nhắc được tự động sinh ra từ đơn thuốc. Để thay đổi giờ uống hoặc nội dung nhắc, vui lòng chỉnh sửa trực tiếp trong Đơn Thuốc.
+                </p>
+                <Link 
+                  to={`/prescriptions?patientId=${viewingGroup.patientId}&prescriptionId=${viewingGroup.prescriptionId}`}
+                  className="inline-flex items-center gap-2 text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
+                >
+                  Đến trang Đơn Thuốc <FaExternalLinkAlt className="text-[10px]" />
+                </Link>
+              </div>
+              
+              <div className="space-y-3">
+                {viewingGroup.reminders.map(r => (
+                  <div key={r.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-1">
+                        <span className="text-base font-bold text-slate-800 dark:text-slate-200">{formatTime(r.hour, r.minute)}</span>
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${getStatusClasses(r.status)}`}>
+                          {getStatusLabel(r.status)}
+                        </span>
+                        {r.timeOfDay && (
+                           <span className="text-xs bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded text-slate-600 dark:text-slate-300 font-medium capitalize">
+                             {r.timeOfDay === 'morning' ? 'Sáng' : r.timeOfDay === 'noon' ? 'Trưa' : 'Tối'}
+                           </span>
+                        )}
+                        {r.mealTiming && (
+                           <span className="text-xs bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded text-slate-600 dark:text-slate-300 font-medium">
+                             {r.mealTiming === 'pre_meal' ? 'Trước ăn' : 'Sau ăn'}
+                           </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-slate-700 dark:text-slate-300">{r.message}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="border-t border-slate-200 dark:border-slate-700 px-6 py-4 flex justify-end">
+              <button onClick={() => setViewingGroup(null)} className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-200 rounded-lg text-sm font-semibold transition">
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
-            <form onSubmit={handleSubmit}>
-              <div className="max-h-[calc(92vh-140px)] overflow-y-auto px-4 py-4">
-                <div className="grid gap-4">
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
-                      {t("alerts.patient")} <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      name="patientId"
-                      value={formData.patientId}
-                      onChange={handleFormChange}
-                      disabled={loadingPatients || Boolean(editingReminderId)}
-                      className="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2.5 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-70"
-                    >
-                      <option value="">
-                        {loadingPatients
-                          ? t("reminders.loadingPatients")
-                          : t("reminders.selectPatient")}
+      {/* Create/Edit Modal Form */}
+      {isFormVisible && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm overflow-y-auto">
+          <div className="relative w-full max-w-2xl rounded-2xl bg-white dark:bg-slate-800 shadow-2xl my-8">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 px-6 py-4">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                {editingReminderId ? "Chỉnh sửa nhắc nhở thủ công" : "Tạo nhắc nhở đo chỉ số"}
+              </h3>
+              <button onClick={handleCloseForm} className="text-gray-400 hover:text-gray-500 focus:outline-none"><FaTimes size={20} /></button>
+            </div>
+            
+            <form onSubmit={handleSubmit} className="p-6 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Bệnh nhân *</label>
+                  <select
+                    name="patientId"
+                    value={formData.patientId}
+                    onChange={handleFormChange}
+                    required
+                    disabled={!!editingReminderId}
+                    className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 disabled:opacity-60"
+                  >
+                    <option value="">Chọn bệnh nhân</option>
+                    {patientOptions.map((p) => (
+                      <option key={p.patientId} value={p.patientId}>
+                        {(p.patientName || p.patientId) + (p.patientCode ? ` • ${p.patientCode}` : "")}
                       </option>
-                      {patientOptions.map((patient) => (
-                        <option
-                          key={patient.patientId}
-                          value={patient.patientId}
-                        >
-                          {(patient.patientName || patient.patientId) +
-                            (patient.patientCode
-                              ? ` • ${patient.patientCode}`
-                              : "")}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div>
-                      <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">{t("reminders.reminderType")}</label>
-                      <select
-                        name="kind"
-                        value={formData.kind}
-                        onChange={handleFormChange}
-                        className="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2.5 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        {reminderKindOptions.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                      <p className="mt-2 text-xs text-gray-500 dark:text-slate-400">
-                        {
-                          reminderKindOptions.find(
-                            (item) => item.value === formData.kind,
-                          )?.helper
-                        }
-                      </p>
-                    </div>
-
-                    <div>
-                      <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">{t("reminders.reminderTime")}</label>
-                      <input
-                        type="time"
-                        name="time"
-                        value={formData.time}
-                        onChange={handleFormChange}
-                        className="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2.5 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">{t("reminders.reminderContent")} <span className="text-red-500">*</span>
-                    </label>
-                    <textarea
-                      name="message"
-                      rows={4}
-                      value={formData.message}
-                      onChange={handleFormChange}
-                      placeholder={
-                        formData.kind === "medication"
-                          ? t("reminders.medicationPlaceholder")
-                          : t("reminders.reminderContentPlaceholder")
-                      }
-                      className="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2.5 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">{t("reminders.repeatOn")}</label>
-                    <div className="flex flex-wrap gap-2">
-                      {weekdayOptions.map((option) => {
-                        const active = formData.daysOfWeek.includes(
-                          option.value,
-                        );
-
-                        return (
-                          <button
-                            key={option.value}
-                            type="button"
-                            onClick={() => handleToggleWeekday(option.value)}
-                            className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
-                              active
-                                ? "bg-slate-700 text-white dark:bg-slate-200 dark:text-slate-900"
-                                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
-                            }`}
-                          >
-                            {option.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div>
-                      <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">{t("reminders.validFrom")}</label>
-                      <input
-                        type="date"
-                        name="startDate"
-                        value={formData.startDate}
-                        onChange={handleFormChange}
-                        className="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2.5 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">{t("reminders.validTo")}</label>
-                      <input
-                        type="date"
-                        name="endDate"
-                        value={formData.endDate}
-                        onChange={handleFormChange}
-                        className="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2.5 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div>
-                      <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">{t("reminders.timezone")}</label>
-                      <select
-                        name="timezone"
-                        value={formData.timezone}
-                        onChange={handleFormChange}
-                        className="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2.5 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        {timezoneOptions.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">{t("reminders.status")}</label>
-                      <select
-                        name="status"
-                        value={formData.status}
-                        onChange={handleFormChange}
-                        disabled={!editingReminderId}
-                        className="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2.5 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-70"
-                      >
-                        <option value="active">{t("reminders.active")}</option>
-                        <option value="paused">{t("reminders.paused")}</option>
-                        <option value="canceled">{t("reminders.canceled")}</option>
-                        <option value="expired">{t("reminders.expired")}</option>
-                      </select>
-                    </div>
-                  </div>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Loại nhắc nhở *</label>
+                  <select
+                    name="kind"
+                    value={formData.kind}
+                    onChange={handleFormChange}
+                    required
+                    disabled={!!editingReminderId}
+                    className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 disabled:opacity-60"
+                  >
+                    {reminderKindOptions.map((o) => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+                  {formData.kind === 'medication' && !editingReminderId && (
+                     <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">Lưu ý: Đây là nhắc thuốc thủ công, không tự động đồng bộ với đơn thuốc.</p>
+                  )}
                 </div>
               </div>
 
-              <div className="flex items-center justify-between border-t border-gray-200 dark:border-slate-700 px-4 py-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Nội dung nhắc nhở *</label>
+                <input
+                  type="text"
+                  name="message"
+                  value={formData.message}
+                  onChange={handleFormChange}
+                  required
+                  placeholder="VD: Nhớ đo huyết áp nhé!"
+                  className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Giờ nhắc (HH:mm) *</label>
+                  <input
+                    type="time"
+                    name="time"
+                    value={formData.time}
+                    onChange={handleFormChange}
+                    required
+                    className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">Ngày lặp lại trong tuần *</label>
+                <div className="flex flex-wrap gap-2">
+                  {weekdayOptions.map((day) => {
+                    const isSelected = formData.daysOfWeek.includes(day.value);
+                    return (
+                      <button
+                        key={day.value}
+                        type="button"
+                        onClick={() => handleToggleWeekday(day.value)}
+                        className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
+                          isSelected
+                            ? "bg-blue-600 text-white"
+                            : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
+                        }`}
+                      >
+                        {day.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                {formData.daysOfWeek.length === 0 && <p className="mt-1 text-xs text-rose-500">Vui lòng chọn ít nhất 1 ngày.</p>}
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Ngày bắt đầu *</label>
+                  <input
+                    type="date"
+                    name="startDate"
+                    value={formData.startDate}
+                    onChange={handleFormChange}
+                    required
+                    className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Ngày kết thúc *</label>
+                  <input
+                    type="date"
+                    name="endDate"
+                    value={formData.endDate}
+                    onChange={handleFormChange}
+                    required
+                    className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+              
+              {editingReminderId && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Trạng thái</label>
+                  <select
+                    name="status"
+                    value={formData.status}
+                    onChange={handleFormChange}
+                    className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="active">Đang chạy</option>
+                    <option value="paused">Tạm dừng</option>
+                    <option value="canceled">Đã hủy</option>
+                  </select>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-700">
                 <button
                   type="button"
-                  onClick={() => resetForm()}
-                  className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
+                  onClick={handleCloseForm}
+                  disabled={saving}
+                  className="rounded-xl px-5 py-2.5 text-sm font-medium text-gray-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
                 >
-                  <FaUndo className="mr-2" />{t("common.reset")}</button>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={handleCloseForm}
-                    className="rounded-lg border border-slate-300 dark:border-slate-600 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
-                  >{t("common.cancel")}</button>
-                  <button
-                    type="submit"
-                    disabled={!formData.patientId || saving}
-                    className="inline-flex items-center rounded-lg bg-slate-800 dark:bg-slate-100 px-4 py-2 text-sm font-medium text-white dark:text-slate-900 transition hover:bg-slate-700 dark:hover:bg-slate-200 disabled:cursor-not-allowed disabled:bg-slate-400 dark:disabled:bg-slate-600 dark:disabled:text-slate-100"
-                  >
-                    <FaSave className="mr-2" />
-                    {saving
-                      ? t("reminders.saving")
-                      : editingReminderId
-                        ? t("reminders.updateReminder")
-                        : t("reminders.saveReminder")}
-                  </button>
-                </div>
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving || formData.daysOfWeek.length === 0}
+                  className="inline-flex items-center rounded-xl bg-blue-600 px-6 py-2.5 text-sm font-medium text-white transition hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {saving ? (
+                    <FaSyncAlt className="mr-2 animate-spin" />
+                  ) : null}
+                  {editingReminderId ? "Cập nhật" : "Tạo mới"}
+                </button>
               </div>
             </form>
           </div>
         </div>
       )}
-
-      <Toast toast={toast} onClose={hideToast} />
     </div>
   );
 };

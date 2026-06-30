@@ -17,6 +17,8 @@ export interface ChartDataPoint {
   period: string;
   normalPatients: number;
   warningPatients: number;
+  criticalPatients?: number;
+  lowPatients?: number;
 }
 
 export interface ChartStatItem {

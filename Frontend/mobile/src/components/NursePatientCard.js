@@ -35,6 +35,8 @@ function getInitials(name) {
 function NursePatientCard({ patient, onPress }) {
   const initials = getInitials(patient?.user?.name);
   const hasHighAlert = patient?.alertsSummary?.high > 0;
+  const hasMediumAlert = patient?.alertsSummary?.medium > 0;
+  const hasLowAlert = patient?.alertsSummary?.low > 0;
   const bp = patient?.lastMeasurements?.bp;
   const glucose = patient?.lastMeasurements?.glucose;
   const spo2 = patient?.lastMeasurements?.spo2;
@@ -80,7 +82,27 @@ function NursePatientCard({ patient, onPress }) {
                 color="#B91C1C"
                 style={styles.badgeIcon}
               />
-              <Text style={styles.alertBadgeHighText}>Cảnh báo</Text>
+              <Text style={styles.alertBadgeHighText}>Nguy hiểm</Text>
+            </View>
+          ) : hasMediumAlert ? (
+            <View style={styles.alertBadgeMedium}>
+              <Ionicons
+                name="warning"
+                size={14}
+                color="#B45309"
+                style={styles.badgeIcon}
+              />
+              <Text style={styles.alertBadgeMediumText}>Cảnh báo</Text>
+            </View>
+          ) : hasLowAlert ? (
+            <View style={styles.alertBadgeLow}>
+              <Ionicons
+                name="information-circle"
+                size={14}
+                color="#1D4ED8"
+                style={styles.badgeIcon}
+              />
+              <Text style={styles.alertBadgeLowText}>Cần lưu ý</Text>
             </View>
           ) : (
             <View style={styles.alertBadgeNormal}>
@@ -90,7 +112,7 @@ function NursePatientCard({ patient, onPress }) {
                 color="#16A34A"
                 style={styles.badgeIcon}
               />
-              <Text style={styles.alertBadgeNormalText}>Ổn</Text>
+              <Text style={styles.alertBadgeNormalText}>Ổn định</Text>
             </View>
           )}
 
@@ -208,7 +230,7 @@ function NursePatientCard({ patient, onPress }) {
             style={styles.badgeIcon}
           />
           <Text style={styles.bottomText}>
-            Cảnh báo: {patient?.alertsSummary?.high || 0}/{patient?.alertsSummary?.total || 0}
+            Cảnh báo: {(patient?.alertsSummary?.high || 0) + (patient?.alertsSummary?.medium || 0) + (patient?.alertsSummary?.low || 0)}/{patient?.alertsSummary?.total || 0}
           </Text>
         </View>
       </View>
@@ -299,6 +321,32 @@ const styles = StyleSheet.create({
   alertBadgeHighText: {
     fontSize: 11,
     color: "#B91C1C",
+    fontWeight: "600",
+  },
+  alertBadgeMedium: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FEF3C7",
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  alertBadgeMediumText: {
+    fontSize: 11,
+    color: "#B45309",
+    fontWeight: "600",
+  },
+  alertBadgeLow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#DBEAFE",
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  alertBadgeLowText: {
+    fontSize: 11,
+    color: "#1E3A8A",
     fontWeight: "600",
   },
   alertBadgeNormal: {

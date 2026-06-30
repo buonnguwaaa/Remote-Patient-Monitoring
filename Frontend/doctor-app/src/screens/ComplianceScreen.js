@@ -12,7 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { getMyPatients, getAdherence } from "../api/patientApi";
 import PatientSelectorModal from "../components/PatientSelectorModal";
-import { useSidebar } from "../navigation/AppNavigator";
+
 
 const RANGE_OPTIONS = [
   { label: "7 ngày", value: 7 },
@@ -21,7 +21,7 @@ const RANGE_OPTIONS = [
 ];
 
 export default function ComplianceScreen() {
-  const { openSidebar } = useSidebar();
+
 
   const [patients, setPatients] = useState([]);
   const [selectedPatientId, setSelectedPatientId] = useState("");
@@ -72,9 +72,14 @@ export default function ComplianceScreen() {
         days: daysCount,
       });
       if (res.ok) {
-        setAdherenceData(res.body?.data || null);
-        // Expand the first day by default
-        const days = res.body?.data?.days || [];
+        const rawData = res.body?.data || null;
+        if (rawData && rawData.days) {
+          // Reverse the days list to show the newest day first
+          rawData.days = [...rawData.days].reverse();
+        }
+        setAdherenceData(rawData);
+        // Expand the newest day (the first one now) by default
+        const days = rawData?.days || [];
         if (days.length > 0) {
           setExpandedDays({ [days[0].date]: true });
         } else {
@@ -209,19 +214,19 @@ export default function ComplianceScreen() {
                     <Text
                       style={[
                         styles.summaryRateText,
-                        { color: getAdherenceColor(adherenceData.summary?.adherenceRate || 0) },
+                        { color: getAdherenceColor((adherenceData.summary?.adherenceRate || 0) * 100) },
                       ]}
                     >
                       {adherenceData.summary?.adherenceRate !== undefined
-                        ? `${Math.round(adherenceData.summary.adherenceRate)}%`
+                        ? `${Math.round(adherenceData.summary.adherenceRate * 100)}%`
                         : "N/A"}
                     </Text>
                   </View>
                   <View style={styles.summaryBadge}>
                     <Text style={styles.summaryBadgeText}>
-                      {adherenceData.summary?.adherenceRate >= 80
+                      {(adherenceData.summary?.adherenceRate || 0) * 100 >= 80
                         ? "Tốt"
-                        : adherenceData.summary?.adherenceRate >= 50
+                        : (adherenceData.summary?.adherenceRate || 0) * 100 >= 50
                         ? "Trung bình"
                         : "Cần cải thiện"}
                     </Text>

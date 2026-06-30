@@ -13,11 +13,11 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useIsFocused, useRoute } from "@react-navigation/native";
-import Toast from "../components/Toast";
+import { useIsFocused, useRoute, useNavigation } from "@react-navigation/native";
 import PatientSelectorModal from "../components/PatientSelectorModal";
 
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 import {
   getMyPatients,
   getReminders,
@@ -85,10 +85,14 @@ function formatDateOnly(iso) {
 export default function RemindersScreen() {
   const isFocused = useIsFocused();
   const route = useRoute();
+  const navigation = useNavigation();
   const { user } = useAuth();
+  const { showToast } = useToast();
 
   const [patients, setPatients] = useState([]);
   const [selectedPatientId, setSelectedPatientId] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [viewingGroup, setViewingGroup] = useState(null);
 
   useEffect(() => {
     if (route.params?.patientId) {
@@ -109,7 +113,6 @@ export default function RemindersScreen() {
   const [formData, setFormData] = useState(createDefaultFormData());
   const [saving, setSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
 
   const handleCloseForm = () => {
     const isBlank = !formData.message || formData.message.trim() === "";
@@ -201,6 +204,97 @@ export default function RemindersScreen() {
     }
   }, [selectedPatientId, statusFilter, kindFilter, patients, loadingPatients, isFocused]);
 
+  // Patient Display Map (memoized)
+  const patientDisplayMap = useMemo(() => {
+    return new Map(
+      patients.map((item) => [
+        item.patientId,
+        {
+          name: item.patientName || item.name || item.patientId,
+          code: item.patientCode || item.code || "N/A",
+        },
+      ])
+    );
+  }, [patients]);
+
+  const aggregatedItems = useMemo(() => {
+    // 1. Filter
+    const filteredList = reminders.filter((r) => {
+      if (statusFilter !== "all" && r.status !== statusFilter) return false;
+      if (kindFilter !== "all" && r.kind !== kindFilter) return false;
+
+      if (searchTerm.trim()) {
+        const pt = patientDisplayMap.get(r.patientId);
+        const term = searchTerm.toLowerCase();
+        const matchName = pt?.name?.toLowerCase().includes(term);
+        const matchCode = pt?.code?.toLowerCase().includes(term);
+        const matchMsg = r.message?.toLowerCase().includes(term);
+        if (!matchName && !matchCode && !matchMsg) return false;
+      }
+      return true;
+    });
+
+    // 2. Group medication reminders by patientId + prescriptionId
+    const groups = new Map();
+    const singles = [];
+
+    filteredList.forEach((r) => {
+      if (r.kind === "medication" && r.prescriptionId) {
+        const key = `${r.patientId}_${r.prescriptionId}`;
+        if (!groups.has(key)) {
+          const pt = patientDisplayMap.get(r.patientId);
+          const patientObj = patients.find((p) => p.patientId === r.patientId);
+          const patName = pt?.name || patientObj?.patientName || patientObj?.name || r.patientId;
+          groups.set(key, {
+            id: key,
+            type: "group",
+            patientId: r.patientId,
+            prescriptionId: r.prescriptionId,
+            reminders: [],
+            status: "expired",
+            patientName: patName,
+            patientCode: pt?.code || "",
+          });
+        }
+        groups.get(key).reminders.push(r);
+      } else {
+        singles.push({ type: "single", reminder: r });
+      }
+    });
+
+    // 3. Compute group status and sort reminders inside
+    const groupArr = Array.from(groups.values());
+    groupArr.forEach((g) => {
+      const statuses = g.reminders.map((r) => r.status);
+      if (statuses.includes("active")) g.status = "active";
+      else if (statuses.includes("paused")) g.status = "paused";
+      else if (statuses.includes("canceled")) g.status = "canceled";
+      else g.status = "expired";
+
+      // Sort reminders within group by time
+      g.reminders.sort((a, b) => {
+        if (a.hour !== b.hour) return a.hour - b.hour;
+        return a.minute - b.minute;
+      });
+    });
+
+    // Merge group and singles and sort newest first
+    const allItems = [...groupArr, ...singles];
+    allItems.sort((a, b) => {
+      const timeA =
+        a.type === "group"
+          ? Math.max(...a.reminders.map((r) => new Date(r.createdAt).getTime()))
+          : new Date(a.reminder.createdAt).getTime();
+      const timeB =
+        b.type === "group"
+          ? Math.max(...b.reminders.map((r) => new Date(r.createdAt).getTime()))
+          : new Date(b.reminder.createdAt).getTime();
+      return timeB - timeA;
+    });
+
+    return allItems;
+  }, [reminders, statusFilter, kindFilter, searchTerm, patientDisplayMap, patients]);
+
   const selectedPatientName = useMemo(() => {
     const found = patients.find((p) => p.patientId === selectedPatientId);
     return found?.patientName || found?.name || "Tất cả bệnh nhân";
@@ -245,7 +339,6 @@ export default function RemindersScreen() {
     setIsFormVisible(true);
     setShowPatientListInForm(false);
     setErrorMessage("");
-    setSuccessMessage("");
   };
 
   const handleToggleWeekday = (val) => {
@@ -280,7 +373,7 @@ export default function RemindersScreen() {
             try {
               const res = await updateReminderStatus(reminder.id, nextStatus);
               if (res.ok) {
-                setSuccessMessage(`Đã ${actionLabel} nhắc nhở thành công.`);
+                showToast(`Đã ${actionLabel} nhắc nhở thành công.`);
                 fetchReminders();
               } else {
                 setErrorMessage(res.body?.error || "Lỗi khi cập nhật trạng thái nhắc nhở.");
@@ -319,7 +412,6 @@ export default function RemindersScreen() {
 
   const handleSave = async () => {
     setErrorMessage("");
-    setSuccessMessage("");
     const validationError = validateForm();
     if (validationError) {
       setErrorMessage(validationError);
@@ -355,7 +447,7 @@ export default function RemindersScreen() {
       }
 
       if (res.ok) {
-        setSuccessMessage(
+        showToast(
           editingId ? "Cập nhật nhắc nhở thành công!" : "Tạo nhắc nhở mới thành công!"
         );
         setIsFormVisible(false);
@@ -428,6 +520,23 @@ export default function RemindersScreen() {
         loading={loadingPatients}
       />
 
+      {/* Search Input Bar */}
+      <View style={styles.searchBarWrapper}>
+        <Ionicons name="search" size={18} color="#9CA3AF" style={{ marginRight: 8 }} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Tìm kiếm theo tên, mã bệnh nhân, nội dung..."
+          placeholderTextColor="#9CA3AF"
+          value={searchTerm}
+          onChangeText={setSearchTerm}
+        />
+        {searchTerm ? (
+          <TouchableOpacity onPress={() => setSearchTerm("")}>
+            <Ionicons name="close-circle" size={18} color="#9CA3AF" />
+          </TouchableOpacity>
+        ) : null}
+      </View>
+
       {/* Filter Options Bar */}
       <View style={styles.filterBar}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
@@ -481,11 +590,10 @@ export default function RemindersScreen() {
 
       <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
 
-
         {/* Reminders List Title */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>
-            Danh sách nhắc nhở ({reminders.length})
+            Danh sách nhắc nhở ({aggregatedItems.length})
           </Text>
           <TouchableOpacity
             style={styles.addBtn}
@@ -495,124 +603,218 @@ export default function RemindersScreen() {
               setIsFormVisible(true);
               setShowPatientListInForm(false);
               setErrorMessage("");
-              setSuccessMessage("");
             }}
           >
             <Ionicons name="add" size={16} color="#FFF" />
-            <Text style={styles.addBtnText}>Tạo mới</Text>
+            <Text style={styles.addBtnText}>Tạo nhắc nhở đo chỉ số</Text>
           </TouchableOpacity>
         </View>
 
         {loadingReminders ? (
           <ActivityIndicator size="large" color="#2563EB" style={{ marginVertical: 24 }} />
-        ) : reminders.length === 0 ? (
+        ) : aggregatedItems.length === 0 ? (
           <View style={styles.emptyCard}>
             <Ionicons name="alarm-outline" size={40} color="#9CA3AF" />
             <Text style={styles.emptyText}>Không tìm thấy nhắc nhở nào trùng khớp.</Text>
           </View>
         ) : (
-          reminders.map((item, idx) => {
-            const patientObj = patients.find((p) => p.patientId === item.patientId);
-            const patName = patientObj?.patientName || patientObj?.name || "Bệnh nhân";
+          aggregatedItems.map((item, idx) => {
+            if (item.type === "group") {
+              let statusColor = "#6B7280";
+              let statusBg = "#F3F4F6";
+              let statusText = "Hết hạn";
 
-            let statusColor = "#6B7280";
-            let statusBg = "#F3F4F6";
-            let statusText = "Hết hạn";
+              if (item.status === "active") {
+                statusColor = "#065F46";
+                statusBg = "#D1FAE5";
+                statusText = "Đang chạy";
+              } else if (item.status === "paused") {
+                statusColor = "#92400E";
+                statusBg = "#FEF3C7";
+                statusText = "Tạm dừng";
+              } else if (item.status === "canceled") {
+                statusColor = "#991B1B";
+                statusBg = "#FEE2E2";
+                statusText = "Đã hủy";
+              }
 
-            if (item.status === "active") {
-              statusColor = "#065F46";
-              statusBg = "#D1FAE5";
-              statusText = "Đang chạy";
-            } else if (item.status === "paused") {
-              statusColor = "#92400E";
-              statusBg = "#FEF3C7";
-              statusText = "Tạm dừng";
-            } else if (item.status === "canceled") {
-              statusColor = "#991B1B";
-              statusBg = "#FEE2E2";
-              statusText = "Đã hủy";
-            }
+              // Count time slots
+              const timeGroups = new Map();
+              item.reminders.forEach((r) => {
+                const t = formatTime(r.hour, r.minute);
+                timeGroups.set(t, (timeGroups.get(t) || 0) + 1);
+              });
+              const timeSlots = Array.from(timeGroups.entries()).map(([t, count]) => ({ time: t, count }));
 
-            return (
-              <View key={item.id || `reminder-${idx}`} style={styles.reminderCard}>
-                <View style={styles.reminderCardHeader}>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                    <View style={[styles.statusTag, { backgroundColor: statusBg }]}>
-                      <Text style={[styles.statusTagText, { color: statusColor }]}>{statusText}</Text>
-                    </View>
-                    <View style={[styles.statusTag, { backgroundColor: "#EFF6FF" }]}>
-                      <Text style={[styles.statusTagText, { color: "#1E40AF" }]}>
-                        {item.kind === "measure" ? "Đo chỉ số" : "Uống thuốc"}
-                      </Text>
+              return (
+                <View key={item.id || `reminder-group-${idx}`} style={[styles.reminderCard, { borderColor: "#C7D2FE" }]}>
+                  <View style={styles.reminderCardHeader}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                      <View style={[styles.statusTag, { backgroundColor: statusBg }]}>
+                        <Text style={[styles.statusTagText, { color: statusColor }]}>{statusText}</Text>
+                      </View>
+                      <View style={[styles.statusTag, { backgroundColor: "#E0E7FF" }]}>
+                        <Text style={[styles.statusTagText, { color: "#4338CA" }]}>
+                          Uống thuốc theo Đơn
+                        </Text>
+                      </View>
                     </View>
                   </View>
 
-                  <Text style={styles.timeTitle}>
-                    {formatTime(item.hour, item.minute)}
-                  </Text>
-                </View>
-
-                <View style={styles.reminderCardBody}>
-                  <Text style={styles.patientSub}>{patName}</Text>
-                  <Text style={styles.messageText}>{item.message}</Text>
-
-                  <Text style={styles.infoText}>
-                    <Ionicons name="calendar-outline" size={12} color="#6B7280" /> Lặp lại:{" "}
-                    <Text style={{ fontWeight: "600", color: "#374151" }}>
-                      {buildWeekdaySummary(item.daysOfWeek)}
+                  <View style={styles.reminderCardBody}>
+                    <Text style={styles.patientSub}>{item.patientName}</Text>
+                    <Text style={[styles.infoText, { marginBottom: 6 }]}>
+                      Gồm <Text style={{ fontWeight: "700", color: "#374151" }}>{item.reminders.length}</Text> nhắc nhở thuốc.
                     </Text>
-                  </Text>
 
-                  <Text style={styles.infoText}>
-                    <Ionicons name="time-outline" size={12} color="#6B7280" /> Hiệu lực:{" "}
-                    {formatDate(item.startDate)} → {formatDate(item.endDate)}
-                  </Text>
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 4 }}>
+                      {timeSlots.slice(0, 3).map((slot, i) => (
+                        <View key={i} style={styles.timeSlotPill}>
+                          <Text style={styles.timeSlotPillText}>
+                            {slot.time} • {slot.count} thuốc
+                          </Text>
+                        </View>
+                      ))}
+                      {timeSlots.length > 3 ? (
+                        <View style={[styles.timeSlotPill, { backgroundColor: "#F3F4F6", borderColor: "#E5E7EB" }]}>
+                          <Text style={[styles.timeSlotPillText, { color: "#6B7280" }]}>
+                            +{timeSlots.length - 3} khung giờ nữa
+                          </Text>
+                        </View>
+                      ) : null}
+                    </View>
+                  </View>
+
+                  {/* Actions row */}
+                  <View style={styles.cardActions}>
+                    <TouchableOpacity
+                      style={styles.cardActionBtn}
+                      onPress={() => setViewingGroup(item)}
+                    >
+                      <Ionicons name="list" size={16} color="#4F46E5" />
+                      <Text style={[styles.cardActionBtnText, { color: "#4F46E5" }]}>Xem lịch nhắc</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.cardActionBtn}
+                      onPress={() => {
+                        navigation.navigate("Prescriptions", {
+                          patientId: item.patientId,
+                          prescriptionId: item.prescriptionId,
+                        });
+                      }}
+                    >
+                      <Ionicons name="open-outline" size={16} color="#4B5563" />
+                      <Text style={[styles.cardActionBtnText, { color: "#4B5563" }]}>Mở đơn thuốc</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
+              );
+            } else {
+              // Single Reminder Card
+              const r = item.reminder;
+              const ptInfo = patientDisplayMap.get(r.patientId);
+              const patName = ptInfo?.name || "Bệnh nhân";
 
-                {/* Actions row */}
-                <View style={styles.cardActions}>
-                  {(item.status === "active" || item.status === "paused") && (
-                    <TouchableOpacity
-                      style={styles.cardActionBtn}
-                      onPress={() => handleEdit(item)}
-                    >
-                      <Ionicons name="create-outline" size={16} color="#2563EB" />
-                      <Text style={[styles.cardActionBtnText, { color: "#2563EB" }]}>Sửa</Text>
-                    </TouchableOpacity>
-                  )}
+              let statusColor = "#6B7280";
+              let statusBg = "#F3F4F6";
+              let statusText = "Hết hạn";
 
-                  {item.status === "active" && (
-                    <TouchableOpacity
-                      style={styles.cardActionBtn}
-                      onPress={() => handleStatusUpdate(item, "paused")}
-                    >
-                      <Ionicons name="pause-circle-outline" size={16} color="#D97706" />
-                      <Text style={[styles.cardActionBtnText, { color: "#D97706" }]}>Tạm dừng</Text>
-                    </TouchableOpacity>
-                  )}
+              if (r.status === "active") {
+                statusColor = "#065F46";
+                statusBg = "#D1FAE5";
+                statusText = "Đang chạy";
+              } else if (r.status === "paused") {
+                statusColor = "#92400E";
+                statusBg = "#FEF3C7";
+                statusText = "Tạm dừng";
+              } else if (r.status === "canceled") {
+                statusColor = "#991B1B";
+                statusBg = "#FEE2E2";
+                statusText = "Đã hủy";
+              }
 
-                  {item.status === "paused" && (
-                    <TouchableOpacity
-                      style={styles.cardActionBtn}
-                      onPress={() => handleStatusUpdate(item, "active")}
-                    >
-                      <Ionicons name="play-circle-outline" size={16} color="#059669" />
-                      <Text style={[styles.cardActionBtnText, { color: "#059669" }]}>Tiếp tục</Text>
-                    </TouchableOpacity>
-                  )}
+              return (
+                <View key={r.id || `reminder-single-${idx}`} style={styles.reminderCard}>
+                  <View style={styles.reminderCardHeader}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                      <View style={[styles.statusTag, { backgroundColor: statusBg }]}>
+                        <Text style={[styles.statusTagText, { color: statusColor }]}>{statusText}</Text>
+                      </View>
+                      <View style={[styles.statusTag, { backgroundColor: "#EFF6FF" }]}>
+                        <Text style={[styles.statusTagText, { color: "#1E40AF" }]}>
+                          {r.kind === "measure" ? "Đo chỉ số" : "Uống thuốc"}
+                        </Text>
+                      </View>
+                    </View>
 
-                  {(item.status === "active" || item.status === "paused") && (
-                    <TouchableOpacity
-                      style={styles.cardActionBtn}
-                      onPress={() => handleStatusUpdate(item, "canceled")}
-                    >
-                      <Ionicons name="stop-circle-outline" size={16} color="#DC2626" />
-                      <Text style={[styles.cardActionBtnText, { color: "#DC2626" }]}>Hủy bỏ</Text>
-                    </TouchableOpacity>
-                  )}
+                    <Text style={styles.timeTitle}>
+                      {formatTime(r.hour, r.minute)}
+                    </Text>
+                  </View>
+
+                  <View style={styles.reminderCardBody}>
+                    <Text style={styles.patientSub}>{patName}</Text>
+                    <Text style={styles.messageText}>{r.message}</Text>
+
+                    <Text style={styles.infoText}>
+                      <Ionicons name="calendar-outline" size={12} color="#6B7280" /> Lặp lại:{" "}
+                      <Text style={{ fontWeight: "600", color: "#374151" }}>
+                        {buildWeekdaySummary(r.daysOfWeek)}
+                      </Text>
+                    </Text>
+
+                    <Text style={styles.infoText}>
+                      <Ionicons name="time-outline" size={12} color="#6B7280" /> Hiệu lực:{" "}
+                      {formatDate(r.startDate)} → {formatDate(r.endDate)}
+                    </Text>
+                  </View>
+
+                  {/* Actions row */}
+                  <View style={styles.cardActions}>
+                    {(r.status === "active" || r.status === "paused") && (
+                      <TouchableOpacity
+                        style={styles.cardActionBtn}
+                        onPress={() => handleEdit(r)}
+                      >
+                        <Ionicons name="create-outline" size={16} color="#2563EB" />
+                        <Text style={[styles.cardActionBtnText, { color: "#2563EB" }]}>Sửa</Text>
+                      </TouchableOpacity>
+                    )}
+
+                    {r.status === "active" && (
+                      <TouchableOpacity
+                        style={styles.cardActionBtn}
+                        onPress={() => handleStatusUpdate(r, "paused")}
+                      >
+                        <Ionicons name="pause-circle-outline" size={16} color="#D97706" />
+                        <Text style={[styles.cardActionBtnText, { color: "#D97706" }]}>Tạm dừng</Text>
+                      </TouchableOpacity>
+                    )}
+
+                    {r.status === "paused" && (
+                      <TouchableOpacity
+                        style={styles.cardActionBtn}
+                        onPress={() => handleStatusUpdate(r, "active")}
+                      >
+                        <Ionicons name="play-circle-outline" size={16} color="#059669" />
+                        <Text style={[styles.cardActionBtnText, { color: "#059669" }]}>Tiếp tục</Text>
+                      </TouchableOpacity>
+                    )}
+
+                    {(r.status === "active" || r.status === "paused") && (
+                      <TouchableOpacity
+                        style={styles.cardActionBtn}
+                        onPress={() => handleStatusUpdate(r, "canceled")}
+                      >
+                        <Ionicons name="stop-circle-outline" size={16} color="#DC2626" />
+                        <Text style={[styles.cardActionBtnText, { color: "#DC2626" }]}>Hủy bỏ</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 </View>
-              </View>
-            );
+              );
+            }
           })
         )}
       </ScrollView>
@@ -838,24 +1040,218 @@ export default function RemindersScreen() {
         </Modal>
       )}
 
-      <Toast
-        visible={!!successMessage}
-        message={successMessage}
-        type="success"
-        onDismiss={() => setSuccessMessage("")}
-      />
-      <Toast
-        visible={!!errorMessage}
-        message={errorMessage}
-        type="error"
-        onDismiss={() => setErrorMessage("")}
-      />
+      {/* Group Details Modal */}
+      {viewingGroup && (
+        <Modal
+          visible={Boolean(viewingGroup)}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setViewingGroup(null)}
+        >
+          <View style={styles.formBackdrop}>
+            <View style={styles.formWrapper}>
+              <View style={styles.formHeader}>
+                <View>
+                  <Text style={styles.formTitle}>Chi tiết nhắc uống thuốc</Text>
+                  <Text style={{ fontSize: 12, color: "#6B7280", marginTop: 2 }}>
+                    Bệnh nhân: {viewingGroup.patientName}
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={() => setViewingGroup(null)}>
+                  <Ionicons name="close" size={24} color="#4B5563" />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView style={styles.formContent}>
+                <View style={styles.groupInfoBox}>
+                  <Text style={styles.groupInfoText}>
+                    Đây là các lịch nhắc được tự động sinh ra từ đơn thuốc. Để thay đổi giờ uống hoặc nội dung nhắc, vui lòng chỉnh sửa trực tiếp trong Đơn Thuốc.
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.goToPrescriptionBtn}
+                    onPress={() => {
+                      setViewingGroup(null);
+                      navigation.navigate("Prescriptions", {
+                        patientId: viewingGroup.patientId,
+                        prescriptionId: viewingGroup.prescriptionId,
+                      });
+                    }}
+                  >
+                    <Text style={styles.goToPrescriptionBtnText}>Đến trang Đơn Thuốc</Text>
+                    <Ionicons name="arrow-forward" size={14} color="#2563EB" />
+                  </TouchableOpacity>
+                </View>
+
+                {viewingGroup.reminders.map((r, rIdx) => {
+                  let statusColor = "#6B7280";
+                  let statusBg = "#F3F4F6";
+                  let statusText = "Hết hạn";
+                  if (r.status === "active") {
+                    statusColor = "#065F46";
+                    statusBg = "#D1FAE5";
+                    statusText = "Đang chạy";
+                  } else if (r.status === "paused") {
+                    statusColor = "#92400E";
+                    statusBg = "#FEF3C7";
+                    statusText = "Tạm dừng";
+                  } else if (r.status === "canceled") {
+                    statusColor = "#991B1B";
+                    statusBg = "#FEE2E2";
+                    statusText = "Đã hủy";
+                  }
+
+                  let todLabel = r.timeOfDay;
+                  if (r.timeOfDay === "morning") todLabel = "Sáng";
+                  else if (r.timeOfDay === "noon") todLabel = "Trưa";
+                  else if (r.timeOfDay === "evening") todLabel = "Tối";
+
+                  let mealLabel = r.mealTiming;
+                  if (r.mealTiming === "pre_meal") mealLabel = "Trước ăn";
+                  else if (r.mealTiming === "post_meal") mealLabel = "Sau ăn";
+                  else if (r.mealTiming === "with_meal") mealLabel = "Trong bữa ăn";
+
+                  return (
+                    <View key={r.id || `group-rem-${rIdx}`} style={styles.groupRemItem}>
+                      <View style={styles.groupRemItemHeader}>
+                        <Text style={styles.groupRemItemTime}>
+                          {formatTime(r.hour, r.minute)}
+                        </Text>
+                        <View style={{ flexDirection: "row", gap: 6 }}>
+                          {todLabel ? (
+                            <View style={styles.tagLabel}>
+                              <Text style={styles.tagLabelText}>{todLabel}</Text>
+                            </View>
+                          ) : null}
+                          {mealLabel ? (
+                            <View style={styles.tagLabel}>
+                              <Text style={styles.tagLabelText}>{mealLabel}</Text>
+                            </View>
+                          ) : null}
+                          <View style={[styles.statusTag, { backgroundColor: statusBg }]}>
+                            <Text style={[styles.statusTagText, { color: statusColor }]}>
+                              {statusText}
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+                      <Text style={styles.groupRemItemMsg}>{r.message}</Text>
+                    </View>
+                  );
+                })}
+              </ScrollView>
+
+              <View style={styles.formActions}>
+                <TouchableOpacity
+                  style={[styles.cancelBtn, { flex: 1 }]}
+                  onPress={() => setViewingGroup(null)}
+                >
+                  <Text style={styles.cancelBtnText}>Đóng</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
+
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F2F6FF" },
+  searchBarWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFF",
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: "#1F2937",
+    paddingVertical: 0,
+  },
+  timeSlotPill: {
+    backgroundColor: "#EEF2FF",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#E0E7FF",
+  },
+  timeSlotPillText: {
+    fontSize: 11,
+    color: "#4338CA",
+    fontWeight: "600",
+  },
+  groupInfoBox: {
+    backgroundColor: "#EEF2FF",
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#E0E7FF",
+  },
+  groupInfoText: {
+    fontSize: 12,
+    color: "#3730A3",
+    lineHeight: 18,
+  },
+  goToPrescriptionBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 8,
+  },
+  goToPrescriptionBtnText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#2563EB",
+  },
+  groupRemItem: {
+    backgroundColor: "#F9FAFB",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    padding: 12,
+    marginBottom: 10,
+  },
+  groupRemItemHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  groupRemItemTime: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#1F2937",
+  },
+  groupRemItemMsg: {
+    fontSize: 13,
+    color: "#4B5563",
+    lineHeight: 18,
+  },
+  tagLabel: {
+    backgroundColor: "#E5E7EB",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    justifyContent: "center",
+  },
+  tagLabelText: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: "#4B5563",
+    textTransform: "capitalize",
+  },
   pickerHeader: {
     backgroundColor: "#FFF",
     paddingVertical: 12,

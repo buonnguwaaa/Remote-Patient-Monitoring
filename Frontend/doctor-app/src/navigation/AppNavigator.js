@@ -13,15 +13,21 @@ import {
 } from "react-native";
 import { NavigationContainer, useNavigation } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import React from "react";
+import { View, Text, ActivityIndicator, StyleSheet, TouchableOpacity, Platform } from "react-native";
+import { NavigationContainer, useNavigation } from "@react-navigation/native";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { navigationRef, flushPendingNotificationNavigation } from "./navigationRef";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../context/AuthContext";
 import { useBadges } from "../context/BadgeContext";
+
+// Screens
 import LoginScreen from "../screens/LoginScreen";
 import HomeScreen from "../screens/HomeScreen";
 import ProfileScreen from "../screens/ProfileScreen";
-import PlaceholderScreen from "../screens/PlaceholderScreen";
 import PatientsScreen from "../screens/PatientsScreen";
 import AlertsScreen from "../screens/AlertsScreen";
 import ChatScreen from "../screens/ChatScreen";
@@ -32,8 +38,8 @@ import PrescriptionsScreen from "../screens/PrescriptionsScreen";
 import SettingsScreen from "../screens/SettingsScreen";
 import VideoCallScreen from "../screens/VideoCallScreen";
 import ComplianceScreen from "../screens/ComplianceScreen";
+import MoreScreen from "../screens/MoreScreen";
 
-const SIDEBAR_WIDTH = 280;
 const Stack = createNativeStackNavigator();
 const SidebarContext = createContext(null);
 export const useSidebar = () => useContext(SidebarContext);
@@ -218,109 +224,68 @@ function AppHeader({ title, onOpenSidebar, onOpenProfile }) {
 
 function ScreenContainer({ name, children }) {
   const navigation = useNavigation();
-  const { openSidebar } = useSidebar();
-  const openProfile = () => navigation.navigate("Profile");
   return (
-    <View style={{ flex: 1, backgroundColor: "#F2F6FF" }}>
-      <AppHeader
-        title={SCREEN_TITLES[name]}
-        onOpenSidebar={openSidebar}
-        onOpenProfile={openProfile}
-      />
-      {children}
-    </View>
+    <TouchableOpacity onPress={() => navigation.navigate("Profile")} style={styles.profileBtn}>
+      <Ionicons name="person-circle-outline" size={28} color="#2563EB" />
+    </TouchableOpacity>
   );
-}
+};
 
-const HomeScreenWrapper = () => (
-  <ScreenContainer name="Home">
-    <HomeScreen />
-  </ScreenContainer>
+const commonHeaderOptions = {
+  headerTitleAlign: "center",
+  headerRight: () => <HeaderProfileButton />,
+  headerStyle: {
+    backgroundColor: "#fff",
+  },
+  headerTitleStyle: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: "#111827",
+  },
+  headerShadowVisible: false,
+};
+
+// Stacks for each tab
+const HomeStack = () => (
+  <Stack.Navigator screenOptions={commonHeaderOptions}>
+    <Stack.Screen name="Home" component={HomeScreen} options={{ title: "Tổng quan" }} />
+  </Stack.Navigator>
 );
 
-const ProfileScreenWrapper = () => (
-  <ScreenContainer name="Profile">
-    <ProfileScreen />
-  </ScreenContainer>
+const PatientsStack = () => (
+  <Stack.Navigator screenOptions={commonHeaderOptions}>
+    <Stack.Screen name="Patients" component={PatientsScreen} options={{ title: "Hồ sơ bệnh nhân" }} />
+  </Stack.Navigator>
 );
 
-const PatientsScreenWrapper = () => (
-  <ScreenContainer name="Patients">
-    <PatientsScreen />
-  </ScreenContainer>
+const AlertsStack = () => (
+  <Stack.Navigator screenOptions={commonHeaderOptions}>
+    <Stack.Screen name="Alerts" component={AlertsScreen} options={{ title: "Quản lý cảnh báo" }} />
+  </Stack.Navigator>
 );
 
-const AlertsScreenWrapper = () => (
-  <ScreenContainer name="Alerts">
-    <AlertsScreen />
-  </ScreenContainer>
+const ChatStack = () => (
+  <Stack.Navigator screenOptions={commonHeaderOptions}>
+    <Stack.Screen name="Chat" component={ChatScreen} options={{ title: "Tin nhắn" }} />
+    <Stack.Screen name="ChatDetail" component={ChatDetailScreen} options={{ title: "Đoạn chat", headerRight: null }} />
+  </Stack.Navigator>
 );
 
-const ChatScreenWrapper = (props) => (
-  <ScreenContainer name="Chat">
-    <ChatScreen {...props} />
-  </ScreenContainer>
+const MoreStack = () => (
+  <Stack.Navigator screenOptions={commonHeaderOptions}>
+    <Stack.Screen name="More" component={MoreScreen} options={{ title: "Thêm" }} />
+    <Stack.Screen name="Thresholds" component={ThresholdsScreen} options={{ title: "Cấu hình ngưỡng" }} />
+    <Stack.Screen name="Reminders" component={RemindersScreen} options={{ title: "Nhắc nhở" }} />
+    <Stack.Screen name="Compliance" component={ComplianceScreen} options={{ title: "Tuân thủ dùng thuốc" }} />
+    <Stack.Screen name="Prescriptions" component={PrescriptionsScreen} options={{ title: "Đơn thuốc" }} />
+    <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: "Cài đặt" }} />
+    <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: "Hồ sơ bác sĩ", headerRight: null }} />
+  </Stack.Navigator>
 );
 
-const ComplianceScreenWrapper = (props) => (
-  <ScreenContainer name="Compliance">
-    <ComplianceScreen {...props} />
-  </ScreenContainer>
-);
-
-const ThresholdsScreenWrapper = (props) => (
-  <ScreenContainer name="Thresholds">
-    <ThresholdsScreen {...props} />
-  </ScreenContainer>
-);
-
-const RemindersScreenWrapper = (props) => (
-  <ScreenContainer name="Reminders">
-    <RemindersScreen {...props} />
-  </ScreenContainer>
-);
-
-const PrescriptionsScreenWrapper = (props) => (
-  <ScreenContainer name="Prescriptions">
-    <PrescriptionsScreen {...props} />
-  </ScreenContainer>
-);
-
-const SettingsScreenWrapper = (props) => (
-  <ScreenContainer name="Settings">
-    <SettingsScreen {...props} />
-  </ScreenContainer>
-);
-
-function MainNavigator() {
-  const [sidebarVisible, setSidebarVisible] = useState(false);
-  const [currentRoute, setCurrentRoute] = useState("Home");
-
-  useEffect(() => {
-    const handleStateChange = () => {
-      if (navigationRef.isReady()) {
-        const route = navigationRef.getCurrentRoute();
-        if (route) {
-          setCurrentRoute(route.name);
-        }
-      }
-    };
-
-    const unsubscribe = navigationRef.addListener("state", handleStateChange);
-    handleStateChange();
-    return unsubscribe;
-  }, []);
-
-  const openSidebar = () => setSidebarVisible(true);
-  const closeSidebar = () => setSidebarVisible(false);
-
-  const navigate = useCallback((name) => {
-    setCurrentRoute(name);
-    setSidebarVisible(false);
-    if (navigationRef.isReady()) {
-      navigationRef.navigate(name);
-    }
-  }, []);
+function MainTabs() {
+  const badges = useBadges() || { unreadAlertsCount: 0, unreadChatsCount: 0 };
+  const { unreadAlertsCount, unreadChatsCount } = badges;
 
   return (
     <SidebarContext.Provider value={{ openSidebar }}>
@@ -385,132 +350,5 @@ export default function AppNavigator() {
 const styles = StyleSheet.create({
   loading: { flex: 1, backgroundColor: "#F2F6FF", alignItems: "center", justifyContent: "center" },
   loadingText: { marginTop: 12, fontSize: 14, color: "#4B5563" },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "#fff",
-    paddingBottom: 12,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
-  },
-  hamburger: { padding: 6 },
-  headerTitle: { fontSize: 17, fontWeight: "700", color: "#111827" },
-  profileBtn: { padding: 4 },
-  overlay: {
-    flex: 1,
-    flexDirection: "row",
-  },
-  overlayBg: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.45)",
-  },
-  sidebar: {
-    width: SIDEBAR_WIDTH,
-    backgroundColor: "#fff",
-  },
-  sidebarHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingBottom: 16,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
-    gap: 10,
-  },
-  logoCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: "#2563EB",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  appName: { fontSize: 15, fontWeight: "800", color: "#111827" },
-  userName: { fontSize: 12, color: "#6B7280", marginTop: 1 },
-  closeBtn: { padding: 4 },
-  navList: { flex: 1, paddingHorizontal: 10, paddingTop: 10 },
-  navItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderRadius: 12,
-    marginBottom: 2,
-    gap: 12,
-    position: "relative",
-  },
-  navItemActive: { backgroundColor: "#EFF6FF" },
-  navLabel: { fontSize: 14, fontWeight: "500", color: "#374151", flex: 1 },
-  navLabelActive: { color: "#2563EB", fontWeight: "700" },
-  activeBar: {
-    position: "absolute",
-    right: 0,
-    top: "20%",
-    bottom: "20%",
-    width: 3,
-    borderRadius: 2,
-    backgroundColor: "#2563EB",
-  },
-  sidebarFooter: { paddingHorizontal: 10 },
-  divider: { height: 1, backgroundColor: "#F3F4F6", marginBottom: 10 },
-  logoutBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 13,
-    borderRadius: 12,
-    gap: 8,
-    backgroundColor: "#FEF2F2",
-  },
-  logoutText: { fontSize: 14, fontWeight: "600", color: "#EF4444" },
-  profileCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    margin: 10,
-    marginBottom: 4,
-    padding: 12,
-    backgroundColor: "#F8FAFF",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#E0EAFF",
-    gap: 10,
-  },
-  profileAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: "#EFF6FF",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  profileName: { fontSize: 14, fontWeight: "700", color: "#111827" },
-  profileSub: { fontSize: 11, color: "#6B7280", marginTop: 2 },
-  navDivider: { height: 1, backgroundColor: "#F3F4F6", marginHorizontal: 10, marginBottom: 8, marginTop: 4 },
-  iconContainer: {
-    position: "relative",
-    width: 24,
-    height: 24,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  badge: {
-    position: "absolute",
-    right: -8,
-    top: -6,
-    backgroundColor: "#EF4444",
-    borderRadius: 8,
-    minWidth: 16,
-    height: 16,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 3,
-  },
-  badgeText: {
-    color: "#fff",
-    fontSize: 9,
-    fontWeight: "800",
-    textAlign: "center",
-  },
+  profileBtn: { marginRight: 16 },
 });
