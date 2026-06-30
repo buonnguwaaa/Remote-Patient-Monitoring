@@ -217,6 +217,7 @@ func (s *videoSessionService) CreateVideoSession(ctx context.Context, callerID p
 	_, err = s.chatService.SendMessage(ctx, &usecase.SendMessageInput{
 		ConversationID: conversationID,
 		MessageSource:  chatDomain.SystemMessage,
+		SenderID:       &callerID,
 		Content:        string(inviteJSON),
 	})
 	if err != nil {
@@ -319,6 +320,7 @@ func (s *videoSessionService) EndVideoSession(ctx context.Context, callerID prim
 	_, _ = s.chatService.SendMessage(ctx, &usecase.SendMessageInput{
 		ConversationID: session.ConversationID,
 		MessageSource:  chatDomain.SystemMessage,
+		SenderID:       &callerID,
 		Content:        string(endedJSON),
 	})
 

@@ -1,8 +1,24 @@
+import React, { createContext, useContext, useState, useRef, useEffect, useCallback } from "react";
+import {
+  View,
+  Text,
+  ActivityIndicator,
+  StyleSheet,
+  TouchableOpacity,
+  Modal,
+  ScrollView,
+  Pressable,
+  Animated,
+  Dimensions,
+} from "react-native";
+import { NavigationContainer, useNavigation } from "@react-navigation/native";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import React from "react";
-import { View, Text, ActivityIndicator, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Text, ActivityIndicator, StyleSheet, TouchableOpacity, Platform } from "react-native";
 import { NavigationContainer, useNavigation } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { navigationRef, flushPendingNotificationNavigation } from "./navigationRef";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../context/AuthContext";
@@ -25,9 +41,188 @@ import ComplianceScreen from "../screens/ComplianceScreen";
 import MoreScreen from "../screens/MoreScreen";
 
 const Stack = createNativeStackNavigator();
-const Tab = createBottomTabNavigator();
+const SidebarContext = createContext(null);
+export const useSidebar = () => useContext(SidebarContext);
 
-const HeaderProfileButton = () => {
+const NAV_ITEMS = [
+  { name: "Home",          label: "Tổng quan",          icon: "home-outline" },
+  { name: "Patients",      label: "Hồ sơ bệnh nhân",    icon: "people-outline" },
+  { name: "Alerts",        label: "Quản lý cảnh báo",   icon: "warning-outline" },
+  { name: "Chat",          label: "Tin nhắn",            icon: "chatbubble-ellipses-outline" },
+  { name: "Compliance",    label: "Tuân thủ dùng thuốc", icon: "checkmark-done-circle-outline" },
+  { name: "Thresholds",    label: "Cấu hình ngưỡng",    icon: "options-outline" },
+  { name: "Reminders",     label: "Nhắc nhở",            icon: "alarm-outline" },
+  { name: "Prescriptions", label: "Đơn thuốc",           icon: "document-text-outline" },
+  { name: "Settings",      label: "Cài đặt",             icon: "settings-outline" },
+];
+
+const SCREEN_TITLES = {
+  Home:          "Tổng quan",
+  Patients:      "Hồ sơ bệnh nhân",
+  Alerts:        "Quản lý cảnh báo",
+  Chat:          "Tin nhắn",
+  Compliance:    "Tuân thủ dùng thuốc",
+  Thresholds:    "Cấu hình ngưỡng",
+  Reminders:     "Nhắc nhở",
+  Prescriptions: "Đơn thuốc",
+  Profile:       "Hồ sơ bác sĩ",
+  Settings:      "Cài đặt",
+};
+
+function Sidebar({ visible, currentRoute, onNavigate, onClose }) {
+  const { user, logout } = useAuth();
+  const { unreadAlertsCount, unreadChatsCount } = useBadges();
+  const insets = useSafeAreaInsets();
+  const translateX = useRef(new Animated.Value(-SIDEBAR_WIDTH)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+  const [modalVisible, setModalVisible] = useState(false);
+
+  useEffect(() => {
+    if (visible) {
+      setModalVisible(true);
+      Animated.parallel([
+        Animated.timing(translateX, {
+          toValue: 0,
+          duration: 260,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 260,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(translateX, {
+          toValue: -SIDEBAR_WIDTH,
+          duration: 220,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacity, {
+          toValue: 0,
+          duration: 220,
+          useNativeDriver: true,
+        }),
+      ]).start(() => setModalVisible(false));
+    }
+  }, [visible]);
+
+  return (
+    <Modal
+      visible={modalVisible}
+      transparent
+      animationType="none"
+      presentationStyle="overFullScreen"
+      onRequestClose={onClose}
+    >
+      <View style={styles.overlay}>
+        <Animated.View style={[styles.sidebar, { transform: [{ translateX }], paddingTop: insets.top }]}>
+          <View style={styles.sidebarHeader}>
+            <View style={styles.logoCircle}>
+              <Ionicons name="medical" size={20} color="#fff" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.appName}>RPM Doctor</Text>
+              <Text style={styles.userName} numberOfLines={1}>
+                {user?.name || user?.username || "Bác sĩ"}
+              </Text>
+            </View>
+            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+              <Ionicons name="close" size={22} color="#6B7280" />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={styles.navList} showsVerticalScrollIndicator={false}>
+            <TouchableOpacity
+              style={styles.profileCard}
+              onPress={() => onNavigate("Profile")}
+              activeOpacity={0.8}
+            >
+              <View style={styles.profileAvatar}>
+                <Ionicons name="person-outline" size={22} color="#2563EB" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.profileName} numberOfLines={1}>
+                  {user?.name || user?.username || "Bác sĩ"}
+                </Text>
+                <Text style={styles.profileSub} numberOfLines={1}>
+                  {user?.email || "Xem hồ sơ"}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
+            </TouchableOpacity>
+
+            <View style={styles.navDivider} />
+
+            {NAV_ITEMS.map((item) => {
+              const isActive = currentRoute === item.name;
+              let badgeCount = 0;
+              if (item.name === "Alerts") {
+                badgeCount = unreadAlertsCount;
+              } else if (item.name === "Chat") {
+                badgeCount = unreadChatsCount;
+              }
+
+              return (
+                <TouchableOpacity
+                  key={item.name}
+                  style={[styles.navItem, isActive && styles.navItemActive]}
+                  onPress={() => onNavigate(item.name)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.iconContainer}>
+                    <Ionicons name={item.icon} size={20} color={isActive ? "#2563EB" : "#6B7280"} />
+                    {badgeCount > 0 && (
+                      <View style={styles.badge}>
+                        <Text style={styles.badgeText}>
+                          {badgeCount > 99 ? "99+" : badgeCount}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={[styles.navLabel, isActive && styles.navLabelActive]}>
+                    {item.label}
+                  </Text>
+                  {isActive && <View style={styles.activeBar} />}
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+
+          <View style={[styles.sidebarFooter, { paddingBottom: insets.bottom + 16 }]}>
+            <View style={styles.divider} />
+            <TouchableOpacity style={styles.logoutBtn} onPress={logout} activeOpacity={0.7}>
+              <Ionicons name="log-out-outline" size={20} color="#EF4444" />
+              <Text style={styles.logoutText}>Đăng xuất</Text>
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+
+        <Animated.View style={[styles.overlayBg, { opacity }]}>
+          <Pressable style={{ flex: 1 }} onPress={onClose} />
+        </Animated.View>
+      </View>
+    </Modal>
+  );
+}
+
+function AppHeader({ title, onOpenSidebar, onOpenProfile }) {
+  const insets = useSafeAreaInsets();
+  return (
+    <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+      <TouchableOpacity onPress={onOpenSidebar} style={styles.hamburger}>
+        <Ionicons name="menu-outline" size={26} color="#111827" />
+      </TouchableOpacity>
+      <Text style={styles.headerTitle}>{title}</Text>
+      <TouchableOpacity onPress={onOpenProfile} style={styles.profileBtn}>
+        <Ionicons name="person-circle-outline" size={28} color="#2563EB" />
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+function ScreenContainer({ name, children }) {
   const navigation = useNavigation();
   return (
     <TouchableOpacity onPress={() => navigation.navigate("Profile")} style={styles.profileBtn}>
@@ -93,68 +288,28 @@ function MainTabs() {
   const { unreadAlertsCount, unreadChatsCount } = badges;
 
   return (
-    <Tab.Navigator
-      screenOptions={({ route }) => ({
-        headerShown: false,
-        tabBarActiveTintColor: "#2563EB",
-        tabBarInactiveTintColor: "#6B7280",
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: "600",
-          marginBottom: 4,
-        },
-        tabBarStyle: {
-          backgroundColor: "#fff",
-          borderTopWidth: 1,
-          borderTopColor: "#F3F4F6",
-          height: 60,
-          paddingTop: 8,
-        },
-        tabBarIcon: ({ color, size }) => {
-          let iconName;
-          if (route.name === "HomeTab") iconName = "home-outline";
-          else if (route.name === "PatientsTab") iconName = "people-outline";
-          else if (route.name === "AlertsTab") iconName = "warning-outline";
-          else if (route.name === "ChatTab") iconName = "chatbubble-ellipses-outline";
-          else if (route.name === "MoreTab") iconName = "ellipsis-horizontal-outline";
-          return <Ionicons name={iconName} size={24} color={color} />;
-        },
-      })}
-    >
-      <Tab.Screen 
-        name="HomeTab" 
-        component={HomeStack} 
-        options={{ tabBarLabel: "Tổng quan" }} 
+    <SidebarContext.Provider value={{ openSidebar }}>
+      <Sidebar
+        visible={sidebarVisible}
+        currentRoute={currentRoute}
+        onNavigate={navigate}
+        onClose={closeSidebar}
       />
-      <Tab.Screen 
-        name="PatientsTab" 
-        component={PatientsStack} 
-        options={{ tabBarLabel: "Bệnh nhân" }} 
-      />
-      <Tab.Screen 
-        name="AlertsTab" 
-        component={AlertsStack} 
-        options={{ 
-          tabBarLabel: "Cảnh báo",
-          tabBarBadge: unreadAlertsCount > 0 ? (unreadAlertsCount > 99 ? "99+" : unreadAlertsCount) : null,
-          tabBarBadgeStyle: { backgroundColor: "#EF4444", fontSize: 10, minWidth: 16, height: 16, lineHeight: 16 }
-        }} 
-      />
-      <Tab.Screen 
-        name="ChatTab" 
-        component={ChatStack} 
-        options={{ 
-          tabBarLabel: "Tin nhắn",
-          tabBarBadge: unreadChatsCount > 0 ? (unreadChatsCount > 99 ? "99+" : unreadChatsCount) : null,
-          tabBarBadgeStyle: { backgroundColor: "#EF4444", fontSize: 10, minWidth: 16, height: 16, lineHeight: 16 }
-        }} 
-      />
-      <Tab.Screen 
-        name="MoreTab" 
-        component={MoreStack} 
-        options={{ tabBarLabel: "Thêm" }} 
-      />
-    </Tab.Navigator>
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="Home" component={HomeScreenWrapper} />
+        <Stack.Screen name="Profile" component={ProfileScreenWrapper} />
+        <Stack.Screen name="Patients" component={PatientsScreenWrapper} />
+        <Stack.Screen name="Alerts" component={AlertsScreenWrapper} />
+        <Stack.Screen name="Chat" component={ChatScreenWrapper} />
+        <Stack.Screen name="ChatDetail" component={ChatDetailScreen} />
+        <Stack.Screen name="Thresholds" component={ThresholdsScreenWrapper} />
+        <Stack.Screen name="Reminders" component={RemindersScreenWrapper} />
+        <Stack.Screen name="Prescriptions" component={PrescriptionsScreenWrapper} />
+        <Stack.Screen name="Settings" component={SettingsScreenWrapper} />
+        <Stack.Screen name="Compliance" component={ComplianceScreenWrapper} />
+        <Stack.Screen name="VideoCall" component={VideoCallScreen} />
+      </Stack.Navigator>
+    </SidebarContext.Provider>
   );
 }
 
@@ -178,12 +333,7 @@ function RootNavigator() {
     );
   }
 
-  return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="MainTabs" component={MainTabs} />
-      <Stack.Screen name="VideoCall" component={VideoCallScreen} />
-    </Stack.Navigator>
-  );
+  return <MainNavigator />;
 }
 
 export default function AppNavigator() {

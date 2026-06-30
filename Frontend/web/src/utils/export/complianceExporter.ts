@@ -145,7 +145,7 @@ function buildSummarySheet(
     cell.font = { bold: true };
     cell.alignment = { horizontal: 'center', vertical: 'middle' };
   });
-  styleRateCell(totalRow.getCell(5), adherence.summary.adherenceRate);
+  styleRateCell(totalRow.getCell(5), adherence.summary.adherenceRate * 100);
   totalRow.getCell(1).font = { bold: true, color: { argb: `FF${COLOR.TITLE_FG}` } };
 
   const dataStart = 6; // after title(1), subtitle(2), empty(3), info(4), empty(5), header(6)
@@ -353,7 +353,7 @@ function buildInfoSheet(
     ['Tổng liều dự kiến', adherence.summary.expected],
     ['Tổng liều đã uống', adherence.summary.taken],
     ['Tổng liều bỏ lỡ',   adherence.summary.missed],
-    ['Tỷ lệ tuân thủ',    `${Math.round(adherence.summary.adherenceRate)}%`],
+    ['Tỷ lệ tuân thủ',    `${Math.round(adherence.summary.adherenceRate * 100)}%`],
   ];
 
   infoRows.forEach(([k, v], idx) => {
@@ -368,7 +368,7 @@ function buildInfoSheet(
     }
     // Color rate value
     if (k === 'Tỷ lệ tuân thủ') {
-      row.getCell(2).font = { bold: true, color: { argb: `FF${rateColor(adherence.summary.adherenceRate)}` } };
+      row.getCell(2).font = { bold: true, color: { argb: `FF${rateColor(adherence.summary.adherenceRate * 100)}` } };
     }
   });
 

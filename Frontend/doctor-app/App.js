@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AuthProvider } from "./src/context/AuthContext";
 import { BadgeProvider } from "./src/context/BadgeContext";
+import { ToastProvider } from "./src/context/ToastContext";
 import AppNavigator from "./src/navigation/AppNavigator";
 import ErrorBoundary from "./src/components/ErrorBoundary";
 import {
@@ -24,9 +25,11 @@ export default function App() {
     <ErrorBoundary>
       <AuthProvider>
         <BadgeProvider>
-          <SafeAreaProvider>
-            <AppNavigator />
-          </SafeAreaProvider>
+          <ToastProvider>
+            <SafeAreaProvider>
+              <AppNavigator />
+            </SafeAreaProvider>
+          </ToastProvider>
         </BadgeProvider>
       </AuthProvider>
     </ErrorBoundary>
