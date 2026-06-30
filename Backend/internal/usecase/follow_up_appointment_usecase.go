@@ -8,14 +8,15 @@ import (
 )
 
 type CreateFollowUpAppointmentInput struct {
-	PatientID   string
-	DoctorID    string
-	ScheduledAt time.Time
-	Timezone    string
-	Location    string
-	Notes       string
-	CreatedBy   string
-	ActorRole   userDomain.Role
+	PatientID       string
+	DoctorID        string
+	ScheduledAt     time.Time
+	DurationMinutes int
+	Timezone        string
+	Location        string
+	Notes           string
+	CreatedBy       string
+	ActorRole       userDomain.Role
 }
 
 type GetFollowUpAppointmentsInput struct {
@@ -34,11 +35,12 @@ type GetFollowUpAppointmentByIDInput struct {
 }
 
 type UpdateFollowUpAppointmentInput struct {
-	ID          string
-	ScheduledAt *time.Time
-	Timezone    *string
-	Location    *string
-	Notes       *string
+	ID              string
+	ScheduledAt     *time.Time
+	DurationMinutes *int
+	Timezone        *string
+	Location        *string
+	Notes           *string
 }
 
 type UpdateFollowUpAppointmentStatusInput struct {

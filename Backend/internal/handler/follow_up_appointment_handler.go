@@ -49,13 +49,14 @@ func (h *FollowUpAppointmentHandler) CreateFollowUpAppointment(c *gin.Context) {
 	}
 
 	input := &usecase.CreateFollowUpAppointmentInput{
-		PatientID:   req.PatientID,
-		DoctorID:    req.DoctorID,
-		ScheduledAt: req.ScheduledAt,
-		Timezone:    req.Timezone,
-		Location:    req.Location,
-		Notes:       req.Notes,
-		CreatedBy:   userID.(string),
+		PatientID:       req.PatientID,
+		DoctorID:        req.DoctorID,
+		ScheduledAt:     req.ScheduledAt,
+		DurationMinutes: req.DurationMinutes,
+		Timezone:        req.Timezone,
+		Location:        req.Location,
+		Notes:           req.Notes,
+		CreatedBy:       userID.(string),
 	}
 
 	if roleVal, roleExists := c.Get("role"); roleExists {
@@ -69,6 +70,10 @@ func (h *FollowUpAppointmentHandler) CreateFollowUpAppointment(c *gin.Context) {
 
 	appointment, err := h.appointmentService.CreateFollowUpAppointment(ctx, input)
 	if err != nil {
+		if errors.Is(err, service.ErrDoctorScheduleConflict) {
+			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+			return
+		}
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -269,11 +274,12 @@ func (h *FollowUpAppointmentHandler) UpdateFollowUpAppointment(c *gin.Context) {
 	}
 
 	input := &usecase.UpdateFollowUpAppointmentInput{
-		ID:          c.Param("id"),
-		ScheduledAt: req.ScheduledAt,
-		Timezone:    req.Timezone,
-		Location:    req.Location,
-		Notes:       req.Notes,
+		ID:              c.Param("id"),
+		ScheduledAt:     req.ScheduledAt,
+		DurationMinutes: req.DurationMinutes,
+		Timezone:        req.Timezone,
+		Location:        req.Location,
+		Notes:           req.Notes,
 	}
 
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
@@ -283,6 +289,10 @@ func (h *FollowUpAppointmentHandler) UpdateFollowUpAppointment(c *gin.Context) {
 	if err != nil {
 		if errors.Is(err, service.ErrFollowUpAppointmentNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "appointment not found"})
+			return
+		}
+		if errors.Is(err, service.ErrDoctorScheduleConflict) {
+			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 			return
 		}
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})

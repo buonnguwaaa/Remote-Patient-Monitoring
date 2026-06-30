@@ -14,7 +14,6 @@ const PatientList = () => {
   const [patients, setPatients] = useState<PatientItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filterDate, setFilterDate] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -24,24 +23,31 @@ const PatientList = () => {
         setLoading(true);
         setError(null);
 
-        const [assignments, alerts] = await Promise.all([getMyPatients(), getAlerts()]);
+        const [assignments, alerts] = await Promise.all([
+          getMyPatients(),
+          getAlerts({ limit: 1000, page: 1, sortOrder: "desc" })
+        ]);
 
-        const latestAlertByPatient = new Map<string, (typeof alerts)[number]>();
-        const sortedAlerts = [...alerts].sort(
-          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        );
+        const patientSeverity = new Map<string, string>();
 
-        sortedAlerts.forEach((alert) => {
-          if (!latestAlertByPatient.has(alert.patientId)) {
-            latestAlertByPatient.set(alert.patientId, alert);
+        alerts.forEach((alert) => {
+          if (alert.status === "open") {
+            const curr = patientSeverity.get(alert.patientId);
+            if (
+              !curr ||
+              (curr !== "high" && alert.severity === "high") ||
+              (curr === "low" && alert.severity === "medium")
+            ) {
+              patientSeverity.set(alert.patientId, alert.severity);
+            }
           }
         });
 
         const patientItems: PatientItem[] = assignments.map((assignment) => {
           let status: PatientItem["status"] = t("patients.normal");
 
-          const latestAlert = latestAlertByPatient.get(assignment.patientId);
-          if (latestAlert && (latestAlert.severity === "high" || latestAlert.severity === "medium") && latestAlert.status === "open") {
+          const severity = patientSeverity.get(assignment.patientId);
+          if (severity === "high" || severity === "medium") {
             status = t("patients.warning");
           }
 
@@ -71,7 +77,6 @@ const PatientList = () => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
 
     return patients.filter((patient) => {
-      if (filterDate && patient.updatedAt !== filterDate) return false;
       if (filterStatus && patient.status !== filterStatus) return false;
 
       if (
@@ -84,7 +89,7 @@ const PatientList = () => {
 
       return true;
     });
-  }, [patients, filterDate, filterStatus, searchQuery]);
+  }, [patients, filterStatus, searchQuery]);
 
   const columns: Column<PatientItem>[] = [
     {
@@ -190,30 +195,7 @@ const PatientList = () => {
       <h1 className="mb-4 text-2xl font-bold text-gray-800 dark:text-slate-100 md:text-3xl">{t("patients.title")}</h1>
 
       <div className="mb-4 flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900 md:flex-row md:items-center md:justify-between md:gap-4 md:p-4">
-        <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 md:flex md:w-auto md:items-center md:gap-4">
-          <div className="w-full md:w-auto">
-            <input
-              type="date"
-              className="w-full rounded-lg border-2 border-gray-300 bg-white p-2.5 text-gray-700 outline-none transition-colors hover:border-red-500 focus:border-blue-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
-              value={filterDate}
-              onChange={(event) => setFilterDate(event.target.value)}
-            />
-          </div>
-
-          <div className="w-full md:w-auto">
-            <select
-              className="w-full rounded-md border-2 border-gray-300 bg-white p-2 text-gray-700 outline-none dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
-              value={filterStatus}
-              onChange={(event) => setFilterStatus(event.target.value)}
-            >
-              <option value="">{t("patients.allStatuses")}</option>
-              <option value={t("patients.normal")}>{t("patients.normal")}</option>
-              <option value={t("patients.warning")}>{t("patients.warning")}</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="w-full md:w-auto">
+        <div className="w-full flex-1">
           <input
             type="text"
             placeholder={t("patients.searchPlaceholder")}
@@ -221,6 +203,18 @@ const PatientList = () => {
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
           />
+        </div>
+
+        <div className="w-full md:w-auto">
+          <select
+            className="w-full rounded-md border-2 border-gray-300 bg-white p-2 text-gray-700 outline-none dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+            value={filterStatus}
+            onChange={(event) => setFilterStatus(event.target.value)}
+          >
+            <option value="">{t("patients.allStatuses")}</option>
+            <option value={t("patients.normal")}>{t("patients.normal")}</option>
+            <option value={t("patients.warning")}>{t("patients.warning")}</option>
+          </select>
         </div>
       </div>
 

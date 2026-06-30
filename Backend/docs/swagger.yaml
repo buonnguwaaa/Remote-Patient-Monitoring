@@ -46,13 +46,11 @@ definitions:
     - active
     - completed
     - discontinued
-    - expired
     type: string
     x-enum-varnames:
     - PrescriptionStatusActive
     - PrescriptionStatusCompleted
     - PrescriptionStatusDiscontinued
-    - PrescriptionStatusExpired
   domain.ReminderStatus:
     enum:
     - active
@@ -187,6 +185,8 @@ definitions:
     properties:
       doctorId:
         type: string
+      durationMinutes:
+        type: integer
       location:
         type: string
       notes:
@@ -576,6 +576,8 @@ definitions:
     type: object
   dto.UpdateFollowUpAppointmentRequest:
     properties:
+      durationMinutes:
+        type: integer
       location:
         type: string
       notes:
@@ -2394,11 +2396,12 @@ paths:
         in: query
         name: patientId
         type: string
-      - description: Prescription status (active, completed, discontinued, expired)
+      - description: Prescription status (active, completed, discontinued). Active
+          uses startDate/endDate to determine current prescriptions.
         in: query
         name: status
         type: string
-      - description: Return only the latest prescription
+      - description: Return only the current open prescription for the patient
         in: query
         name: latest
         type: boolean
@@ -2626,11 +2629,12 @@ paths:
       - application/json
       description: Retrieve all prescriptions for the authenticated patient
       parameters:
-      - description: Prescription status (active, completed, discontinued, expired)
+      - description: Prescription status (active, completed, discontinued). Active
+          uses startDate/endDate to determine current prescriptions.
         in: query
         name: status
         type: string
-      - description: Return only the latest prescription
+      - description: Return only the current open prescription for the patient
         in: query
         name: latest
         type: boolean
@@ -2680,36 +2684,6 @@ paths:
       summary: Get today's medications
       tags:
       - prescriptions
-  /realtime/ws:
-    get:
-      consumes:
-      - application/json
-      description: Upgrade HTTP request to WebSocket for user-level realtime notifications
-        (e.g., new chat messages, health alerts). Doctor role only.
-      produces:
-      - application/json
-      responses:
-        "101":
-          description: Switching Protocols
-          schema:
-            type: string
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "403":
-          description: Forbidden
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Open realtime WebSocket connection
-      tags:
-      - realtime
   /reminders:
     get:
       consumes:

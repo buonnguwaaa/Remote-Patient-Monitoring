@@ -3,6 +3,7 @@ package activity
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
@@ -76,7 +77,8 @@ func (a *AppointmentActivity) SendAppointmentReminderActivity(ctx context.Contex
 		DedupKey: fmt.Sprintf("appointment:%s:reminder-1d", appointment.ID.Hex()),
 	})
 	if err != nil {
-		return fmt.Errorf("failed to publish appointment reminder: %w", err)
+		log.Printf("[WARN] failed to publish appointment reminder (non-fatal) for appointment=%s: %v", appointment.ID.Hex(), err)
+		return nil
 	}
 
 	return nil

@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -41,8 +42,13 @@ export default function MedicationScreen({ navigation, route }) {
   const [loading, setLoading] = useState(true);
   const [recordingId, setRecordingId] = useState(null);
 
+  // Modal states for prescription details
+  const [selectedPrescription, setSelectedPrescription] = useState(null);
+  const [isModalVisible, setIsModalVisible] = useState(false);
+
   // Tabs: "today" | "history" | "prescriptions"
   const [activeTab, setActiveTab] = useState("today");
+  const [expandedDate, setExpandedDate] = useState(null);
   
   // Time of day filter: "all" | "morning" | "noon" | "evening"
   const [timeOfDayFilter, setTimeOfDayFilter] = useState("all");
@@ -258,7 +264,7 @@ export default function MedicationScreen({ navigation, route }) {
               <Text style={styles.takeAllButtonText}>
                 {allTaken 
                   ? "Bạn đã uống hết thuốc cho buổi này"
-                  : `Đã uống hết buổi ${renderTimeOfDayLabel(timeOfDayFilter)}`
+                  : "Đánh dấu đã uống hết"
                 }
               </Text>
             </TouchableOpacity>
@@ -333,6 +339,28 @@ export default function MedicationScreen({ navigation, route }) {
     );
   };
 
+  const groupSlotsByTimeOfDay = (medications) => {
+    const groups = {};
+    medications.forEach(med => {
+      med.slots.forEach(slot => {
+        const t = slot.timeOfDay || "other";
+        if (!groups[t]) groups[t] = [];
+        groups[t].push({ drugName: med.drugName, ...slot });
+      });
+    });
+    return groups;
+  };
+
+  const getTimeLabel = (t) => {
+    switch(t) {
+      case "morning": return "Buổi sáng";
+      case "afternoon": return "Buổi trưa";
+      case "evening": return "Buổi tối";
+      case "night": return "Trước khi ngủ";
+      default: return "Khác";
+    }
+  };
+
   const renderHistory = () => {
     if (!adherence || !adherence.days || adherence.days.length === 0) {
       return (
@@ -344,53 +372,131 @@ export default function MedicationScreen({ navigation, route }) {
 
     const { summary, days } = adherence;
     const rate = Math.round(summary.adherenceRate * 100);
+    
+    // Dynamic styles for summary
+    let summaryBg = "#EEF2FF";
+    let summaryIconColor = "#4F46E5";
+    if (rate < 50) {
+      summaryBg = "#FEF2F2";
+      summaryIconColor = "#EF4444";
+    } else if (rate === 100) {
+      summaryBg = "#ECFDF5";
+      summaryIconColor = "#10B981";
+    } else {
+      summaryBg = "#FFFBEB";
+      summaryIconColor = "#F59E0B";
+    }
 
     return (
       <View style={styles.section}>
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryTitle}>Tuân thủ 7 ngày qua</Text>
-          <View style={styles.summaryRow}>
-            <View style={styles.summaryItem}>
-              <Text style={styles.summaryValue}>{rate}%</Text>
-              <Text style={styles.summaryLabel}>Tỉ lệ</Text>
+        <View style={[styles.newSummaryCard, { backgroundColor: summaryBg }]}>
+          <View style={styles.newSummaryHeader}>
+             <Ionicons name="stats-chart" size={20} color={summaryIconColor} />
+             <Text style={[styles.newSummaryTitle, { color: summaryIconColor }]}>Tổng quan 7 ngày qua</Text>
+          </View>
+          <View style={styles.newSummaryRow}>
+            <View style={styles.newSummaryItem}>
+              <Text style={styles.newSummaryValue}>{summary.taken}/{summary.expected}</Text>
+              <Text style={styles.newSummaryLabel}>Liều đã uống</Text>
             </View>
-            <View style={styles.summaryItem}>
-              <Text style={[styles.summaryValue, { color: "#10B981" }]}>{summary.taken}</Text>
-              <Text style={styles.summaryLabel}>Đã uống</Text>
+            <View style={styles.newSummaryItem}>
+              <Text style={styles.newSummaryValue}>{summary.missed}</Text>
+              <Text style={styles.newSummaryLabel}>Liều bỏ lỡ</Text>
             </View>
-            <View style={styles.summaryItem}>
-              <Text style={[styles.summaryValue, { color: "#EF4444" }]}>{summary.missed}</Text>
-              <Text style={styles.summaryLabel}>Bỏ lỡ</Text>
+            <View style={styles.newSummaryItem}>
+              <Text style={[styles.newSummaryValue, { color: summaryIconColor }]}>{rate}%</Text>
+              <Text style={styles.newSummaryLabel}>Tuân thủ</Text>
             </View>
           </View>
         </View>
 
         {[...days].reverse().map((day) => {
           const dateStr = new Date(day.date).toLocaleDateString("vi-VN", { weekday: "short", day: "2-digit", month: "2-digit" });
+          const dayRate = day.expected > 0 ? Math.round((day.taken / day.expected) * 100) : 0;
+          
+          let badgeText = "Tốt";
+          let badgeStyle = styles.badgeGood;
+          let badgeTextStyle = styles.badgeTextGood;
+          if (dayRate < 50) {
+            badgeText = "Bỏ lỡ nhiều";
+            badgeStyle = styles.badgeBad;
+            badgeTextStyle = styles.badgeTextBad;
+          } else if (dayRate < 100) {
+            badgeText = "Cần chú ý";
+            badgeStyle = styles.badgeWarn;
+            badgeTextStyle = styles.badgeTextWarn;
+          }
+
+          const isExpanded = expandedDate === day.date;
+          
           return (
-            <View key={day.date} style={styles.historyCard}>
-              <View style={styles.historyHeader}>
-                <Text style={styles.historyDate}>{dateStr}</Text>
-                <Text style={styles.historyStats}>
-                  {day.taken}/{day.expected} liều
-                </Text>
-              </View>
-              {day.medications.map((med, mi) => (
-                <View key={mi} style={styles.historyMed}>
-                  <Text style={styles.historyMedName}>• {med.drugName}</Text>
-                  <View style={styles.historySlots}>
-                    {med.slots.map((slot, si) => (
-                      <Ionicons
-                        key={si}
-                        name={slot.status === "taken" ? "checkmark-circle" : slot.status === "missed" ? "close-circle" : "time"}
-                        size={16}
-                        color={slot.status === "taken" ? "#10B981" : slot.status === "missed" ? "#EF4444" : "#94A3B8"}
-                        style={{ marginRight: 4 }}
-                      />
-                    ))}
-                  </View>
+            <View key={day.date} style={styles.newHistoryCard}>
+              <TouchableOpacity 
+                style={styles.newHistoryHeader}
+                activeOpacity={0.7}
+                onPress={() => setExpandedDate(isExpanded ? null : day.date)}
+              >
+                <View style={styles.newHistoryHeaderLeft}>
+                  <Text style={styles.newHistoryDate}>{dateStr}</Text>
+                  <Text style={styles.newHistoryStats}>
+                    Đã uống {day.taken}/{day.expected} liều • {dayRate}%
+                  </Text>
                 </View>
-              ))}
+                <View style={styles.newHistoryHeaderRight}>
+                  <View style={[styles.statusBadge, badgeStyle]}>
+                    <Text style={[styles.statusBadgeText, badgeTextStyle]}>{badgeText}</Text>
+                  </View>
+                  <Ionicons 
+                    name={isExpanded ? "chevron-up" : "chevron-down"} 
+                    size={20} 
+                    color="#64748B" 
+                    style={{ marginLeft: 8 }}
+                  />
+                </View>
+              </TouchableOpacity>
+              
+              {isExpanded && (
+                <View style={styles.historyExpandedContent}>
+                  <View style={styles.historyDivider} />
+                  {(() => {
+                    const groups = groupSlotsByTimeOfDay(day.medications);
+                    const timeKeys = ["morning", "afternoon", "evening", "night", "other"];
+                    return timeKeys.map(tk => {
+                      if (!groups[tk] || groups[tk].length === 0) return null;
+                      return (
+                        <View key={tk} style={styles.timeGroupContainer}>
+                          <Text style={styles.timeGroupTitle}>{getTimeLabel(tk)}</Text>
+                          {groups[tk].map((slot, idx) => {
+                            let slotBadgeStyle = styles.slotBadgePending;
+                            let slotBadgeTextStyle = styles.slotBadgeTextPending;
+                            let slotBadgeText = "Chờ uống";
+                            if (slot.status === "taken") {
+                                slotBadgeStyle = styles.slotBadgeTaken;
+                                slotBadgeTextStyle = styles.slotBadgeTextTaken;
+                                slotBadgeText = "Đã uống";
+                            } else if (slot.status === "missed") {
+                                slotBadgeStyle = styles.slotBadgeMissed;
+                                slotBadgeTextStyle = styles.slotBadgeTextMissed;
+                                slotBadgeText = "Bỏ lỡ";
+                            }
+                            return (
+                              <View key={idx} style={styles.medRow}>
+                                <View style={styles.medRowInfo}>
+                                  <Text style={styles.medRowName}>{slot.drugName}</Text>
+                                  <Text style={styles.medRowDosage}>{slot.pillCount} viên</Text>
+                                </View>
+                                <View style={[styles.slotBadge, slotBadgeStyle]}>
+                                  <Text style={[styles.slotBadgeText, slotBadgeTextStyle]}>{slotBadgeText}</Text>
+                                </View>
+                              </View>
+                            );
+                          })}
+                        </View>
+                      );
+                    });
+                  })()}
+                </View>
+              )}
             </View>
           );
         })}
@@ -409,26 +515,150 @@ export default function MedicationScreen({ navigation, route }) {
 
     return (
       <View style={styles.section}>
-        {prescriptions.map((pres) => (
-          <View key={pres.id} style={styles.card}>
-            <View style={styles.prescHeader}>
-              <Text style={styles.prescTitle}>Đơn thuốc</Text>
-              <Text style={styles.prescDate}>
-                {new Date(pres.startDate).toLocaleDateString("vi-VN")}
-                {pres.endDate ? ` - ${new Date(pres.endDate).toLocaleDateString("vi-VN")}` : ""}
-              </Text>
-            </View>
-            <View style={styles.divider} />
-            {pres.medications.map((med, mi) => (
-              <View key={mi} style={styles.prescMed}>
-                <Text style={styles.prescMedName}>💊 {med.drugName}</Text>
-                <Text style={styles.prescMedDosage}>{med.dosage}</Text>
-                {med.instructions && <Text style={styles.prescMedInst}>{med.instructions}</Text>}
+        {prescriptions.map((pres) => {
+          const medCount = pres.medications.length;
+          const topMeds = pres.medications.slice(0, 2);
+          
+          let statusColor = "#10B981";
+          let statusText = "Đang hiệu lực";
+          if (pres.status === "completed" || pres.status === "expired") {
+            statusColor = "#94A3B8";
+            statusText = "Đã hết hạn";
+          } else if (pres.status === "stopped") {
+            statusColor = "#EF4444";
+            statusText = "Đã dừng";
+          }
+
+          return (
+            <View key={pres.id} style={styles.newPrescCard}>
+              <View style={styles.newPrescHeader}>
+                <View style={[styles.prescStatusBadge, { backgroundColor: statusColor + "1A" }]}>
+                  <Text style={[styles.prescStatusText, { color: statusColor }]}>{statusText}</Text>
+                </View>
+                <Text style={styles.newPrescDate}>
+                  {new Date(pres.startDate).toLocaleDateString("vi-VN")}
+                  {pres.endDate ? ` - ${new Date(pres.endDate).toLocaleDateString("vi-VN")}` : ""}
+                </Text>
               </View>
-            ))}
-          </View>
-        ))}
+              
+              <Text style={styles.prescMedCount}>{medCount} loại thuốc</Text>
+              
+              <View style={styles.prescChips}>
+                {topMeds.map((med, idx) => (
+                  <View key={idx} style={styles.prescChip}>
+                    <Text style={styles.prescChipText}>• {med.drugName}</Text>
+                  </View>
+                ))}
+                {medCount > 2 && (
+                  <View style={styles.prescChip}>
+                    <Text style={[styles.prescChipText, { color: "#64748B" }]}>+{medCount - 2} thuốc khác</Text>
+                  </View>
+                )}
+              </View>
+
+              <TouchableOpacity 
+                style={styles.viewDetailsBtn}
+                onPress={() => {
+                  setSelectedPrescription(pres);
+                  setIsModalVisible(true);
+                }}
+              >
+                <Text style={styles.viewDetailsText}>Xem chi tiết</Text>
+                <Ionicons name="arrow-forward" size={16} color="#2563EB" />
+              </TouchableOpacity>
+            </View>
+          );
+        })}
       </View>
+    );
+  };
+
+  const renderPrescriptionModal = () => {
+    if (!selectedPrescription) return null;
+
+    const groups = { morning: [], noon: [], evening: [], other: [] };
+    selectedPrescription.medications.forEach(med => {
+      if (med.schedule && med.schedule.length > 0) {
+        med.schedule.forEach(slot => {
+          let t = slot.timeOfDay;
+          if (t === "afternoon") t = "noon";
+          if (!groups[t]) groups.other.push({ ...med, slot });
+          else groups[t].push({ ...med, slot });
+        });
+      } else {
+        groups.other.push({ ...med, slot: null });
+      }
+    });
+
+    const timeKeys = [
+      { key: "morning", label: "Buổi sáng" },
+      { key: "noon", label: "Buổi trưa" },
+      { key: "evening", label: "Buổi tối" },
+      { key: "other", label: "Khác" }
+    ];
+
+    return (
+      <Modal
+        visible={isModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setIsModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Chi tiết đơn thuốc</Text>
+              <TouchableOpacity onPress={() => setIsModalVisible(false)} style={styles.closeBtn}>
+                <Ionicons name="close" size={24} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+              <Text style={styles.modalDateRange}>
+                Áp dụng: {new Date(selectedPrescription.startDate).toLocaleDateString("vi-VN")}
+                {selectedPrescription.endDate ? ` - ${new Date(selectedPrescription.endDate).toLocaleDateString("vi-VN")}` : ""}
+              </Text>
+              
+              {timeKeys.map(({ key, label }) => {
+                if (groups[key].length === 0) return null;
+                return (
+                  <View key={key} style={styles.modalTimeGroup}>
+                    <Text style={styles.modalTimeTitle}>{label}</Text>
+                    {groups[key].map((item, idx) => (
+                      <View key={idx} style={styles.modalMedRow}>
+                        <View style={styles.modalMedHeader}>
+                          <Text style={styles.modalMedName}>{item.drugName}</Text>
+                          <Text style={styles.modalMedDosage}>{item.dosage}</Text>
+                        </View>
+                        {item.slot && (
+                          <View style={styles.modalMedDetails}>
+                            <Text style={styles.modalMedDetailText}>
+                              <Ionicons name="medical" size={12} color="#64748B" /> {item.slot.pillCount} viên
+                            </Text>
+                            {item.slot.time && (
+                              <Text style={styles.modalMedDetailText}>
+                                <Ionicons name="time" size={12} color="#64748B" /> {item.slot.time}
+                              </Text>
+                            )}
+                            {item.slot.mealTiming && (
+                              <Text style={styles.modalMedDetailText}>
+                                <Ionicons name="restaurant" size={12} color="#64748B" /> {renderMealTimingLabel(item.slot.mealTiming)}
+                              </Text>
+                            )}
+                          </View>
+                        )}
+                        {item.instructions && (
+                          <Text style={styles.modalMedInst}>Ghi chú: {item.instructions}</Text>
+                        )}
+                      </View>
+                    ))}
+                  </View>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     );
   };
 
@@ -485,6 +715,8 @@ export default function MedicationScreen({ navigation, route }) {
           {activeTab === "prescriptions" && renderPrescriptions()}
         </ScrollView>
       )}
+      
+      {renderPrescriptionModal()}
     </SafeAreaView>
   );
 }
@@ -726,109 +958,299 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
   },
-  summaryCard: {
-    backgroundColor: "#2563EB",
+  newSummaryCard: {
     borderRadius: 16,
     padding: 16,
-    marginBottom: 8,
-  },
-  summaryTitle: {
-    color: "#DBEAFE",
-    fontSize: 14,
-    fontWeight: "600",
     marginBottom: 16,
-    textAlign: "center",
   },
-  summaryRow: {
+  newSummaryHeader: {
     flexDirection: "row",
-    justifyContent: "space-around",
-  },
-  summaryItem: {
     alignItems: "center",
+    marginBottom: 12,
   },
-  summaryValue: {
-    color: "#FFFFFF",
-    fontSize: 24,
-    fontWeight: "bold",
+  newSummaryTitle: {
+    fontSize: 15,
+    fontWeight: "600",
+    marginLeft: 8,
   },
-  summaryLabel: {
-    color: "#DBEAFE",
-    fontSize: 12,
-    marginTop: 4,
-  },
-  historyCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: "#F1F5F9",
-  },
-  historyHeader: {
+  newSummaryRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 8,
   },
-  historyDate: {
-    fontSize: 14,
-    fontWeight: "600",
+  newSummaryItem: {
+    alignItems: "center",
+  },
+  newSummaryValue: {
+    fontSize: 20,
+    fontWeight: "bold",
     color: "#1E293B",
   },
-  historyStats: {
+  newSummaryLabel: {
+    fontSize: 12,
+    color: "#64748B",
+    marginTop: 4,
+  },
+  newHistoryCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    overflow: "hidden",
+  },
+  newHistoryHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 14,
+  },
+  newHistoryHeaderLeft: {
+    flex: 1,
+  },
+  newHistoryHeaderRight: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  newHistoryDate: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#1E293B",
+    marginBottom: 4,
+  },
+  newHistoryStats: {
     fontSize: 13,
     color: "#64748B",
   },
-  historyMed: {
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  statusBadgeText: {
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  badgeGood: { backgroundColor: "#ECFDF5" },
+  badgeTextGood: { color: "#10B981" },
+  badgeWarn: { backgroundColor: "#FFFBEB" },
+  badgeTextWarn: { color: "#F59E0B" },
+  badgeBad: { backgroundColor: "#FEF2F2" },
+  badgeTextBad: { color: "#EF4444" },
+  historyDivider: {
+    height: 1,
+    backgroundColor: "#F1F5F9",
+  },
+  historyExpandedContent: {
+    paddingBottom: 12,
+  },
+  timeGroupContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+  },
+  timeGroupTitle: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#475569",
+    marginBottom: 8,
+  },
+  medRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 6,
+    backgroundColor: "#F8FAFC",
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 8,
   },
-  historyMedName: {
-    fontSize: 13,
-    color: "#475569",
+  medRowInfo: {
     flex: 1,
   },
-  historySlots: {
-    flexDirection: "row",
+  medRowName: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#1E293B",
   },
-  prescHeader: {
+  medRowDosage: {
+    fontSize: 12,
+    color: "#64748B",
+    marginTop: 2,
+  },
+  slotBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  slotBadgeText: {
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  slotBadgeTaken: { backgroundColor: "#ECFDF5" },
+  slotBadgeTextTaken: { color: "#10B981" },
+  slotBadgeMissed: { backgroundColor: "#FEF2F2" },
+  slotBadgeTextMissed: { color: "#EF4444" },
+  slotBadgePending: { backgroundColor: "#F1F5F9" },
+  slotBadgeTextPending: { color: "#64748B" },
+  newPrescCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  newPrescHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    marginBottom: 12,
   },
-  prescTitle: {
+  prescStatusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  prescStatusText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  newPrescDate: {
+    fontSize: 13,
+    color: "#64748B",
+  },
+  prescMedCount: {
     fontSize: 16,
     fontWeight: "700",
     color: "#1E293B",
+    marginBottom: 8,
   },
-  prescDate: {
-    fontSize: 12,
-    color: "#64748B",
+  prescChips: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 16,
   },
-  divider: {
-    height: 1,
+  prescChip: {
     backgroundColor: "#F1F5F9",
-    marginVertical: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
   },
-  prescMed: {
-    marginBottom: 12,
-  },
-  prescMedName: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#334155",
-  },
-  prescMedDosage: {
+  prescChipText: {
     fontSize: 13,
-    color: "#64748B",
-    marginTop: 2,
-    marginLeft: 20,
+    color: "#334155",
+    fontWeight: "500",
   },
-  prescMedInst: {
-    fontSize: 12,
-    color: "#94A3B8",
-    marginTop: 2,
-    marginLeft: 20,
+  viewDetailsBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 10,
+    backgroundColor: "#EEF2FF",
+    borderRadius: 8,
+    gap: 4,
+  },
+  viewDetailsText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#2563EB",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(15, 23, 42, 0.6)",
+    justifyContent: "flex-end",
+  },
+  modalContainer: {
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: "85%",
+    minHeight: "50%",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E2E8F0",
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#1E293B",
+  },
+  closeBtn: {
+    padding: 4,
+  },
+  modalContent: {
+    padding: 16,
+  },
+  modalDateRange: {
+    fontSize: 14,
+    color: "#64748B",
+    marginBottom: 16,
     fontStyle: "italic",
   },
+  modalTimeGroup: {
+    marginBottom: 20,
+  },
+  modalTimeTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#475569",
+    marginBottom: 10,
+    backgroundColor: "#F8FAFC",
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+  },
+  modalMedRow: {
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
+  },
+  modalMedHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 8,
+  },
+  modalMedName: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#1E293B",
+    flex: 1,
+  },
+  modalMedDosage: {
+    fontSize: 13,
+    fontWeight: "500",
+    color: "#059669",
+    backgroundColor: "#D1FAE5",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginLeft: 8,
+  },
+  modalMedDetails: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+    marginBottom: 6,
+  },
+  modalMedDetailText: {
+    fontSize: 13,
+    color: "#475569",
+  },
+  modalMedInst: {
+    fontSize: 13,
+    color: "#64748B",
+    fontStyle: "italic",
+    marginTop: 4,
+    paddingTop: 4,
+    borderTopWidth: 1,
+    borderTopColor: "#F1F5F9",
+  }
 });

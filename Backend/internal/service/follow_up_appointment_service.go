@@ -21,6 +21,7 @@ import (
 var (
 	ErrFollowUpAppointmentNotFound     = errors.New("follow-up appointment not found")
 	ErrFollowUpAppointmentAccessDenied = errors.New("access denied")
+	ErrDoctorScheduleConflict          = errors.New("doctor already has an appointment in this time slot")
 )
 
 type FollowUpAppointmentService interface {
@@ -73,9 +74,18 @@ func (s *followUpAppointmentService) CreateFollowUpAppointment(ctx context.Conte
 		return nil, err
 	}
 
-	scheduledAt := input.ScheduledAt.UTC()
+	scheduledAt := domain.NormalizeAppointmentSlot(input.ScheduledAt.UTC())
 	if !scheduledAt.After(time.Now().UTC()) {
 		return nil, errors.New("scheduled time must be in the future")
+	}
+
+	durationMinutes, err := s.normalizeDurationMinutes(input.DurationMinutes)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.ensureDoctorScheduleAvailable(ctx, doctorID, scheduledAt, durationMinutes, nil); err != nil {
+		return nil, err
 	}
 
 	if input.Timezone == "" {
@@ -83,14 +93,15 @@ func (s *followUpAppointmentService) CreateFollowUpAppointment(ctx context.Conte
 	}
 
 	created, err := s.appointmentRepo.Create(ctx, &domain.FollowUpAppointment{
-		PatientID:   patientID,
-		DoctorID:    doctorID,
-		ScheduledAt: scheduledAt,
-		Timezone:    input.Timezone,
-		Location:    input.Location,
-		Notes:       input.Notes,
-		Status:      domain.FollowUpAppointmentStatusScheduled,
-		CreatedBy:   createdByID,
+		PatientID:       patientID,
+		DoctorID:        doctorID,
+		ScheduledAt:     scheduledAt,
+		DurationMinutes: durationMinutes,
+		Timezone:        input.Timezone,
+		Location:        input.Location,
+		Notes:           input.Notes,
+		Status:          domain.FollowUpAppointmentStatusScheduled,
+		CreatedBy:       createdByID,
 	})
 	if err != nil {
 		return nil, err
@@ -156,13 +167,33 @@ func (s *followUpAppointmentService) UpdateFollowUpAppointment(ctx context.Conte
 	}
 
 	reschedule := false
+	scheduleChanged := false
+	candidateAt := existing.ScheduledAt
+	candidateDuration := existing.EffectiveDurationMinutes()
+
 	if input.ScheduledAt != nil {
-		scheduledAt := input.ScheduledAt.UTC()
+		scheduledAt := domain.NormalizeAppointmentSlot(input.ScheduledAt.UTC())
 		if !scheduledAt.After(time.Now().UTC()) {
 			return nil, errors.New("scheduled time must be in the future")
 		}
-		existing.ScheduledAt = scheduledAt
-		reschedule = true
+		candidateAt = scheduledAt
+		scheduleChanged = true
+	}
+	if input.DurationMinutes != nil {
+		durationMinutes, err := s.normalizeDurationMinutes(*input.DurationMinutes)
+		if err != nil {
+			return nil, err
+		}
+		candidateDuration = durationMinutes
+		scheduleChanged = true
+	}
+	if scheduleChanged {
+		if err := s.ensureDoctorScheduleAvailable(ctx, existing.DoctorID, candidateAt, candidateDuration, &existing.ID); err != nil {
+			return nil, err
+		}
+		existing.ScheduledAt = candidateAt
+		existing.DurationMinutes = candidateDuration
+		reschedule = input.ScheduledAt != nil
 	}
 	if input.Timezone != nil {
 		if *input.Timezone == "" {
@@ -188,6 +219,10 @@ func (s *followUpAppointmentService) UpdateFollowUpAppointment(ctx context.Conte
 	if reschedule {
 		if err := temporalclient.SignalAppointmentReminderWorkflow(ctx, updated.ID.Hex()); err != nil {
 			return nil, fmt.Errorf("appointment updated but failed to reschedule reminder: %w", err)
+		}
+	} else if scheduleChanged {
+		if err := temporalclient.SignalAppointmentReminderWorkflow(ctx, updated.ID.Hex()); err != nil {
+			return nil, fmt.Errorf("appointment updated but failed to refresh reminder workflow: %w", err)
 		}
 	}
 
@@ -224,6 +259,31 @@ func (s *followUpAppointmentService) UpdateFollowUpAppointmentStatus(ctx context
 	}
 
 	return toFollowUpAppointmentResponse(updated), nil
+}
+
+func (s *followUpAppointmentService) ensureDoctorScheduleAvailable(
+	ctx context.Context,
+	doctorID primitive.ObjectID,
+	scheduledAt time.Time,
+	durationMinutes int,
+	excludeID *primitive.ObjectID,
+) error {
+	conflict, err := s.appointmentRepo.HasScheduledConflict(ctx, doctorID, scheduledAt, durationMinutes, excludeID)
+	if err != nil {
+		return err
+	}
+	if conflict {
+		return ErrDoctorScheduleConflict
+	}
+	return nil
+}
+
+func (s *followUpAppointmentService) normalizeDurationMinutes(minutes int) (int, error) {
+	normalized := domain.NormalizeAppointmentDuration(minutes)
+	if err := domain.ValidateAppointmentDuration(normalized); err != nil {
+		return 0, err
+	}
+	return normalized, nil
 }
 
 func (s *followUpAppointmentService) resolveDoctorID(ctx context.Context, input *usecase.CreateFollowUpAppointmentInput) (primitive.ObjectID, error) {
@@ -323,17 +383,18 @@ func (s *followUpAppointmentService) ensureAppointmentAccess(ctx context.Context
 
 func toFollowUpAppointmentResponse(appointment *domain.FollowUpAppointment) *dto.FollowUpAppointmentResponse {
 	return &dto.FollowUpAppointmentResponse{
-		ID:          appointment.ID.Hex(),
-		PatientID:   appointment.PatientID.Hex(),
-		DoctorID:    appointment.DoctorID.Hex(),
-		ScheduledAt: appointment.ScheduledAt,
-		Timezone:    appointment.Timezone,
-		Location:    appointment.Location,
-		Notes:       appointment.Notes,
-		Status:      appointment.Status,
-		CreatedBy:   appointment.CreatedBy.Hex(),
-		CreatedAt:   appointment.CreatedAt,
-		UpdatedAt:   appointment.UpdatedAt,
+		ID:              appointment.ID.Hex(),
+		PatientID:       appointment.PatientID.Hex(),
+		DoctorID:        appointment.DoctorID.Hex(),
+		ScheduledAt:     appointment.ScheduledAt,
+		DurationMinutes: appointment.EffectiveDurationMinutes(),
+		Timezone:        appointment.Timezone,
+		Location:        appointment.Location,
+		Notes:           appointment.Notes,
+		Status:          appointment.Status,
+		CreatedBy:       appointment.CreatedBy.Hex(),
+		CreatedAt:       appointment.CreatedAt,
+		UpdatedAt:       appointment.UpdatedAt,
 	}
 }
 

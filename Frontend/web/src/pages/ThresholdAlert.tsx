@@ -1,16 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   FaCheckCircle,
-  FaChevronUp,
   FaCommentDots,
   FaExclamationTriangle,
   FaInfoCircle,
   FaRegClock,
   FaSyncAlt,
-  FaChevronLeft,
-  FaChevronRight,
+  FaUserInjured,
+  FaSearch,
 } from "react-icons/fa";
 
 import Toast from "../components/ui/Toast";
@@ -20,81 +19,104 @@ import { useToast } from "../hooks/useToast";
 import {
   acknowledgeAlert,
   getAlerts,
-  getMyPatients,
 } from "../services/patientService";
-import type { AlertResponse, AssignmentResponse } from "../types/patient";
+import type { AlertResponse } from "../types/patient";
+
+export const AlertSeverity = {
+  LOW: "low",
+  MEDIUM: "medium",
+  HIGH: "high",
+} as const;
+
+// Map english severity to vietnamese per user request
+export const getSeverityLabel = (level: string) => {
+  switch (level) {
+    case AlertSeverity.HIGH:
+      return "Nguy hiểm";
+    case AlertSeverity.MEDIUM:
+      return "Cảnh báo";
+    case AlertSeverity.LOW:
+      return "Nhẹ";
+    default:
+      return "Không rõ";
+  }
+};
+
+export const getSeverityBadge = (level: string) => {
+  switch (level) {
+    case AlertSeverity.HIGH:
+      return "bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300 dark:ring-1 dark:ring-red-500/25";
+    case AlertSeverity.MEDIUM:
+      return "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-200 dark:ring-1 dark:ring-amber-500/25";
+    case AlertSeverity.LOW:
+      return "bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-300 dark:ring-1 dark:ring-blue-500/25";
+    default:
+      return "bg-slate-100 text-slate-800 dark:bg-slate-500/15 dark:text-slate-200 dark:ring-1 dark:ring-slate-500/25";
+  }
+};
+
+export const getSeverityIcon = (level: string) => {
+  switch (level) {
+    case AlertSeverity.HIGH:
+      return <FaExclamationTriangle className="w-4 h-4 text-red-600 dark:text-red-400" />;
+    case AlertSeverity.MEDIUM:
+      return <FaExclamationTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400" />;
+    case AlertSeverity.LOW:
+      return <FaInfoCircle className="w-4 h-4 text-blue-600 dark:text-blue-400" />;
+    default:
+      return <FaInfoCircle className="w-4 h-4 text-slate-600 dark:text-slate-400" />;
+  }
+};
+
+type TabType = "PENDING" | "ALL" | "RESOLVED";
 
 const ThresholdAlert = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const filterPatientId = searchParams.get("patientId");
   const { t } = useTranslation();
+  
   const [alerts, setAlerts] = useState<AlertResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [showResolveModal, setShowResolveModal] = useState(false);
-  const [currentAlert, setCurrentAlert] = useState<AlertResponse | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
-  const [expandedAlerts, setExpandedAlerts] = useState<Set<string>>(new Set());
-  const [currentPage, setCurrentPage] = useState(1);
+  
+  const [activeTab, setActiveTab] = useState<TabType>("PENDING");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [severityFilter, setSeverityFilter] = useState<string>("ALL");
+  // const [currentPage, setCurrentPage] = useState(1);
+  
+  const [expandedPatients, setExpandedPatients] = useState<Set<string>>(new Set());
+  
+  // Resolve modal state
+  const [showResolveModal, setShowResolveModal] = useState(false);
+  const [currentAlertsToResolve, setCurrentAlertsToResolve] = useState<AlertResponse[]>([]);
+  const [isResolving, setIsResolving] = useState(false);
 
   const { toast, showToast, hideToast } = useToast();
 
-  const toggleExpanded = (alertId: string) => {
-    setExpandedAlerts((prev) => {
-      const next = new Set(prev);
-      if (next.has(alertId)) next.delete(alertId);
-      else next.add(alertId);
-      return next;
-    });
-  };
-
-  const stats = useMemo(() => {
-    return {
-      total: alerts.length,
-      open: alerts.filter((item) => item.status === "open").length,
-      ack: alerts.filter((item) => item.status === "ack").length,
-      high: alerts.filter((item) => item.severity === "high").length,
-    };
-  }, [alerts]);
-
-  const loadAlerts = async (showErrorToast = false) => {
+  const fetchAlerts = async (showLoadingState = true) => {
     try {
-      setRefreshing(true);
-      const [patientAssignments, alertList] = await Promise.all([
-        getMyPatients(),
-        getAlerts({ limit: 200 }),
-      ]);
+      if (showLoadingState) setLoading(true);
+      else setRefreshing(true);
 
-      const assignmentMap = new Map<string, AssignmentResponse>();
-      patientAssignments.forEach((item) => {
-        assignmentMap.set(item.patientId, item);
+      const response = await getAlerts({
+        limit: 1000, 
+        page: 1,
       });
 
-      const scopedAlerts = alertList.map((item) => {
-        const assignment = assignmentMap.get(item.patientId);
-        return {
-          ...item,
-          patientName:
-            item.patientName || assignment?.patientName || t("alerts.patient"),
-        };
-      });
-
-      let finalAlerts = scopedAlerts;
-      if (filterPatientId) {
-        finalAlerts = finalAlerts.filter(a => a.patientId === filterPatientId);
+      if (response && Array.isArray(response)) {
+        let alertsData = response;
+        if (filterPatientId) {
+          alertsData = alertsData.filter(
+            (a) => a.patientId === filterPatientId
+          );
+        }
+        setAlerts(alertsData);
+        setLastUpdated(new Date().toLocaleTimeString());
       }
-
-      setAlerts(finalAlerts);
-      setCurrentPage(1);
-      setLastUpdated(new Date().toISOString());
-    } catch (error) {
-      console.error("Failed to load alerts", error);
-      if (showErrorToast) {
-        showToast(t("alerts.cannotLoadAlerts"), "error", {
-          title: t("alerts.loadDataFailed"),
-        });
-      }
+    } catch (err: any) {
+      showToast(err.message || "Không thể tải danh sách cảnh báo", "error");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -102,547 +124,568 @@ const ThresholdAlert = () => {
   };
 
   useEffect(() => {
-    void loadAlerts(true);
-  }, []);
+    fetchAlerts();
+    const interval = setInterval(() => fetchAlerts(false), 30000);
+    return () => clearInterval(interval);
+  }, [filterPatientId]);
 
-  const navigateToChat = (alert: AlertResponse) => {
-    const query = new URLSearchParams({ alertId: alert.id });
-    navigate(`/patient/chat/${alert.patientId}?${query.toString()}`, {
-      state: { alertSnapshot: alert },
+  const togglePatientExpanded = (patientId: string) => {
+    setExpandedPatients((prev) => {
+      const next = new Set(prev);
+      if (next.has(patientId)) next.delete(patientId);
+      else next.add(patientId);
+      return next;
     });
   };
 
-  const handleOpenResolveModal = (alert: AlertResponse) => {
-    setCurrentAlert(alert);
+  const handleResolveConfirm = async () => {
+    if (currentAlertsToResolve.length === 0) return;
+    
+    setIsResolving(true);
+    try {
+      for (const alert of currentAlertsToResolve) {
+        await acknowledgeAlert(alert.id);
+      }
+      showToast(`Đã xử lý thành công ${currentAlertsToResolve.length} cảnh báo`, "success");
+      setShowResolveModal(false);
+      setCurrentAlertsToResolve([]);
+      fetchAlerts(false);
+    } catch (error: any) {
+      showToast(error.message || "Lỗi khi xử lý cảnh báo", "error");
+    } finally {
+      setIsResolving(false);
+    }
+  };
+
+  const openResolveModal = (alertsToResolve: AlertResponse | AlertResponse[]) => {
+    if (Array.isArray(alertsToResolve)) {
+      setCurrentAlertsToResolve(alertsToResolve);
+    } else {
+      setCurrentAlertsToResolve([alertsToResolve]);
+    }
     setShowResolveModal(true);
   };
 
-  const closeResolveModal = () => {
-    setShowResolveModal(false);
-    setCurrentAlert(null);
+  // Helper to format violation
+  const formatViolation = (v: any) => {
+    const viNames: Record<string, string> = {
+      temperature: "Nhiệt độ",
+      blood_pressure_systolic: "Huyết áp tâm thu",
+      blood_pressure_diastolic: "Huyết áp tâm trương",
+      blood_pressure: "Huyết áp",
+      heart_rate: "Nhịp tim",
+      glucose: "Đường huyết",
+      spo2: "SpO2",
+      weight: "Cân nặng"
+    };
+
+    let typeName = viNames[v.type] || t(`measurements.types.${v.type}`, v.type);
+    let unit = "";
+    
+    if (v.type === "glucose") {
+      unit = "mg/dL";
+    } else if (v.type === "temperature") {
+      unit = "°C";
+    } else if (v.type === "blood_pressure") {
+      unit = "mmHg";
+    } else if (v.type === "spo2") {
+      unit = "%";
+    } else if (v.type === "heart_rate") {
+      unit = "bpm";
+    } else if (v.type === "weight") {
+      unit = "kg";
+    }
+
+    const value = typeof v.observed === 'number' ? v.observed.toFixed(1) : v.observed;
+    const threshold = typeof v.threshold === 'number' ? v.threshold.toFixed(1) : v.threshold;
+
+    if (v.rule.includes("max")) {
+      return `${typeName} cao: ${value} ${unit} (ngưỡng: >${threshold})`;
+    } else if (v.rule.includes("min")) {
+      return `${typeName} thấp: ${value} ${unit} (ngưỡng: <${threshold})`;
+    }
+    return `${typeName}: ${value} ${unit} (ngưỡng: ${threshold})`;
   };
 
-  const handleConfirmAcknowledge = async () => {
-    if (!currentAlert) return;
-    try {
-      const updated =
-        currentAlert.status === "ack"
-          ? currentAlert
-          : await acknowledgeAlert(currentAlert.id);
+  // derived state
+  const filteredAlerts = useMemo(() => {
+    let result = alerts;
 
-      setAlerts((prev) =>
-        prev.map((item) =>
-          item.id === updated.id
-            ? {
-                ...item,
-                ...updated,
-                patientName: updated.patientName || item.patientName,
-                patientAvatarUrl:
-                  updated.patientAvatarUrl || item.patientAvatarUrl,
-              }
-            : item,
-        ),
-      );
+    // Filter by tab
+    if (activeTab === "PENDING") {
+      result = result.filter(a => a.status === "open");
+    } else if (activeTab === "RESOLVED") {
+      result = result.filter(a => a.status === "ack");
+    }
 
-      setLastUpdated(new Date().toISOString());
-      closeResolveModal();
-      showToast(t("alerts.acknowledgeSuccess"), "success", {
-        title: t("alerts.processSuccess"),
-      });
-    } catch (error: any) {
-      console.error("Failed to acknowledge alert", error);
-      showToast(
-        error?.response?.data?.error || t("alerts.acknowledgeError"),
-        "error",
-        { title: t("alerts.processFailed") },
+    // Search query
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(a => 
+        (a.patientName && a.patientName.toLowerCase().includes(q)) ||
+        a.patientId.toLowerCase().includes(q)
       );
     }
-  };
 
-  const getViolationLabel = (type: string) => {
-    const cleanType = type.replace(/_(max|min|high|low)$/, "");
-    const labels: Record<string, string> = {
-      temperature: t("alerts.temperature"),
-      heart_rate: t("alerts.heartRate"),
-      respiratory_rate: t("alerts.respiratoryRate"),
-      spo2: "SpO2",
-      blood_pressure_systolic: t("alerts.systolic"),
-      blood_pressure_diastolic: t("alerts.diastolic"),
-      glucose: t("alerts.glucose"),
-      sys: t("alerts.systolic"),
-      bp_diastolic: t("alerts.diastolic")
-    };
-    return labels[cleanType] || labels[type] || type;
-  };
+    // Severity
+    if (severityFilter !== "ALL") {
+      result = result.filter(a => a.severity === severityFilter.toLowerCase());
+    }
 
-  const formatDate = (value: string) =>
-    new Date(value).toLocaleString("vi-VN", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
+    // Sort: High severity first, then newest
+    result.sort((a, b) => {
+      const severityMap: Record<string, number> = { "high": 3, "medium": 2, "low": 1 };
+      const sevA = severityMap[a.severity] || 0;
+      const sevB = severityMap[b.severity] || 0;
+      if (sevA !== sevB) return sevB - sevA; // DESC
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(); // DESC
     });
 
-  // ─── Mobile card renderer ──────────────────────────────────────────────────
-  const renderAlertCard = (alert: AlertResponse) => {
-    const primaryViolations = alert.violations.slice(0, 2);
-    return (
-      <div
-        key={alert.id}
-        className="rounded-lg border border-slate-200 bg-white p-4 transition dark:border-slate-800 dark:bg-slate-900"
-      >
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <button
-              type="button"
-              onClick={() => navigate(`/patient/${alert.patientId}`)}
-              className="group flex max-w-full items-center text-left"
-            >
-              <h3 className="truncate text-base font-semibold text-blue-600 group-hover:text-blue-800 group-hover:underline dark:text-blue-400 dark:group-hover:text-blue-300 transition-colors">
-                {alert.patientName || t("alerts.patient")}
-              </h3>
-            </button>
-            <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              {formatDate(alert.createdAt)}
-            </div>
-            {alert.acknowledgedAt && (
-              <div className="mt-1 text-xs text-green-600 dark:text-emerald-300">
-                {t("alerts.acknowledgedAt")} {formatDate(alert.acknowledgedAt)}
-              </div>
-            )}
-          </div>
-          <div className="shrink-0">{renderStatusBadge(alert)}</div>
-        </div>
+    return result;
+  }, [alerts, activeTab, searchQuery, severityFilter]);
 
-        <div className="mt-4 flex items-center justify-between gap-3">
-          <span
-            className={`inline-flex whitespace-nowrap items-center gap-1 rounded-md px-3 py-1 text-xs font-medium ${
-              alert.severity === "high"
-                ? "bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300"
-                : alert.severity === "medium"
-                ? "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-200"
-                : "bg-slate-100 text-slate-800 dark:bg-slate-500/15 dark:text-slate-200"
-            }`}
-          >
-            {alert.severity === "high" ? <FaExclamationTriangle /> : <FaInfoCircle />}
-            {alert.severity === "high" ? t("alerts.severe", "Nguy hiểm") : alert.severity === "medium" ? t("alerts.medium", "Cảnh báo") : t("alerts.low", "Nhẹ")}
-          </span>
-          <span className="text-xs text-slate-500 dark:text-slate-400">
-            {alert.status === "ack" ? t("alerts.processed") : t("alerts.pending")}
-          </span>
-        </div>
+  // Group alerts for pending tab
+  const groupedPendingAlerts = useMemo(() => {
+    if (activeTab !== "PENDING") return [];
+    
+    const groups = new Map<string, {
+      patientId: string;
+      patientName: string;
+      patientCode: string;
+      alerts: AlertResponse[];
+      highCount: number;
+      mediumCount: number;
+      lowCount: number;
+      latestAlert: AlertResponse | null;
+    }>();
 
-        <div className="mt-4 space-y-2 rounded-md bg-slate-50 p-3 dark:bg-slate-950/70">
-          {primaryViolations.map((violation, index) => (
-            <div key={`${alert.id}-mobile-${index}`} className="text-sm leading-6 text-gray-700 dark:text-slate-300">
-              <span className="font-medium text-gray-800 dark:text-slate-100">
-                {getViolationLabel(violation.type)}:
-              </span>{" "}
-              <span className="font-semibold text-red-600 dark:text-red-300">{violation.observed}</span>
-              <span className="ml-1 text-xs text-gray-500 dark:text-slate-400">
-                ({t("alerts.threshold")} {violation.threshold})
-              </span>
-            </div>
-          ))}
-          {alert.violations.length > 2 && (
-            <div className="text-xs text-slate-500 dark:text-slate-400">
-              {t("alerts.moreViolations").replace("{{count}}", String(alert.violations.length - 2))}
-            </div>
-          )}
-        </div>
+    filteredAlerts.forEach(alert => {
+      const pId = alert.patientId;
+      if (!groups.has(pId)) {
+        groups.set(pId, {
+          patientId: pId,
+          patientName: alert.patientName || "Chưa cập nhật tên",
+          patientCode: `PAT-${pId.substring(0, 6).toUpperCase()}`,
+          alerts: [],
+          highCount: 0,
+          mediumCount: 0,
+          lowCount: 0,
+          latestAlert: null
+        });
+      }
+      const group = groups.get(pId)!;
+      group.alerts.push(alert);
+      
+      if (alert.severity === "high") group.highCount++;
+      else if (alert.severity === "medium") group.mediumCount++;
+      else if (alert.severity === "low") group.lowCount++;
 
-        <div className="mt-4 grid grid-cols-2 gap-2">
-          {alert.status === "open" ? (
-            <button
-              type="button"
-              onClick={() => handleOpenResolveModal(alert)}
-              className="inline-flex items-center justify-center gap-1.5 rounded-md bg-blue-600 px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-blue-700"
-            >
-              <FaCheckCircle />{t("alerts.process")}
-            </button>
-          ) : (
-            <button type="button" disabled className="inline-flex items-center justify-center gap-1.5 rounded-md bg-slate-200 px-3 py-2 text-xs font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-              <FaCheckCircle />{t("alerts.processed")}
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => navigateToChat(alert)}
-            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 dark:border-slate-600 dark:bg-slate-700/70 dark:text-slate-100 dark:hover:bg-slate-700 dark:hover:text-blue-200"
-          >
-            <FaCommentDots />{t("alerts.message")}
-          </button>
+      if (!group.latestAlert || new Date(alert.createdAt) > new Date(group.latestAlert.createdAt)) {
+        group.latestAlert = alert;
+      }
+    });
+
+    // Convert to array and sort by severity (patients with high alerts first)
+    return Array.from(groups.values()).sort((a, b) => {
+      if (a.highCount !== b.highCount) return b.highCount - a.highCount;
+      if (a.mediumCount !== b.mediumCount) return b.mediumCount - a.mediumCount;
+      if (a.lowCount !== b.lowCount) return b.lowCount - a.lowCount;
+      return 0;
+    });
+  }, [filteredAlerts, activeTab]);
+
+  const stats = useMemo(() => {
+    const pending = alerts.filter(a => a.status === "open");
+    return {
+      pendingTotal: pending.length,
+      pendingHigh: pending.filter(a => a.severity === "high").length,
+    };
+  }, [alerts]);
+
+  // Pagination for ALL / RESOLVED tabs
+  // const itemsPerPage = 10;
+  // const totalPages = Math.ceil(filteredAlerts.length / itemsPerPage);
+  // const paginatedAlerts = filteredAlerts.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  const renderStats = () => (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+      <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Chờ xử lý</p>
+          <p className="text-3xl font-bold text-slate-900 dark:text-white mt-1">{stats.pendingTotal}</p>
+        </div>
+        <div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center">
+          <FaRegClock className="text-xl text-blue-600 dark:text-blue-400" />
         </div>
       </div>
-    );
-  };
+      <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-red-200 dark:border-red-900/50 flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-red-600 dark:text-red-400">Nguy hiểm (Chờ xử lý)</p>
+          <p className="text-3xl font-bold text-red-700 dark:text-red-300 mt-1">{stats.pendingHigh}</p>
+        </div>
+        <div className="h-12 w-12 rounded-full bg-red-100 dark:bg-red-500/20 flex items-center justify-center">
+          <FaExclamationTriangle className="text-xl text-red-600 dark:text-red-400" />
+        </div>
+      </div>
+    </div>
+  );
 
-  const renderStatusBadge = (alert: AlertResponse) => {
-    if (alert.status === "ack") {
-      return (
-        <div className="inline-flex flex-col items-center">
-          <span className="inline-flex whitespace-nowrap items-center gap-1 rounded-md bg-green-100 px-3 py-1 text-xs font-medium text-green-800 dark:bg-emerald-500/15 dark:text-emerald-300 dark:ring-1 dark:ring-emerald-500/25">
-            <FaCheckCircle />{t("alerts.acknowledged")}
-          </span>
-          <div className="mt-1 whitespace-nowrap text-xs text-gray-500 dark:text-slate-400">
-            {alert.acknowledgedByName || alert.acknowledgedBy || t("alerts.processed")}
+  const renderFilters = () => (
+    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 mb-6">
+      <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
+        <div className="flex bg-slate-100 dark:bg-slate-700/50 p-1 rounded-lg w-full md:w-auto overflow-x-auto">
+          {(["PENDING", "ALL", "RESOLVED"] as TabType[]).map(tab => {
+            const labels = {
+              PENDING: "Cần xử lý",
+              ALL: "Tất cả cảnh báo",
+              RESOLVED: "Đã xử lý"
+            };
+            return (
+              <button
+                key={tab}
+                onClick={() => { setActiveTab(tab);  }}
+                className={`px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors ${
+                  activeTab === tab
+                    ? "bg-white dark:bg-slate-600 text-blue-600 dark:text-blue-400 shadow-sm"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                }`}
+              >
+                {labels[tab]}
+              </button>
+            )
+          })}
+        </div>
+
+        <div className="flex gap-3 w-full md:w-auto">
+          <div className="relative flex-1 md:w-64">
+            <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Tên BN, Mã BN..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+            />
           </div>
+          <select
+            value={severityFilter}
+            onChange={(e) => setSeverityFilter(e.target.value)}
+            className="pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="ALL">Mức độ (Tất cả)</option>
+            <option value="HIGH">Nguy hiểm</option>
+            <option value="MEDIUM">Cảnh báo</option>
+            <option value="LOW">Nhẹ</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderPendingTab = () => {
+    if (groupedPendingAlerts.length === 0) {
+      return (
+        <div className="text-center py-12 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+          <FaCheckCircle className="mx-auto h-12 w-12 text-green-500 opacity-50 mb-4" />
+          <p className="text-slate-500 dark:text-slate-400">Không có cảnh báo nào cần xử lý</p>
         </div>
       );
     }
+
     return (
-      <span className="inline-flex whitespace-nowrap items-center gap-1 rounded-md bg-gray-100 px-3 py-1 text-xs font-medium text-gray-800 dark:bg-slate-700/80 dark:text-slate-200 dark:ring-1 dark:ring-slate-600">
-        <FaRegClock />{t("alerts.pending")}
-      </span>
-    );
-  };
-
-  // ─── Desktop table columns ─────────────────────────────────────────────────
-  const columns: Column<AlertResponse>[] = [
-    {
-      header: <div className="flex justify-center pl-8 pr-3">{t("alerts.patient")}</div>,
-      className: "min-w-[180px] pl-8 pr-3",
-      cellClassName: "text-center",
-      render: (alert) => (
-        <button
-          type="button"
-          onClick={() => navigate(`/patient/${alert.patientId}`)}
-          className="text-sm font-semibold text-blue-600 transition-colors hover:text-blue-800 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
-        >
-          {alert.patientName || t("alerts.patient")}
-        </button>
-      ),
-    },
-    {
-      header: "Chỉ số vượt ngưỡng",
-      render: (alert) => {
-        // Sắp xếp theo độ ưu tiên lâm sàng
-        const PRIORITY: Record<string, number> = {
-          blood_pressure_systolic: 0,
-          blood_pressure_diastolic: 1,
-          glucose: 2,
-          heart_rate: 3,
-          spo2: 4,
-          temperature: 5,
-          respiratory_rate: 6,
-        };
-        const sorted = [...alert.violations].sort(
-          (a, b) => (PRIORITY[a.type] ?? 99) - (PRIORITY[b.type] ?? 99),
-        );
-        const isExpanded = expandedAlerts.has(alert.id);
-        const shown = isExpanded ? sorted : sorted.slice(0, 3);
-        const hasMore = sorted.length > 3;
-        return (
-          <div className="space-y-1">
-            {shown.map((violation, index) => (
-              <div key={`${alert.id}-${index}`} className="text-sm">
-                <span className="font-medium text-gray-700 dark:text-slate-200">
-                  {getViolationLabel(violation.type)}:
-                </span>{" "}
-                <span className="font-semibold text-red-600 dark:text-red-300">
-                  {violation.observed}
-                </span>
-                <span className="ml-1 text-xs text-gray-400 dark:text-slate-500">
-                  ({violation.threshold})
-                </span>
-              </div>
-            ))}
-            {hasMore && (
-              <button
-                type="button"
-                onClick={() => toggleExpanded(alert.id)}
-                title={isExpanded ? "Thu gọn" : `+${sorted.length - 3} chỉ số khác`}
-                className="mt-0.5 inline-flex h-5 w-8 items-center justify-center rounded bg-slate-100 text-xs font-bold text-slate-500 transition hover:bg-slate-200 hover:text-slate-700 dark:bg-slate-700 dark:text-slate-400 dark:hover:bg-slate-600 dark:hover:text-slate-200"
+      <div className="space-y-4">
+        {groupedPendingAlerts.map(group => {
+          const isExpanded = expandedPatients.has(group.patientId);
+          
+          return (
+            <div 
+              key={group.patientId} 
+              className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden transition-all"
+            >
+              {/* Header / Summary Card */}
+              <div 
+                className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/40 transition-colors"
+                onClick={() => togglePatientExpanded(group.patientId)}
               >
-                {isExpanded ? <FaChevronUp className="h-2.5 w-2.5" /> : "..."}
-              </button>
-            )}
-          </div>
-        );
-      },
-    },
-    {
-      header: <div className="flex justify-center">{t("alerts.severity")}</div>,
-      className: "min-w-[110px]",
-      cellClassName: "text-center",
-      render: (alert) => {
-        if (alert.severity === "high") {
-          return (
-            <span className="inline-flex whitespace-nowrap items-center gap-1 rounded-full bg-red-100 px-2.5 py-1 text-sm font-medium text-red-800 dark:bg-red-500/15 dark:text-red-300 dark:ring-1 dark:ring-red-500/25">
-              <FaExclamationTriangle className="h-3 w-3" />
-              {t("alerts.severe", "Nguy hiểm")}
-            </span>
-          );
-        } else if (alert.severity === "medium") {
-          return (
-            <span className="inline-flex whitespace-nowrap items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-sm font-medium text-amber-800 dark:bg-amber-500/15 dark:text-amber-200 dark:ring-1 dark:ring-amber-500/25">
-              <FaInfoCircle className="h-3 w-3" />
-              {t("alerts.medium", "Cảnh báo")}
-            </span>
-          );
-        } else {
-          return (
-            <span className="inline-flex whitespace-nowrap items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-sm font-medium text-slate-800 dark:bg-slate-500/15 dark:text-slate-200 dark:ring-1 dark:ring-slate-500/25">
-              <FaInfoCircle className="h-3 w-3" />
-              {t("alerts.low", "Nhẹ")}
-            </span>
-          );
-        }
-      },
-    },
-    {
-      header: <div className="flex justify-center">{t("alerts.status")}</div>,
-      className: "min-w-[130px]",
-      cellClassName: "text-center",
-      render: (alert) => renderStatusBadge(alert),
-    },
-    {
-      header: <div className="flex justify-center">{t("alerts.time")}</div>,
-      className: "min-w-[160px] whitespace-nowrap",
-      cellClassName: "text-center text-sm text-gray-600 dark:text-slate-300",
-      render: (alert) => (
-        <>
-          <div>{formatDate(alert.createdAt)}</div>
-          {alert.acknowledgedAt && (
-            <div className="mt-0.5 text-xs text-green-600 dark:text-emerald-300">
-              {t("alerts.acknowledgedAt")} {formatDate(alert.acknowledgedAt)}
-            </div>
-          )}
-        </>
-      ),
-    },
-    {
-      header: <div className="flex justify-center">{t("alerts.actions")}</div>,
-      className: "min-w-[160px]",
-      cellClassName: "text-center",
-      render: (alert) => (
-        <div className="flex items-center justify-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-          {alert.status === "open" ? (
-            <button
-              type="button"
-              onClick={() => handleOpenResolveModal(alert)}
-              className="inline-flex items-center gap-1 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-blue-700"
-            >
-              <FaCheckCircle className="h-3 w-3" />
-              {t("alerts.process")}
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => navigateToChat(alert)}
-              className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-blue-50 hover:text-blue-700 dark:border-slate-600 dark:bg-slate-700/70 dark:text-slate-100 dark:hover:bg-slate-700 dark:hover:text-blue-200"
-            >
-              <FaCommentDots className="h-3 w-3" />
-              {t("alerts.message")}
-            </button>
-          )}
-        </div>
-      ),
-    },
-  ];
-
-  const itemsPerPage = 8;
-  const totalPages = Math.ceil(alerts.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedAlerts = useMemo(() => {
-    return alerts.slice(startIndex, endIndex);
-  }, [alerts, startIndex, endIndex]);
-
-  return (
-    <>
-      <div className="min-h-screen bg-gray-50 p-4 pb-24 dark:bg-slate-950 sm:p-6 sm:pb-24">
-        <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-800 dark:text-slate-100 sm:text-3xl">
-              {t("alerts.title")}
-            </h1>
-          </div>
-          <button
-            type="button"
-            onClick={() => void loadAlerts(true)}
-            disabled={refreshing}
-            className="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-          >
-            <FaSyncAlt className={`mr-2 ${refreshing ? "animate-spin" : ""}`} />
-            {t("common.refreshData")}
-          </button>
-        </div>
-
-        {/* Stats cards */}
-        <div className="mb-6 grid gap-4 md:grid-cols-4">
-          <div className="rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
-            <div className="text-sm text-slate-500 dark:text-slate-400">{t("alerts.totalAlerts")}</div>
-            <div className="mt-2 text-3xl font-bold text-slate-900 dark:text-slate-100">{stats.total}</div>
-            <div className="mt-4 text-xs text-slate-500 dark:text-slate-400">
-              {lastUpdated ? `${t("alerts.lastUpdated")} ${formatDate(lastUpdated)}` : t("alerts.notSynced")}
-            </div>
-          </div>
-          <div className="rounded-lg border border-red-100 bg-red-50/70 p-5 dark:border-red-900/60 dark:bg-slate-900">
-            <div className="text-sm text-red-600 dark:text-red-400">{t("alerts.highSeverity")}</div>
-            <div className="mt-2 text-3xl font-bold text-red-700 dark:text-red-300">{stats.high}</div>
-            <div className="mt-4 text-xs text-red-500 dark:text-red-400">{t("alerts.prioritize")}</div>
-          </div>
-          <div className="rounded-lg border border-amber-100 bg-amber-50/70 p-5 dark:border-amber-900/60 dark:bg-slate-900">
-            <div className="text-sm text-amber-700 dark:text-amber-300">{t("alerts.pending")}</div>
-            <div className="mt-2 text-3xl font-bold text-amber-800 dark:text-amber-200">{stats.open}</div>
-            <div className="mt-4 text-xs text-amber-600 dark:text-amber-400">{t("alerts.notAcknowledged")}</div>
-          </div>
-          <div className="rounded-lg border border-green-100 bg-green-50/70 p-5 dark:border-emerald-900/60 dark:bg-slate-900">
-            <div className="text-sm text-green-700 dark:text-green-300">{t("alerts.acknowledged")}</div>
-            <div className="mt-2 text-3xl font-bold text-green-800 dark:text-green-200">{stats.ack}</div>
-            <div className="mt-4 text-xs text-green-600 dark:text-green-400">{t("alerts.acknowledgedBy")}</div>
-          </div>
-        </div>
-
-        {/* Mobile cards */}
-        <div className="space-y-3 md:hidden">
-          {loading ? (
-            <div className="rounded-lg border border-slate-200 bg-white p-6 text-center text-gray-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
-              {t("alerts.loadingAlerts")}
-            </div>
-          ) : alerts.length === 0 ? (
-            <div className="rounded-lg border border-slate-200 bg-white p-6 text-center text-gray-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
-              {t("alerts.noAlerts")}
-            </div>
-          ) : (
-            <>
-              {paginatedAlerts.map((alert) => renderAlertCard(alert))}
-
-              {/* Mobile Pagination Controls */}
-              {totalPages > 1 && (
-                <div className="mt-6 flex flex-col items-center justify-between gap-3 border-t border-slate-200 dark:border-slate-700 pt-4">
-                  <div className="text-xs text-slate-500 dark:text-slate-400">
-                    {t("common.showing")} {startIndex + 1}-{Math.min(endIndex, alerts.length)} {t("common.of")} {alerts.length}
+                <div className="flex items-start gap-4">
+                  <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+                    <FaUserInjured className="text-blue-600 dark:text-blue-400 text-lg" />
                   </div>
-                  
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => setCurrentPage(currentPage - 1)}
-                      disabled={currentPage === 1}
-                      className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 p-2 text-xs disabled:opacity-50"
-                    >
-                      <FaChevronLeft />
-                    </button>
-                    
-                    {(() => {
-                      const pages: (number | string)[] = [];
-                      const maxVisible = 5;
-                      if (totalPages <= maxVisible) {
-                        for (let i = 1; i <= totalPages; i++) pages.push(i);
-                      } else {
-                        pages.push(1);
-                        if (currentPage > 2) pages.push("...");
-                        const start = Math.max(2, currentPage);
-                        const end = Math.min(totalPages - 1, currentPage);
-                        for (let i = start; i <= end; i++) {
-                          if (i > 1 && i < totalPages) pages.push(i);
-                        }
-                        if (currentPage < totalPages - 1) pages.push("...");
-                        pages.push(totalPages);
-                      }
-                      
-                      const filteredPages: (number | string)[] = [];
-                      pages.forEach((p) => {
-                        if (p === "..." && filteredPages[filteredPages.length - 1] === "...") return;
-                        filteredPages.push(p);
-                      });
+                  <div>
+                    <h3 className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                      {group.patientName} <span className="text-sm font-normal text-slate-500 ml-2">({group.patientCode})</span>
+                    </h3>
+                    <div className="flex flex-wrap items-center gap-3 mt-2">
+                      <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                        {group.alerts.length} cảnh báo chờ xử lý:
+                      </span>
+                      {group.highCount > 0 && (
+                        <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-400">
+                          <FaExclamationTriangle /> {group.highCount} Nguy hiểm
+                        </span>
+                      )}
+                      {group.mediumCount > 0 && (
+                        <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-400">
+                          <FaExclamationTriangle /> {group.mediumCount} Cảnh báo
+                        </span>
+                      )}
+                      {group.lowCount > 0 && (
+                        <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-400">
+                          <FaInfoCircle /> {group.lowCount} Nhẹ
+                        </span>
+                      )}
+                    </div>
+                    {group.latestAlert && (
+                      <p className="text-xs text-slate-500 mt-2 flex items-center gap-1">
+                        <FaRegClock /> Mới nhất: {new Date(group.latestAlert.createdAt).toLocaleString("vi-VN")}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                  <button 
+                    onClick={() => openResolveModal(group.alerts)}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+                  >
+                    Xử lý tất cả
+                  </button>
+                  <button 
+                    onClick={() => navigate(`/patient/chat/${group.patientId}`)}
+                    className="p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                    title="Nhắn tin"
+                  >
+                    <FaCommentDots className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
 
-                      return filteredPages.map((page, idx) => {
-                        if (page === "...") {
-                          return (
-                            <span
-                              key={`ellipsis-${idx}`}
-                              className="flex w-8 h-8 items-center justify-center text-xs text-slate-400 dark:text-slate-500"
-                            >
-                              ...
+              {/* Expanded Details */}
+              {isExpanded && (
+                <div className="border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-4">
+                  <div className="space-y-3">
+                    {group.alerts.map(alert => (
+                      <div 
+                        key={alert.id} 
+                        className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer hover:border-blue-300 dark:hover:border-blue-700 transition-colors"
+                        onClick={() => navigate(`/patient/${alert.patientId}`)}
+                      >
+                        <div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium flex items-center gap-1 ${getSeverityBadge(alert.severity)}`}>
+                              {getSeverityIcon(alert.severity)}
+                              {getSeverityLabel(alert.severity)}
                             </span>
-                          );
-                        }
-                        const pageNum = page as number;
-                        return (
-                          <button
-                            key={pageNum}
-                            type="button"
-                            onClick={() => setCurrentPage(pageNum)}
-                            className={`inline-flex items-center justify-center w-8 h-8 rounded-lg text-xs font-medium transition ${
-                              pageNum === currentPage
-                                ? "bg-slate-800 dark:bg-slate-200 text-white dark:text-slate-900"
-                                : "border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50"
-                            }`}
-                          >
-                            {pageNum}
-                          </button>
-                        );
-                      });
-                    })()}
-                    
-                    <button
-                      type="button"
-                      onClick={() => setCurrentPage(currentPage + 1)}
-                      disabled={currentPage === totalPages}
-                      className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 p-2 text-xs disabled:opacity-50"
-                    >
-                      <FaChevronRight />
-                    </button>
+                            <span className="text-xs text-slate-500 flex items-center gap-1">
+                              <FaRegClock /> {new Date(alert.createdAt).toLocaleString("vi-VN")}
+                            </span>
+                          </div>
+                          <ul className="space-y-1">
+                            {alert.violations.map((v, i) => (
+                              <li key={i} className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                                • {formatViolation(v)}
+                              </li>
+                            ))}
+                          </ul>
+                          <span className="text-xs font-medium text-blue-600 dark:text-blue-400 mt-3 inline-block">
+                            Xem chi tiết hồ sơ →
+                          </span>
+                        </div>
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openResolveModal(alert);
+                          }}
+                          className="whitespace-nowrap px-3 py-1.5 border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 text-sm font-medium rounded-lg transition-colors dark:text-white"
+                        >
+                          Xác nhận xử lý
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
-            </>
-          )}
-        </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
 
-        {/* Desktop table */}
-        <div className="hidden md:block">
-          <Table<AlertResponse>
-            data={alerts}
-            columns={columns}
-            rowKey={(alert) => alert.id}
-            onRowClick={(alert) => navigate(`/patient/${alert.patientId}`)}
-            loading={loading}
-            paginated={true}
-            itemsPerPage={8}
-            emptyText={t("alerts.noAlerts")}
-          />
-        </div>
+  const renderTableTab = () => {
+    const columns: Column<AlertResponse>[] = [
+      {
+        header: "Bệnh nhân",
+        render: (row: AlertResponse) => (
+          <div className="flex items-center gap-3">
+            {row.patientAvatarUrl ? (
+              <img src={row.patientAvatarUrl} alt="" className="w-8 h-8 rounded-full object-cover" />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center">
+                <FaUserInjured className="text-blue-500" />
+              </div>
+            )}
+            <div>
+              <p className="font-medium text-slate-900 dark:text-white">{row.patientName || "Không tên"}</p>
+              <p className="text-xs text-slate-500">PAT-{row.patientId.substring(0,6).toUpperCase()}</p>
+            </div>
+          </div>
+        )
+      },
+      {
+        header: "Mức độ",
+        render: (row: AlertResponse) => (
+          <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${getSeverityBadge(row.severity)}`}>
+            {getSeverityIcon(row.severity)}
+            {getSeverityLabel(row.severity)}
+          </span>
+        )
+      },
+      {
+        header: "Chi tiết bất thường",
+        render: (row: AlertResponse) => (
+          <div className="max-w-xs space-y-1">
+            {row.violations.map((v, i) => (
+              <div key={i} className="text-sm text-slate-700 dark:text-slate-300 line-clamp-2">
+                {formatViolation(v)}
+              </div>
+            ))}
+          </div>
+        )
+      },
+      {
+        header: "Thời gian",
+        render: (row: AlertResponse) => (
+          <span className="text-sm text-slate-500 dark:text-slate-400">
+            {new Date(row.createdAt).toLocaleString("vi-VN")}
+          </span>
+        )
+      },
+      {
+        header: "Trạng thái",
+        render: (row: AlertResponse) => (
+          row.status === "open" ? (
+            <span className="text-amber-600 dark:text-amber-400 font-medium text-sm">Chờ xử lý</span>
+          ) : (
+            <div className="text-sm">
+              <span className="text-green-600 dark:text-green-400 font-medium flex items-center gap-1">
+                <FaCheckCircle /> Đã xử lý
+              </span>
+              {row.acknowledgedByName && (
+                <span className="text-xs text-slate-500 block mt-0.5">Bởi: {row.acknowledgedByName}</span>
+              )}
+            </div>
+          )
+        )
+      },
+      {
+        header: "Thao tác",
+        render: (row: AlertResponse) => (
+          <div className="flex gap-2">
+            <Link 
+              to={`/patient/${row.patientId}`} 
+              className="text-blue-600 hover:text-blue-800 dark:text-blue-400 text-sm font-medium"
+            >
+              Hồ sơ
+            </Link>
+          </div>
+        )
+      }
+    ];
 
-        {showResolveModal && currentAlert && (
-          <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 pt-10 sm:pt-14">
-            <div className="w-full max-w-sm rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
-              <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
-                {t("alerts.confirmAcknowledge")}
-              </h3>
-              <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-                {t("alerts.confirmAcknowledgeDesc").replace(
-                  "{{patientName}}",
-                  currentAlert.patientName || t("alerts.patient"),
-                )}
+    return (
+      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+        <Table columns={columns} data={filteredAlerts} />
+      </div>
+    );
+  };
+
+  return (
+    <div className="w-full px-4 py-8 mx-auto sm:px-6 lg:px-8">
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
+            Quản Lý Cảnh Báo
+            {loading && <FaSyncAlt className="w-5 h-5 text-blue-500 animate-spin" />}
+          </h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Theo dõi và xử lý các chỉ số sinh tồn vượt ngưỡng của bệnh nhân.
+            {lastUpdated && ` Cập nhật lúc: ${lastUpdated}`}
+          </p>
+        </div>
+        
+        <button
+          onClick={() => fetchAlerts(true)}
+          disabled={loading || refreshing}
+          className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+        >
+          <FaSyncAlt className={(loading || refreshing) ? "animate-spin" : ""} />
+          Làm mới
+        </button>
+      </div>
+
+      {toast && <Toast toast={toast} onClose={hideToast} />}
+
+      {renderStats()}
+      {renderFilters()}
+
+      {activeTab === "PENDING" ? renderPendingTab() : renderTableTab()}
+
+      {/* Resolve Modal */}
+      {showResolveModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Xác nhận xử lý cảnh báo</h3>
+              <button 
+                onClick={() => !isResolving && setShowResolveModal(false)}
+                className="text-slate-400 hover:text-slate-500 transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-slate-600 dark:text-slate-300">
+                Bạn đang xác nhận xử lý <strong>{currentAlertsToResolve.length}</strong> cảnh báo. Hệ thống sẽ ghi nhận bạn là người xử lý các cảnh báo này.
               </p>
-              <div className="mt-4 flex justify-end gap-2">
+              
+              <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-lg max-h-40 overflow-y-auto border border-slate-200 dark:border-slate-700">
+                <ul className="space-y-2">
+                  {currentAlertsToResolve.map(a => (
+                    <li key={a.id} className="text-xs text-slate-700 dark:text-slate-300 flex items-start gap-2">
+                      <FaCheckCircle className="text-green-500 mt-0.5 flex-shrink-0" />
+                      <span>
+                        <strong>{a.patientName || "PAT-"+a.patientId.substring(0,6)}:</strong>{" "}
+                        {a.violations.map(v => formatViolation(v)).join(", ")}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="flex justify-end gap-3 mt-6">
                 <button
-                  type="button"
-                  onClick={closeResolveModal}
-                  className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                  className="px-4 py-2 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 text-sm font-medium transition-colors"
+                  onClick={() => setShowResolveModal(false)}
+                  disabled={isResolving}
                 >
-                  {t("common.cancel")}
+                  Hủy
                 </button>
                 <button
-                  type="button"
-                  onClick={() => void handleConfirmAcknowledge()}
-                  className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-blue-700"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm font-medium transition-colors flex items-center gap-2"
+                  onClick={handleResolveConfirm}
+                  disabled={isResolving}
                 >
-                  {t("common.confirm")}
+                  {isResolving && <FaSyncAlt className="animate-spin" />}
+                  Xác nhận
                 </button>
               </div>
             </div>
           </div>
-        )}
-      </div>
-
-      <Toast toast={toast} onClose={hideToast} />
-    </>
+        </div>
+      )}
+    </div>
   );
 };
 

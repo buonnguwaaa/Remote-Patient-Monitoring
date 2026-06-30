@@ -229,31 +229,32 @@ const getChartConfig = (type: string, data: ChartRow[], thr: ThresholdRecord | n
 
 // ---- Custom Chart Sub-components ----
 const CustomDot = (props: any) => {
-  const { cx, cy, value, dataKey, threshold } = props;
-  if (cx == null || cy == null || value == null || value === 0) return null;
+  const { cx, cy, payload, dataKey, threshold } = props;
+  
+  // Recharts might pass value as an array for AreaCharts. Extract the actual value safely.
+  const actualValue = payload && dataKey ? payload[dataKey] : (Array.isArray(props.value) ? props.value[1] : props.value);
+  
+  if (cx == null || cy == null || actualValue == null || actualValue === 0) return null;
 
   let isOut = false;
-  if (threshold) {
-    if (dataKey === "systolic" && (value < threshold.sysMin || value > threshold.sysMax)) isOut = true;
-    if (dataKey === "diastolic" && (value < threshold.diaMin || value > threshold.diaMax)) isOut = true;
-    if (dataKey === "pulse" && (value < threshold.heartRateMin || value > threshold.heartRateMax)) isOut = true;
-    if (dataKey === "temperature" && (value < threshold.temperatureMin || value > threshold.temperatureMax)) isOut = true;
-    if (dataKey === "spo2" && value < threshold.spo2Min) isOut = true;
+  if (threshold && dataKey) {
+    if (dataKey === "systolic" && (actualValue < threshold.sysMin || actualValue > threshold.sysMax)) isOut = true;
+    if (dataKey === "diastolic" && (actualValue < threshold.diaMin || actualValue > threshold.diaMax)) isOut = true;
+    if (dataKey === "pulse" && (actualValue < threshold.heartRateMin || actualValue > threshold.heartRateMax)) isOut = true;
+    if (dataKey === "temperature" && (actualValue < threshold.temperatureMin || actualValue > threshold.temperatureMax)) isOut = true;
+    if (dataKey === "spo2" && actualValue < threshold.spo2Min) isOut = true;
     if (dataKey === "respiratoryRate" && threshold.respiratoryRateMin != null &&
-      (value < threshold.respiratoryRateMin || value > (threshold.respiratoryRateMax ?? 999))) isOut = true;
+      (actualValue < threshold.respiratoryRateMin || actualValue > (threshold.respiratoryRateMax ?? 999))) isOut = true;
     if (dataKey === "glucose" && threshold.glucoseMin != null &&
-      (value < threshold.glucoseMin || value > (threshold.glucoseMax ?? 999))) isOut = true;
+      (actualValue < threshold.glucoseMin || actualValue > (threshold.glucoseMax ?? 999))) isOut = true;
   }
 
   if (isOut) {
     return (
-      <g>
-        <circle cx={cx} cy={cy} r={6} fill="#ef444420" stroke="#ef4444" strokeWidth={1.5} />
-        <circle cx={cx} cy={cy} r={3} fill="#ef4444" />
-      </g>
+      <circle cx={cx} cy={cy} r={3.5} fill="#ef4444" stroke="#fca5a5" strokeWidth={1.5} opacity={0.9} />
     );
   }
-  return <circle cx={cx} cy={cy} r={3} fill="white" stroke="currentColor" strokeWidth={2} />;
+  return <circle cx={cx} cy={cy} r={2.5} fill="currentColor" stroke="white" strokeWidth={1} opacity={0.7} />;
 };
 
 const CustomTooltip = ({ active, payload, label, threshold }: any) => {
@@ -338,6 +339,8 @@ const PatientDetailPage = () => {
   const [showOnlyAbnormal, setShowOnlyAbnormal] = useState(false);
   const [videoCallOpen, setVideoCallOpen] = useState(false);
   const [thresholdExpanded, setThresholdExpanded] = useState(false);
+  const [tableItemsPerPage, setTableItemsPerPage] = useState(5);
+  // const [showAllAlerts, setShowAllAlerts] = useState(false);
 
   const loadMeasurements = useCallback(async (isPolling = false) => {
     if (!patientId) return;
@@ -744,7 +747,7 @@ const PatientDetailPage = () => {
           className="group flex items-center gap-1.5 text-sm text-gray-500 dark:text-slate-400 hover:text-gray-800 dark:hover:text-slate-200 transition"
         >
           <MdOutlineKeyboardBackspace size={18} />
-          <span className="group-hover:underline underline-offset-2">{t("patientDetail.backToPrevious")}</span>
+          <span className="">{t("patientDetail.backToPrevious")}</span>
         </button>
 
         {/* ══════════════════════════════════════════════════════════════
@@ -851,71 +854,67 @@ const PatientDetailPage = () => {
         {/* ══════════════════════════════════════════════════════════════
             2. ALERTS (UNRESOLVED) — with action buttons
         ══════════════════════════════════════════════════════════════ */}
-        {!alertsLoading && openAlerts.length > 0 && (
-          <div className="bg-white dark:bg-slate-800 rounded-xl border border-orange-200 dark:border-slate-600 overflow-hidden">
-            {/* Header */}
-            <div
-              className={`px-4 py-2.5 flex items-center gap-3 border-b ${hasCritical
-                  ? "bg-red-50/70 dark:bg-red-900/10 border-red-200 dark:border-red-900/30"
-                  : "bg-amber-50/70 dark:bg-amber-900/10 border-amber-200 dark:border-amber-900/30"
-                }`}
-            >
-              <span className="text-sm font-semibold text-gray-800 dark:text-slate-200">
-                Cảnh báo chưa xử lý
-              </span>
-              <span
-                className={`text-[10px] font-bold px-2 py-0.5 rounded ${hasCritical
-                    ? "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400"
-                    : "bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400"
-                  }`}
-              >
-                {openAlerts.length}
-              </span>
-            </div>
+        {!alertsLoading && openAlerts.length > 0 && (() => {
+          const highCount = openAlerts.filter(a => a.severity === "high").length;
+          const medCount = openAlerts.filter(a => a.severity === "medium").length;
+          const lowCount = openAlerts.filter(a => a.severity === "low").length;
+          const latestAlert = openAlerts[0];
+          const latestViolation = latestAlert?.violations?.[0];
 
-            {/* Alert list */}
-            <div className="divide-y divide-gray-100 dark:divide-slate-700/50">
-              {openAlerts.map((alert) => (
-                <button
-                  key={alert.id}
-                  onClick={() => navigate(`/threshold-alerts?patientId=${patientId}`)}
-                  className="w-full text-left px-4 py-3 flex items-start gap-4 hover:bg-gray-50 dark:hover:bg-slate-700/40 transition cursor-pointer"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <span
-                        className={`text-[10px] font-bold px-2 py-px rounded ${alert.severity === "high"
-                            ? "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400"
-                            : alert.severity === "medium"
-                              ? "bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400"
-                              : "bg-slate-100 dark:bg-slate-900/30 text-slate-600 dark:text-slate-400"
-                          }`}
-                      >
-                        {alert.severity === "high" ? "Nguy cấp" : alert.severity === "medium" ? "Cảnh báo" : "Nhẹ"}
-                      </span>
-                      <span className="text-xs text-gray-400 dark:text-slate-500">
-                        {formatRelativeTime(alert.createdAt)}
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap gap-x-4 gap-y-0.5">
-                      {alert.violations.map((v, i) => (
-                        <span key={i} className="text-sm text-gray-700 dark:text-slate-300">
-                          <span className="font-medium">{mapViolationType(v.type)}</span>
-                          {" "}
-                          <span className="font-bold" style={{ color: "#c0392b" }}>{v.observed}</span>
-                          {" "}
-                          <span className="text-gray-400 dark:text-slate-500 text-xs">
-                            ({mapRule(v.rule)} {v.threshold})
-                          </span>
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </button>
-              ))}
+          return (
+            <div
+              className={`rounded-xl border px-4 py-3 flex items-center gap-4 cursor-pointer hover:shadow-sm transition ${
+                hasCritical
+                  ? "bg-red-50/60 dark:bg-red-900/10 border-red-200 dark:border-red-900/30"
+                  : "bg-amber-50/60 dark:bg-amber-900/10 border-amber-200 dark:border-amber-900/30"
+              }`}
+              onClick={() => navigate(`/threshold-alerts?patientId=${patientId}`)}
+            >
+              {/* Icon */}
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                hasCritical ? "bg-red-100 dark:bg-red-900/30" : "bg-amber-100 dark:bg-amber-900/30"
+              }`}>
+                <MdNotificationsActive size={16} className={hasCritical ? "text-red-600 dark:text-red-400" : "text-amber-600 dark:text-amber-400"} />
+              </div>
+
+              {/* Main info */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm font-semibold text-gray-800 dark:text-slate-200">
+                    {openAlerts.length} cảnh báo chưa xử lý
+                  </span>
+                  {highCount > 0 && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400">
+                      {highCount} Nguy hiểm
+                    </span>
+                  )}
+                  {medCount > 0 && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400">
+                      {medCount} Cảnh báo
+                    </span>
+                  )}
+                  {lowCount > 0 && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400">
+                      {lowCount} Nhẹ
+                    </span>
+                  )}
+                </div>
+                {latestViolation && (
+                  <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5 truncate">
+                    Gần nhất: <span className="font-medium text-gray-700 dark:text-slate-300">{mapViolationType(latestViolation.type)}</span>
+                    {" "}{mapRule(latestViolation.rule)} ngưỡng — {formatRelativeTime(latestAlert.createdAt)}
+                  </p>
+                )}
+              </div>
+
+              {/* CTA */}
+              <span className="text-xs font-medium text-blue-600 dark:text-blue-400 shrink-0 hover:underline">
+                Xem tất cả →
+              </span>
             </div>
-          </div>
-        )}
+          );
+        })()}
+
 
         {/* ══════════════════════════════════════════════════════════════
             3. LATEST VITALS — clinical summary card style
@@ -1171,13 +1170,6 @@ const PatientDetailPage = () => {
                         strokeDasharray="6 4"
                         strokeWidth={1.5}
                         strokeOpacity={0.65}
-                        label={{
-                          value: line.label,
-                          position: line.position,
-                          fontSize: 10,
-                          fill: line.color,
-                          opacity: 0.9,
-                        }}
                       />
                     ))}
 
@@ -1190,7 +1182,7 @@ const PatientDetailPage = () => {
                           stroke={cfg.color}
                           strokeWidth={2}
                           fill={`url(#${cfg.gradientId})`}
-                          dot={<CustomDot threshold={threshold} />}
+                          dot={<CustomDot threshold={threshold} dataKey="systolic" />}
                           activeDot={{ r: 5, strokeWidth: 0, fill: cfg.color }}
                           connectNulls={true}
                         />
@@ -1201,7 +1193,7 @@ const PatientDetailPage = () => {
                           stroke={diaColor}
                           strokeWidth={2}
                           fill="url(#gradDia)"
-                          dot={<CustomDot threshold={threshold} />}
+                          dot={<CustomDot threshold={threshold} dataKey="diastolic" />}
                           activeDot={{ r: 5, strokeWidth: 0, fill: diaColor }}
                           connectNulls={true}
                         />
@@ -1209,27 +1201,27 @@ const PatientDetailPage = () => {
                     ) : chartType === "pulse" ? (
                       <Area name="Nhịp tim" type="monotone" dataKey="pulse"
                         stroke={cfg.color} strokeWidth={2} fill={`url(#${cfg.gradientId})`}
-                        dot={<CustomDot threshold={threshold} />} activeDot={{ r: 5, strokeWidth: 0, fill: cfg.color }}
+                        dot={<CustomDot threshold={threshold} dataKey="pulse" />} activeDot={{ r: 5, strokeWidth: 0, fill: cfg.color }}
                         connectNulls={true} />
                     ) : chartType === "glucose" ? (
                       <Area name="Đường huyết" type="monotone" dataKey="glucose"
                         stroke={cfg.color} strokeWidth={2} fill={`url(#${cfg.gradientId})`}
-                        dot={<CustomDot threshold={threshold} />} activeDot={{ r: 5, strokeWidth: 0, fill: cfg.color }}
+                        dot={<CustomDot threshold={threshold} dataKey="glucose" />} activeDot={{ r: 5, strokeWidth: 0, fill: cfg.color }}
                         connectNulls={true} />
                     ) : chartType === "temperature" ? (
                       <Area name="Nhiệt độ" type="monotone" dataKey="temperature"
                         stroke={cfg.color} strokeWidth={2} fill={`url(#${cfg.gradientId})`}
-                        dot={<CustomDot threshold={threshold} />} activeDot={{ r: 5, strokeWidth: 0, fill: cfg.color }}
+                        dot={<CustomDot threshold={threshold} dataKey="temperature" />} activeDot={{ r: 5, strokeWidth: 0, fill: cfg.color }}
                         connectNulls={true} />
                     ) : chartType === "spo2" ? (
                       <Area name="SpO₂" type="monotone" dataKey="spo2"
                         stroke={cfg.color} strokeWidth={2} fill={`url(#${cfg.gradientId})`}
-                        dot={<CustomDot threshold={threshold} />} activeDot={{ r: 5, strokeWidth: 0, fill: cfg.color }}
+                        dot={<CustomDot threshold={threshold} dataKey="spo2" />} activeDot={{ r: 5, strokeWidth: 0, fill: cfg.color }}
                         connectNulls={true} />
                     ) : (
                       <Area name="Nhịp thở" type="monotone" dataKey="respiratoryRate"
                         stroke={cfg.color} strokeWidth={2} fill={`url(#${cfg.gradientId})`}
-                        dot={<CustomDot threshold={threshold} />} activeDot={{ r: 5, strokeWidth: 0, fill: cfg.color }}
+                        dot={<CustomDot threshold={threshold} dataKey="respiratoryRate" />} activeDot={{ r: 5, strokeWidth: 0, fill: cfg.color }}
                         connectNulls={true} />
                     )}
                   </AreaChart>
@@ -1312,20 +1304,32 @@ const PatientDetailPage = () => {
             5. MEASUREMENT HISTORY TABLE
         ══════════════════════════════════════════════════════════════ */}
         <section className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
-          <div className="px-5 py-3 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between gap-2">
+          <div className="px-5 py-3 border-b border-gray-100 dark:border-slate-700 flex flex-wrap items-center justify-between gap-3">
             <span className="text-sm font-semibold text-gray-700 dark:text-slate-200">
               {t("patientDetail.recentHistory")}
             </span>
-            <button
-              onClick={() => setShowOnlyAbnormal(!showOnlyAbnormal)}
-              className={`flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg border transition-all ${showOnlyAbnormal
-                  ? "border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20"
-                  : "border-gray-200 dark:border-slate-600 text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700"
-                }`}
-            >
-              <MdFilterList size={13} />
-              {showOnlyAbnormal ? "Đang lọc: bất thường" : "Chỉ hiện bất thường"}
-            </button>
+            <div className="flex items-center gap-2">
+              <select
+                value={tableItemsPerPage}
+                onChange={(e) => setTableItemsPerPage(Number(e.target.value))}
+                className="text-xs px-2 py-1.5 rounded-lg border border-gray-200 dark:border-slate-600 text-gray-600 dark:text-slate-300 bg-white dark:bg-slate-800 outline-none cursor-pointer"
+              >
+                <option value={5}>5 bản ghi</option>
+                <option value={10}>10 bản ghi</option>
+                <option value={20}>20 bản ghi</option>
+                <option value={50}>50 bản ghi</option>
+              </select>
+              <button
+                onClick={() => setShowOnlyAbnormal(!showOnlyAbnormal)}
+                className={`flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg border transition-all ${showOnlyAbnormal
+                    ? "border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20"
+                    : "border-gray-200 dark:border-slate-600 text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700"
+                  }`}
+              >
+                <MdFilterList size={13} />
+                {showOnlyAbnormal ? "Đang lọc: bất thường" : "Chỉ hiện bất thường"}
+              </button>
+            </div>
           </div>
           {measurementsLoading ? (
             <div className="p-6 text-sm text-center text-gray-400 dark:text-slate-500">
@@ -1340,7 +1344,13 @@ const PatientDetailPage = () => {
                 : "Không có dữ liệu."}
             </div>
           ) : (
-            <Table<ChartRow> data={tableData} columns={columns} className="rounded-none shadow-none" />
+            <Table<ChartRow> 
+              data={tableData} 
+              columns={columns} 
+              className="rounded-none shadow-none" 
+              itemsPerPage={tableItemsPerPage}
+              paginated={true}
+            />
           )}
         </section>
 

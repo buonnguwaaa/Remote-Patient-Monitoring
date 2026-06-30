@@ -144,7 +144,6 @@ func BuildVideoCallEndedEvent(sessionID, conversationID, recipientID string) Rea
 	}
 }
 
-
 var multiSpaceRe = regexp.MustCompile(`\s+`)
 
 // SanitizePreview trims, collapses whitespace, and truncates to a reasonable length for preview display.

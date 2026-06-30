@@ -12,7 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { getMyPatients, getAdherence } from "../api/patientApi";
 import PatientSelectorModal from "../components/PatientSelectorModal";
-import { useSidebar } from "../navigation/AppNavigator";
+
 
 const RANGE_OPTIONS = [
   { label: "7 ngày", value: 7 },
@@ -21,7 +21,7 @@ const RANGE_OPTIONS = [
 ];
 
 export default function ComplianceScreen() {
-  const { openSidebar } = useSidebar();
+
 
   const [patients, setPatients] = useState([]);
   const [selectedPatientId, setSelectedPatientId] = useState("");

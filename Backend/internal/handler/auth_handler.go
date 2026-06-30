@@ -379,12 +379,15 @@ func (h *AuthHandler) setAccessTokenCookie(c *gin.Context, accessToken string) {
 	maxAge := int(util.AccessTokenTTL.Seconds())
 	isSecure := h.isSecure(c)
 	h.setSameSite(c, isSecure)
+	
+	domain := os.Getenv("COOKIE_DOMAIN")
+
 	c.SetCookie(
 		"accessToken",
 		accessToken,
 		maxAge,
 		"/",
-		"",
+		domain,
 		isSecure,
 		true,
 	)
@@ -394,19 +397,23 @@ func (h *AuthHandler) setRefreshTokenCookie(c *gin.Context, refreshToken string)
 	maxAge := int(util.RefreshTokenTTL.Seconds())
 	isSecure := h.isSecure(c)
 	h.setSameSite(c, isSecure)
+	
+	domain := os.Getenv("COOKIE_DOMAIN")
+
 	c.SetCookie(
 		"refreshToken",
 		refreshToken,
 		maxAge,
 		"/",
-		"",
+		domain,
 		isSecure,
 		true,
 	)
 }
 
 func (h *AuthHandler) setSameSite(c *gin.Context, isSecure bool) {
-	if os.Getenv("GIN_MODE") == "release" && isSecure {
+	isCrossSite := os.Getenv("COOKIE_CROSS_SITE") == "true"
+	if os.Getenv("GIN_MODE") == "release" && isSecure && isCrossSite {
 		c.SetSameSite(http.SameSiteNoneMode)
 	} else {
 		c.SetSameSite(http.SameSiteLaxMode)

@@ -1,8 +1,5 @@
 import { useState, useEffect } from "react";
-import {
-  TbLayoutSidebarLeftCollapseFilled,
-  TbLayoutSidebarRightCollapseFilled,
-} from "react-icons/tb";
+import { CiCircleChevLeft, CiCircleChevRight } from "react-icons/ci";
 import { FiLogOut } from "react-icons/fi";
 import { useTranslation } from "react-i18next";
 import { type NavigationItem } from "../../types/index.ts";
@@ -57,8 +54,10 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
 
       <div
         className={`
-          h-screen bg-slate-50 dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800 flex flex-col transition-all duration-300
-
+          h-screen bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-700
+          flex flex-col transition-all duration-300
+          fixed left-0 top-0 z-50 rounded-r-2xl 
+          md:relative md:z-auto 
           ${isCollapsed ? "w-14" : "w-80"}
         `}
       >
@@ -67,22 +66,22 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
             }`}
         >
           {!isCollapsed && (
-            <h2 className="font-bold text-2xl text-slate-900 dark:text-slate-100">RPM</h2>
+            <h2 className="font-bold text-2xl text-primary-text dark:text-slate-100">RPM</h2>
           )}
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="text-slate-700 dark:text-slate-300"
+            className="text-primary-text dark:text-slate-300"
           >
             {isCollapsed ? (
-              <TbLayoutSidebarRightCollapseFilled size={32} />
+              <CiCircleChevRight size={32} />
             ) : (
-              <TbLayoutSidebarLeftCollapseFilled size={32} />
+              <CiCircleChevLeft size={32} />
             )}
           </button>
         </div>
 
         <nav className="flex-1 mt-4 px-2 overflow-y-auto">
-          <ul className="space-y-1">
+          <ul className="space-y-2">
             {itemsToDisplay.map((item) => {
               const isActive = location.pathname === item.path;
               return (
@@ -93,27 +92,24 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
                       if (window.innerWidth < 768) setIsCollapsed(true);
                     }}
                     className={`
-                      relative flex items-center py-2.5 rounded-xl transition-all duration-200
+                      flex items-center py-2 rounded-lg transition-colors relative
                       ${isCollapsed ? "justify-center px-0" : "px-4 gap-3"}
                       ${isActive
-                        ? "bg-blue-100 text-slate-900 shadow-md shadow-blue-200/70 dark:bg-blue-500 dark:text-white dark:shadow-blue-950/60"
-                        : "text-slate-600 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-slate-900 hover:text-blue-700 dark:hover:text-blue-300"
+                        ? "bg-btn-clicked text-white"
+                        : "text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800"
                       }
                     `}
                     title={isCollapsed ? item.label : ""}
                   >
                     {item.icon && (
-                      <div className={`text-2xl shrink-0 transition-transform duration-200 ${isActive ? "scale-110" : ""}`}>
+                      <div className="text-2xl shrink-0">
                         {item.icon}
                       </div>
                     )}
                     {!isCollapsed && (
-                      <span className={`text-base font-semibold whitespace-nowrap overflow-hidden ${isActive ? "font-bold" : ""}`}>
+                      <span className="text-xl font-semibold whitespace-nowrap overflow-hidden">
                         {item.label}
                       </span>
-                    )}
-                    {isCollapsed && isActive && (
-                      <span className="absolute left-1 w-1 h-8 bg-blue-600 dark:bg-blue-400 rounded-r-full" />
                     )}
                   </Link>
                 </li>
@@ -142,7 +138,7 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
             </div>
             {!isCollapsed && (
               <div className="flex-1 min-w-0">
-                <p className="font-bold text-xl text-slate-900 dark:text-slate-100 truncate">
+                <p className="font-bold text-xl text-primary-text dark:text-slate-100 truncate">
                   {user?.username || "Admin"}
                 </p>
               </div>
@@ -151,7 +147,7 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
           <button
             onClick={handleLogout}
             className="flex w-full items-center justify-center py-2 rounded-md text-xl 
-            text-slate-600 dark:text-slate-300 hover:bg-rose-100 dark:hover:bg-rose-950/60 hover:text-rose-700 dark:hover:text-rose-300 transition duration-400 mt-1"
+            text-gray-500 dark:text-slate-400 hover:bg-rose-400 hover:text-gray-800 transition duration-400 mt-3"
           >
             <FiLogOut className="mr-1" />
             {!isCollapsed && <span>{t("sidebar.logout")}</span>}
