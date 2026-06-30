@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/constant"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/service"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecase"
 	"github.com/gin-gonic/gin"
@@ -33,7 +34,7 @@ func NewAlertHandler(alertService service.AlertService) *AlertHandler {
 func (h *AlertHandler) GetDoctorAlerts(c *gin.Context) {
 	doctorID, exists := c.Get("userId")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": constant.MsgUnauthorized})
 		return
 	}
 	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
@@ -63,7 +64,7 @@ func (h *AlertHandler) GetDoctorAlerts(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": alerts, "message": "Alerts retrieved successfully"})
+	c.JSON(http.StatusOK, gin.H{"data": alerts, "message": "Lấy danh sách cảnh báo thành công"})
 }
 
 // GetNurseAlerts handles retrieving all alerts for patients managed by the authenticated nurse
@@ -79,7 +80,7 @@ func (h *AlertHandler) GetDoctorAlerts(c *gin.Context) {
 func (h *AlertHandler) GetNurseAlerts(c *gin.Context) {
 	nurseID, exists := c.Get("userId")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": constant.MsgUnauthorized})
 		return
 	}
 	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
@@ -110,7 +111,7 @@ func (h *AlertHandler) GetNurseAlerts(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": alerts, "message": "Alerts retrieved successfully"})
+	c.JSON(http.StatusOK, gin.H{"data": alerts, "message": "Lấy danh sách cảnh báo thành công"})
 }
 
 // GetPatientAlerts handles retrieving all alerts for the authenticated patient
@@ -126,7 +127,7 @@ func (h *AlertHandler) GetNurseAlerts(c *gin.Context) {
 func (h *AlertHandler) GetPatientAlerts(c *gin.Context) {
 	patientID, exists := c.Get("userId")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": constant.MsgUnauthorized})
 		return
 	}
 
@@ -157,7 +158,7 @@ func (h *AlertHandler) GetPatientAlerts(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": alerts, "message": "Alerts retrieved successfully"})
+	c.JSON(http.StatusOK, gin.H{"data": alerts, "message": "Lấy danh sách cảnh báo thành công"})
 }
 
 // GetAlertByID handles retrieving an alert by its ID
@@ -183,18 +184,18 @@ func (h *AlertHandler) GetAlertByID(c *gin.Context) {
 	alert, err := h.alertService.GetAlertByID(c.Request.Context(), input)
 	if err != nil {
 		if errors.Is(err, service.ErrAlertNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "alert not found"})
+			c.JSON(http.StatusNotFound, gin.H{"error": constant.MsgAlertNotFound})
 			return
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	if alert == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "alert not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": constant.MsgAlertNotFound})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": alert, "message": "Alert retrieved successfully"})
+	c.JSON(http.StatusOK, gin.H{"data": alert, "message": "Lấy cảnh báo thành công"})
 }
 
 // UpdateAlertAcknowledgementByID handles updating the acknowledgement of an alert by its ID
@@ -213,7 +214,7 @@ func (h *AlertHandler) GetAlertByID(c *gin.Context) {
 func (h *AlertHandler) UpdateAlertAcknowledgementByID(c *gin.Context) {
 	doctorId, exists := c.Get("userId")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": constant.MsgUnauthorized})
 		return
 	}
 
@@ -226,16 +227,16 @@ func (h *AlertHandler) UpdateAlertAcknowledgementByID(c *gin.Context) {
 	updatedAlert, err := h.alertService.UpdateAlertAcknowledgementByID(c.Request.Context(), input)
 	if err != nil {
 		if errors.Is(err, service.ErrAlertNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "alert not found"})
+			c.JSON(http.StatusNotFound, gin.H{"error": constant.MsgAlertNotFound})
 			return
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	if updatedAlert == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "alert not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": constant.MsgAlertNotFound})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": updatedAlert, "message": "Alert acknowledged successfully"})
+	c.JSON(http.StatusOK, gin.H{"data": updatedAlert, "message": "Đã xác nhận cảnh báo thành công"})
 }

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/constant"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/service"
@@ -43,7 +44,7 @@ func (h *ReminderHandler) CreateReminder(c *gin.Context) {
 	// Get user ID from context (set by JWT middleware)
 	userID, exists := c.Get("userId")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": constant.MsgUnauthorized})
 		return
 	}
 
@@ -69,7 +70,7 @@ func (h *ReminderHandler) CreateReminder(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"data": reminder, "message": "Reminder created successfully"})
+	c.JSON(http.StatusCreated, gin.H{"data": reminder, "message": "Tạo lời nhắc thành công"})
 }
 
 // GetReminders retrieves reminders based on filters
@@ -102,7 +103,7 @@ func (h *ReminderHandler) GetReminders(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": reminders, "message": "Reminders retrieved successfully"})
+	c.JSON(http.StatusOK, gin.H{"data": reminders, "message": "Lấy danh sách lời nhắc thành công"})
 }
 
 // UpdateReminderByID updates a reminder's status or message
@@ -148,7 +149,7 @@ func (h *ReminderHandler) UpdateReminderByID(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": reminder, "message": "Reminder updated successfully"})
+	c.JSON(http.StatusOK, gin.H{"data": reminder, "message": "Cập nhật lời nhắc thành công"})
 }
 
 // UpdateReminderStatus updates only the status of a reminder
@@ -187,5 +188,5 @@ func (h *ReminderHandler) UpdateReminderStatus(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": reminder, "message": "Reminder status updated successfully"})
+	c.JSON(http.StatusOK, gin.H{"data": reminder, "message": "Cập nhật trạng thái lời nhắc thành công"})
 }

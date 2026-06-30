@@ -19,7 +19,7 @@ type alertService struct {
 	// baseUserRepo   userRepository.BaseUserRepository
 }
 
-var ErrAlertNotFound = errors.New("alert not found")
+var ErrAlertNotFound = errors.New("Không tìm thấy cảnh báo")
 
 // Tôi cần thêm các api cho alert như sau 1 api để doctor lấy danh sách các alert của patients mình quản lý, 1 api để patient lấy danh sách các alert của mình, 1 api để get alert by id
 type AlertService interface {

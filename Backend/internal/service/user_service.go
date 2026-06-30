@@ -20,7 +20,7 @@ type userService struct {
 	doctorRepo   repository.StaffRepository[domain.Doctor]
 }
 
-var ErrInvalidUserStatus = errors.New("invalid status")
+var ErrInvalidUserStatus = errors.New("Trạng thái người dùng không hợp lệ")
 
 type UserService interface {
 	GetBaseUsers(context.Context, *usecase.GetUsersInput) ([]dto.BaseUserInfoResponse, error)

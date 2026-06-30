@@ -130,7 +130,7 @@ func (s *departmentService) AddMember(ctx context.Context, input *usecase.AddDep
 
 	if _, err := s.deptRepo.FindByID(ctx, deptOID); err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
-			return errors.New("department not found")
+			return errors.New("Không tìm thấy khoa")
 		}
 		return err
 	}
@@ -152,7 +152,7 @@ func (s *departmentService) AddMember(ctx context.Context, input *usecase.AddDep
 		return err
 	}
 
-	return errors.New("only doctors and nurses can be assigned to departments")
+	return errors.New("Chỉ bác sĩ và y tá mới có thể được phân công vào khoa")
 }
 
 func (s *departmentService) Update(ctx context.Context, input *usecase.UpdateDepartmentInput) (*dto.DepartmentResponse, error) {
@@ -165,7 +165,7 @@ func (s *departmentService) Update(ctx context.Context, input *usecase.UpdateDep
 	existing, err := s.deptRepo.FindByID(ctx, oid)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
-			return nil, errors.New("department not found")
+			return nil, errors.New("Không tìm thấy khoa")
 		}
 		return nil, err
 	}
@@ -207,7 +207,7 @@ func (s *departmentService) Delete(ctx context.Context, id string) error {
 	_, err = s.deptRepo.FindByID(ctx, oid)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
-			return errors.New("department not found")
+			return errors.New("Không tìm thấy khoa")
 		}
 		return err
 	}
@@ -219,7 +219,7 @@ func (s *departmentService) Delete(ctx context.Context, id string) error {
 	}
 
 	if memberCount[oid] > 0 {
-		return errors.New("cannot delete department with members")
+		return errors.New("Không thể xóa khoa đang có thành viên")
 	}
 
 	// Delete department

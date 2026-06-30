@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/constant"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository"
 	"github.com/gin-gonic/gin"
@@ -57,7 +58,7 @@ func (h *ActivityLogHandler) GetActivityLogs(c *gin.Context) {
 	if params.StartDate != "" {
 		startDate, err = time.Parse("2006-01-02", params.StartDate)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid start date format. Use YYYY-MM-DD"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": constant.MsgInvalidFromDate})
 			return
 		}
 		// Set to start of day
@@ -71,7 +72,7 @@ func (h *ActivityLogHandler) GetActivityLogs(c *gin.Context) {
 	if params.EndDate != "" {
 		endDate, err = time.Parse("2006-01-02", params.EndDate)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid end date format. Use YYYY-MM-DD"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": constant.MsgInvalidToDate})
 			return
 		}
 		// Set to end of day
@@ -88,14 +89,14 @@ func (h *ActivityLogHandler) GetActivityLogs(c *gin.Context) {
 	// Fetch logs
 	logs, err := h.repo.FindByDateRange(c.Request.Context(), startDate, endDate, params.ActivityType, params.PageSize, skip)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch activity logs"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": constant.MsgFailedFetchActivityLogs})
 		return
 	}
 
 	// Get total count
 	total, err := h.repo.CountByDateRange(c.Request.Context(), startDate, endDate, params.ActivityType)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to count activity logs"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": constant.MsgFailedCountActivityLogs})
 		return
 	}
 
@@ -161,7 +162,7 @@ func (h *ActivityLogHandler) GetActivityLogStats(c *gin.Context) {
 	if startDateStr != "" {
 		startDate, err = time.Parse("2006-01-02", startDateStr)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid start date format. Use YYYY-MM-DD"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": constant.MsgInvalidFromDate})
 			return
 		}
 		startDate = time.Date(startDate.Year(), startDate.Month(), startDate.Day(), 0, 0, 0, 0, startDate.Location())
@@ -173,7 +174,7 @@ func (h *ActivityLogHandler) GetActivityLogStats(c *gin.Context) {
 	if endDateStr != "" {
 		endDate, err = time.Parse("2006-01-02", endDateStr)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid end date format. Use YYYY-MM-DD"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": constant.MsgInvalidToDate})
 			return
 		}
 		endDate = time.Date(endDate.Year(), endDate.Month(), endDate.Day(), 23, 59, 59, 999999999, endDate.Location())
@@ -185,7 +186,7 @@ func (h *ActivityLogHandler) GetActivityLogStats(c *gin.Context) {
 	// Get statistics
 	stats, err := h.repo.GetStatsByDateRange(c.Request.Context(), startDate, endDate)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch statistics"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": constant.MsgFailedFetchStatistics})
 		return
 	}
 
@@ -214,12 +215,12 @@ func (h *ActivityLogHandler) GetActivityLogStats(c *gin.Context) {
 func (h *ActivityLogHandler) CleanupAccessLogs(c *gin.Context) {
 	deletedCount, err := h.repo.DeleteAccessLogs(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to cleanup access logs"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": constant.MsgFailedCleanupAccessLogs})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message": "Access logs cleaned up successfully",
+		"message": "Đã dọn dẹp nhật ký truy cập thành công",
 		"deleted": deletedCount,
 	})
 }
@@ -240,17 +241,17 @@ func (h *ActivityLogHandler) CleanupAccessLogs(c *gin.Context) {
 func (h *ActivityLogHandler) DeleteActivityLog(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Activity log ID is required"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": constant.MsgActivityLogIDRequired})
 		return
 	}
 
 	err := h.repo.DeleteByID(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete activity log"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": constant.MsgFailedDeleteActivityLog})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message": "Activity log deleted successfully",
+		"message": "Đã xóa nhật ký hoạt động thành công",
 	})
 }

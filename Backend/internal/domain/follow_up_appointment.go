@@ -14,7 +14,7 @@ const (
 	MaxAppointmentDurationMinutes     = 180
 )
 
-var ErrInvalidAppointmentDuration = errors.New("invalid appointment duration")
+var ErrInvalidAppointmentDuration = errors.New("Thời lượng lịch hẹn không hợp lệ")
 
 type FollowUpAppointmentStatus string
 
@@ -52,7 +52,7 @@ func NormalizeAppointmentDuration(minutes int) int {
 
 func ValidateAppointmentDuration(minutes int) error {
 	if minutes < MinAppointmentDurationMinutes || minutes > MaxAppointmentDurationMinutes {
-		return fmt.Errorf("%w: must be between %d and %d minutes", ErrInvalidAppointmentDuration, MinAppointmentDurationMinutes, MaxAppointmentDurationMinutes)
+		return fmt.Errorf("%w: phải từ %d đến %d phút", ErrInvalidAppointmentDuration, MinAppointmentDurationMinutes, MaxAppointmentDurationMinutes)
 	}
 	return nil
 }

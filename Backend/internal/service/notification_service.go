@@ -16,7 +16,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-var ErrInvalidPushToken = errors.New("invalid push token")
+var ErrInvalidPushToken = errors.New("Token push không hợp lệ")
 
 type PushProvider interface {
 	Send(ctx context.Context, token string, title string, body string, data map[string]string) error
@@ -58,16 +58,16 @@ func (s *notificationService) RegisterToken(ctx context.Context, input *usecase.
 	tokenValue := strings.TrimSpace(input.Token)
 
 	if deviceID == "" {
-		return nil, fmt.Errorf("deviceId is required")
+		return nil, fmt.Errorf("deviceId là bắt buộc")
 	}
 	if tokenValue == "" {
-		return nil, fmt.Errorf("token is required")
+		return nil, fmt.Errorf("Token là bắt buộc")
 	}
 	if platform != "android" {
-		return nil, fmt.Errorf("unsupported platform: %s", input.Platform)
+		return nil, fmt.Errorf("Nền tảng không được hỗ trợ: %s", input.Platform)
 	}
 	if provider != "fcm" {
-		return nil, fmt.Errorf("unsupported provider: %s", input.Provider)
+		return nil, fmt.Errorf("Nhà cung cấp không được hỗ trợ: %s", input.Provider)
 	}
 
 	now := time.Now().UTC()
@@ -97,7 +97,7 @@ func (s *notificationService) DeactivateToken(ctx context.Context, input *usecas
 
 	deviceID := strings.TrimSpace(input.DeviceID)
 	if deviceID == "" {
-		return fmt.Errorf("deviceId is required")
+		return fmt.Errorf("deviceId là bắt buộc")
 	}
 
 	return s.notificationTokenRepo.DeactivateByUserAndDevice(ctx, userID, deviceID)
@@ -110,16 +110,16 @@ func (s *notificationService) SendToUser(ctx context.Context, userID primitive.O
 
 func (s *notificationService) PublishToUser(ctx context.Context, input *usecase.InternalPublishNotificationInput) (*dto.NotificationResponse, error) {
 	if input == nil {
-		return nil, fmt.Errorf("notification input is required")
+		return nil, fmt.Errorf("Dữ liệu thông báo là bắt buộc")
 	}
 	if input.UserID.IsZero() {
-		return nil, fmt.Errorf("notification userId is required")
+		return nil, fmt.Errorf("userId thông báo là bắt buộc")
 	}
 	if strings.TrimSpace(input.Title) == "" {
-		return nil, fmt.Errorf("notification title is required")
+		return nil, fmt.Errorf("Tiêu đề thông báo là bắt buộc")
 	}
 	if strings.TrimSpace(input.Body) == "" {
-		return nil, fmt.Errorf("notification body is required")
+		return nil, fmt.Errorf("Nội dung thông báo là bắt buộc")
 	}
 
 	typeValue := input.Type
@@ -148,7 +148,7 @@ func (s *notificationService) PublishToUser(ctx context.Context, input *usecase.
 		return nil, err
 	}
 	if notification == nil {
-		return nil, fmt.Errorf("failed to create notification history")
+		return nil, fmt.Errorf("Không thể tạo lịch sử thông báo")
 	}
 
 	if !created && (notification.DeliveryStatus == domain.NotificationDeliverySent || notification.DeliveryStatus == domain.NotificationDeliverySkipped) {
@@ -211,7 +211,7 @@ func (s *notificationService) ListUserNotifications(ctx context.Context, userID 
 
 func (s *notificationService) MarkNotificationRead(ctx context.Context, input *usecase.MarkNotificationReadInput) (*dto.NotificationResponse, error) {
 	if input == nil {
-		return nil, fmt.Errorf("mark notification read input is required")
+		return nil, fmt.Errorf("Dữ liệu đánh dấu đã đọc là bắt buộc")
 	}
 
 	userID, err := util.MustHexToObjectID(input.UserID)
