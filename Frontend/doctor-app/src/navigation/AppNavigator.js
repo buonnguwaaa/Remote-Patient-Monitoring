@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 import React, { createContext, useContext, useState, useRef, useEffect, useCallback } from "react";
 import {
   View,
@@ -13,6 +14,13 @@ import {
 } from "react-native";
 import { NavigationContainer, useNavigation } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+=======
+import React from "react";
+import { View, Text, ActivityIndicator, StyleSheet, TouchableOpacity, Platform } from "react-native";
+import { NavigationContainer, useNavigation } from "@react-navigation/native";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+>>>>>>> Stashed changes
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { navigationRef, flushPendingNotificationNavigation } from "./navigationRef";
 import { Ionicons } from "@expo/vector-icons";
@@ -71,6 +79,7 @@ function Sidebar({ visible, currentRoute, onNavigate, onClose }) {
   const opacity = useRef(new Animated.Value(0)).current;
   const [modalVisible, setModalVisible] = useState(false);
 
+<<<<<<< Updated upstream
   useEffect(() => {
     if (visible) {
       setModalVisible(true);
@@ -109,6 +118,82 @@ function Sidebar({ visible, currentRoute, onNavigate, onClose }) {
       animationType="none"
       presentationStyle="overFullScreen"
       onRequestClose={onClose}
+=======
+// Stacks for each tab
+const HomeStack = () => (
+  <Stack.Navigator screenOptions={commonHeaderOptions}>
+    <Stack.Screen name="Home" component={HomeScreen} options={{ title: "Tổng quan" }} />
+  </Stack.Navigator>
+);
+
+const PatientsStack = () => (
+  <Stack.Navigator screenOptions={commonHeaderOptions}>
+    <Stack.Screen name="Patients" component={PatientsScreen} options={{ title: "Hồ sơ bệnh nhân" }} />
+  </Stack.Navigator>
+);
+
+const AlertsStack = () => (
+  <Stack.Navigator screenOptions={commonHeaderOptions}>
+    <Stack.Screen name="Alerts" component={AlertsScreen} options={{ title: "Quản lý cảnh báo" }} />
+  </Stack.Navigator>
+);
+
+const ChatStack = () => (
+  <Stack.Navigator screenOptions={commonHeaderOptions}>
+    <Stack.Screen name="Chat" component={ChatScreen} options={{ title: "Tin nhắn" }} />
+    <Stack.Screen name="ChatDetail" component={ChatDetailScreen} options={{ headerShown: false }} />
+  </Stack.Navigator>
+);
+
+const MoreStack = () => (
+  <Stack.Navigator screenOptions={commonHeaderOptions}>
+    <Stack.Screen name="More" component={MoreScreen} options={{ title: "Thêm" }} />
+    <Stack.Screen name="Thresholds" component={ThresholdsScreen} options={{ title: "Cấu hình ngưỡng" }} />
+    <Stack.Screen name="Reminders" component={RemindersScreen} options={{ title: "Nhắc nhở" }} />
+    <Stack.Screen name="Compliance" component={ComplianceScreen} options={{ title: "Tuân thủ dùng thuốc" }} />
+    <Stack.Screen name="Prescriptions" component={PrescriptionsScreen} options={{ title: "Đơn thuốc" }} />
+    <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: "Cài đặt" }} />
+    <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: "Hồ sơ bác sĩ", headerRight: null }} />
+  </Stack.Navigator>
+);
+
+function MainTabs() {
+  const badges = useBadges() || { unreadAlertsCount: 0, unreadChatsCount: 0 };
+  const { unreadAlertsCount, unreadChatsCount } = badges;
+  const insets = useSafeAreaInsets();
+
+  const bottomPadding = insets.bottom > 0 ? insets.bottom : (Platform.OS === 'android' ? 24 : 12);
+
+  return (
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarActiveTintColor: "#2563EB",
+        tabBarInactiveTintColor: "#6B7280",
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: "600",
+          marginBottom: 4,
+        },
+        tabBarStyle: {
+          backgroundColor: "#fff",
+          borderTopWidth: 1,
+          borderTopColor: "#F3F4F6",
+          height: 60 + bottomPadding,
+          paddingTop: 8,
+          paddingBottom: bottomPadding,
+        },
+        tabBarIcon: ({ color, size }) => {
+          let iconName;
+          if (route.name === "HomeTab") iconName = "home-outline";
+          else if (route.name === "PatientsTab") iconName = "people-outline";
+          else if (route.name === "AlertsTab") iconName = "warning-outline";
+          else if (route.name === "ChatTab") iconName = "chatbubble-ellipses-outline";
+          else if (route.name === "MoreTab") iconName = "ellipsis-horizontal-outline";
+          return <Ionicons name={iconName} size={24} color={color} />;
+        },
+      })}
+>>>>>>> Stashed changes
     >
       <View style={styles.overlay}>
         <Animated.View style={[styles.sidebar, { transform: [{ translateX }], paddingTop: insets.top }]}>
@@ -330,6 +415,7 @@ function MainNavigator() {
         onNavigate={navigate}
         onClose={closeSidebar}
       />
+<<<<<<< Updated upstream
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Home" component={HomeScreenWrapper} />
         <Stack.Screen name="Profile" component={ProfileScreenWrapper} />
@@ -345,6 +431,37 @@ function MainNavigator() {
         <Stack.Screen name="VideoCall" component={VideoCallScreen} />
       </Stack.Navigator>
     </SidebarContext.Provider>
+=======
+      <Tab.Screen 
+        name="AlertsTab" 
+        component={AlertsStack} 
+        options={{ 
+          tabBarLabel: "Cảnh báo",
+          tabBarBadge: unreadAlertsCount > 0 ? (unreadAlertsCount > 99 ? "99+" : unreadAlertsCount) : null,
+          tabBarBadgeStyle: { backgroundColor: "#EF4444", fontSize: 10, minWidth: 16, height: 16, lineHeight: 16 }
+        }} 
+      />
+      <Tab.Screen 
+        name="ChatTab" 
+        component={ChatStack} 
+        options={{ 
+          tabBarLabel: "Tin nhắn",
+          tabBarBadge: unreadChatsCount > 0 ? (unreadChatsCount > 99 ? "99+" : unreadChatsCount) : null,
+          tabBarBadgeStyle: { backgroundColor: "#EF4444", fontSize: 10, minWidth: 16, height: 16, lineHeight: 16 }
+        }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            navigation.navigate("ChatTab", { screen: "Chat" });
+          },
+        })}
+      />
+      <Tab.Screen 
+        name="MoreTab" 
+        component={MoreStack} 
+        options={{ tabBarLabel: "Thêm" }} 
+      />
+    </Tab.Navigator>
+>>>>>>> Stashed changes
   );
 }
 
@@ -368,7 +485,29 @@ function RootNavigator() {
     );
   }
 
+<<<<<<< Updated upstream
   return <MainNavigator />;
+=======
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="MainTabs" component={MainTabs} />
+      <Stack.Screen name="VideoCall" component={VideoCallScreen} />
+      <Stack.Screen 
+        name="Profile" 
+        component={ProfileScreen} 
+        options={{ 
+          headerShown: true,
+          title: "Hồ sơ bác sĩ",
+          headerTitleAlign: "center",
+          headerStyle: { backgroundColor: "#fff" },
+          headerTitleStyle: { fontSize: 17, fontWeight: "700", color: "#111827" },
+          headerShadowVisible: false,
+          headerBackTitle: "Quay lại",
+        }} 
+      />
+    </Stack.Navigator>
+  );
+>>>>>>> Stashed changes
 }
 
 export default function AppNavigator() {

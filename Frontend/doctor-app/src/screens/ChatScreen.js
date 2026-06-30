@@ -254,7 +254,7 @@ export default function ChatScreen() {
 
   if (redirecting) {
     return (
-      <SafeAreaView style={styles.centerBox}>
+      <SafeAreaView style={styles.centerBox} edges={["left", "right"]}>
         <ActivityIndicator size="large" color="#2563EB" />
         <Text style={styles.loadingText}>Đang chuẩn bị cuộc trò chuyện...</Text>
       </SafeAreaView>

@@ -74,6 +74,12 @@ export function BadgeProvider({ children }) {
             ? String(me.lastReadMessageId)
             : null;
 
+          // If the last message was sent by me, do not count as unread
+          const lastMessageSenderId = conv.lastMessage?.senderId
+            ? String(conv.lastMessage.senderId)
+            : null;
+          if (lastMessageSenderId === currentUserId) return;
+
           // Unread if latestMessageId is different from what I last read
           if (latestMsgId !== myLastRead) {
             unread += 1;

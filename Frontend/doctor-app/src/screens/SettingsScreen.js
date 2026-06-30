@@ -13,9 +13,11 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 
 export default function SettingsScreen() {
   const { user, logout, isBiometricEnabled, enableBiometric, disableBiometric, sessionPassword } = useAuth();
+  const { showToast } = useToast();
   const [language, setLanguage] = useState("vi"); // 'vi' | 'en'
   const [darkMode, setDarkMode] = useState(false);
   const [biometricLoading, setBiometricLoading] = useState(false);
@@ -47,7 +49,7 @@ export default function SettingsScreen() {
                   if (!res.ok) {
                     Alert.alert("Lỗi", res.error);
                   } else {
-                    Alert.alert("Thành công", "Đã bật đăng nhập sinh trắc học.");
+                    showToast("Đã bật đăng nhập sinh trắc học.");
                   }
                 },
               },
@@ -67,7 +69,7 @@ export default function SettingsScreen() {
         if (!res.ok) {
           Alert.alert("Lỗi", res.error);
         } else {
-          Alert.alert("Thành công", "Đã bật đăng nhập sinh trắc học.");
+          showToast("Đã bật đăng nhập sinh trắc học.");
         }
       }
     }
