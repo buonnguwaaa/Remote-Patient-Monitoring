@@ -152,6 +152,7 @@ function buildAlertsSummaryMap(alerts = []) {
 
 function buildPatientListItem(profile, latestMeasurement, alertsSummary) {
   return {
+    patientId: profile.patientId,
     user: {
       _id: profile.patientId,
       name: profile.name,
