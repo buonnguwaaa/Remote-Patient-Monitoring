@@ -1,0 +1,84 @@
+\chapter{Giới thiệu}
+\label{Chapter1}
+
+\section{Đặt vấn đề}
+Trong bối cảnh chuyển đổi số trong lĩnh vực y tế đang diễn ra mạnh mẽ, nhu cầu xây dựng các hệ thống hỗ trợ theo dõi, quản lý và chăm sóc sức khỏe từ xa ngày càng trở nên cấp thiết. Đặc biệt, các bệnh mãn tính như tăng huyết áp và đái tháo đường là những bệnh lý phổ biến, có thời gian điều trị kéo dài và yêu cầu người bệnh phải theo dõi các chỉ số sức khỏe một cách thường xuyên. Nếu không được kiểm soát tốt, các bệnh lý này có thể dẫn đến nhiều biến chứng nghiêm trọng, ảnh hưởng trực tiếp đến chất lượng cuộc sống của người bệnh cũng như tạo thêm áp lực cho hệ thống y tế.
+
+Đối với người bệnh tăng huyết áp, các chỉ số như huyết áp tâm thu, huyết áp tâm trương và nhịp tim cần được theo dõi đều đặn để đánh giá tình trạng ổn định của hệ tim mạch. Trong khi đó, đối với người bệnh đái tháo đường, việc ghi nhận và theo dõi đường huyết đóng vai trò quan trọng trong quá trình kiểm soát bệnh, điều chỉnh chế độ ăn uống, vận động và dùng thuốc. Bên cạnh các chỉ số chính này, một số chỉ số sinh tồn cơ bản khác như thân nhiệt, nồng độ oxy trong máu hoặc các ghi chú triệu chứng cũng có thể cung cấp thêm thông tin hữu ích cho bác sĩ trong quá trình đánh giá tình trạng sức khỏe tổng quát của bệnh nhân.
+
+Tuy nhiên, trong mô hình chăm sóc truyền thống, dữ liệu sức khỏe của bệnh nhân thường chỉ được thu thập khi bệnh nhân đến khám trực tiếp tại cơ sở y tế. Khoảng thời gian giữa các lần tái khám có thể kéo dài nhiều tuần hoặc nhiều tháng, dẫn đến việc bác sĩ khó nắm bắt đầy đủ diễn biến sức khỏe của bệnh nhân trong đời sống hằng ngày. Một số dấu hiệu bất thường có thể xuất hiện trong thời gian ngắn nhưng không được phát hiện kịp thời, đặc biệt đối với những bệnh nhân lớn tuổi, bệnh nhân ở xa cơ sở y tế hoặc bệnh nhân có nhiều bệnh nền cần theo dõi liên tục.
+
+Bên cạnh đó, việc ghi chép thủ công các chỉ số sức khỏe bằng sổ tay hoặc giấy tờ cũng tồn tại nhiều hạn chế. Người bệnh có thể quên ghi nhận, ghi sai thời điểm đo, làm thất lạc dữ liệu hoặc không thể trình bày đầy đủ lịch sử đo khi gặp bác sĩ. Về phía bác sĩ, việc tổng hợp và phân tích dữ liệu rời rạc từ nhiều bệnh nhân cũng tốn nhiều thời gian, khó quan sát xu hướng thay đổi của từng chỉ số và khó ưu tiên xử lý các trường hợp có nguy cơ cao. Những hạn chế này cho thấy nhu cầu cần có một hệ thống hỗ trợ thu thập, lưu trữ, hiển thị và cảnh báo dữ liệu sức khỏe một cách có tổ chức.
+
+Remote Patient Monitoring (RPM) là mô hình theo dõi bệnh nhân từ xa, trong đó các chỉ số sức khỏe của bệnh nhân được ghi nhận ngoài môi trường bệnh viện và truyền về hệ thống trung tâm để nhân viên y tế có thể theo dõi. Với sự phổ biến của điện thoại thông minh, ứng dụng web và các nền tảng điện toán đám mây, mô hình RPM có thể được triển khai với chi phí hợp lý, phù hợp với điều kiện sử dụng thực tế. Người bệnh có thể chủ động nhập các chỉ số sức khỏe hằng ngày thông qua ứng dụng di động, trong khi bác sĩ có thể theo dõi dữ liệu thông qua hệ thống web, quan sát biểu đồ xu hướng và nhận cảnh báo khi chỉ số vượt ngưỡng an toàn.
+
+Từ thực tế trên, nhóm thực hiện đề tài \textit{``Xây dựng hệ thống theo dõi bệnh nhân từ xa cho người bệnh tăng huyết áp và đái tháo đường''}. Hệ thống hướng đến việc hỗ trợ bệnh nhân ghi nhận và quản lý dữ liệu sức khỏe cá nhân, đồng thời cung cấp cho bác sĩ và nhân viên y tế một công cụ trực quan để theo dõi bệnh nhân từ xa. Ngoài các chức năng cơ bản như nhập chỉ số, xem lịch sử đo và hiển thị biểu đồ, hệ thống còn hỗ trợ cấu hình ngưỡng cảnh báo, sinh cảnh báo tự động, gửi nhắc nhở, thông báo và trao đổi giữa bệnh nhân với bác sĩ. Qua đó, đề tài góp phần minh họa khả năng ứng dụng công nghệ thông tin trong lĩnh vực y tế số, đặc biệt trong bài toán quản lý bệnh mãn tính.
+
+\section{Mục tiêu đề tài}
+Mục tiêu tổng quát của đề tài là xây dựng một hệ thống theo dõi bệnh nhân từ xa phục vụ cho người bệnh tăng huyết áp và đái tháo đường, giúp quá trình ghi nhận, quản lý và theo dõi các chỉ số sức khỏe được thực hiện thuận tiện, liên tục và có tổ chức hơn. Hệ thống không thay thế cho hoạt động khám chữa bệnh trực tiếp, mà đóng vai trò như một công cụ hỗ trợ giúp bệnh nhân chủ động theo dõi sức khỏe và giúp bác sĩ có thêm dữ liệu tham khảo trong quá trình quản lý bệnh nhân.
+
+Đối với bệnh nhân, hệ thống hướng đến việc cung cấp một ứng dụng di động đơn giản, dễ sử dụng, cho phép người bệnh nhập các chỉ số sức khỏe quan trọng như huyết áp tâm thu, huyết áp tâm trương, nhịp tim, đường huyết và các chỉ số sinh tồn cơ bản khác. Bệnh nhân có thể xem lại lịch sử đo, theo dõi sự thay đổi của các chỉ số theo thời gian, nhận thông báo khi có cảnh báo bất thường hoặc khi đến thời điểm cần đo lại chỉ số. Việc số hóa dữ liệu giúp bệnh nhân hạn chế phụ thuộc vào sổ ghi chép thủ công và dễ dàng chia sẻ thông tin với nhân viên y tế khi cần thiết.
+
+Đối với bác sĩ, hệ thống hướng đến việc xây dựng một ứng dụng web có khả năng quản lý danh sách bệnh nhân, xem thông tin chi tiết từng bệnh nhân, theo dõi lịch sử đo và quan sát xu hướng thay đổi thông qua các biểu đồ trực quan. Bác sĩ có thể cấu hình ngưỡng an toàn cho từng loại chỉ số, tiếp nhận danh sách cảnh báo khi dữ liệu đo vượt ngưỡng và tạo các nhắc nhở phù hợp cho bệnh nhân. Nhờ đó, bác sĩ có thể ưu tiên theo dõi các trường hợp có nguy cơ cao, đồng thời giảm bớt thời gian tổng hợp dữ liệu thủ công.
+
+Bên cạnh vai trò bệnh nhân và bác sĩ, hệ thống còn mở rộng hỗ trợ vai trò y tá và quản trị viên. Y tá có thể hỗ trợ theo dõi danh sách bệnh nhân được phân công, nhập chỉ số cho bệnh nhân trong một số tình huống cần thiết và tiếp nhận các cảnh báo liên quan. Quản trị viên có thể quản lý tài khoản người dùng, khoa phòng, phân công bác sĩ hoặc y tá phụ trách bệnh nhân, cũng như theo dõi lịch sử hoạt động của hệ thống. Việc bổ sung các vai trò này giúp hệ thống phù hợp hơn với quy trình vận hành thực tế tại cơ sở y tế.
+
+Cụ thể, đề tài đặt ra các mục tiêu chính sau:
+\begin{itemize}
+    \item Xây dựng ứng dụng di động hỗ trợ bệnh nhân nhập, lưu trữ và theo dõi các chỉ số sức khỏe hằng ngày.
+    \item Xây dựng ứng dụng web dành cho bác sĩ để quản lý bệnh nhân, xem lịch sử đo, biểu đồ xu hướng và danh sách cảnh báo.
+    \item Xây dựng trang quản trị hệ thống để quản lý người dùng, khoa phòng, phân công và lịch sử hoạt động.
+    \item Xây dựng hệ thống backend cung cấp các API phục vụ cho mobile app, web app và admin app.
+    \item Thiết kế cơ chế cảnh báo tự động dựa trên các ngưỡng chỉ số được cấu hình trước.
+    \item Hỗ trợ thông báo, nhắc nhở và trao đổi giữa bệnh nhân với nhân viên y tế nhằm nâng cao hiệu quả theo dõi từ xa.
+    \item Đảm bảo hệ thống có kiến trúc rõ ràng, có khả năng mở rộng thêm vai trò người dùng, loại chỉ số sức khỏe hoặc các chức năng nâng cao trong tương lai.
+\end{itemize}
+
+Thông qua các mục tiêu trên, đề tài kỳ vọng tạo ra một mô hình thử nghiệm có tính ứng dụng thực tế, đáp ứng các chức năng cốt lõi của một hệ thống Remote Patient Monitoring. Kết quả của đề tài có thể làm nền tảng để phát triển các hệ thống theo dõi sức khỏe thông minh hơn, có thể tích hợp thêm thiết bị đo tự động, phân tích dữ liệu chuyên sâu hoặc hỗ trợ ra quyết định lâm sàng trong các giai đoạn sau.
+
+\section{Phạm vi đề tài}
+Đề tài tập trung vào việc xây dựng một hệ thống thử nghiệm theo mô hình Remote Patient Monitoring dành cho người bệnh tăng huyết áp và đái tháo đường. Trong phạm vi đồ án, hệ thống hướng đến việc giải quyết các nghiệp vụ cốt lõi gồm ghi nhận chỉ số sức khỏe, theo dõi lịch sử đo, hiển thị dữ liệu trực quan, cảnh báo khi chỉ số vượt ngưỡng, nhắc nhở bệnh nhân và hỗ trợ trao đổi giữa bệnh nhân với bác sĩ.
+
+Các nội dung và hướng nghiên cứu chính trong đề tài bao gồm:
+\begin{itemize}
+    \item Về đối tượng sử dụng:
+    \begin{itemize}
+        \item Bệnh nhân: sử dụng ứng dụng di động để nhập chỉ số sức khỏe, xem lịch sử đo, theo dõi cảnh báo, nhận thông báo và trao đổi với bác sĩ.
+        \item Bác sĩ: sử dụng ứng dụng web để theo dõi danh sách bệnh nhân, xem chi tiết dữ liệu đo, cấu hình ngưỡng cảnh báo, tạo nhắc nhở và trao đổi với bệnh nhân.
+        \item Y tá: hỗ trợ theo dõi các bệnh nhân được phân công, nhập dữ liệu đo trong trường hợp cần thiết và tiếp nhận các cảnh báo liên quan.
+        \item Quản trị viên: quản lý tài khoản người dùng, khoa phòng, phân công nhân viên y tế phụ trách bệnh nhân và theo dõi lịch sử hoạt động của hệ thống.
+    \end{itemize}
+
+    \item Về chức năng:
+    \begin{itemize}
+        \item Xác thực người dùng, đăng nhập, đăng ký, quản lý phiên làm việc và phân quyền theo vai trò.
+        \item Quản lý thông tin cá nhân và hồ sơ cơ bản của bệnh nhân, bác sĩ, y tá và quản trị viên.
+        \item Ghi nhận các chỉ số sức khỏe như huyết áp tâm thu, huyết áp tâm trương, nhịp tim, đường huyết và một số chỉ số sinh tồn cơ bản.
+        \item Hiển thị lịch sử đo và biểu đồ xu hướng để hỗ trợ quan sát sự thay đổi của các chỉ số theo thời gian.
+        \item Cấu hình ngưỡng an toàn cho từng loại chỉ số và sinh cảnh báo khi dữ liệu đo vượt ngưỡng.
+        \item Gửi thông báo, nhắc nhở đo chỉ số và hỗ trợ trao đổi giữa bệnh nhân với bác sĩ thông qua chức năng nhắn tin.
+        \item Quản lý khoa phòng, phân công bệnh nhân cho bác sĩ hoặc y tá, và ghi nhận lịch sử hoạt động phục vụ mục đích quản trị.
+    \end{itemize}
+
+    \item Về công nghệ:
+    \begin{itemize}
+        \item Backend được xây dựng bằng ngôn ngữ Go, sử dụng framework Gin để cung cấp RESTful API cho các ứng dụng client.
+        \item Cơ sở dữ liệu chính sử dụng MongoDB để lưu trữ thông tin người dùng, dữ liệu đo, cảnh báo, ngưỡng, nhắc nhở và các dữ liệu nghiệp vụ khác.
+        \item Redis được sử dụng cho một số nhu cầu lưu trữ tạm, hỗ trợ xử lý phiên hoặc dữ liệu có tính chất ngắn hạn.
+        \item Temporal được sử dụng để hỗ trợ xử lý các workflow nền như đánh giá dữ liệu đo và nhắc nhở.
+        \item Ứng dụng web dành cho bác sĩ và trang quản trị được xây dựng bằng React, TypeScript và Vite.
+        \item Ứng dụng di động được xây dựng bằng React Native với Expo, hướng đến khả năng chạy trên  Android .
+        \item Hệ thống hỗ trợ WebSocket và thông báo đẩy để phục vụ các nhu cầu cập nhật dữ liệu, cảnh báo hoặc trao đổi theo thời gian gần thực.
+    \end{itemize}
+
+    \item Về triển khai thực nghiệm:
+    \begin{itemize}
+        \item Hệ thống được xây dựng dưới dạng mô hình thử nghiệm phục vụ cho mục tiêu đồ án tốt nghiệp.
+        \item Dữ liệu sức khỏe trong hệ thống được nhập thủ công bởi bệnh nhân hoặc nhân viên y tế, chưa tích hợp trực tiếp với các thiết bị IoT như máy đo huyết áp hoặc máy đo đường huyết.
+        \item Cơ chế cảnh báo được xây dựng dựa trên các ngưỡng cố định hoặc ngưỡng do bác sĩ cấu hình, chưa áp dụng các mô hình học máy hoặc trí tuệ nhân tạo để dự đoán rủi ro sức khỏe.
+        \item Hệ thống tập trung vào nhóm bệnh tăng huyết áp và đái tháo đường, chưa mở rộng sang các bệnh lý mãn tính khác.
+        \item Các chức năng được xây dựng nhằm chứng minh tính khả thi của mô hình, chưa hướng đến việc thay thế quy trình khám chữa bệnh hoặc chẩn đoán y khoa chính thức.
+    \end{itemize}
+\end{itemize}
+
+Trong phạm vi hiện tại, đề tài ưu tiên hoàn thiện các chức năng nền tảng để hình thành một hệ thống RPM có khả năng vận hành xuyên suốt từ phía bệnh nhân, bác sĩ, y tá đến quản trị viên. Các giới hạn về tích hợp thiết bị đo tự động, phân tích thông minh và triển khai trên môi trường y tế thực tế sẽ được xem là hướng phát triển tiếp theo của đề tài.

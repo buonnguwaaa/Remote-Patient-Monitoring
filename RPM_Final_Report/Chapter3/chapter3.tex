@@ -1,0 +1,720 @@
+\chapter{Phương pháp đề xuất}
+\label{Chapter3}
+
+\section{Kiến trúc tổng quan}
+
+\subsection{Mô hình kiến trúc hệ thống}
+\par Hệ thống theo dõi bệnh nhân từ xa được xây dựng theo mô hình nhiều thành phần, trong đó mỗi thành phần đảm nhiệm một nhóm trách nhiệm riêng nhưng vẫn phối hợp với nhau thông qua RESTful API, WebSocket và các kênh thông báo thời gian thực. Phía người dùng cuối gồm năm ứng dụng độc lập: ứng dụng di động dành cho bệnh nhân và y tá, ứng dụng web dành cho bác sĩ, ứng dụng di động dành cho bác sĩ và trang quản trị dành cho quản trị viên. Phía máy chủ gồm API server, Temporal worker, cơ sở dữ liệu MongoDB, Redis, Temporal và các thành phần hạ tầng triển khai trên AWS. Cách tổ chức này giúp hệ thống tách biệt rõ giữa giao diện người dùng, xử lý nghiệp vụ, lưu trữ dữ liệu và vận hành hệ thống, đồng thời cho phép nhóm phát triển song song từng client mà vẫn dùng chung một backend trung tâm.
+
+\par Về mặt nghiệp vụ, bệnh nhân sử dụng ứng dụng di động để ghi nhận các chỉ số sức khỏe hằng ngày như huyết áp tâm thu, huyết áp tâm trương, đường huyết, nhịp tim, thân nhiệt, nhịp thở và SpO2. Các chỉ số này được gửi về backend thông qua RESTful API. Sau khi dữ liệu đo được lưu trữ, hệ thống kích hoạt workflow xử lý nền trên Temporal để so sánh dữ liệu vừa nhập với bộ ngưỡng an toàn tương ứng của bệnh nhân. Nếu có chỉ số vượt ngưỡng, hệ thống tạo cảnh báo, lưu thông báo trong ứng dụng, gửi push notification đến bệnh nhân và phát sự kiện thời gian thực đến bác sĩ. Bên cạnh luồng theo dõi chỉ số, bệnh nhân còn có thể quản lý đơn thuốc, ghi nhận việc uống thuốc, tham gia tư vấn video, đọc nội dung giáo dục sức khỏe và trao đổi tin nhắn với bác sĩ ngay trong ứng dụng.
+
+\par Về mặt vận hành, bác sĩ có thể sử dụng ứng dụng web hoặc ứng dụng di động dành cho bác sĩ để theo dõi danh sách bệnh nhân được phân công, xem chi tiết hồ sơ, quan sát lịch sử đo, theo dõi biểu đồ xu hướng, cấu hình ngưỡng an toàn, tiếp nhận cảnh báo, kê đơn thuốc, lập lịch tái khám, tạo nhắc nhở, theo dõi mức độ tuân thủ dùng thuốc, trao đổi tin nhắn và khởi tạo phiên tư vấn video với bệnh nhân. Ứng dụng web tận dụng màn hình lớn để hiển thị dashboard, biểu đồ và bảng dữ liệu chi tiết, trong khi ứng dụng di động dành cho bác sĩ tập trung vào các luồng cốt lõi phục vụ theo dõi nhanh khi di chuyển hoặc trong ca trực. Quản trị viên sử dụng trang quản trị để quản lý tài khoản người dùng, khoa phòng, phân công bác sĩ hoặc y tá phụ trách bệnh nhân và theo dõi lịch sử hoạt động của hệ thống. Y tá sử dụng cùng ứng dụng di động với bệnh nhân nhưng theo luồng riêng để xem danh sách bệnh nhân được phân công và hỗ trợ nhập dữ liệu đo khi bệnh nhân không thuận tiện tự nhập liệu.
+
+\par Về mặt triển khai, các ứng dụng web dành cho bác sĩ và quản trị viên được build thành static files, lưu trữ trên Amazon S3 và phục vụ người dùng qua Cloudflare. Cloudflare đóng vai trò lớp phía trước S3, cung cấp HTTPS, ánh xạ tên miền và chuyển tiếp request đến bucket S3 tương ứng. Backend được đóng gói bằng Docker và triển khai trên Amazon EC2. Bên trong máy chủ EC2, các container chính bao gồm Nginx reverse proxy, Go API server, Temporal server, Temporal worker, Redis và PostgreSQL phục vụ lưu trữ trạng thái workflow của Temporal trong môi trường production. MongoDB được sử dụng làm cơ sở dữ liệu nghiệp vụ chính thông qua chuỗi kết nối cấu hình trong biến môi trường. Ngoài ra, hệ thống tích hợp Firebase Cloud Messaging để gửi push notification, Cloudinary để lưu trữ ảnh đại diện, SMTP để gửi email đặt lại mật khẩu và Jitsi để cung cấp phòng tư vấn video cho các phiên khám từ xa.
+
+\par Về mặt luồng xử lý, hệ thống vận hành theo ba hướng chính. Luồng đồng bộ: client gửi HTTP request đến API server, request đi qua handler, use case, service và repository trước khi đọc hoặc ghi dữ liệu vào MongoDB. Luồng bất đồng bộ: khi có tác vụ cần chạy nền hoặc theo lịch như đánh giá cảnh báo, gửi nhắc nhở dùng thuốc hoặc nhắc lịch tái khám, API server khởi tạo workflow trên Temporal và Temporal worker thực thi các activity như gửi push notification, tạo tin nhắn hệ thống hoặc phát sự kiện lên Redis. Luồng thời gian thực: khi trạng thái hệ thống thay đổi như có cảnh báo mới hoặc tin nhắn mới, server publish sự kiện qua Redis Pub/Sub và WebSocket hub chuyển tiếp đến các client đang kết nối.
+
+\par Sơ đồ kiến trúc tổng quan của hệ thống được trình bày ở hình bên dưới. Trong hình này, năm ứng dụng client giao tiếp với backend thông qua internet, backend xử lý nghiệp vụ và lưu dữ liệu vào MongoDB, các tác vụ chạy nền hoặc theo lịch được chuyển sang Temporal worker, còn các sự kiện cần phản hồi nhanh được phân phối thông qua Redis, WebSocket và Firebase Cloud Messaging.
+
+\begin{center}
+    \begin{figure}[H]
+    \begin{center}
+        % TODO: Thiết kế hình gồm các khối:
+        % Patient Mobile, Doctor Web, Doctor Mobile, Admin Web -> Internet -> AWS
+        % AWS S3 cho web/admin, Cloudflare phía trước S3 để cung cấp HTTPS
+        % AWS EC2 gồm Nginx, Go API Server, Temporal, Worker, Redis, PostgreSQL
+        % MongoDB, FCM, Cloudinary, SMTP, Jitsi là external services
+        \includegraphics[width=\textwidth,keepaspectratio]{images/Chapter3/rpm-system-architecture.png}
+    \end{center}
+    \caption{\textit{Sơ đồ tổng quan kiến trúc hệ thống RPM}}
+    \label{chapter3-image01}
+    \end{figure}
+\end{center}
+
+\subsection{Khái quát các thành phần bên trong hệ thống}
+
+\subsubsection{Nền tảng web}
+\par Nền tảng web của hệ thống gồm hai ứng dụng chính là ứng dụng web dành cho bác sĩ và trang web dành cho quản trị viên. Ứng dụng web dành cho bác sĩ tập trung vào nghiệp vụ theo dõi bệnh nhân từ xa, bao gồm dashboard tổng quan, danh sách bệnh nhân, hồ sơ chi tiết bệnh nhân, lịch sử đo, biểu đồ xu hướng, danh sách cảnh báo, cấu hình ngưỡng an toàn, quản lý nhắc nhở và trao đổi tin nhắn với bệnh nhân. Đây là giao diện chính giúp bác sĩ quan sát dữ liệu sức khỏe được bệnh nhân ghi nhận ngoài môi trường bệnh viện.
+
+\par Trang web dành cho quản trị viên tập trung vào các nghiệp vụ vận hành hệ thống. Quản trị viên có thể quản lý tài khoản bác sĩ, bệnh nhân và y tá; quản lý khoa phòng; phân công bác sĩ hoặc y tá phụ trách bệnh nhân; xem dashboard quản trị; theo dõi lịch sử hoạt động và cập nhật các thiết lập hệ thống. Việc tách riêng trang quản trị khỏi web bác sĩ giúp giảm sự chồng chéo về quyền hạn, đồng thời làm cho mỗi giao diện chỉ phục vụ đúng nhóm nghiệp vụ của người sử dụng.
+
+\subsubsection{Nền tảng di động}
+\par Nền tảng di động được xây dựng để phục vụ bệnh nhân và y tá. Với bệnh nhân, ứng dụng cung cấp các chức năng đăng nhập, đăng ký, nhập chỉ số sức khỏe, xem lịch sử đo, theo dõi cảnh báo, nhận thông báo, xem nhắc nhở, trao đổi tin nhắn với bác sĩ và cập nhật hồ sơ cá nhân. Đây là thành phần quan trọng nhất ở phía người bệnh vì dữ liệu sức khỏe hằng ngày được thu thập chủ yếu thông qua ứng dụng này.
+
+\par Với y tá, ứng dụng cung cấp luồng sử dụng riêng để xem danh sách bệnh nhân được phân công và nhập chỉ số sức khỏe cho bệnh nhân trong một số tình huống cần thiết. Việc hỗ trợ vai trò y tá giúp hệ thống phù hợp hơn với quy trình vận hành tại cơ sở y tế, nơi bệnh nhân lớn tuổi hoặc bệnh nhân không quen dùng thiết bị di động có thể cần nhân viên y tế hỗ trợ ghi nhận dữ liệu đo.
+
+\par Ứng dụng di động được phát triển bằng Expo và React Native, hướng đến khả năng chạy trên thiết bị Android và iOS từ cùng một codebase. Trong giai đoạn hiện tại, phần thông báo đẩy được ưu tiên cấu hình cho Android thông qua Firebase Cloud Messaging để phục vụ kịch bản demo và kiểm thử chức năng cảnh báo, nhắc nhở.
+
+\subsubsection{Hệ thống máy chủ}
+\par Hệ thống máy chủ là lớp trung tâm tiếp nhận request từ các ứng dụng client và xử lý các nghiệp vụ chính. API server được xây dựng bằng Go và Gin, chịu trách nhiệm cung cấp RESTful API cho mobile app, web bác sĩ và admin web. Temporal server và Temporal worker xử lý các workflow nền như đánh giá dữ liệu đo để tạo cảnh báo hoặc gửi nhắc nhở theo lịch. Redis hỗ trợ Pub/Sub cho các sự kiện thời gian thực, đồng thời có thể phục vụ một số nhu cầu lưu trữ tạm. Nginx đóng vai trò reverse proxy, tiếp nhận request từ internet, hỗ trợ HTTPS, chuyển tiếp request đến API server và hỗ trợ nâng cấp kết nối WebSocket. MongoDB là cơ sở dữ liệu chính, lưu trữ thông tin người dùng, dữ liệu đo, ngưỡng cảnh báo, cảnh báo, nhắc nhở, phân công, tin nhắn, thông báo và lịch sử hoạt động.
+
+\subsubsection{Mã nguồn của hệ thống}
+\par Mã nguồn hệ thống được tổ chức theo từng thành phần để các thành viên trong nhóm có thể phát triển song song. Phần \texttt{Backend} chứa mã nguồn backend viết bằng Go, bao gồm API server, Temporal worker, cấu hình MongoDB, Redis, FCM, Cloudinary, Nginx, Dockerfile và Docker Compose. Phần \texttt{Frontend/web} chứa ứng dụng web dành cho bác sĩ, được xây dựng bằng React, TypeScript và Vite. Phần \texttt{Frontend/admin} chứa trang quản trị dành cho quản trị viên, cũng được xây dựng bằng React, TypeScript và Vite. Phần \texttt{Frontend/mobile} chứa ứng dụng di động dành cho bệnh nhân và y tá, được xây dựng bằng Expo và React Native. Ngoài ra, thư mục \texttt{.github/workflows} chứa các workflow CI/CD phục vụ kiểm thử, build, đóng gói và triển khai hệ thống lên AWS.
+
+\section{Chi tiết các thành phần của hệ thống}
+
+\subsection{Ứng dụng di động dành cho bệnh nhân và y tá}
+
+\subsubsection{Giới thiệu tổng quan}
+\par Ứng dụng di động là thành phần được bệnh nhân và y tá sử dụng trực tiếp trong quá trình theo dõi sức khỏe. Đối với bệnh nhân, ứng dụng đóng vai trò như một sổ theo dõi sức khỏe điện tử, cho phép người dùng nhập dữ liệu đo hằng ngày, xem lại lịch sử đo, theo dõi các cảnh báo bất thường và nhận các nhắc nhở từ bác sĩ. Thay vì ghi chép thủ công bằng giấy, bệnh nhân có thể lưu dữ liệu vào hệ thống tập trung, từ đó giúp bác sĩ dễ dàng xem lại khi cần đánh giá diễn biến sức khỏe theo thời gian.
+
+\par Đối với y tá, ứng dụng cung cấp các màn hình phục vụ việc hỗ trợ bệnh nhân. Y tá có thể xem danh sách bệnh nhân được phân công, tìm kiếm bệnh nhân và nhập chỉ số thay cho bệnh nhân trong các trường hợp cần thiết. Dữ liệu do y tá nhập vẫn được gửi về cùng hệ thống backend, được lưu vào cùng collection dữ liệu đo và được đánh giá bằng cùng cơ chế ngưỡng cảnh báo như dữ liệu do bệnh nhân tự nhập. Cách thiết kế này giúp đảm bảo dữ liệu có tính nhất quán dù được nhập từ vai trò nào.
+
+
+\subsubsection{Các chức năng chính}
+\par Để người đọc dễ nắm bắt tổng quan, các chức năng chính của ứng dụng di động được gom theo từng nhóm nghiệp vụ thay vì liệt kê từng thao tác riêng lẻ. Cách trình bày này cho thấy rõ ứng dụng phục vụ hai vai trò chính là bệnh nhân và y tá, trong đó bệnh nhân tập trung vào tự theo dõi sức khỏe, còn y tá tập trung vào hỗ trợ bệnh nhân được phân công.
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{longtable}{|L{4.2cm}|L{10.2cm}|}
+    \hline
+    \textbf{Nhóm chức năng} & \textbf{Nội dung chính} \\
+    \hline
+    \endfirsthead
+    \hline
+    \textbf{Nhóm chức năng} & \textbf{Nội dung chính} \\
+    \hline
+    \endhead
+
+    Xác thực và phân luồng &
+    Người dùng có thể đăng ký, đăng nhập và duy trì phiên làm việc. Sau khi xác thực thành công, ứng dụng tự động xác định vai trò để điều hướng sang giao diện bệnh nhân hoặc giao diện y tá, giúp mỗi người dùng chỉ nhìn thấy các chức năng phù hợp với nhiệm vụ của mình. \\
+    \hline
+
+    Ghi nhận chỉ số sức khỏe &
+    Bệnh nhân có thể nhập các chỉ số theo dõi hằng ngày như huyết áp, đường huyết, nhịp tim, thân nhiệt, SpO2 và nhịp thở. Trong trường hợp cần hỗ trợ, y tá có thể chọn bệnh nhân được phân công và nhập dữ liệu đo thay cho bệnh nhân. \\
+    \hline
+
+    Theo dõi lịch sử và xu hướng &
+    Ứng dụng cho phép bệnh nhân xem lại lịch sử đo và quan sát xu hướng thay đổi của các chỉ số theo thời gian. Đây là phần thay thế cho việc ghi chép thủ công, giúp dữ liệu được lưu trữ tập trung và có thể sử dụng lại khi bác sĩ cần đánh giá. \\
+    \hline
+
+    Cảnh báo, nhắc nhở và thông báo &
+    Khi chỉ số vượt ngưỡng, bệnh nhân có thể xem cảnh báo chi tiết trong ứng dụng, đồng thời nhận thông báo đẩy hoặc thông báo trong hộp thư ứng dụng. Các nhắc nhở đo chỉ số hoặc dùng thuốc do bác sĩ tạo cũng được hiển thị ở nhóm chức năng này. \\
+    \hline
+
+    Giao tiếp và hồ sơ cá nhân &
+    Bệnh nhân có thể trao đổi tin nhắn với bác sĩ trong ngữ cảnh theo dõi sức khỏe. Ngoài ra, người dùng có thể xem và cập nhật hồ sơ cá nhân, giúp thông tin liên hệ và thông tin sức khỏe cơ bản luôn được duy trì tương đối đầy đủ. \\
+    \hline
+
+    \caption{Tổng quan các nhóm chức năng chính của ứng dụng di động}
+    \label{chapter3-table-mobile-functions}
+\end{longtable}
+\end{center}
+
+\subsubsection{Các công nghệ, thư viện và framework được chọn}
+\par Ứng dụng di động được phát triển bằng Expo và React Native. React Native cho phép nhóm xây dựng giao diện di động bằng JavaScript/TypeScript và mô hình component tương tự React trên web, trong khi Expo cung cấp hệ sinh thái công cụ hỗ trợ chạy thử, build, cấu hình quyền thiết bị và phát triển nhanh hơn trong giai đoạn đồ án. Cách lựa chọn này phù hợp với nhóm vì có thể dùng chung tư duy phát triển giữa frontend web và mobile, giảm thời gian học công nghệ mới và tăng khả năng tái sử dụng một số ý tưởng thiết kế giao diện. \cite{expodocs}
+
+\par React Navigation được sử dụng để quản lý điều hướng giữa các màn hình. Trong hệ thống, thư viện này hỗ trợ stack navigation cho các luồng đăng nhập, đăng ký, nhập chỉ số và chi tiết dữ liệu; đồng thời hỗ trợ bottom tab navigation để tách các nhóm chức năng chính như trang chủ, theo dõi, tin nhắn, thông báo và hồ sơ. AsyncStorage được sử dụng để lưu trữ cục bộ một số thông tin cần thiết như token hoặc trạng thái phiên đăng nhập. Axios hoặc các service API tương ứng được dùng để giao tiếp với backend thông qua RESTful API.
+
+\par Đối với thông báo, ứng dụng sử dụng Expo Notifications kết hợp Firebase Cloud Messaging. Ứng dụng xin quyền nhận thông báo, lấy token thiết bị và gửi token này về backend để phục vụ việc gửi push notification khi có cảnh báo hoặc nhắc nhở. Đối với trực quan hóa dữ liệu, React Native Chart Kit được sử dụng để hiển thị biểu đồ lịch sử đo và xu hướng chỉ số sức khỏe, giúp bệnh nhân quan sát sự thay đổi của huyết áp, đường huyết hoặc các chỉ số sinh tồn theo thời gian. \cite{firebasecloudmessaging}
+
+\subsection{Ứng dụng web dành cho bác sĩ}
+
+\subsubsection{Giới thiệu tổng quan}
+\par Ứng dụng web dành cho bác sĩ là nơi bác sĩ theo dõi tình trạng sức khỏe của các bệnh nhân được phân công. Thay vì chỉ xem dữ liệu tại thời điểm bệnh nhân tái khám, bác sĩ có thể theo dõi các chỉ số được bệnh nhân ghi nhận hằng ngày, quan sát xu hướng thay đổi thông qua biểu đồ và tiếp nhận cảnh báo khi có dữ liệu vượt ngưỡng an toàn. Ứng dụng web tận dụng lợi thế màn hình lớn để trình bày nhiều loại dữ liệu như bảng bệnh nhân, biểu đồ sức khỏe, danh sách cảnh báo, form cấu hình ngưỡng và khung chat trong cùng một hệ thống.
+
+\par Ứng dụng được xây dựng theo mô hình Single Page Application bằng React, TypeScript và Vite. Các màn hình cần xác thực được bảo vệ bằng cơ chế protected route. Nếu người dùng chưa đăng nhập hoặc phiên đăng nhập không hợp lệ, hệ thống tự động chuyển về trang đăng nhập. Cách tổ chức này giúp bảo vệ các dữ liệu nhạy cảm của bệnh nhân và đảm bảo chỉ người dùng có vai trò bác sĩ mới truy cập được giao diện theo dõi chuyên môn.
+
+
+\subsubsection{Các chức năng chính}
+\par Các chức năng của ứng dụng web bác sĩ được thiết kế xoay quanh quy trình theo dõi bệnh nhân từ xa: xem tổng quan, chọn bệnh nhân cần theo dõi, phân tích dữ liệu đo, xử lý cảnh báo và trao đổi với bệnh nhân. Bảng dưới đây trình bày các nhóm chức năng chính theo góc nhìn sử dụng của bác sĩ.
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{longtable}{|L{4.2cm}|L{10.2cm}|}
+    \hline
+    \textbf{Nhóm chức năng} & \textbf{Nội dung chính} \\
+    \hline
+    \endfirsthead
+    \hline
+    \textbf{Nhóm chức năng} & \textbf{Nội dung chính} \\
+    \hline
+    \endhead
+
+    Xác thực và dashboard &
+    Bác sĩ đăng nhập vào hệ thống, phiên làm việc được kiểm tra bằng cơ chế xác thực. Sau khi đăng nhập, dashboard hiển thị thông tin tổng quan như số bệnh nhân được phân công, các cảnh báo cần chú ý và dữ liệu theo dõi gần đây. \\
+    \hline
+
+    Quản lý bệnh nhân được phân công &
+    Bác sĩ xem danh sách bệnh nhân thuộc phạm vi phụ trách, tìm kiếm hoặc mở hồ sơ chi tiết của từng bệnh nhân. Màn hình chi tiết cung cấp thông tin cá nhân, thông tin y tế cơ bản và các dữ liệu liên quan đến quá trình theo dõi. \\
+    \hline
+
+    Theo dõi dữ liệu sức khỏe &
+    Hệ thống hiển thị lịch sử đo và biểu đồ xu hướng của các chỉ số như huyết áp, đường huyết, nhịp tim, thân nhiệt, SpO2 và nhịp thở. Nhờ đó, bác sĩ có thể quan sát diễn biến theo thời gian thay vì chỉ xem từng lần đo riêng lẻ. \\
+    \hline
+
+    Ngưỡng an toàn và cảnh báo &
+    Bác sĩ cấu hình ngưỡng an toàn cho từng bệnh nhân, theo dõi danh sách cảnh báo vượt ngưỡng, xem chi tiết các chỉ số vi phạm và xác nhận cảnh báo sau khi đã tiếp nhận hoặc xử lý. \\
+    \hline
+
+    Nhắc nhở và giao tiếp &
+    Bác sĩ tạo nhắc nhở đo chỉ số hoặc dùng thuốc cho bệnh nhân, đồng thời trao đổi tin nhắn với bệnh nhân thông qua hệ thống chat. Khi có tin nhắn hoặc cảnh báo mới, giao diện có thể nhận cập nhật theo thời gian gần thực. \\
+    \hline
+
+    Hồ sơ và thiết lập giao diện &
+    Bác sĩ có thể xem, cập nhật một số thông tin hồ sơ cá nhân và điều chỉnh các thiết lập giao diện như ngôn ngữ, giao diện sáng/tối hoặc các tùy chọn hiển thị khác tùy theo phạm vi cài đặt của hệ thống. \\
+    \hline
+
+    \caption{Tổng quan các nhóm chức năng chính của ứng dụng web bác sĩ}
+    \label{chapter3-table-doctor-web-functions}
+\end{longtable}
+\end{center}
+
+\subsubsection{Các công nghệ, thư viện và framework được chọn}
+\par React được sử dụng để xây dựng giao diện theo hướng component-based. Mỗi màn hình hoặc thành phần giao diện như bảng dữ liệu, form nhập liệu, modal, biểu đồ, thẻ thống kê và sidebar được tách thành các component riêng, giúp tăng khả năng tái sử dụng và giảm lặp lại mã nguồn. TypeScript hỗ trợ kiểm tra kiểu tĩnh, giúp nhóm giảm lỗi khi truyền props, xử lý dữ liệu API và xây dựng các model dữ liệu phía frontend. \cite{reacthomepage}
+
+\par Vite được sử dụng làm công cụ phát triển và build ứng dụng web. Trong quá trình phát triển, Vite cung cấp dev server nhanh và hỗ trợ hot module replacement, giúp lập trình viên quan sát thay đổi giao diện gần như ngay lập tức. Khi triển khai production, Vite build ứng dụng thành static assets để đồng bộ lên Amazon S3. React Router DOM được sử dụng để định nghĩa route, điều hướng giữa các trang và bảo vệ các route yêu cầu đăng nhập. \cite{vitedocs}
+
+\par Axios được sử dụng để gọi API từ frontend đến backend. Ứng dụng cấu hình interceptor để tự động xử lý một số lỗi xác thực, đặc biệt là trường hợp access token hết hạn và cần gọi API refresh token. Recharts được dùng để trực quan hóa dữ liệu đo thông qua biểu đồ, i18next và react-i18next hỗ trợ đa ngôn ngữ cho giao diện, còn Lucide React và React Icons cung cấp hệ thống biểu tượng nhất quán cho các màn hình.
+
+\subsection{Trang web dành cho quản trị viên}
+
+\subsubsection{Giới thiệu tổng quan}
+\par Trang web quản trị được xây dựng cho quản trị viên hệ thống. Khác với ứng dụng web dành cho bác sĩ tập trung vào nghiệp vụ theo dõi sức khỏe, trang quản trị tập trung vào các nghiệp vụ vận hành như quản lý tài khoản, quản lý khoa phòng, phân công nhân viên y tế phụ trách bệnh nhân và theo dõi lịch sử hoạt động. Việc tách biệt hai ứng dụng web giúp làm rõ ranh giới quyền hạn giữa bác sĩ và quản trị viên, đồng thời hạn chế việc bác sĩ truy cập nhầm các chức năng không thuộc nhiệm vụ chuyên môn.
+
+\par Trang quản trị cũng được xây dựng bằng React, TypeScript và Vite. Các route bên trong trang quản trị yêu cầu người dùng đăng nhập và có vai trò \texttt{admin}. Nếu người dùng không có đúng vai trò, hệ thống sẽ chuyển về trang đăng nhập hoặc từ chối truy cập. Đây là lớp bảo vệ cần thiết vì các chức năng quản trị có thể tác động đến toàn bộ dữ liệu vận hành của hệ thống.
+
+
+\subsubsection{Các chức năng chính}
+\par Trang quản trị tập trung vào các nghiệp vụ vận hành hệ thống, không trực tiếp xử lý dữ liệu đo hằng ngày như web bác sĩ hoặc mobile app. Các chức năng được gom thành các nhóm dưới đây để thể hiện rõ vai trò của quản trị viên trong việc chuẩn bị dữ liệu người dùng, tổ chức khoa phòng, thiết lập phân công và giám sát hoạt động hệ thống.
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{longtable}{|L{4.2cm}|L{10.2cm}|}
+    \hline
+    \textbf{Nhóm chức năng} & \textbf{Nội dung chính} \\
+    \hline
+    \endfirsthead
+    \hline
+    \textbf{Nhóm chức năng} & \textbf{Nội dung chính} \\
+    \hline
+    \endhead
+
+    Dashboard quản trị &
+    Hiển thị thông tin tổng quan về hệ thống, bao gồm số lượng tài khoản, tình trạng vận hành và một số hoạt động gần đây. Đây là màn hình giúp quản trị viên nắm nhanh trạng thái chung trước khi đi vào từng module chi tiết. \\
+    \hline
+
+    Quản lý người dùng &
+    Quản trị viên có thể quản lý tài khoản bác sĩ, bệnh nhân và y tá, bao gồm xem danh sách, tạo mới, cập nhật thông tin, thay đổi trạng thái tài khoản và kiểm tra các thông tin định danh cần thiết. \\
+    \hline
+
+    Quản lý khoa phòng &
+    Hệ thống cho phép tạo, cập nhật và quản lý khoa phòng, đồng thời gắn bác sĩ hoặc y tá với khoa tương ứng. Chức năng này giúp dữ liệu nhân sự y tế có cấu trúc rõ hơn và thuận tiện cho việc phân công. \\
+    \hline
+
+    Phân công theo dõi &
+    Quản trị viên phân công bác sĩ hoặc y tá phụ trách từng bệnh nhân. Dữ liệu phân công được sử dụng để giới hạn phạm vi truy cập và xác định nhân viên y tế liên quan khi bệnh nhân phát sinh cảnh báo. \\
+    \hline
+
+    Lịch sử hoạt động và thiết lập &
+    Trang quản trị cho phép xem lịch sử các thao tác quan trọng trong hệ thống và quản lý một số thiết lập giao diện hoặc thiết lập vận hành. Đây là cơ sở hỗ trợ kiểm tra khi có sự cố hoặc khi cần truy vết thao tác người dùng. \\
+    \hline
+
+    \caption{Tổng quan các nhóm chức năng chính của trang quản trị}
+    \label{chapter3-table-admin-functions}
+\end{longtable}
+\end{center}
+
+\subsubsection{Các công nghệ, thư viện và framework được chọn}
+\par Trang quản trị sử dụng cùng nhóm công nghệ chính với ứng dụng web bác sĩ, bao gồm React, TypeScript và Vite. Cách lựa chọn này giúp nhóm thống nhất cách tổ chức frontend, dùng lại kinh nghiệm phát triển component, cấu hình build và quy trình triển khai. React Router DOM được dùng để quản lý routing và bảo vệ route dành riêng cho quản trị viên. Axios được dùng để giao tiếp với backend API và xử lý refresh token khi phiên đăng nhập hết hạn. Recharts hỗ trợ trực quan hóa các số liệu tổng quan trên dashboard quản trị, còn i18next hỗ trợ đa ngôn ngữ cho giao diện.
+
+\subsection{Hệ thống backend}
+
+\subsubsection{Giới thiệu tổng quan}
+\par Backend là thành phần trung tâm của hệ thống, chịu trách nhiệm cung cấp API, xác thực người dùng, phân quyền theo vai trò, quản lý dữ liệu nghiệp vụ, xử lý cảnh báo, xử lý nhắc nhở, gửi thông báo và giao tiếp thời gian thực. Backend được xây dựng bằng ngôn ngữ Go với Gin framework. Gin là một HTTP web framework hiệu năng cao, phù hợp để xây dựng RESTful API và các dịch vụ web có yêu cầu phản hồi nhanh. \cite{ginframework}
+
+\par Backend được chia thành nhiều tầng nhằm tách biệt trách nhiệm giữa các phần của hệ thống. Tầng router khai báo endpoint, tầng handler tiếp nhận request và trả response, tầng service xử lý nghiệp vụ, tầng repository thao tác với MongoDB, còn các middleware xử lý xác thực, phân quyền và ghi log hoạt động. Cách tổ chức này giúp mã nguồn dễ bảo trì, dễ kiểm thử hơn và thuận tiện khi cần mở rộng thêm nghiệp vụ mới như loại chỉ số sức khỏe mới, vai trò người dùng mới hoặc workflow xử lý dữ liệu mới.
+
+
+\subsubsection{Các nhóm chức năng chính}
+\par Backend cung cấp nhiều nhóm API khác nhau cho mobile app, web bác sĩ và admin web. Để người đọc có cái nhìn tổng quan trước khi đi vào bảng endpoint chi tiết, các nhóm chức năng backend được tóm tắt theo từng mảng nghiệp vụ như sau.
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{longtable}{|L{4.2cm}|L{10.2cm}|}
+    \hline
+    \textbf{Nhóm chức năng} & \textbf{Vai trò trong hệ thống} \\
+    \hline
+    \endfirsthead
+    
+
+
+    Xác thực và phân quyền &
+    Xử lý đăng ký, đăng nhập, refresh token, đăng xuất, lấy thông tin người dùng hiện tại, đặt lại mật khẩu, kích hoạt tài khoản và đăng nhập Google OAuth2. Đây là nhóm chức năng nền tảng để xác định người dùng và kiểm soát quyền truy cập. \\
+    \hline
+
+    Quản lý người dùng và tổ chức &
+    Quản lý thông tin bệnh nhân, bác sĩ, y tá, quản trị viên, khoa phòng và quan hệ phân công. Nhóm chức năng này giúp hệ thống xác định ai là người phụ trách bệnh nhân nào và dữ liệu nào được phép truy cập. \\
+    \hline
+
+    Dữ liệu sức khỏe, ngưỡng và cảnh báo &
+    Lưu trữ dữ liệu đo, cho phép bác sĩ cấu hình ngưỡng an toàn và sinh cảnh báo khi chỉ số vượt ngưỡng. Đây là nhóm nghiệp vụ cốt lõi của hệ thống theo dõi bệnh nhân từ xa. \\
+    \hline
+
+    Nhắc nhở và thông báo &
+    Hỗ trợ bác sĩ tạo nhắc nhở đo chỉ số hoặc dùng thuốc, đồng thời quản lý thông báo trong ứng dụng và token thiết bị phục vụ push notification qua Firebase Cloud Messaging. \\
+    \hline
+
+    Chat và thời gian thực &
+    Cung cấp hội thoại giữa bác sĩ và bệnh nhân, lưu trữ tin nhắn, hỗ trợ WebSocket và Redis Pub/Sub để gửi sự kiện tin nhắn hoặc cảnh báo mới đến client theo thời gian gần thực. \\
+    \hline
+
+    Quản trị và tài liệu API &
+    Ghi nhận lịch sử hoạt động để quản trị viên theo dõi các thao tác quan trọng, đồng thời cung cấp Swagger UI giúp nhóm phát triển tra cứu và kiểm thử endpoint trong quá trình cài đặt. \\
+    \hline
+
+    \caption{Tổng quan các nhóm chức năng chính của backend}
+    \label{chapter3-table-backend-function-groups}
+\end{longtable}
+\end{center}
+
+\subsubsection{Kiến trúc mã nguồn backend}
+\par Mã nguồn backend được tổ chức theo các thư mục chính tương ứng với từng vai trò trong kiến trúc. Thư mục \texttt{cmd/server} là entrypoint khởi chạy API server, còn \texttt{cmd/worker} là entrypoint khởi chạy Temporal worker. Thư mục \texttt{config} chứa cấu hình kết nối MongoDB, Redis, OAuth2, Cloudinary và Nginx. Thư mục \texttt{internal/domain} định nghĩa các entity nghiệp vụ như người dùng, dữ liệu đo, ngưỡng, cảnh báo, nhắc nhở, phân công, khoa phòng, tin nhắn và thông báo. Thư mục \texttt{internal/dto} định nghĩa dữ liệu request và response trao đổi giữa client và server.
+
+\par Các tầng xử lý chính của backend được đặt trong các thư mục \texttt{internal/repository}, \texttt{internal/service}, \texttt{internal/handler}, \texttt{internal/router}, \texttt{internal/middleware} và \texttt{internal/container}. Repository chịu trách nhiệm thao tác trực tiếp với MongoDB, service xử lý logic nghiệp vụ, handler tiếp nhận HTTP request và trả HTTP response, router khai báo route API, middleware xử lý JWT authentication, kiểm tra vai trò và ghi log hoạt động, còn container khởi tạo và liên kết các dependency trong hệ thống. Các tích hợp bên ngoài được đặt trong \texttt{external/temporal} và \texttt{external/fcm}, trong khi \texttt{internal/ws} và \texttt{internal/realtime} xử lý WebSocket cho chat và thông báo thời gian thực.
+
+\begin{center}
+    \begin{figure}[H]
+    \begin{center}
+        % TODO: Thiết kế hình mô tả các tầng:
+        % Router/Handler -> Service -> Repository -> MongoDB
+        % Service -> Temporal Client -> Worker -> Activities
+        % Service -> Redis/FCM/WebSocket
+        \includegraphics[width=\textwidth,keepaspectratio]{images/Chapter3/rpm-backend-layered-architecture.png}
+    \end{center}
+    \caption{\textit{Sơ đồ kiến trúc mã nguồn backend}}
+    \label{chapter3-image02}
+    \end{figure}
+\end{center}
+
+\subsubsection{Các API chính của hệ thống}
+\par Bảng dưới đây tổng hợp các nhóm API chính của hệ thống. Để tránh lỗi tràn chữ trong báo cáo, các endpoint dài được trình bày bằng lệnh \texttt{\textbackslash endpoint\{...\}}. Lệnh này cần được định nghĩa ở phần preamble của file chính như hướng dẫn ở cuối chương.
+
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\footnotesize
+\begin{longtable}{|L{3.0cm}|L{5.8cm}|L{6.4cm}|}
+    \hline
+    \textbf{Nhóm API} & \textbf{Endpoint chính} & \textbf{Mục đích sử dụng} \\
+    \hline
+    \endfirsthead
+    \hline
+    \textbf{Nhóm API} & \textbf{Endpoint chính} & \textbf{Mục đích sử dụng} \\
+    \hline
+    \endhead
+
+    Xác thực &
+    \endpoint{/auth/register}, \endpoint{/auth/login}, \endpoint{/auth/me}, \endpoint{/auth/refresh}, \endpoint{/auth/logout} &
+    Phục vụ đăng ký, đăng nhập, lấy thông tin người dùng hiện tại, làm mới phiên làm việc và đăng xuất khỏi hệ thống. Đây là nhóm API nền tảng được sử dụng bởi cả mobile app, web bác sĩ và admin web. \\
+    \hline
+
+    Người dùng &
+    \endpoint{/users}, \endpoint{/users/patients}, \endpoint{/users/doctors}, \endpoint{/users/nurses} &
+    Quản lý tài khoản và hồ sơ của bệnh nhân, bác sĩ, y tá. Nhóm API này chủ yếu được dùng bởi trang quản trị và một số màn hình hồ sơ cá nhân trên các ứng dụng client. \\
+    \hline
+
+    Dữ liệu đo &
+    \endpoint{/measurements} &
+    Tạo, cập nhật và truy vấn dữ liệu đo sức khỏe của bệnh nhân, bao gồm huyết áp, đường huyết, nhịp tim, thân nhiệt, nhịp thở và SpO2. Dữ liệu được sử dụng làm đầu vào cho cơ chế cảnh báo. \\
+    \hline
+
+    Ngưỡng an toàn &
+    \endpoint{/thresholds} &
+    Cho phép bác sĩ cấu hình ngưỡng cảnh báo cho từng bệnh nhân. Các ngưỡng này được backend sử dụng khi đánh giá một bản đo mới để xác định có phát sinh cảnh báo hay không. \\
+    \hline
+
+    Cảnh báo &
+    \endpoint{/alerts/doctors/me}, \endpoint{/alerts/nurses/me}, \endpoint{/alerts/patients/me}, \endpoint{/alerts/ack/:id} &
+    Truy vấn cảnh báo theo vai trò người dùng, xem các cảnh báo liên quan đến bệnh nhân được phân công và xác nhận cảnh báo đã được tiếp nhận hoặc xử lý. \\
+    \hline
+
+    Nhắc nhở &
+    \endpoint{/reminders} &
+    Cho phép bác sĩ tạo, cập nhật, tạm dừng hoặc hủy các nhắc nhở đo chỉ số và dùng thuốc cho bệnh nhân. Các nhắc nhở này được xử lý bởi Temporal workflow để gửi thông báo đúng thời điểm. \\
+    \hline
+
+    Phân công &
+    \endpoint{/assignments} &
+    Hỗ trợ quản trị viên phân công bác sĩ hoặc y tá phụ trách bệnh nhân. Dữ liệu phân công được dùng để giới hạn phạm vi truy cập và xác định nhân viên y tế nhận cảnh báo liên quan. \\
+    \hline
+
+    Khoa phòng &
+    \endpoint{/departments} &
+    Quản lý khoa phòng và thành viên thuộc khoa, giúp hệ thống phản ánh cấu trúc tổ chức của cơ sở y tế và hỗ trợ phân loại bác sĩ, y tá theo đơn vị chuyên môn. \\
+    \hline
+
+    Chat &
+    \endpoint{/chat/ws}, \endpoint{/chat/conversations}, \endpoint{/chat/conversations/:id/messages} &
+    Hỗ trợ hội thoại và tin nhắn giữa bác sĩ với bệnh nhân. Nhóm API này kết hợp REST API để lấy dữ liệu lịch sử và WebSocket để gửi hoặc nhận tin nhắn theo thời gian thực. \\
+    \hline
+
+    Thông báo &
+    \endpoint{/notification-tokens}, \endpoint{/notifications} &
+    Đăng ký token thiết bị để nhận push notification, lấy danh sách thông báo trong ứng dụng, đếm số thông báo chưa đọc và đánh dấu thông báo đã đọc. \\
+    \hline
+
+    Thời gian thực &
+    \endpoint{/realtime/ws} &
+    Cung cấp WebSocket dành cho bác sĩ để nhận sự kiện cảnh báo mới hoặc tin nhắn mới mà không cần liên tục gọi API làm mới dữ liệu. \\
+    \hline
+
+    Lịch sử hoạt động &
+    \endpoint{/activity-logs} &
+    Cho phép quản trị viên theo dõi các thao tác quan trọng trong hệ thống, bao gồm người thực hiện, loại hành động, tài nguyên bị tác động, thời gian và thông tin request liên quan. \\
+    \hline
+
+    Tài liệu API &
+    \endpoint{/swagger} &
+    Cung cấp giao diện Swagger UI phục vụ kiểm thử thủ công, tra cứu endpoint và hỗ trợ quá trình phối hợp giữa backend, frontend và mobile. \\
+    \hline
+
+    \caption{Các nhóm API chính của hệ thống}
+    \label{chapter3-table01}
+\end{longtable}
+\normalsize
+\end{center}
+
+\section{Hệ thống máy chủ và triển khai trên AWS}
+
+\subsection{Mô hình triển khai}
+\par Hệ thống được triển khai trên AWS theo hướng tách biệt giữa frontend và backend. Các ứng dụng web được build thành static files, lưu trữ trên Amazon S3 và phục vụ người dùng qua Cloudflare để thiết lập HTTPS cùng tên miền truy cập. Backend được đóng gói bằng Docker và triển khai trên Amazon EC2. Cách triển khai này phù hợp với quy mô đồ án vì dễ cấu hình, dễ kiểm soát chi phí và thuận tiện khi cần cập nhật từng thành phần riêng lẻ.
+
+\par Trong mô hình triển khai hiện tại, người dùng truy cập giao diện web qua tên miền được quản lý bởi Cloudflare. Cloudflare chấm dứt kết nối HTTPS phía client, sau đó chuyển tiếp request đến bucket S3 chứa static files của ứng dụng web bác sĩ hoặc trang quản trị. Các request nghiệp vụ từ frontend được gửi đến tên miền API trên AWS EC2. Nginx tiếp nhận request, xử lý HTTPS, sau đó chuyển tiếp request đến API server đang chạy trong container nội bộ. Đối với các kết nối WebSocket, Nginx cũng được cấu hình các header cần thiết để nâng cấp kết nối HTTP sang WebSocket.
+
+\par Mô hình triển khai này giúp nhóm kiểm soát tương đối đầy đủ môi trường vận hành nhưng vẫn không quá phức tạp đối với phạm vi đồ án. Trong tương lai, nếu số lượng người dùng tăng lên, hệ thống có thể tách riêng các service quan trọng như API server, worker, Redis và Temporal sang các instance hoặc dịch vụ chuyên dụng hơn. Tuy nhiên, ở giai đoạn hiện tại, việc triển khai nhiều container trên một EC2 bằng Docker Compose là phương án phù hợp cho kiểm thử và demo.
+
+\begin{center}
+    \begin{figure}[H]
+    \begin{center}
+        % TODO: Thiết kế hình mô tả AWS deployment:
+        % GitHub Actions -> DockerHub -> EC2 Docker Compose
+        % GitHub Actions -> S3 Web Bucket/Admin Bucket
+        % Client -> Cloudflare (HTTPS) -> S3 frontend
+        % Client -> API domain -> Nginx -> Go server
+        \includegraphics[width=\textwidth,keepaspectratio]{images/Chapter3/rpm-aws-deployment.png}
+    \end{center}
+    \caption{\textit{Sơ đồ triển khai hệ thống trên AWS}}
+    \label{chapter3-image03}
+    \end{figure}
+\end{center}
+
+\subsection{Amazon S3 cho ứng dụng web}
+\par Ứng dụng web dành cho bác sĩ và trang quản trị được build bằng Vite. Sau khi build, kết quả được tạo ra trong thư mục \texttt{dist}. Các file tĩnh trong thư mục này được đồng bộ lên các bucket Amazon S3 tương ứng thông qua GitHub Actions. Vì hai ứng dụng web này là Single Page Application, phần giao diện chủ yếu bao gồm HTML, CSS, JavaScript và các static assets, nên việc triển khai trên S3 là phù hợp và giúp giảm tải cho máy chủ backend.
+
+\par Trong hệ thống hiện tại, nhóm sử dụng hai bucket S3 chính: một bucket dành cho ứng dụng web bác sĩ và một bucket dành cho trang quản trị. Mỗi khi có thay đổi ở mã nguồn frontend, GitHub Actions sẽ build lại ứng dụng và đồng bộ nội dung mới lên bucket tương ứng. Để người dùng truy cập frontend qua HTTPS và tên miền tùy chỉnh, nhóm cấu hình Cloudflare làm lớp phía trước S3. Cloudflare quản lý chứng chỉ SSL/TLS, chấm dứt kết nối HTTPS phía client và chuyển tiếp request đến bucket S3 làm origin. Cách triển khai này giúp frontend có HTTPS mà không cần tự cấu hình chứng chỉ trực tiếp trên S3, đồng thời tách biệt rõ trách nhiệm giữa lưu trữ static files và phục vụ giao diện qua internet.
+
+\subsection{Amazon EC2 cho backend}
+\par Backend được triển khai trên Amazon EC2 để nhóm có thể chủ động quản lý môi trường chạy server, Docker, Nginx, Redis và Temporal. EC2 cho phép tùy chọn cấu hình CPU, RAM, ổ đĩa và network phù hợp với nhu cầu của hệ thống. Trong phạm vi đồ án, một instance EC2 có thể đáp ứng nhu cầu triển khai thử nghiệm, kiểm thử tích hợp và demo các luồng chính của hệ thống.
+
+\par Các thành phần chạy trên EC2 được tổ chức thành nhiều container. Container \texttt{nginx} đóng vai trò reverse proxy và mở các cổng cần thiết ra internet. Container \texttt{server} chạy Go API server ở cổng nội bộ, tiếp nhận request sau khi được Nginx chuyển tiếp. Container \texttt{worker} chạy Temporal worker để xử lý các workflow nền. Container \texttt{temporal} phục vụ orchestration workflow, còn container \texttt{redis} phục vụ Pub/Sub và các nhu cầu dữ liệu tạm. Việc tách thành nhiều container giúp mỗi service có trách nhiệm rõ ràng và dễ kiểm tra log khi xảy ra sự cố.
+
+\subsection{Amazon VPC và bảo mật mạng}
+\par Các tài nguyên backend trên EC2 được đặt trong môi trường mạng của AWS. Amazon VPC cho phép tạo mạng riêng logic và cấu hình subnet, route table, internet gateway, security group để kiểm soát luồng truy cập vào tài nguyên. Trong mô hình của hệ thống, security group cần mở các cổng cần thiết như HTTP, HTTPS và SSH cho quản trị máy chủ, trong khi các cổng nội bộ như cổng API server, Redis hoặc Temporal nên được giới hạn trong phạm vi máy chủ hoặc mạng nội bộ.
+
+\par Cách cấu hình này giúp giảm rủi ro để lộ các service nội bộ trực tiếp ra internet. Người dùng chỉ giao tiếp với backend thông qua endpoint public đã được Nginx kiểm soát, còn các service hỗ trợ như Redis và Temporal chỉ phục vụ giao tiếp giữa các container trong cùng môi trường triển khai. Đây là nguyên tắc quan trọng vì hệ thống xử lý dữ liệu cá nhân và dữ liệu sức khỏe, vốn cần được bảo vệ cẩn thận hơn so với dữ liệu thông thường.
+
+\subsection{Container Deployment bằng Docker}
+\par Backend được đóng gói bằng Docker nhằm đảm bảo tính nhất quán giữa môi trường phát triển và môi trường triển khai. Dockerfile của backend sử dụng multi-stage build: giai đoạn đầu build hai binary \texttt{server} và \texttt{worker}, giai đoạn sau tạo image nhẹ hơn để chạy ứng dụng. Cách build này giúp image production gọn hơn, giảm số lượng công cụ không cần thiết trong container chạy thật và hạn chế khác biệt giữa máy của lập trình viên với máy chủ triển khai.
+
+\par Docker Compose được sử dụng để khởi chạy nhiều service trên cùng một máy chủ EC2. Nhờ Docker Compose, nhóm có thể khởi chạy toàn bộ backend stack bằng một lệnh, tách biệt vai trò giữa API server, worker, Redis, Temporal và Nginx, đồng thời dễ cập nhật phiên bản backend bằng cách pull image mới và khởi động lại container. Trong tương lai, nếu quy mô tăng, cách tổ chức container hiện tại cũng tạo tiền đề để tách worker ra instance riêng hoặc chuyển sang các nền tảng container chuyên dụng hơn như ECS hoặc EKS.
+
+\subsection{Nginx và HTTPS}
+\par Nginx được sử dụng làm reverse proxy cho backend. Các request từ client đi vào Nginx qua cổng 80 hoặc 443, sau đó được chuyển tiếp đến API server nội bộ. Nginx cũng được cấu hình để hỗ trợ WebSocket bằng các header \texttt{Upgrade} và \texttt{Connection}, giúp các kênh chat và realtime notification có thể hoạt động khi đi qua reverse proxy.
+
+\par Đối với HTTPS, cấu hình Nginx sử dụng thư mục chứng chỉ \texttt{/etc/letsencrypt}. Khi triển khai thực tế, nhóm có thể sử dụng Let's Encrypt để cấp chứng chỉ SSL/TLS cho tên miền API. Việc sử dụng HTTPS là cần thiết vì hệ thống truyền tải token xác thực, thông tin cá nhân và dữ liệu sức khỏe. Nếu không mã hóa kết nối, các dữ liệu này có thể bị đánh cắp hoặc sửa đổi trong quá trình truyền qua mạng.
+
+\subsection{Continuous Integration và Continuous Deployment}
+\par Hệ thống sử dụng GitHub Actions để tự động hóa quy trình kiểm thử, build và triển khai. Quy trình CI/CD được chia thành hai nhóm chính là frontend và backend. Với frontend, workflow tập trung vào việc cài đặt dependencies, build ứng dụng và đồng bộ static files lên Amazon S3. Với backend, workflow tập trung vào kiểm tra mã nguồn, build Docker image, push image lên registry và cập nhật container trên EC2.
+
+\subsubsection{CI/CD cho frontend}
+\par Đối với ứng dụng web bác sĩ và trang quản trị, workflow frontend thực hiện lần lượt các bước checkout mã nguồn từ repository, cài đặt Node.js, cài đặt dependencies bằng \texttt{npm install}, tạo file môi trường production chứa \texttt{VITE\_API\_URL}, build ứng dụng bằng \texttt{npm run build}, upload artifact phục vụ kiểm tra nếu cần, cấu hình AWS credentials và đồng bộ thư mục \texttt{dist} lên Amazon S3 bằng lệnh \texttt{aws s3 sync}. Quy trình này giúp giảm thao tác thủ công và đảm bảo mỗi lần deploy đều sử dụng đúng cấu hình production.
+
+\subsubsection{CI/CD cho backend}
+\par Đối với backend, workflow thực hiện các bước checkout mã nguồn, cài đặt Go, tải dependencies bằng \texttt{go mod download}, kiểm tra định dạng mã nguồn bằng \texttt{go fmt}, phân tích lỗi tĩnh bằng \texttt{go vet} và \texttt{golangci-lint}, chạy test bằng \texttt{go test}, build binary server để kiểm tra khả năng biên dịch, build Docker image cho backend và Nginx, push image lên Docker Hub, sau đó SSH vào EC2 và chạy \texttt{docker compose up -d --pull always} để cập nhật hệ thống. Cách làm này giúp quy trình cập nhật backend nhất quán hơn, đặc biệt khi backend có nhiều container phụ thuộc lẫn nhau.
+
+\subsubsection{Triển khai ứng dụng di động}
+\par Ứng dụng di động được phát triển bằng Expo. Trong phạm vi đồ án, ứng dụng có thể được chạy thử trên thiết bị thật hoặc giả lập thông qua Expo CLI. Đối với bản cài đặt Android, dự án có cấu hình EAS để build file APK phục vụ kiểm thử và demo. Quy trình phát hành lên Google Play hoặc App Store chưa phải trọng tâm của giai đoạn hiện tại, nhưng có thể được thực hiện trong các giai đoạn sau nếu hệ thống được triển khai thực nghiệm rộng rãi hơn.
+
+\section{Cơ sở dữ liệu}
+
+\subsection{Giới thiệu tổng quan}
+\par Hệ thống sử dụng MongoDB làm cơ sở dữ liệu chính. MongoDB là cơ sở dữ liệu NoSQL lưu trữ dữ liệu dưới dạng document trong các collection. Cách tổ chức này phù hợp với hệ thống RPM vì dữ liệu người dùng, chỉ số đo, cảnh báo, nhắc nhở và thông báo có cấu trúc linh hoạt, có thể mở rộng thêm thuộc tính trong tương lai mà không cần thay đổi cứng nhắc như mô hình bảng quan hệ truyền thống. \cite{mongodbcollections}
+
+\par Các dữ liệu trong hệ thống được tổ chức xoay quanh người dùng và dữ liệu sức khỏe của bệnh nhân. Collection \texttt{users} lưu trữ thông tin của nhiều vai trò khác nhau. Collection \texttt{measurements} lưu trữ dữ liệu đo sức khỏe. Collection \texttt{thresholds} lưu ngưỡng an toàn do bác sĩ cấu hình. Collection \texttt{alerts} lưu các cảnh báo được sinh ra khi dữ liệu đo vượt ngưỡng. Bên cạnh đó, hệ thống còn có các collection phục vụ phân công, khoa phòng, nhắc nhở, chat, thông báo và lịch sử hoạt động.
+
+\par Việc sử dụng MongoDB giúp nhóm linh hoạt trong giai đoạn phát triển, đặc biệt khi hệ thống có nhiều loại document với cấu trúc không hoàn toàn giống nhau. Ví dụ, tất cả người dùng đều có các trường thông tin chung như email, họ tên và vai trò, nhưng bệnh nhân, bác sĩ và y tá lại có thêm các trường riêng phục vụ nghiệp vụ. Dạng document của MongoDB cho phép lưu trữ các thông tin này trong cùng một collection \texttt{users} mà vẫn có thể mở rộng theo từng vai trò.
+
+\subsection{Sơ đồ thiết kế cơ sở dữ liệu}
+\begin{center}
+    \begin{figure}[H]
+    \begin{center}
+        % TODO: Thiết kế ERD/collection diagram:
+        % users 1-n measurements
+        % users(patient) 1-n thresholds, alerts, reminders
+        % assignments nối patient-doctor-nurse
+        % conversations/messages nối doctor-patient
+        % notifications/notification_tokens nối user
+        \includegraphics[width=\textwidth,keepaspectratio]{images/Chapter3/rpm-db-diagram.png}
+    \end{center}
+    \caption{\textit{Sơ đồ thiết kế cơ sở dữ liệu của hệ thống RPM}}
+    \label{chapter3-image04}
+    \end{figure}
+\end{center}
+
+\subsection{Mô tả chi tiết các collection}
+
+\par Dữ liệu của hệ thống được tổ chức thành nhiều collection khác nhau trong MongoDB. Mỗi collection đảm nhiệm một nhóm thông tin riêng, nhưng các collection vẫn có mối liên hệ nghiệp vụ với nhau thông qua mã người dùng, mã bệnh nhân, mã bác sĩ, mã lần đo hoặc mã hội thoại. Cách tổ chức này giúp hệ thống tách biệt rõ dữ liệu người dùng, dữ liệu sức khỏe, dữ liệu vận hành, dữ liệu giao tiếp và dữ liệu ghi nhận hoạt động. Nhờ đó, backend có thể truy vấn, mở rộng và bảo trì dữ liệu thuận tiện hơn trong quá trình phát triển hệ thống.
+
+\subsubsection{Tổng quan các collection chính}
+
+\begin{center}
+\begin{longtable}{|p{3.2cm}|p{4.2cm}|p{6.3cm}|}
+    \hline
+    \textbf{Nhóm dữ liệu} & \textbf{Collection} & \textbf{Vai trò trong hệ thống} \\
+    \hline
+    \endfirsthead
+    \hline
+    \textbf{Nhóm dữ liệu} & \textbf{Collection} & \textbf{Vai trò trong hệ thống} \\
+    \hline
+    \endhead
+
+    Người dùng và xác thực &
+    \texttt{users}, \texttt{refresh\_tokens} &
+    Lưu thông tin tài khoản, hồ sơ theo vai trò, trạng thái người dùng và refresh token phục vụ cơ chế duy trì phiên đăng nhập. \\
+    \hline
+
+    Theo dõi sức khỏe &
+    \texttt{measurements}, \texttt{thresholds}, \texttt{alerts} &
+    Lưu dữ liệu đo sức khỏe, ngưỡng an toàn do bác sĩ cấu hình và các cảnh báo được sinh ra khi chỉ số vượt ngưỡng. \\
+    \hline
+
+    Vận hành y tế &
+    \texttt{reminders}, \texttt{assignments}, \texttt{departments} &
+    Lưu nhắc nhở, quan hệ phân công giữa bệnh nhân với bác sĩ/y tá và thông tin khoa phòng trong hệ thống. \\
+    \hline
+
+    Giao tiếp và thông báo &
+    \texttt{conversations}, \texttt{messages}, \texttt{notification\_tokens}, \texttt{notifications} &
+    Lưu hội thoại, tin nhắn, token thiết bị và thông báo để hỗ trợ chat, push notification và trung tâm thông báo trong ứng dụng. \\
+    \hline
+
+    Giám sát hoạt động &
+    \texttt{activity\_logs} &
+    Lưu lịch sử thao tác của người dùng, hỗ trợ quản trị viên theo dõi hoạt động và kiểm tra khi có sự cố. \\
+    \hline
+
+    \caption{Tổng quan các collection chính trong hệ thống}
+    \label{chapter3-table-db-collections}
+\end{longtable}
+\end{center}
+
+\subsubsection{Nhóm dữ liệu người dùng và xác thực}
+
+\par Collection \texttt{users} là collection trung tâm dùng để lưu trữ thông tin của tất cả người dùng trong hệ thống. Thay vì tách riêng bệnh nhân, bác sĩ, y tá và quản trị viên thành nhiều collection độc lập, hệ thống lưu các thông tin chung trong cùng một collection và phân biệt bằng trường vai trò. Các trường chung bao gồm mã người dùng, vai trò, họ tên, email, mật khẩu đã mã hóa, nhà cung cấp đăng nhập, giới tính, ngày sinh, số điện thoại, ảnh đại diện, trạng thái tài khoản, token đặt lại mật khẩu, token kích hoạt tài khoản, thời gian tạo và thời gian cập nhật. Cách thiết kế này giúp việc xác thực, phân quyền và truy vấn thông tin người dùng được thực hiện thống nhất hơn.
+
+\par Bên cạnh các trường chung, document trong \texttt{users} có thể mở rộng thêm các trường riêng tùy theo vai trò. Đối với bệnh nhân, hệ thống có thể lưu số bảo hiểm, CCCD, thông tin liên hệ khẩn cấp và tiền sử bệnh để hỗ trợ bác sĩ trong quá trình theo dõi. Đối với bác sĩ và y tá, hệ thống lưu thêm mã khoa phòng, nơi làm việc, số chứng chỉ hành nghề và số năm kinh nghiệm. Riêng bác sĩ có thêm thông tin chuyên khoa để phản ánh vai trò chuyên môn trong hệ thống. Collection \texttt{refresh\_tokens} được sử dụng để lưu refresh token, phục vụ cơ chế cấp lại access token và duy trì phiên đăng nhập của người dùng một cách có kiểm soát.
+
+\subsubsection{Nhóm dữ liệu theo dõi sức khỏe}
+
+\par Collection \texttt{measurements} lưu trữ toàn bộ dữ liệu đo sức khỏe của bệnh nhân và là một trong những collection quan trọng nhất của hệ thống. Mỗi document trong collection này tương ứng với một lần ghi nhận chỉ số, bao gồm mã bệnh nhân, loại đo, thân nhiệt, nhịp tim, nhịp thở, SpO2, huyết áp tâm thu, huyết áp tâm trương, MAP, đường huyết, thời điểm đo liên quan đến bữa ăn, thiết bị đo, ghi chú và thời gian tạo/cập nhật. Dữ liệu trong collection này được sử dụng cho nhiều chức năng khác nhau như hiển thị lịch sử đo trên ứng dụng di động, vẽ biểu đồ xu hướng trên web bác sĩ và làm đầu vào cho workflow đánh giá cảnh báo.
+
+\par Collection \texttt{thresholds} lưu trữ các ngưỡng an toàn do bác sĩ cấu hình cho từng bệnh nhân. Mỗi bộ ngưỡng thường gắn với một mã bệnh nhân và một mã bác sĩ, bao gồm ngưỡng thấp/cao của thân nhiệt, nhịp tim, nhịp thở, SpO2 tối thiểu, huyết áp tâm thu, huyết áp tâm trương, đường huyết, thời gian có hiệu lực và thời gian hết hiệu lực nếu có. Khi bệnh nhân hoặc y tá tạo một bản ghi đo mới, backend sử dụng bộ ngưỡng mới nhất để so sánh với giá trị đo được. Nếu có chỉ số nằm ngoài khoảng an toàn, hệ thống sẽ tạo cảnh báo tương ứng.
+
+\par Collection \texttt{alerts} lưu trữ các cảnh báo được sinh ra từ quá trình đánh giá dữ liệu đo. Mỗi cảnh báo gồm mã bệnh nhân, mã lần đo, danh sách vi phạm, mức độ cảnh báo, trạng thái cảnh báo, người xác nhận, thời gian xác nhận và thời gian tạo/cập nhật. Danh sách vi phạm giúp hệ thống biểu diễn rõ chỉ số nào vượt ngưỡng, giá trị đo được là bao nhiêu và ngưỡng tham chiếu là gì. Dữ liệu cảnh báo được sử dụng ở cả phía bệnh nhân, bác sĩ và y tá, giúp các vai trò liên quan có thể phát hiện và theo dõi những trường hợp bất thường.
+
+\subsubsection{Nhóm dữ liệu vận hành y tế}
+
+\par Collection \texttt{reminders} lưu trữ các nhắc nhở do bác sĩ tạo cho bệnh nhân. Mỗi document bao gồm mã bệnh nhân, loại nhắc nhở, nội dung, giờ, phút, các ngày trong tuần, múi giờ, trạng thái, ngày bắt đầu, ngày kết thúc và người tạo. Dữ liệu nhắc nhở được sử dụng bởi workflow nền để xác định thời điểm cần gửi thông báo cho bệnh nhân. Nhờ đó, hệ thống có thể hỗ trợ bác sĩ nhắc bệnh nhân đo chỉ số, dùng thuốc hoặc thực hiện một hành động chăm sóc sức khỏe theo lịch.
+
+\par Collection \texttt{assignments} lưu trữ quan hệ phân công giữa bệnh nhân với bác sĩ hoặc y tá. Đây là collection có vai trò quan trọng trong việc kiểm soát phạm vi theo dõi và truy cập dữ liệu. Dựa trên dữ liệu phân công, hệ thống có thể xác định bác sĩ nào được xem danh sách bệnh nhân nào, y tá nào được nhập dữ liệu cho bệnh nhân nào và bác sĩ nào cần nhận thông tin khi bệnh nhân phát sinh cảnh báo. Collection \texttt{departments} lưu thông tin khoa phòng như tên khoa, mô tả, thời gian tạo và thời gian cập nhật, giúp hệ thống tổ chức nhân sự y tế theo đơn vị chuyên môn thay vì chỉ quản lý người dùng dưới dạng danh sách rời rạc.
+
+\subsubsection{Nhóm dữ liệu giao tiếp và thông báo}
+
+\par Collection \texttt{conversations} lưu trữ thông tin hội thoại giữa bệnh nhân và bác sĩ. Mỗi hội thoại gồm danh sách người tham gia, tin nhắn mới nhất, trạng thái đã đọc hoặc đã nhận của từng người tham gia và thời gian cập nhật. Collection \texttt{messages} lưu trữ các tin nhắn thuộc từng hội thoại. Tin nhắn có thể do người dùng gửi trực tiếp hoặc do hệ thống tự động tạo khi phát sinh cảnh báo. Trong trường hợp tin nhắn liên quan đến cảnh báo, document có thể chứa trường \texttt{relatedAlertId} để liên kết tin nhắn với cảnh báo cụ thể. Hai collection này kết hợp với WebSocket để xây dựng chức năng trao đổi giữa bệnh nhân và bác sĩ theo thời gian gần thực.
+
+\par Collection \texttt{notification\_tokens} lưu trữ token thiết bị dùng để gửi push notification. Mỗi document gồm mã người dùng, mã thiết bị, nền tảng, nhà cung cấp, token, trạng thái hoạt động và thời gian cập nhật cuối. Khi hệ thống cần gửi thông báo đẩy, backend sử dụng các token còn hoạt động để gửi thông báo đến thiết bị tương ứng. Collection \texttt{notifications} lưu các thông báo của từng người dùng, bao gồm loại thông báo, tiêu đề, nội dung, dữ liệu kèm theo, khóa chống trùng lặp, trạng thái gửi, lỗi gửi nếu có, thời gian gửi, thời gian đọc và thời gian tạo/cập nhật. Nhờ lưu thông báo vào cơ sở dữ liệu, người dùng vẫn có thể xem lại thông báo trong ứng dụng ngay cả khi thông báo đẩy đã biến mất khỏi thiết bị.
+
+\subsubsection{Nhóm dữ liệu giám sát hoạt động}
+
+\par Collection \texttt{activity\_logs} lưu trữ lịch sử hoạt động của người dùng trong hệ thống. Mỗi bản ghi có thể bao gồm người thực hiện, vai trò, loại hành động, tài nguyên bị tác động, phương thức HTTP, đường dẫn API, địa chỉ IP, user agent, mã trạng thái và metadata bổ sung. Collection này hỗ trợ quản trị viên theo dõi các thao tác quan trọng như tạo người dùng, cập nhật thông tin, phân công bệnh nhân, thay đổi khoa phòng hoặc các hành động quản trị khác.
+
+\par Việc ghi nhận lịch sử hoạt động giúp hệ thống có khả năng kiểm tra lại khi xảy ra sự cố hoặc khi cần xác định một thay đổi được thực hiện bởi ai và vào thời điểm nào. Trong phạm vi đồ án, collection này đóng vai trò như một lớp giám sát cơ bản cho hệ thống. Nếu phát triển ở quy mô thực tế, dữ liệu trong \texttt{activity\_logs} có thể tiếp tục được mở rộng theo hướng audit log đầy đủ hơn, phục vụ yêu cầu bảo mật, truy vết và vận hành hệ thống y tế.
+
+\section{Cài đặt chi tiết}
+
+\subsection{Cơ chế xác thực và phân quyền}
+
+\subsubsection{Giới thiệu tổng quan}
+\par Hệ thống sử dụng cơ chế xác thực dựa trên JWT. Khi người dùng đăng nhập thành công, backend tạo access token và refresh token. Access token được sử dụng để xác thực các request tiếp theo, trong khi refresh token được dùng để cấp lại access token khi phiên làm việc cần được làm mới. Ở phía frontend, các request API được gửi kèm thông tin xác thực, đồng thời Axios interceptor xử lý trường hợp access token hết hạn bằng cách gọi API refresh token.
+
+\par Hệ thống hỗ trợ bốn vai trò chính gồm \texttt{user.patient} dành cho bệnh nhân, \texttt{user.doctor} dành cho bác sĩ, \texttt{user.nurse} dành cho y tá và \texttt{admin} dành cho quản trị viên. Mỗi vai trò có phạm vi truy cập khác nhau. Bệnh nhân chủ yếu thao tác với dữ liệu của chính mình, bác sĩ thao tác với các bệnh nhân được phân công, y tá hỗ trợ nhập liệu hoặc theo dõi trong phạm vi được giao, còn quản trị viên quản lý người dùng, khoa phòng và phân công.
+
+\par Mỗi nhóm API được bảo vệ bằng middleware JWT và middleware kiểm tra vai trò. Ví dụ, các API cấu hình ngưỡng chỉ cho phép bác sĩ sử dụng, các API quản lý tài khoản người dùng chỉ cho phép quản trị viên, còn API xem cảnh báo được phân tách theo vai trò bệnh nhân, bác sĩ và y tá. Với dữ liệu sức khỏe, việc kiểm tra vai trò là chưa đủ; hệ thống còn cần kiểm tra quan hệ giữa người dùng hiện tại và bệnh nhân liên quan để đảm bảo dữ liệu chỉ được truy cập trong phạm vi hợp lệ.
+
+\subsubsection{Luồng đăng nhập}
+\par Luồng đăng nhập bắt đầu khi người dùng nhập email và mật khẩu ở ứng dụng web hoặc ứng dụng di động. Client gửi request đến API \texttt{/auth/login}, backend kiểm tra thông tin đăng nhập, trạng thái tài khoản và mật khẩu đã được mã hóa. Nếu thông tin hợp lệ, backend tạo access token và refresh token, sau đó trả token về cho client. Client sử dụng token này trong các request tiếp theo và gọi API \texttt{/auth/me} để lấy thông tin người dùng hiện tại. Dựa trên vai trò nhận được từ API, ứng dụng điều hướng người dùng đến giao diện phù hợp như bệnh nhân, y tá, bác sĩ hoặc quản trị viên.
+
+\subsection{Quy trình nhập và lưu trữ chỉ số sức khỏe}
+
+\subsubsection{Giới thiệu tổng quan}
+\par Chức năng nhập chỉ số sức khỏe là chức năng cốt lõi của hệ thống. Dữ liệu đo có thể được nhập bởi bệnh nhân hoặc y tá. Trong phạm vi đề tài, dữ liệu được nhập thủ công, chưa tích hợp trực tiếp với các thiết bị IoT như máy đo huyết áp hoặc máy đo đường huyết. Cách tiếp cận này giúp hệ thống dễ triển khai trong giai đoạn Proof-of-Concept, không phụ thuộc vào thiết bị phần cứng và phù hợp với mục tiêu minh họa mô hình theo dõi bệnh nhân từ xa.
+
+\par Mỗi lần đo có thể bao gồm huyết áp tâm thu, huyết áp tâm trương, MAP, đường huyết, thân nhiệt, nhịp tim, nhịp thở, SpO2, loại dữ liệu đo, thời điểm đo đường huyết trước ăn hoặc sau ăn, thiết bị đo và ghi chú nếu có. Với dữ liệu huyết áp, backend có thể tính chỉ số MAP theo công thức \texttt{MAP = (SYS + 2 * DIA) / 3}. Việc lưu thêm MAP giúp hệ thống có thêm một chỉ số tham khảo trong quá trình theo dõi huyết áp và tình trạng huyết động của bệnh nhân.
+
+\subsubsection{Mô tả luồng xử lý}
+\par Luồng xử lý bắt đầu khi bệnh nhân hoặc y tá nhập dữ liệu đo trên ứng dụng di động. Ứng dụng gửi dữ liệu đến API \texttt{POST /measurements}. Backend kiểm tra mã bệnh nhân, xác nhận người dùng hiện tại có quyền ghi nhận dữ liệu cho bệnh nhân đó, tính toán các chỉ số dẫn xuất nếu cần và lưu dữ liệu vào collection \texttt{measurements}. Sau khi lưu thành công, backend kích hoạt Temporal workflow để đánh giá dữ liệu đo với ngưỡng cảnh báo tương ứng. API trả kết quả về client để cập nhật giao diện, trong khi phần đánh giá cảnh báo và gửi thông báo được xử lý ở luồng nền.
+
+\subsection{Cơ chế cấu hình ngưỡng an toàn}
+
+\subsubsection{Giới thiệu tổng quan}
+\par Ngưỡng an toàn là cơ sở để hệ thống xác định một chỉ số đo có bất thường hay không. Trong hệ thống, bác sĩ là người tạo và cập nhật ngưỡng cho bệnh nhân. Mỗi bộ ngưỡng được lưu trong collection \texttt{thresholds}, gắn với một bệnh nhân và một bác sĩ cụ thể. Cách thiết kế này cho phép mỗi bệnh nhân có bộ ngưỡng riêng, phù hợp hơn so với việc áp dụng một ngưỡng cố định cho toàn bộ hệ thống.
+
+\par Các ngưỡng được hỗ trợ bao gồm thân nhiệt tối thiểu và tối đa, nhịp tim tối thiểu và tối đa, nhịp thở tối thiểu và tối đa, SpO2 tối thiểu, huyết áp tâm thu tối thiểu và tối đa, huyết áp tâm trương tối thiểu và tối đa, đường huyết tối thiểu và tối đa. Khi dữ liệu đo mới được tạo, backend lấy bộ ngưỡng mới nhất còn hiệu lực của bệnh nhân để thực hiện so sánh. Nếu không có bộ ngưỡng riêng, hệ thống có thể dùng ngưỡng mặc định hoặc đánh dấu dữ liệu chưa đủ điều kiện đánh giá, tùy theo cấu hình nghiệp vụ.
+
+\subsubsection{Mô tả luồng cấu hình}
+\par Luồng cấu hình bắt đầu khi bác sĩ chọn một bệnh nhân trên ứng dụng web và mở màn hình cấu hình ngưỡng. Bác sĩ nhập hoặc cập nhật các ngưỡng an toàn tương ứng với từng chỉ số. Ứng dụng web gửi request đến nhóm API \texttt{/thresholds}. Backend kiểm tra quyền của người dùng hiện tại, xác nhận người dùng có vai trò bác sĩ và có quyền thao tác với bệnh nhân được chọn. Sau đó, backend lưu bộ ngưỡng vào collection \texttt{thresholds}. Các lần đo tiếp theo của bệnh nhân sẽ được đánh giá dựa trên bộ ngưỡng mới nhất.
+
+\subsection{Cơ chế sinh cảnh báo tự động}
+
+\subsubsection{Giới thiệu tổng quan}
+\par Sau khi dữ liệu đo được lưu, hệ thống không xử lý cảnh báo trực tiếp trong HTTP request mà kích hoạt Temporal workflow để xử lý nền. Cách tiếp cận này giúp API phản hồi nhanh hơn, đồng thời tách riêng logic xử lý cảnh báo, gửi thông báo và cập nhật thời gian thực ra khỏi luồng nhập liệu chính. Nếu việc gửi thông báo hoặc tạo tin nhắn hệ thống gặp lỗi, workflow có thể retry mà không làm ảnh hưởng đến kết quả trả về của request nhập dữ liệu ban đầu.
+
+\par Temporal workflow được sử dụng để định nghĩa chuỗi các bước xử lý cảnh báo. Temporal có khả năng ghi nhận lịch sử thực thi workflow, hỗ trợ retry khi activity lỗi và giúp các tiến trình nền có tính ổn định hơn trong trường hợp hệ thống gặp sự cố. Với bài toán RPM, việc dùng workflow giúp nhóm mô hình hóa rõ ràng chuỗi xử lý từ dữ liệu đo đến cảnh báo, thông báo và cập nhật realtime. \cite{temporaldocs}
+
+\subsubsection{Các bước xử lý cảnh báo}
+\par Khi một bản đo mới được tạo, backend gọi Temporal client để khởi động \texttt{AlertWorkflow}. Workflow gọi activity \texttt{EvaluateAndCreateAlertActivity} để lấy dữ liệu đo từ collection \texttt{measurements}, lấy bộ ngưỡng mới nhất của bệnh nhân từ collection \texttt{thresholds} và so sánh từng chỉ số với ngưỡng tương ứng. Nếu không có chỉ số nào vượt ngưỡng, workflow kết thúc mà không tạo cảnh báo. Nếu có chỉ số vượt ngưỡng, hệ thống tạo danh sách vi phạm, xác định mức độ cảnh báo và lưu cảnh báo vào collection \texttt{alerts}.
+
+\par Sau khi cảnh báo được tạo, workflow tiếp tục thực hiện các tác vụ liên quan đến thông báo. Hệ thống tạo notification cho bệnh nhân, gọi activity gửi push notification thông qua Firebase Cloud Messaging, tạo tin nhắn hệ thống trong hội thoại giữa bệnh nhân và bác sĩ được phân công, đồng thời phát sự kiện qua Redis Pub/Sub để cập nhật chat và thông báo thời gian thực trên giao diện bác sĩ. Nhờ vậy, một lần đo bất thường có thể được phản ánh đồng thời ở nhiều nơi trong hệ thống mà người dùng không cần thao tác thủ công.
+
+\begin{center}
+    \begin{figure}[H]
+    \begin{center}
+        % TODO: Thiết kế sequence diagram:
+        % Patient/Nurse -> API -> MongoDB measurements -> Temporal workflow
+        % -> Evaluate threshold -> MongoDB alerts
+        % -> FCM -> Patient
+        % -> Chat message -> Doctor WebSocket
+        \includegraphics[width=\textwidth,keepaspectratio]{images/Chapter3/rpm-alert-workflow.png}
+    \end{center}
+    \caption{\textit{Quy trình sinh cảnh báo tự động sau khi nhập chỉ số}}
+    \label{chapter3-image05}
+    \end{figure}
+\end{center}
+
+\subsubsection{Cách xác định mức độ cảnh báo}
+\par Mỗi vi phạm ngưỡng được biểu diễn bằng một đối tượng gồm loại chỉ số, quy tắc bị vi phạm, giá trị quan sát được, giá trị ngưỡng và mức độ nghiêm trọng. Trong giai đoạn hiện tại, hệ thống phân loại mức độ cảnh báo theo độ lệch tương đối so với ngưỡng. Nếu độ lệch nhỏ hơn 5\%, mức độ được gán là \texttt{info}; nếu độ lệch từ 5\% trở lên, mức độ được gán là \texttt{high}. Nếu một cảnh báo có nhiều vi phạm, mức độ tổng thể của cảnh báo được xác định là \texttt{high} khi tồn tại ít nhất một vi phạm có mức độ \texttt{high}; ngược lại, cảnh báo được đánh dấu ở mức \texttt{info}.
+
+\par Cách phân loại này phù hợp với phạm vi Proof-of-Concept vì đơn giản, dễ giải thích và không phụ thuộc vào các mô hình học máy. Tuy nhiên, khi triển khai thực tế, mức độ cảnh báo cần được thiết kế cẩn thận hơn và nên có sự tham gia của chuyên gia y tế, vì mức độ nguy hiểm của một chỉ số không chỉ phụ thuộc vào độ lệch so với ngưỡng mà còn phụ thuộc vào bệnh nền, tuổi, thuốc đang dùng, triệu chứng đi kèm và nhiều yếu tố lâm sàng khác.
+
+\subsection{Cơ chế nhắc nhở}
+
+\subsubsection{Giới thiệu tổng quan}
+\par Hệ thống hỗ trợ bác sĩ tạo nhắc nhở cho bệnh nhân. Nhắc nhở có thể thuộc loại đo chỉ số hoặc dùng thuốc. Mỗi nhắc nhở có thời gian cụ thể theo giờ, phút, các ngày trong tuần, múi giờ, ngày bắt đầu và ngày kết thúc. Chức năng này giúp bác sĩ chủ động nhắc bệnh nhân thực hiện các hành động cần thiết thay vì chỉ phản ứng sau khi có dữ liệu bất thường.
+
+\par Temporal workflow được sử dụng để xử lý nhắc nhở theo lịch. Khi một nhắc nhở được tạo, backend lưu thông tin vào collection \texttt{reminders} và khởi động workflow tương ứng. Workflow tính thời điểm gửi tiếp theo, chờ đến thời điểm đó, gửi thông báo và tiếp tục tính lần gửi kế tiếp nếu nhắc nhở vẫn còn hiệu lực. Mỗi nhắc nhở có thể ở một trong các trạng thái \texttt{active}, \texttt{paused}, \texttt{expired} hoặc \texttt{canceled}, tương ứng với đang hoạt động, tạm dừng, đã hết hạn hoặc đã bị hủy.
+
+\subsubsection{Mô tả luồng xử lý}
+\par Luồng xử lý bắt đầu khi bác sĩ tạo nhắc nhở trên ứng dụng web. Ứng dụng gọi API \texttt{POST /reminders}. Backend kiểm tra bệnh nhân, kiểm tra quyền của bác sĩ, lưu nhắc nhở vào collection \texttt{reminders} và khởi động Temporal reminder workflow. Workflow tính toán thời điểm gửi nhắc nhở tiếp theo dựa trên cấu hình giờ, phút, ngày trong tuần và khoảng thời gian hiệu lực. Khi đến thời điểm phù hợp, workflow gọi activity gửi thông báo cho bệnh nhân. Nếu nhắc nhở vẫn còn hiệu lực, workflow tiếp tục lặp lại quá trình tính toán lần gửi tiếp theo.
+
+\begin{center}
+    \begin{figure}[H]
+    \begin{center}
+        % TODO: Thiết kế flow:
+        % Doctor Web -> API -> MongoDB reminders -> Temporal ReminderWorkflow
+        % -> Timer -> SendReminderActivity -> FCM/notifications -> Patient Mobile
+        \includegraphics[width=\textwidth,keepaspectratio]{images/Chapter3/rpm-reminder-workflow.png}
+    \end{center}
+    \caption{\textit{Quy trình xử lý nhắc nhở cho bệnh nhân}}
+    \label{chapter3-image06}
+    \end{figure}
+\end{center}
+
+\subsection{Cơ chế thông báo và cập nhật thời gian thực}
+
+\subsubsection{Push notification}
+\par Hệ thống sử dụng Firebase Cloud Messaging để gửi thông báo đẩy đến thiết bị di động của bệnh nhân. Khi ứng dụng di động khởi chạy, ứng dụng xin quyền nhận thông báo, lấy token thiết bị và gửi token về backend thông qua API \texttt{/notification-tokens/register}. Token này được lưu trong collection \texttt{notification\_tokens}, kèm theo thông tin nền tảng, thiết bị và trạng thái hoạt động. Khi có cảnh báo hoặc nhắc nhở, backend sử dụng các token còn hoạt động để gửi thông báo đến thiết bị tương ứng.
+
+\subsubsection{Thông báo trong ứng dụng}
+\par Ngoài push notification, hệ thống còn lưu thông báo vào collection \texttt{notifications}. Nhờ đó, người dùng có thể mở ứng dụng và xem lại danh sách thông báo đã nhận, ngay cả khi thông báo đẩy đã biến mất khỏi thanh thông báo của thiết bị. Mỗi thông báo có trạng thái gửi, thời gian gửi, thời gian đọc và dữ liệu điều hướng để ứng dụng có thể mở đúng màn hình liên quan, ví dụ màn hình cảnh báo, màn hình nhắc nhở hoặc màn hình nhập chỉ số.
+
+\subsubsection{WebSocket cho thời gian thực}
+\par WebSocket được sử dụng để tạo kênh giao tiếp hai chiều giữa client và server. Với WebSocket, server có thể chủ động gửi sự kiện đến client mà không cần client liên tục gọi API để kiểm tra dữ liệu mới. Trong hệ thống, WebSocket được sử dụng cho hai mục đích chính là chat giữa bác sĩ và bệnh nhân, đồng thời cập nhật thời gian thực cho bác sĩ khi có tin nhắn mới hoặc cảnh báo mới. \cite{websocketmdn}
+
+\par Để hỗ trợ mở rộng nhiều instance backend trong tương lai, hệ thống sử dụng Redis Pub/Sub làm kênh phát sự kiện nội bộ. Khi workflow tạo cảnh báo hoặc tin nhắn hệ thống, sự kiện được publish vào Redis. Các WebSocket handler subscribe sự kiện tương ứng và gửi đến client đang kết nối. Cách thiết kế này giúp tách nguồn phát sinh sự kiện khỏi kết nối WebSocket cụ thể, đồng thời tạo tiền đề cho việc mở rộng backend theo nhiều instance khi cần thiết.
+
+\subsection{Chức năng chat giữa bệnh nhân và bác sĩ}
+
+\subsubsection{Giới thiệu tổng quan}
+\par Hệ thống chat được xây dựng nhằm hỗ trợ trao đổi giữa bệnh nhân và bác sĩ. Mỗi hội thoại gồm danh sách người tham gia và các tin nhắn thuộc hội thoại đó. Tin nhắn có thể do người dùng gửi hoặc do hệ thống tạo tự động khi phát sinh cảnh báo. Chức năng chat giúp bệnh nhân có kênh trao đổi trực tiếp trong ngữ cảnh theo dõi sức khỏe, đồng thời giúp bác sĩ phản hồi các tình huống bất thường mà không cần sử dụng một nền tảng nhắn tin bên ngoài.
+
+\subsubsection{Mô tả luồng chat}
+\par Luồng chat bắt đầu khi người dùng mở màn hình tin nhắn trên ứng dụng web hoặc ứng dụng di động. Client lấy danh sách hội thoại thông qua API \texttt{/chat/conversations}. Khi chọn một hội thoại, client lấy danh sách tin nhắn thông qua API \texttt{/chat/conversations/:id/messages}. Sau đó, client thiết lập kết nối WebSocket đến endpoint \texttt{/chat/ws}. Khi người dùng gửi tin nhắn, nội dung tin nhắn được chuyển đến server qua WebSocket. Server lưu tin nhắn vào collection \texttt{messages}, cập nhật hội thoại trong collection \texttt{conversations} và phát sự kiện đến các người dùng liên quan.
+
+\subsubsection{Tin nhắn hệ thống liên quan đến cảnh báo}
+\par Khi một cảnh báo được sinh ra, workflow xử lý cảnh báo sẽ tự động tạo một tin nhắn hệ thống trong hội thoại giữa bệnh nhân và bác sĩ phụ trách. Tin nhắn này có liên kết với cảnh báo thông qua trường \texttt{relatedAlertId}. Cơ chế này giúp bác sĩ không chỉ thấy cảnh báo trong danh sách cảnh báo mà còn có thể tiếp tục trao đổi với bệnh nhân trong ngữ cảnh cụ thể của cảnh báo đó. Ví dụ, bác sĩ có thể xem thông tin chỉ số vượt ngưỡng, hỏi thêm triệu chứng và hướng dẫn bệnh nhân đo lại chỉ số nếu cần thiết.
+
+\subsection{Chức năng quản trị hệ thống}
+
+\subsubsection{Giới thiệu tổng quan}
+\par Trang quản trị được xây dựng để hỗ trợ vận hành hệ thống. Quản trị viên có thể tạo và quản lý tài khoản, phân công nhân viên y tế phụ trách bệnh nhân, quản lý khoa phòng và theo dõi lịch sử hoạt động. Việc tách trang quản trị khỏi ứng dụng web bác sĩ giúp phân quyền rõ ràng hơn, giảm rủi ro bác sĩ truy cập các chức năng vận hành không thuộc nhiệm vụ chuyên môn.
+
+\subsubsection{Quản lý người dùng và khoa phòng}
+\par Quản trị viên có thể xem danh sách, tạo mới, cập nhật trạng thái hoặc chỉnh sửa thông tin của bác sĩ, bệnh nhân và y tá. Thông tin tài khoản được lưu trong collection \texttt{users}. Vai trò của người dùng quyết định giao diện và các API mà người đó có thể truy cập. Bên cạnh người dùng, quản trị viên còn có thể quản lý khoa phòng trong collection \texttt{departments}, bao gồm tạo khoa, cập nhật thông tin khoa, xóa khoa và thêm thành viên vào khoa. Việc gắn bác sĩ hoặc y tá với khoa phòng giúp hệ thống phản ánh gần hơn cấu trúc tổ chức của cơ sở y tế.
+
+\subsubsection{Phân công bệnh nhân và lịch sử hoạt động}
+\par Phân công được lưu trong collection \texttt{assignments}. Mỗi phân công thể hiện quan hệ giữa bệnh nhân với bác sĩ hoặc y tá phụ trách. Dữ liệu phân công được sử dụng để bác sĩ xem danh sách bệnh nhân được phân công, y tá xem danh sách bệnh nhân được giao, hệ thống xác định bác sĩ nhận tin nhắn hệ thống khi bệnh nhân có cảnh báo và backend kiểm soát phạm vi truy cập dữ liệu bệnh nhân theo quan hệ phụ trách.
+
+\par Backend có middleware ghi nhận hoạt động của người dùng vào collection \texttt{activity\_logs}. Các thông tin được ghi nhận bao gồm người thực hiện, vai trò, hành động, tài nguyên bị tác động, đường dẫn API, phương thức HTTP, mã trạng thái, địa chỉ IP và user agent. Chức năng này giúp quản trị viên theo dõi các thao tác quan trọng, hỗ trợ kiểm tra khi có sự cố và tạo nền tảng cho việc mở rộng audit log trong tương lai.
+
+\section{Kiến trúc mã nguồn ứng dụng phía frontend}
+
+\subsection{Kiến trúc chung}
+\par Các ứng dụng frontend được xây dựng theo hướng component-based. Mỗi trang lớn được đặt trong thư mục \texttt{pages}, các thành phần giao diện tái sử dụng được đặt trong thư mục \texttt{components}, phần quản lý trạng thái hoặc dữ liệu dùng chung được đặt trong \texttt{context} hoặc \texttt{hooks}, còn các lời gọi API được gom trong \texttt{services}. Cách tổ chức này giúp giao diện dễ mở rộng, dễ kiểm thử thủ công và giảm lặp lại mã nguồn.
+
+\par Các ứng dụng frontend tuy phục vụ những vai trò khác nhau nhưng có chung một số nguyên tắc thiết kế. Tất cả đều tách phần giao diện khỏi phần gọi API, sử dụng service riêng cho từng nhóm nghiệp vụ, có cơ chế bảo vệ route hoặc màn hình dựa trên trạng thái đăng nhập và vai trò người dùng, đồng thời xử lý các trạng thái thường gặp như loading, empty, error và success. Điều này giúp frontend dễ bảo trì hơn khi backend thay đổi API hoặc khi hệ thống bổ sung thêm chức năng mới.
+
+\begin{center}
+    \begin{figure}[H]
+    \begin{center}
+        % TODO: Thiết kế hình mô tả frontend architecture:
+        % Pages -> Components -> Context/Hooks -> Services API -> Backend
+        % Web doctor, Admin web, Mobile app dùng chung ý tưởng tổ chức theo module
+        \includegraphics[width=\textwidth,keepaspectratio]{images/Chapter3/rpm-frontend-architecture.png}
+    \end{center}
+    \caption{\textit{Sơ đồ kiến trúc mã nguồn frontend}}
+    \label{chapter3-image07}
+    \end{figure}
+\end{center}
+
+\subsection{Ứng dụng web bác sĩ}
+\par Ứng dụng web bác sĩ sử dụng React Router để định nghĩa các route chính như dashboard, danh sách bệnh nhân, chi tiết bệnh nhân, cảnh báo ngưỡng, cấu hình ngưỡng, nhắc nhở, chat, hồ sơ bác sĩ và cài đặt. Các route này được bao bọc bởi Protected Route để đảm bảo người dùng phải đăng nhập trước khi truy cập. Nếu phiên đăng nhập hết hạn, ứng dụng sẽ cố gắng refresh token; nếu không thành công, người dùng được chuyển về trang đăng nhập.
+
+\par Ứng dụng sử dụng Auth Context để lưu trạng thái đăng nhập và thông tin người dùng. Khi gọi API, Axios được cấu hình với \texttt{withCredentials} và interceptor để tự động refresh token nếu access token hết hạn. Điều này giúp người dùng có trải nghiệm liền mạch hơn khi phiên đăng nhập vẫn còn hợp lệ. Các màn hình nhiều dữ liệu như dashboard, bệnh nhân, cảnh báo và nhắc nhở được tổ chức thành các component nhỏ để dễ tái sử dụng và dễ kiểm thử.
+
+\subsection{Trang quản trị}
+\par Trang quản trị có cấu trúc tương tự ứng dụng web bác sĩ nhưng có điều kiện bảo vệ route nghiêm ngặt hơn. Ngoài việc kiểm tra người dùng đã đăng nhập, hệ thống còn kiểm tra vai trò của người dùng phải là \texttt{admin}. Các màn hình chính bao gồm dashboard quản trị, quản lý bác sĩ, quản lý bệnh nhân, quản lý y tá, quản lý khoa phòng, quản lý phân công, lịch sử hoạt động và thiết lập hệ thống. Vì các màn hình quản trị chủ yếu làm việc với bảng dữ liệu và form, nhóm ưu tiên tái sử dụng component table, modal, input và button để giữ giao diện nhất quán.
+
+\subsection{Ứng dụng di động}
+\par Ứng dụng di động sử dụng stack navigator và bottom tab navigator. Khi người dùng chưa đăng nhập, ứng dụng hiển thị các màn hình đăng nhập và đăng ký. Sau khi đăng nhập, ứng dụng kiểm tra vai trò người dùng để chọn luồng giao diện phù hợp. Nếu là bệnh nhân, ứng dụng hiển thị các tab trang chủ, theo dõi, tin nhắn, thông báo và hồ sơ. Nếu là y tá, ứng dụng hiển thị các tab danh sách bệnh nhân, nhập liệu và hồ sơ. Cách điều hướng này giúp mỗi vai trò chỉ nhìn thấy những chức năng cần thiết.
+
+\par Ứng dụng di động cũng có các màn hình phụ như nhập chỉ số, lịch sử đo, cảnh báo, hộp thư thông báo và chat với bác sĩ. Các service API trên mobile được tách theo từng nghiệp vụ như auth, measurement, alert, assignment, chat, notification và profile. Nhờ đó, khi cần chỉnh sửa cách gọi API hoặc thêm endpoint mới, nhóm có thể cập nhật trong service tương ứng mà không phải sửa trực tiếp ở nhiều màn hình.
+
+\subsection{Ưu điểm của cách tổ chức frontend}
+\par Cách tổ chức frontend theo component, pages, hooks, context và services giúp hệ thống dễ bảo trì hơn vì mỗi màn hình và mỗi nhóm nghiệp vụ được tách riêng. Khi cần thêm màn hình mới, nhóm có thể bổ sung route và component tương ứng mà không ảnh hưởng lớn đến các màn hình hiện có. Các component giao diện và service API có thể được dùng lại ở nhiều nơi, giúp giảm lặp mã nguồn và giữ trải nghiệm người dùng nhất quán. Trạng thái đăng nhập được quản lý tập trung trong context, giúp quá trình kiểm soát xác thực đơn giản hơn. Ngoài ra, kiến trúc này phù hợp với hệ thống có nhiều vai trò vì frontend có thể điều hướng giao diện theo vai trò bệnh nhân, bác sĩ, y tá và quản trị viên.
+
+\section{Đánh giá lựa chọn phương pháp}
+
+\subsection{Sự phù hợp với phạm vi đề tài}
+\par Kiến trúc được đề xuất phù hợp với mục tiêu xây dựng hệ thống theo dõi bệnh nhân từ xa ở mức Proof-of-Concept. Hệ thống đáp ứng các yêu cầu chính gồm nhập dữ liệu sức khỏe, lưu trữ dữ liệu, hiển thị lịch sử đo, biểu đồ xu hướng, cấu hình ngưỡng, cảnh báo tự động, nhắc nhở, thông báo và trao đổi giữa bệnh nhân với bác sĩ. Các thành phần mobile, web, admin và backend được tách biệt nhưng vẫn phối hợp thông qua API, giúp nhóm có thể phát triển song song và kiểm thử từng luồng nghiệp vụ.
+
+\par Việc chưa tích hợp trực tiếp thiết bị IoT và chưa sử dụng AI/ML giúp phạm vi đề tài rõ ràng, giảm độ phức tạp và phù hợp với thời gian thực hiện đồ án. Cơ chế cảnh báo theo ngưỡng cố định hoặc ngưỡng do bác sĩ cấu hình có ưu điểm là dễ hiểu, dễ kiểm chứng và dễ giải thích trong quá trình demo. Đây là lựa chọn phù hợp cho giai đoạn đầu vì hệ thống cần chứng minh được luồng theo dõi từ xa trước khi mở rộng sang các chức năng phân tích nâng cao.
+
+\subsection{Khả năng mở rộng}
+\par Hệ thống được thiết kế theo hướng có thể mở rộng trong tương lai. Ở tầng dữ liệu, nhóm có thể bổ sung loại chỉ số sức khỏe mới bằng cách mở rộng model \texttt{Measurement} và \texttt{Threshold}. Ở tầng thu thập dữ liệu, hệ thống có thể tích hợp thiết bị IoT bằng cách thêm nguồn dữ liệu mới thay cho nhập liệu thủ công. Ở tầng xử lý nền, các thuật toán phân tích dữ liệu hoặc dự đoán nguy cơ có thể được bổ sung vào Temporal workflow mà không làm thay đổi quá nhiều luồng nhập liệu chính.
+
+\par Ở tầng triển khai, backend hiện chạy trên EC2 bằng Docker Compose nhưng vẫn có thể mở rộng theo nhiều hướng khác. Nếu số lượng bệnh nhân và cảnh báo tăng, nhóm có thể tách worker ra nhiều instance riêng để xử lý song song các workflow. Nếu cần vận hành ở quy mô lớn hơn, backend có thể được chuyển từ EC2 Docker Compose sang ECS hoặc EKS. Đối với frontend, Cloudflare hiện đã đảm nhiệm HTTPS và phân phối nội dung phía trước S3; trong tương lai, nhóm có thể bổ sung thêm caching nâng cao hoặc tối ưu hiệu năng tải trang nếu số lượng người dùng tăng.
+
+\subsection{Giới hạn của phương pháp}
+\par Bên cạnh các ưu điểm, phương pháp hiện tại vẫn có một số giới hạn. Dữ liệu sức khỏe vẫn được nhập thủ công nên có thể bị ảnh hưởng bởi sai sót của người dùng, ví dụ nhập nhầm đơn vị, quên nhập hoặc nhập không đúng thời điểm đo. Cảnh báo dựa trên ngưỡng nên chưa phản ánh đầy đủ bối cảnh lâm sàng của từng bệnh nhân. Hệ thống chưa tích hợp trực tiếp với máy đo huyết áp, máy đo đường huyết hoặc thiết bị đeo, vì vậy chưa thể tự động đồng bộ dữ liệu từ thiết bị.
+
+\par Ngoài ra, hệ thống chưa đưa ra chẩn đoán hoặc khuyến nghị điều trị tự động. Các cảnh báo chỉ đóng vai trò hỗ trợ theo dõi và giúp nhân viên y tế chú ý đến các trường hợp có chỉ số bất thường. Mô hình triển khai trên một EC2 phù hợp cho demo và thử nghiệm, nhưng cần mở rộng thêm về bảo mật, giám sát, sao lưu, cân bằng tải và khả năng chịu lỗi nếu triển khai thực tế với nhiều người dùng. Những giới hạn này phù hợp với phạm vi đồ án hiện tại và có thể được xem là định hướng phát triển trong các giai đoạn tiếp theo.
