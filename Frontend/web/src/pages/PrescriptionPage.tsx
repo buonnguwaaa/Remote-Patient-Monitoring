@@ -628,13 +628,13 @@ export default function PrescriptionPage() {
     for (let i = 0; i < formData.medications.length; i++) {
       const med = formData.medications[i];
       if (!med.drugName.trim() || med.drugName.trim().length < 2) { 
-        showToast(`Thuốc #${i + 1}: Tên thuốc phải có ít nhất 2 ký tự`, "error"); 
+        showToast(`Thuốc số ${i + 1}: Tên thuốc phải có ít nhất 2 ký tự`, "error"); 
         return false; 
       }
-      if (!med.dosage.trim()) { showToast(`Thuốc #${i + 1}: Vui lòng nhập liều lượng`, "error"); return false; }
+      if (!med.dosage.trim()) { showToast(`Thuốc số ${i + 1}: Vui lòng nhập liều lượng`, "error"); return false; }
       const { morning, noon, evening, extras } = med.schedule;
       const enabledCount = [morning, noon, evening].filter((s) => s.enabled).length + extras.length;
-      if (enabledCount === 0) { showToast(`Thuốc #${i + 1}: Cần có ít nhất 1 giờ uống`, "error"); return false; }
+      if (enabledCount === 0) { showToast(`Thuốc số ${i + 1}: Cần có ít nhất 1 giờ uống`, "error"); return false; }
     }
     if (formData.endDate && formData.startDate > formData.endDate) {
       showToast("Ngày kết thúc không hợp lệ", "error"); return false;
@@ -956,7 +956,7 @@ export default function PrescriptionPage() {
                     {formData.medications.length > 1 && (
                       <button type="button" onClick={() => handleRemoveMedication(idx)} className="absolute top-4 right-4 text-rose-500 hover:text-rose-700 p-2 hover:bg-rose-50 rounded-lg transition"><FaTrash/></button>
                     )}
-                    <h4 className="font-bold text-slate-800 dark:text-slate-200 mb-4">Thuốc #{idx + 1}</h4>
+                    <h4 className="font-bold text-slate-800 dark:text-slate-200 mb-4">Thuốc số {idx + 1}</h4>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                       <div className="relative group lg:col-span-2">

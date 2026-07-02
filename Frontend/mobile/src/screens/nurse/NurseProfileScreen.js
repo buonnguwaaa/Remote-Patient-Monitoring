@@ -432,30 +432,7 @@ export default function NurseProfileScreen() {
           />
         </View>
 
-        <Text style={styles.sectionTitle}>Hoạt động hồ sơ</Text>
-        <View style={styles.metaCard}>
-          <View style={styles.metaRow}>
-            <View style={styles.metaIconWrapper}>
-              <Ionicons name="calendar-outline" size={16} color="#6B7280" />
-            </View>
-            <View>
-              <Text style={styles.metaLabel}>Tạo hồ sơ</Text>
-              <Text style={styles.metaText}>{formatDateTime(profile.createdAt)}</Text>
-            </View>
-          </View>
 
-          <View style={styles.metaDivider} />
-
-          <View style={styles.metaRow}>
-            <View style={[styles.metaIconWrapper, styles.metaIconWrapperAlt]}>
-              <Ionicons name="refresh-outline" size={16} color="#2563EB" />
-            </View>
-            <View>
-              <Text style={styles.metaLabel}>Cập nhật gần nhất</Text>
-              <Text style={styles.metaText}>{formatDateTime(profile.updatedAt)}</Text>
-            </View>
-          </View>
-        </View>
 
         <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
           <Text style={styles.logoutText}>Đăng xuất</Text>
@@ -720,46 +697,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#E5E7EB",
     marginVertical: 12,
   },
-  metaCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: "#000",
-    shadowOpacity: 0.02,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-  },
-  metaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  metaIconWrapper: {
-    width: 30,
-    height: 30,
-    borderRadius: 999,
-    backgroundColor: "#F3F4F6",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 10,
-  },
-  metaIconWrapperAlt: {
-    backgroundColor: "#EEF2FF",
-  },
-  metaLabel: {
-    fontSize: 12,
-    color: "#6B7280",
-  },
-  metaText: {
-    fontSize: 13,
-    color: "#111827",
-    marginTop: 2,
-  },
-  metaDivider: {
-    height: 1,
-    backgroundColor: "#E5E7EB",
-    marginVertical: 10,
-  },
+
   logoutBtn: {
     alignItems: "center",
     justifyContent: "center",

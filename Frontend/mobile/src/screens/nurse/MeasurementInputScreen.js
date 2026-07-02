@@ -15,6 +15,7 @@ import { Ionicons, FontAwesome5 } from "@expo/vector-icons";
 import { useCallback, useState } from "react";
 import { useFocusEffect } from "@react-navigation/native";
 import { CameraView, useCameraPermissions } from "expo-camera";
+import { useRoute } from "@react-navigation/native";
 
 import MeasurementDraftForm from "../../components/MeasurementDraftForm";
 import { useAuth } from "../../hooks/useAuth";
@@ -87,6 +88,7 @@ function getPatientSuccessLabel(patient = {}) {
 
 export default function MeasurementInputScreen() {
   const { user } = useAuth() || {};
+  const route = useRoute();
   const { showSuccess, showError, showWarning, showInfo } = useSnackbar();
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [assignedPatients, setAssignedPatients] = useState([]);
@@ -169,8 +171,25 @@ export default function MeasurementInputScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      loadAssignments();
-    }, [loadAssignments])
+      loadAssignments().then((patients) => {
+        // If navigated here with a preselected patient, auto-select it
+        const pre = route?.params?.preselectedPatient;
+        if (pre?.patientId) {
+          const found = patients.find((p) => p.patientId === pre.patientId);
+          if (found) {
+            setSelectedPatient(found);
+          } else {
+            // Build minimal patient object from params if not in assignment list
+            setSelectedPatient({
+              patientId: pre.patientId,
+              patientCode: pre.patientCode || "",
+              name: pre.name || "Bệnh nhân",
+              assignmentId: pre.assignmentId || "",
+            });
+          }
+        }
+      });
+    }, [loadAssignments, route?.params?.preselectedPatient])
   );
 
   const markEditing = (sectionKey) => {

@@ -41,6 +41,8 @@ import EducationQuizScreen from "../screens/patient/EducationQuizScreen";
 import NursePatientListScreen from "../screens/nurse/NursePatientListScreen";
 import MeasurementInputScreen from "../screens/nurse/MeasurementInputScreen";
 import NurseProfileScreen from "../screens/nurse/NurseProfileScreen";
+import PatientDetailScreen from "../screens/nurse/PatientDetailScreen";
+import NursePrescriptionScreen from "../screens/nurse/NursePrescriptionScreen";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -140,6 +142,9 @@ function NurseTabNavigator() {
           if (route.name === "NurseMeasurementInput") {
             return <Ionicons name="create-outline" size={size} color={color} />;
           }
+          if (route.name === "NursePrescriptions") {
+            return <Ionicons name="receipt-outline" size={size} color={color} />;
+          }
           if (route.name === "NurseProfile") {
             return <MaterialIcons name="person-outline" size={size} color={color} />;
           }
@@ -153,6 +158,7 @@ function NurseTabNavigator() {
         component={MeasurementInputScreen}
         options={{ title: "Nhập liệu" }}
       />
+      <Tab.Screen name="NursePrescriptions" component={NursePrescriptionScreen} options={{ title: "Đơn thuốc" }} />
       <Tab.Screen name="NurseProfile" component={NurseProfileScreen} options={{ title: "Hồ sơ" }} />
     </Tab.Navigator>
   );
@@ -207,6 +213,12 @@ function RootNavigator() {
           <Stack.Screen name="VideoCall" component={VideoCallScreen} />
           <Stack.Screen name="EducationArticle" component={EducationArticleScreen} />
           <Stack.Screen name="EducationQuiz" component={EducationQuizScreen} />
+        </>
+      )}
+      {(role === "user.nurse" || role === "nurse") && (
+        <>
+          <Stack.Screen name="NursePatientDetail" component={PatientDetailScreen} />
+          <Stack.Screen name="NursePrescriptionDetail" component={NursePrescriptionScreen} />
         </>
       )}
     </Stack.Navigator>

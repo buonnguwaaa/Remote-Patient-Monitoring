@@ -1,23 +1,17 @@
 import React, { memo } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
-import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 
 function formatRelativeTime(iso) {
   if (!iso) return "Chưa có dữ liệu";
-
   const target = new Date(iso);
-  if (Number.isNaN(target.getTime())) {
-    return "Chưa có dữ liệu";
-  }
-
+  if (Number.isNaN(target.getTime())) return "Chưa có dữ liệu";
   const diffMs = Date.now() - target.getTime();
   const diffMinutes = Math.max(1, Math.round(diffMs / (1000 * 60)));
-
   if (diffMinutes < 60) return `${diffMinutes} phút trước`;
   const diffHours = Math.round(diffMinutes / 60);
   if (diffHours < 24) return `${diffHours} giờ trước`;
-  const diffDays = Math.round(diffHours / 24);
-  return `${diffDays} ngày trước`;
+  return `${Math.round(diffHours / 24)} ngày trước`;
 }
 
 function getInitials(name) {
@@ -32,402 +26,159 @@ function getInitials(name) {
   );
 }
 
-function NursePatientCard({ patient, onPress }) {
-  const initials = getInitials(patient?.user?.name);
-  const hasHighAlert = patient?.alertsSummary?.high > 0;
-  const hasMediumAlert = patient?.alertsSummary?.medium > 0;
-  const hasLowAlert = patient?.alertsSummary?.low > 0;
-  const bp = patient?.lastMeasurements?.bp;
-  const glucose = patient?.lastMeasurements?.glucose;
-  const spo2 = patient?.lastMeasurements?.spo2;
-  const temp = patient?.lastMeasurements?.temp;
-  const hr = patient?.lastMeasurements?.heartRate;
-  const rr = patient?.lastMeasurements?.respiratoryRate;
-
+function MetricPill({ icon, label, value, unit, color = "#4B5563" }) {
   return (
-    <TouchableOpacity style={styles.patientItem} activeOpacity={0.85} onPress={onPress}>
-      <View style={styles.patientItemTop}>
-        <View style={styles.patientLeft}>
-          <View style={styles.patientAvatarCircle}>
-            <Text style={styles.patientAvatarInitial}>{initials}</Text>
-          </View>
-          <View style={styles.patientContent}>
-            <View style={styles.patientNameRow}>
-              <Text style={styles.patientNameText}>{patient?.user?.name}</Text>
-              {!patient?.user?.isActive ? (
-                <View style={styles.statusBadgeInactive}>
-                  <Text style={styles.statusBadgeInactiveText}>Ngừng kích hoạt</Text>
-                </View>
-              ) : null}
-            </View>
+    <View style={styles.metricPill}>
+      <Ionicons name={icon} size={14} color={color} />
+      <Text style={styles.metricLabel}>{label}</Text>
+      <Text style={styles.metricValue}>{value ?? "—"}</Text>
+      {value != null && unit && <Text style={styles.metricUnit}>{unit}</Text>}
+    </View>
+  );
+}
 
-            <Text style={styles.patientInfoLine}>
-              Mã hồ sơ: {patient?.patientCode || "Chưa có mã"}
-            </Text>
-            <Text style={styles.patientInfoLine}>
-              BHYT: {patient?.patientInfo?.insuranceNumber || "Chưa cập nhật"}
-            </Text>
-            <Text style={styles.patientInfoLineSmall}>
-              CCCD: {patient?.patientInfo?.CCCD || "Chưa cập nhật"}
-            </Text>
+const NursePatientCard = memo(({ patient, onPress }) => {
+  const initials = getInitials(patient?.user?.name);
+  const highAlert = patient?.alertsSummary?.high || 0;
+  const mediumAlert = patient?.alertsSummary?.medium || 0;
+  const lowAlert = patient?.alertsSummary?.low || 0;
+  const totalAlerts = highAlert + mediumAlert + lowAlert;
+
+  const hasHighAlert = highAlert > 0;
+  const hasAlert = totalAlerts > 0;
+
+  const cardStyle = hasHighAlert ? styles.cardHigh : styles.cardNormal;
+  
+  return (
+    <TouchableOpacity
+      style={[styles.card, cardStyle]}
+      activeOpacity={0.7}
+      onPress={onPress}
+    >
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <View style={[styles.avatar, hasHighAlert ? styles.avatarHigh : styles.avatarNormal]}>
+            <Text style={[styles.avatarText, hasHighAlert && { color: "#DC2626" }]}>{initials}</Text>
+          </View>
+          <View style={styles.info}>
+            <Text style={styles.name} numberOfLines={1}>{patient?.user?.name}</Text>
+            <Text style={styles.code}>{patient?.patientCode ? `Mã: ${patient.patientCode}` : "Chưa có mã"}</Text>
           </View>
         </View>
 
-        <View style={styles.rightArrowBox}>
+        <View style={styles.headerRight}>
           {hasHighAlert ? (
-            <View style={styles.alertBadgeHigh}>
-              <Ionicons
-                name="alert-circle"
-                size={14}
-                color="#B91C1C"
-                style={styles.badgeIcon}
-              />
-              <Text style={styles.alertBadgeHighText}>Nguy hiểm</Text>
+            <View style={styles.badgeHigh}>
+              <Text style={styles.badgeHighText}>Nguy cơ cao</Text>
             </View>
-          ) : hasMediumAlert ? (
-            <View style={styles.alertBadgeMedium}>
-              <Ionicons
-                name="warning"
-                size={14}
-                color="#B45309"
-                style={styles.badgeIcon}
-              />
-              <Text style={styles.alertBadgeMediumText}>Cảnh báo</Text>
-            </View>
-          ) : hasLowAlert ? (
-            <View style={styles.alertBadgeLow}>
-              <Ionicons
-                name="information-circle"
-                size={14}
-                color="#1D4ED8"
-                style={styles.badgeIcon}
-              />
-              <Text style={styles.alertBadgeLowText}>Cần lưu ý</Text>
+          ) : hasAlert ? (
+            <View style={styles.badgeMedium}>
+              <Text style={styles.badgeMediumText}>{totalAlerts} cảnh báo</Text>
             </View>
           ) : (
-            <View style={styles.alertBadgeNormal}>
-              <Ionicons
-                name="checkmark-circle"
-                size={14}
-                color="#16A34A"
-                style={styles.badgeIcon}
-              />
-              <Text style={styles.alertBadgeNormalText}>Ổn định</Text>
+            <View style={styles.badgeNormal}>
+              <Text style={styles.badgeNormalText}>Ổn định</Text>
             </View>
           )}
-
-          <Ionicons name="chevron-forward" size={18} color="#9CA3AF" style={styles.chevron} />
         </View>
       </View>
 
-      <View style={styles.metricsRow}>
-        <View style={styles.metricBox}>
-          <View style={styles.metricHeader}>
-            <Ionicons name="heart-outline" size={14} color="#EF4444" style={styles.metricIcon} />
-            <Text style={styles.metricLabel}>HA</Text>
-          </View>
-          {bp ? (
-            <Text style={styles.metricValue}>
-              {bp.systolic}/{bp.diastolic}
-            </Text>
-          ) : (
-            <Text style={styles.metricPlaceholder}>-</Text>
-          )}
-          <Text style={styles.metricUnit}>mmHg</Text>
-        </View>
-
-        <View style={styles.metricBox}>
-          <View style={styles.metricHeader}>
-            <Ionicons name="water-outline" size={14} color="#2563EB" style={styles.metricIcon} />
-            <Text style={styles.metricLabel}>ĐH</Text>
-          </View>
-          {glucose ? (
-            <Text style={styles.metricValue}>{glucose.value}</Text>
-          ) : (
-            <Text style={styles.metricPlaceholder}>-</Text>
-          )}
-          <Text style={styles.metricUnit}>{glucose ? "mg/dL" : ""}</Text>
-        </View>
-
-        <View style={styles.metricBox}>
-          <View style={styles.metricHeader}>
-            <Ionicons name="pulse-outline" size={14} color="#10B981" style={styles.metricIcon} />
-            <Text style={styles.metricLabel}>SpO2</Text>
-          </View>
-          {spo2 ? (
-            <Text style={styles.metricValue}>{spo2.value}</Text>
-          ) : (
-            <Text style={styles.metricPlaceholder}>-</Text>
-          )}
-          <Text style={styles.metricUnit}>{spo2 ? "%" : ""}</Text>
-        </View>
-      </View>
-
-      <View style={styles.metricsRow}>
-        <View style={styles.metricBox}>
-          <View style={styles.metricHeader}>
-            <MaterialIcons
-              name="device-thermostat"
-              size={14}
-              color="#F97316"
-              style={styles.metricIcon}
-            />
-            <Text style={styles.metricLabel}>NĐ</Text>
-          </View>
-          {temp ? (
-            <Text style={styles.metricValue}>{temp.value}</Text>
-          ) : (
-            <Text style={styles.metricPlaceholder}>-</Text>
-          )}
-          <Text style={styles.metricUnit}>{temp ? "°C" : ""}</Text>
-        </View>
-
-        <View style={styles.metricBox}>
-          <View style={styles.metricHeader}>
-            <Ionicons
-              name="fitness-outline"
-              size={14}
-              color="#EC4899"
-              style={styles.metricIcon}
-            />
-            <Text style={styles.metricLabel}>Nhịp tim</Text>
-          </View>
-          {hr ? (
-            <Text style={styles.metricValue}>{hr.value}</Text>
-          ) : (
-            <Text style={styles.metricPlaceholder}>-</Text>
-          )}
-          <Text style={styles.metricUnit}>{hr ? "lần/phút" : ""}</Text>
-        </View>
-
-        <View style={styles.metricBox}>
-          <View style={styles.metricHeader}>
-            <Ionicons name="cloud-outline" size={14} color="#0EA5E9" style={styles.metricIcon} />
-            <Text style={styles.metricLabel}>Nhịp thở</Text>
-          </View>
-          {rr ? (
-            <Text style={styles.metricValue}>{rr.value}</Text>
-          ) : (
-            <Text style={styles.metricPlaceholder}>-</Text>
-          )}
-          <Text style={styles.metricUnit}>{rr ? "lần/phút" : ""}</Text>
-        </View>
-      </View>
-
-      <View style={styles.bottomRow}>
-        <View style={styles.bottomLeft}>
-          <Ionicons name="time-outline" size={14} color="#9CA3AF" style={styles.badgeIcon} />
-          <Text style={styles.bottomText}>
-            Lần đo gần nhất: {formatRelativeTime(patient?.lastMeasurementAt)}
-          </Text>
-        </View>
-
-        <View style={styles.bottomRight}>
-          <Ionicons
-            name="notifications-outline"
-            size={14}
-            color="#F97316"
-            style={styles.badgeIcon}
+      {patient?.lastMeasurementAt && (
+        <View style={styles.body}>
+          <MetricPill 
+            icon="heart" 
+            label="HA" 
+            value={patient.lastMeasurements.bp?.systolic ? `${patient.lastMeasurements.bp.systolic}/${patient.lastMeasurements.bp.diastolic}` : null} 
+            color="#EF4444" 
           />
-          <Text style={styles.bottomText}>
-            Cảnh báo: {(patient?.alertsSummary?.high || 0) + (patient?.alertsSummary?.medium || 0) + (patient?.alertsSummary?.low || 0)}/{patient?.alertsSummary?.total || 0}
-          </Text>
+          <MetricPill 
+            icon="pulse" 
+            label="Nhịp tim" 
+            value={patient.lastMeasurements.heartRate?.value || patient.lastMeasurements.bp?.pulse} 
+            color="#EAB308" 
+          />
+          <MetricPill 
+            icon="medical" 
+            label="SpO2" 
+            value={patient.lastMeasurements.spo2?.value} 
+            color="#06B6D4" 
+          />
+          <MetricPill 
+            icon="thermometer" 
+            label="Nhiệt độ" 
+            value={patient.lastMeasurements.temp?.value} 
+            color="#F97316" 
+          />
+        </View>
+      )}
+
+      <View style={styles.footer}>
+        <Text style={styles.timeText}>
+          Đo gần nhất: {formatRelativeTime(patient?.lastMeasurementAt)}
+        </Text>
+        <View style={styles.footerRight}>
+          {hasAlert && (
+            <View style={styles.alertCount}>
+              <Ionicons name="notifications" size={14} color="#DC2626" />
+              <Text style={styles.alertCountText}>{totalAlerts} mở</Text>
+            </View>
+          )}
+          <View style={styles.chevronBtn}>
+            <Text style={styles.chevronText}>Hồ sơ</Text>
+            <Ionicons name="chevron-forward" size={16} color="#2563EB" />
+          </View>
         </View>
       </View>
     </TouchableOpacity>
   );
-}
-
-const styles = StyleSheet.create({
-  patientItem: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 12,
-    marginBottom: 12,
-    shadowColor: "#000",
-    shadowOpacity: 0.02,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-  },
-  patientItemTop: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  patientLeft: {
-    flexDirection: "row",
-    flex: 1,
-    marginRight: 8,
-  },
-  patientContent: {
-    flex: 1,
-  },
-  patientAvatarCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 16,
-    backgroundColor: "#2563EB",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 10,
-  },
-  patientAvatarInitial: {
-    color: "#FFFFFF",
-    fontSize: 18,
-    fontWeight: "700",
-  },
-  patientNameRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 2,
-    flexWrap: "wrap",
-  },
-  patientNameText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#111827",
-    marginRight: 6,
-  },
-  patientInfoLine: {
-    fontSize: 12,
-    color: "#4B5563",
-  },
-  patientInfoLineSmall: {
-    fontSize: 11,
-    color: "#6B7280",
-    marginTop: 1,
-  },
-  statusBadgeInactive: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 999,
-    backgroundColor: "#FEE2E2",
-  },
-  statusBadgeInactiveText: {
-    fontSize: 10,
-    color: "#B91C1C",
-    fontWeight: "600",
-  },
-  rightArrowBox: {
-    alignItems: "flex-end",
-  },
-  alertBadgeHigh: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FEE2E2",
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  alertBadgeHighText: {
-    fontSize: 11,
-    color: "#B91C1C",
-    fontWeight: "600",
-  },
-  alertBadgeMedium: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FEF3C7",
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  alertBadgeMediumText: {
-    fontSize: 11,
-    color: "#B45309",
-    fontWeight: "600",
-  },
-  alertBadgeLow: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#DBEAFE",
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  alertBadgeLowText: {
-    fontSize: 11,
-    color: "#1E3A8A",
-    fontWeight: "600",
-  },
-  alertBadgeNormal: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#DCFCE7",
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  alertBadgeNormalText: {
-    fontSize: 11,
-    color: "#15803D",
-    fontWeight: "600",
-  },
-  badgeIcon: {
-    marginRight: 4,
-  },
-  chevron: {
-    marginTop: 4,
-  },
-  metricsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 8,
-    gap: 6,
-  },
-  metricBox: {
-    flex: 1,
-    borderRadius: 10,
-    backgroundColor: "#F9FAFB",
-    padding: 6,
-  },
-  metricHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  metricIcon: {
-    marginRight: 4,
-  },
-  metricLabel: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: "#4B5563",
-  },
-  metricValue: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#111827",
-    marginTop: 2,
-  },
-  metricPlaceholder: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#D1D5DB",
-    marginTop: 2,
-  },
-  metricUnit: {
-    fontSize: 11,
-    color: "#6B7280",
-    marginTop: 1,
-  },
-  bottomRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 8,
-  },
-  bottomLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-    marginRight: 4,
-  },
-  bottomRight: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  bottomText: {
-    fontSize: 11,
-    color: "#6B7280",
-  },
 });
 
-export default memo(NursePatientCard);
+const styles = StyleSheet.create({
+  card: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    shadowColor: "#000",
+    shadowOpacity: 0.03,
+    shadowRadius: 5,
+    elevation: 2,
+  },
+  cardNormal: { borderColor: "#E5E7EB" },
+  cardHigh: { borderColor: "#FECACA", backgroundColor: "#FEF2F2", borderLeftWidth: 4, borderLeftColor: "#DC2626" },
+
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
+  headerLeft: { flexDirection: "row", alignItems: "center", flex: 1 },
+  avatar: { width: 44, height: 44, borderRadius: 22, justifyContent: "center", alignItems: "center", marginRight: 12 },
+  avatarNormal: { backgroundColor: "#DBEAFE" },
+  avatarHigh: { backgroundColor: "#FEE2E2" },
+  avatarText: { fontSize: 16, fontWeight: "700", color: "#1D4ED8" },
+  info: { flex: 1 },
+  name: { fontSize: 16, fontWeight: "700", color: "#111827", marginBottom: 2 },
+  code: { fontSize: 12, color: "#6B7280" },
+  
+  headerRight: { marginLeft: 8 },
+  badgeNormal: { backgroundColor: "#DCFCE7", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  badgeNormalText: { color: "#16A34A", fontSize: 11, fontWeight: "700" },
+  badgeMedium: { backgroundColor: "#FEF08A", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  badgeMediumText: { color: "#A16207", fontSize: 11, fontWeight: "700" },
+  badgeHigh: { backgroundColor: "#DC2626", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  badgeHighText: { color: "#FFFFFF", fontSize: 11, fontWeight: "700" },
+
+  body: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 4, marginBottom: 16 },
+  metricPill: { flexDirection: "row", alignItems: "center", backgroundColor: "#F9FAFB", paddingHorizontal: 8, paddingVertical: 6, borderRadius: 8, gap: 4, borderWidth: 1, borderColor: "#F3F4F6", flexBasis: "48%" },
+  metricLabel: { fontSize: 12, color: "#6B7280" },
+  metricValue: { fontSize: 13, fontWeight: "700", color: "#111827" },
+  metricUnit: { fontSize: 11, color: "#9CA3AF" },
+
+  footer: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderTopWidth: 1, borderTopColor: "#F3F4F6", paddingTop: 12 },
+  timeText: { fontSize: 12, color: "#6B7280", fontStyle: "italic" },
+  footerRight: { flexDirection: "row", alignItems: "center", gap: 12 },
+  alertCount: { flexDirection: "row", alignItems: "center", gap: 4 },
+  alertCountText: { fontSize: 12, color: "#DC2626", fontWeight: "600" },
+  chevronBtn: { flexDirection: "row", alignItems: "center", gap: 2 },
+  chevronText: { fontSize: 13, color: "#2563EB", fontWeight: "600" },
+});
+
+export default NursePatientCard;
