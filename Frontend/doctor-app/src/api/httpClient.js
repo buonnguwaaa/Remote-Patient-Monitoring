@@ -27,7 +27,9 @@ export async function request(path, options = {}, canRetry = true) {
 
   let token = null;
   try {
-    token = await SecureStore.getItemAsync("doctor_accessToken");
+    // Try new staff key first, fallback to old doctor key for migration
+    token = await SecureStore.getItemAsync("staff_accessToken");
+    if (!token) token = await SecureStore.getItemAsync("doctor_accessToken");
   } catch {}
 
   const headers = {
@@ -62,6 +64,8 @@ export async function request(path, options = {}, canRetry = true) {
 
       // Refresh failed — clear stored credentials and force logout
       try {
+        await SecureStore.deleteItemAsync("staff_accessToken");
+        await SecureStore.deleteItemAsync("staff_refreshToken");
         await SecureStore.deleteItemAsync("doctor_accessToken");
         await SecureStore.deleteItemAsync("doctor_refreshToken");
       } catch {}

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { getAlerts } from "../api/patientApi";
+import { getMyNurseAlerts } from "../api/alertApi";
 import { getConversations } from "../api/chatApi";
 import { useAuth } from "./AuthContext";
 
@@ -8,7 +9,7 @@ const BadgeContext = createContext(null);
 export const useBadges = () => useContext(BadgeContext);
 
 export function BadgeProvider({ children }) {
-  const { user } = useAuth();
+  const { user, isDoctor, isNurse } = useAuth();
   const currentUserId = user?.id || user?._id;
 
   const [unreadAlertsCount, setUnreadAlertsCount] = useState(0);
@@ -17,6 +18,19 @@ export function BadgeProvider({ children }) {
   const fetchCounts = useCallback(async () => {
     if (!currentUserId) return;
     try {
+      if (isNurse) {
+        // Nurse: fetch nurse alerts only, no chat
+        const alertsRes = await getMyNurseAlerts({ limit: 100 });
+        if (alertsRes.ok) {
+          const list = alertsRes.body?.data || [];
+          const openAlerts = list.filter((a) => a.status === "open");
+          setUnreadAlertsCount(openAlerts.length);
+        }
+        setUnreadChatsCount(0); // Nurse does not have chat
+        return;
+      }
+
+      // Doctor: original logic
       // 1. Fetch unread alerts
       const alertsRes = await getAlerts({ limit: 100 });
       if (alertsRes.ok) {
@@ -47,7 +61,7 @@ export function BadgeProvider({ children }) {
     } catch (err) {
       console.error("Failed to fetch badge counts in provider:", err);
     }
-  }, [currentUserId]);
+  }, [currentUserId, isDoctor, isNurse]);
 
   useEffect(() => {
     if (!currentUserId) {
