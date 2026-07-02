@@ -1,19 +1,20 @@
 import { StyleSheet } from 'react-native';
+import { colors, radius } from '../theme/rpmTheme';
 
 export default StyleSheet.create({
   button: {
     height: 48,
-    borderRadius: 10,
+    borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
   primary: {
-    backgroundColor: '#030213',
+    backgroundColor: colors.primary,
   },
   outline: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#e6e6e8',
+    borderColor: colors.border,
   },
   text: {
     fontSize: 16,
@@ -23,7 +24,7 @@ export default StyleSheet.create({
     color: '#fff',
   },
   textOutline: {
-    color: '#030213',
+    color: colors.text,
   },
   disabled: {
     opacity: 0.6,

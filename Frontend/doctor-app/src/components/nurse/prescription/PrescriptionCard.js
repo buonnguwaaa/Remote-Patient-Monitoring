@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginRight: 8,
   },
-  countText: { fontSize: 12, fontWeight: "700", color: "#4B5563" },
+  countText: { fontSize: 12, fontWeight: "700", color: "#4B5563", lineHeight: 16 },
   groupBody: { padding: 14, backgroundColor: "#F2F6FF" },
   
   card: {
@@ -154,15 +154,15 @@ const styles = StyleSheet.create({
     borderColor: "#E5E7EB",
   },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 },
-  badge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-  badgeText: { fontSize: 11, fontWeight: "700" },
-  dateText: { fontSize: 12, color: "#6B7280", fontWeight: "500" },
+  badge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, justifyContent: "center", alignItems: "center" },
+  badgeText: { fontSize: 11, fontWeight: "700", lineHeight: 16 },
+  dateText: { fontSize: 12, color: "#6B7280", fontWeight: "500", lineHeight: 16 },
   body: { marginBottom: 12 },
   medRow: { flexDirection: "row", alignItems: "center", marginBottom: 6 },
   medBullet: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#2563EB", marginRight: 8 },
-  medName: { fontSize: 13, fontWeight: "600", color: "#111827", flex: 1 },
-  medDosage: { fontWeight: "400", color: "#6B7280" },
-  moreMeds: { fontSize: 12, color: "#9CA3AF", fontStyle: "italic", marginLeft: 14 },
+  medName: { fontSize: 13, fontWeight: "600", color: "#111827", flex: 1, lineHeight: 18 },
+  medDosage: { fontWeight: "400", color: "#6B7280", lineHeight: 18 },
+  moreMeds: { fontSize: 12, color: "#9CA3AF", fontStyle: "italic", marginLeft: 14, lineHeight: 16 },
   footer: {
     flexDirection: "row",
     borderTopWidth: 1,
@@ -171,5 +171,5 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   actionBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 4, paddingHorizontal: 8 },
-  actionText: { fontSize: 13, fontWeight: "600", color: "#4B5563" },
+  actionText: { fontSize: 13, fontWeight: "600", color: "#4B5563", lineHeight: 18 },
 });

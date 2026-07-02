@@ -11,6 +11,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../context/AuthContext";
 import request from "../api/httpClient";
+import { colors, radius, spacing, typography, shadows } from "../theme/rpmTheme";
 
 function formatDate(d) {
   if (!d) return "Chưa cập nhật";
@@ -27,7 +28,7 @@ function InfoRow({ icon, label, value }) {
   return (
     <View style={styles.infoRow}>
       <View style={styles.infoIcon}>
-        <Ionicons name={icon} size={16} color="#6B7280" />
+        <Ionicons name={icon} size={16} color={colors.textSecondary} />
       </View>
       <View style={styles.infoContent}>
         <Text style={styles.infoLabel}>{label}</Text>
@@ -85,7 +86,7 @@ export default function ProfileScreen() {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#2563EB" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -93,7 +94,7 @@ export default function ProfileScreen() {
   if (error) {
     return (
       <View style={styles.centered}>
-        <Ionicons name="alert-circle-outline" size={40} color="#DC2626" />
+        <Ionicons name="alert-circle-outline" size={40} color={colors.danger} />
         <Text style={styles.errorText}>{error}</Text>
         <TouchableOpacity style={styles.retryBtn} onPress={loadProfile}>
           <Text style={styles.retryText}>Thử lại</Text>
@@ -109,7 +110,7 @@ export default function ProfileScreen() {
       style={styles.container}
       showsVerticalScrollIndicator={false}
       contentContainerStyle={{ paddingBottom: 40 }}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2563EB" />}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
     >
       {/* Avatar card */}
       <View style={styles.avatarCard}>
@@ -119,13 +120,13 @@ export default function ProfileScreen() {
         <Text style={styles.doctorName}>{d.name || user?.name || "Bác sĩ"}</Text>
         {d.specialization ? (
           <View style={styles.specialBadge}>
-            <Ionicons name="medkit-outline" size={12} color="#2563EB" />
+            <Ionicons name="medkit-outline" size={12} color={colors.primary} />
             <Text style={styles.specialText}>{d.specialization}</Text>
           </View>
         ) : null}
         {d.workplace ? (
           <Text style={styles.workplaceText}>
-            <Ionicons name="location-outline" size={12} color="#9CA3AF" /> {d.workplace}
+            <Ionicons name="location-outline" size={12} color={colors.textMuted} /> {d.workplace}
           </Text>
         ) : null}
       </View>
@@ -150,7 +151,7 @@ export default function ProfileScreen() {
 
       {/* Logout */}
       <TouchableOpacity style={styles.logoutBtn} onPress={logout} activeOpacity={0.8}>
-        <Ionicons name="log-out-outline" size={20} color="#EF4444" />
+        <Ionicons name="log-out-outline" size={20} color={colors.dangerAccent} />
         <Text style={styles.logoutText}>Đăng xuất</Text>
       </TouchableOpacity>
     </ScrollView>
@@ -158,89 +159,32 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingHorizontal: 16, paddingTop: 16 },
+  container: { flex: 1, paddingHorizontal: spacing.lg, paddingTop: spacing.lg },
   centered: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, padding: 24 },
-  errorText: { fontSize: 14, color: "#DC2626", textAlign: "center" },
-  retryBtn: { backgroundColor: "#EFF6FF", borderRadius: 10, paddingHorizontal: 20, paddingVertical: 10 },
-  retryText: { fontSize: 14, fontWeight: "600", color: "#2563EB" },
+  errorText: { fontSize: 14, color: colors.danger, textAlign: "center" },
+  retryBtn: { backgroundColor: colors.surfaceSoftBlue, borderRadius: 10, paddingHorizontal: 20, paddingVertical: 10 },
+  retryText: { fontSize: 14, fontWeight: "600", color: colors.primary },
 
   avatarCard: {
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    padding: 24,
-    alignItems: "center",
-    marginBottom: 20,
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 3,
+    backgroundColor: colors.surface, borderRadius: radius["3xl"], padding: spacing["3xl"],
+    alignItems: "center", marginBottom: spacing.section, ...shadows.cardElevated,
   },
-  avatarCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 24,
-    backgroundColor: "#2563EB",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 14,
-  },
-  avatarText: { fontSize: 28, fontWeight: "800", color: "#fff" },
-  doctorName: { fontSize: 20, fontWeight: "800", color: "#111827", textAlign: "center" },
-  specialBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "#EFF6FF",
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    marginTop: 8,
-  },
-  specialText: { fontSize: 12, fontWeight: "600", color: "#2563EB" },
-  workplaceText: { fontSize: 12, color: "#9CA3AF", marginTop: 6 },
+  avatarCircle: { width: 80, height: 80, borderRadius: radius["4xl"], backgroundColor: colors.primary, alignItems: "center", justifyContent: "center", marginBottom: 14 },
+  avatarText: { fontSize: 28, fontWeight: "800", color: colors.surface },
+  doctorName: { ...typography.screenTitle, textAlign: "center" },
+  specialBadge: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: colors.surfaceSoftBlue, borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 4, marginTop: 8 },
+  specialText: { fontSize: 12, fontWeight: "600", color: colors.primary },
+  workplaceText: { fontSize: 12, color: colors.textMuted, marginTop: 6 },
 
-  section: { marginBottom: 16 },
-  sectionTitle: { fontSize: 12, fontWeight: "700", color: "#9CA3AF", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8, marginLeft: 4 },
-  card: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    shadowColor: "#000",
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-  },
-  infoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 13,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
-    gap: 12,
-  },
-  infoIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: "#F3F4F6",
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  section: { marginBottom: spacing.lg },
+  sectionTitle: { fontSize: 12, fontWeight: "700", color: colors.textMuted, textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8, marginLeft: 4 },
+  card: { backgroundColor: colors.surface, borderRadius: radius.xl, paddingHorizontal: spacing.lg, ...shadows.card },
+  infoRow: { flexDirection: "row", alignItems: "center", paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: colors.borderSoft, gap: 12 },
+  infoIcon: { width: 32, height: 32, borderRadius: 10, backgroundColor: colors.primaryTint, alignItems: "center", justifyContent: "center" },
   infoContent: { flex: 1 },
-  infoLabel: { fontSize: 11, color: "#9CA3AF", marginBottom: 2 },
-  infoValue: { fontSize: 14, fontWeight: "500", color: "#111827" },
+  infoLabel: { ...typography.hint, marginBottom: 2 },
+  infoValue: { ...typography.value, fontWeight: "500" },
 
-  logoutBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#FEF2F2",
-    borderRadius: 14,
-    paddingVertical: 14,
-    gap: 8,
-    marginTop: 4,
-  },
-  logoutText: { fontSize: 15, fontWeight: "700", color: "#EF4444" },
+  logoutBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", backgroundColor: colors.dangerSoftAlt, borderRadius: radius.lg, paddingVertical: 14, gap: 8, marginTop: 4 },
+  logoutText: { fontSize: 15, fontWeight: "700", color: colors.dangerAccent },
 });

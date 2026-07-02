@@ -813,7 +813,7 @@ export default function ChatDetailScreen() {
                           </View>
                         </View>
                       );
-                    } catch (e) {}
+                    } catch (e) { }
                   }
                   if (item.message.content && item.message.content.includes('"type":"video_call_ended"')) {
                     return (
@@ -1124,7 +1124,7 @@ export default function ChatDetailScreen() {
                                         </TouchableOpacity>
                                       );
                                     }
-                                  } catch (e) {}
+                                  } catch (e) { }
                                 }
                                 if (
                                   item.message.content &&

@@ -59,6 +59,7 @@ function MedicationEditorCard({ med, medIdx, onChange, onRemove, canRemove }) {
           onFocus={() => setShowSuggestions(true)}
           onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
           placeholder="Nhập tên thuốc..."
+          placeholderTextColor="#9CA3AF"
         />
         {showSuggestions && filteredDrugs.length > 0 && (
           <View style={styles.suggestionsBox}>
@@ -76,21 +77,21 @@ function MedicationEditorCard({ med, medIdx, onChange, onRemove, canRemove }) {
       <View style={styles.row}>
         <View style={{ flex: 1, marginRight: 8 }}>
           <Text style={styles.label}>Liều lượng *</Text>
-          <TextInput style={styles.input} value={med.dosage} onChangeText={(v) => handleField("dosage", v)} placeholder="VD: 500mg" />
+          <TextInput style={styles.input} value={med.dosage} onChangeText={(v) => handleField("dosage", v)} placeholder="VD: 500mg" placeholderTextColor="#9CA3AF" />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.label}>Đường dùng</Text>
-          <TextInput style={styles.input} value={med.route} onChangeText={(v) => handleField("route", v)} placeholder="Đường uống" />
+          <TextInput style={styles.input} value={med.route} onChangeText={(v) => handleField("route", v)} placeholder="Đường uống" placeholderTextColor="#9CA3AF" />
         </View>
       </View>
 
       <Text style={styles.label}>Chỉ dẫn thêm</Text>
-      <TextInput style={[styles.input, { height: 60, textAlignVertical: "top" }]} value={med.instructions} onChangeText={(v) => handleField("instructions", v)} placeholder="Ghi chú thêm..." multiline />
+      <TextInput style={[styles.input, { height: 60, textAlignVertical: "top" }]} value={med.instructions} onChangeText={(v) => handleField("instructions", v)} placeholder="Ghi chú thêm..." placeholderTextColor="#9CA3AF" multiline />
 
       <Text style={[styles.label, { marginTop: 12 }]}>Lịch uống</Text>
       {med.schedule.map((dose, doseIdx) => (
         <ScheduleEditorCard 
-          key={doseIdx} dose={dose} 
+          key={doseIdx} dose={dose} doseIdx={doseIdx}
           onChange={(k, v) => {
             const next = [...med.schedule];
             next[doseIdx] = { ...next[doseIdx], [k]: v };
@@ -114,37 +115,111 @@ function MedicationEditorCard({ med, medIdx, onChange, onRemove, canRemove }) {
   );
 }
 
-function ScheduleEditorCard({ dose, onChange, onRemove, canRemove }) {
-  const TIMES = [{ id: "morning", label: "Sáng" }, { id: "noon", label: "Trưa" }, { id: "evening", label: "Tối" }];
-  const MEALS = [{ id: "pre_meal", label: "Trước ăn" }, { id: "post_meal", label: "Sau ăn" }, { id: "", label: "Bất kỳ" }];
+function ScheduleEditorCard({ dose, doseIdx, onChange, onRemove, canRemove }) {
+  const renderTimeOfDay = (tod) => {
+    if (tod === "morning") return "Sáng";
+    if (tod === "noon") return "Trưa";
+    if (tod === "evening") return "Tối";
+    return tod;
+  };
 
   return (
-    <View style={styles.scheduleCard}>
-      <View style={styles.scheduleRow}>
-        <View style={{ flexDirection: "row", gap: 4, flex: 1 }}>
-          {TIMES.map(t => (
-            <Chip key={t.id} label={t.label} active={dose.timeOfDay === t.id} onPress={() => onChange("timeOfDay", t.id)} />
-          ))}
+    <View style={styles.doseFormCard}>
+      {/* Header of Dose */}
+      <View style={styles.doseCardHeader}>
+        <View style={styles.doseCardHeaderLeft}>
+          <Ionicons name="time-outline" size={14} color="#64748B" />
+          <Text style={styles.doseCardTitle}>Lần uống #{doseIdx + 1}</Text>
         </View>
         {canRemove && (
-          <TouchableOpacity onPress={onRemove}><Ionicons name="close-circle" size={20} color="#EF4444" /></TouchableOpacity>
+          <TouchableOpacity onPress={onRemove} style={styles.removeDoseBtn}>
+            <Ionicons name="trash-outline" size={14} color="#EF4444" />
+            <Text style={styles.removeDoseText}>Xóa</Text>
+          </TouchableOpacity>
         )}
       </View>
-      <View style={styles.scheduleRow}>
-        <TextInput 
-          style={[styles.input, { flex: 1, marginBottom: 0, textAlign: "center" }]} 
-          value={dose.customTime} onChangeText={(v) => onChange("customTime", v)} 
-          placeholder="HH:mm" keyboardType="numbers-and-punctuation"
-        />
-        <View style={{ flexDirection: "row", gap: 4, flex: 2, marginLeft: 8 }}>
-          {MEALS.map(m => (
-            <Chip key={m.id} label={m.label} active={dose.mealTiming === m.id} onPress={() => onChange("mealTiming", m.id)} />
-          ))}
+
+      {/* Time of Day Segment & Time Input */}
+      <View style={styles.doseRow}>
+        {/* Segment selector for Sáng / Trưa / Tối */}
+        <View style={{ flex: 1 }}>
+          <Text style={styles.doseFieldLabel}>Thời điểm</Text>
+          <View style={styles.todSegmentContainer}>
+            {["morning", "noon", "evening"].map((tod) => {
+              const selected = dose.timeOfDay === tod;
+              return (
+                <TouchableOpacity
+                  key={tod}
+                  style={[styles.todSegmentBtn, selected && styles.todSegmentBtnActive]}
+                  onPress={() => onChange("timeOfDay", tod)}
+                >
+                  <Text style={[styles.todSegmentText, selected && styles.todSegmentTextActive]}>
+                    {renderTimeOfDay(tod)}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </View>
-        <View style={styles.pillControl}>
-          <TouchableOpacity onPress={() => onChange("pillCount", Math.max(0.5, (dose.pillCount || 1) - 0.5))}><Ionicons name="remove" size={16} color="#4B5563" /></TouchableOpacity>
-          <Text style={styles.pillText}>{dose.pillCount || 1}v</Text>
-          <TouchableOpacity onPress={() => onChange("pillCount", (dose.pillCount || 1) + 0.5)}><Ionicons name="add" size={16} color="#4B5563" /></TouchableOpacity>
+
+        {/* HH:mm input */}
+        <View style={styles.timeInputContainer}>
+          <Text style={styles.doseFieldLabel}>Giờ uống</Text>
+          <TextInput
+            style={styles.timeInput}
+            placeholder="08:00"
+            placeholderTextColor="#9CA3AF"
+            value={dose.customTime}
+            onChangeText={(val) => onChange("customTime", val)}
+          />
+        </View>
+      </View>
+
+      {/* Pill Count & Meal Timing */}
+      <View style={styles.doseRow}>
+        {/* Pill Counter with - / + buttons */}
+        <View style={styles.pillCounterContainer}>
+          <Text style={styles.doseFieldLabel}>Số viên</Text>
+          <View style={styles.counterRow}>
+            <TouchableOpacity
+              style={styles.counterBtn}
+              onPress={() => onChange("pillCount", Math.max(0.5, Number(dose.pillCount || 1) - 0.5))}
+            >
+              <Text style={styles.counterBtnText}>-</Text>
+            </TouchableOpacity>
+            <Text style={styles.counterValueText}>{dose.pillCount || 1}</Text>
+            <TouchableOpacity
+              style={styles.counterBtn}
+              onPress={() => onChange("pillCount", Number(dose.pillCount || 1) + 0.5)}
+            >
+              <Text style={styles.counterBtnText}>+</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Meal Timing Button group */}
+        <View style={styles.mealTimingContainer}>
+          <Text style={styles.doseFieldLabel}>Thời điểm ăn</Text>
+          <View style={styles.mealTimingRow}>
+            {[
+              { val: "", lbl: "K.hạn" },
+              { val: "pre_meal", lbl: "Trước ăn" },
+              { val: "post_meal", lbl: "Sau ăn" },
+            ].map((item) => {
+              const selected = dose.mealTiming === item.val;
+              return (
+                <TouchableOpacity
+                  key={item.val}
+                  style={[styles.mealTimingBtn, selected && styles.mealTimingBtnActive]}
+                  onPress={() => onChange("mealTiming", item.val)}
+                >
+                  <Text style={[styles.mealTimingText, selected && styles.mealTimingTextActive]}>
+                    {item.lbl}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </View>
       </View>
     </View>
@@ -155,12 +230,16 @@ export function PrescriptionFormModal({ visible, onClose, initialData, onSave, p
   const [formData, setFormData] = useState(initialData);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
+  const [localError, setLocalError] = useState("");
   const [showPatientPicker, setShowPatientPicker] = useState(false);
   const [searchPatient, setSearchPatient] = useState("");
   const [showDatePicker, setShowDatePicker] = useState({ show: false, field: "startDate" });
 
   useEffect(() => {
-    if (visible && initialData) setFormData(initialData);
+    if (visible) {
+      if (initialData) setFormData(initialData);
+      setLocalError("");
+    }
   }, [visible, initialData]);
 
   const validate = () => {
@@ -181,8 +260,12 @@ export function PrescriptionFormModal({ visible, onClose, initialData, onSave, p
   const handleSave = async () => {
     if (!validate()) return;
     setSaving(true);
-    await onSave(formData);
+    setLocalError("");
+    const res = await onSave(formData);
     setSaving(false);
+    if (res && !res.success) {
+      setLocalError(res.error || "Đã xảy ra lỗi");
+    }
   };
 
   if (!visible) return null;
@@ -200,6 +283,15 @@ export function PrescriptionFormModal({ visible, onClose, initialData, onSave, p
           </View>
 
           <ScrollView style={styles.body} contentContainerStyle={{ paddingBottom: 60 }} keyboardShouldPersistTaps="handled">
+            {localError ? (
+              <View style={styles.errorAlert}>
+                <Ionicons name="alert-circle" size={18} color="#DC2626" />
+                <Text style={styles.errorAlertText}>{localError}</Text>
+                <TouchableOpacity onPress={() => setLocalError("")}>
+                  <Ionicons name="close" size={18} color="#9CA3AF" />
+                </TouchableOpacity>
+              </View>
+            ) : null}
             
             <Section title="1. Thông tin bệnh nhân" error={errors.patient}>
               <TouchableOpacity style={styles.patientBox} onPress={() => setShowPatientPicker(true)}>
@@ -294,6 +386,7 @@ export function PrescriptionFormModal({ visible, onClose, initialData, onSave, p
                 placeholder="Tìm tên bệnh nhân..." 
                 value={searchPatient} 
                 onChangeText={setSearchPatient} 
+                placeholderTextColor="#9CA3AF"
               />
               <ScrollView style={{ maxHeight: 400 }}>
                 {patients.filter(p => p.user?.name?.toLowerCase().includes(searchPatient.toLowerCase())).map(p => (
@@ -331,9 +424,9 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 15, fontWeight: "700", color: "#111827", marginBottom: 12 },
   errorText: { color: "#DC2626", fontSize: 12, marginTop: 4 },
   label: { fontSize: 12, fontWeight: "600", color: "#4B5563", marginBottom: 6 },
-  input: { backgroundColor: "#F3F4F6", padding: 10, borderRadius: 8, fontSize: 14, marginBottom: 12, borderWidth: 1, borderColor: "#E5E7EB" },
+  input: { backgroundColor: "#F3F4F6", padding: 10, borderRadius: 8, fontSize: 14, marginBottom: 12, borderWidth: 1, borderColor: "#E5E7EB", color: "#111827" },
   row: { flexDirection: "row" },
-  chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: "#F3F4F6", borderWidth: 1, borderColor: "#E5E7EB" },
+  chip: { height: 36, paddingHorizontal: 10, justifyContent: "center", alignItems: "center", borderRadius: 8, backgroundColor: "#F3F4F6", borderWidth: 1, borderColor: "#E5E7EB" },
   chipActive: { backgroundColor: "#EFF6FF", borderColor: "#BFDBFE" },
   chipText: { fontSize: 12, color: "#4B5563", fontWeight: "600" },
   chipTextActive: { color: "#2563EB" },
@@ -345,7 +438,9 @@ const styles = StyleSheet.create({
 
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
   patientModalSheet: { backgroundColor: "#FFF", borderTopLeftRadius: 16, borderTopRightRadius: 16, paddingBottom: 20 },
-  searchPatientInput: { margin: 16, backgroundColor: "#F3F4F6", padding: 10, borderRadius: 8, fontSize: 14 },
+  modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 16, borderBottomWidth: 1, borderBottomColor: "#F3F4F6" },
+  modalTitle: { fontSize: 16, fontWeight: "700", color: "#111827" },
+  searchPatientInput: { margin: 16, backgroundColor: "#F3F4F6", padding: 10, borderRadius: 8, fontSize: 14, color: "#111827" },
   patientRow: { flexDirection: "row", alignItems: "center", padding: 16, borderBottomWidth: 1, borderBottomColor: "#F3F4F6", gap: 12 },
   patientRowName: { fontSize: 15, fontWeight: "500", color: "#111827" },
 
@@ -356,14 +451,180 @@ const styles = StyleSheet.create({
   addMedBtn: { flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8, padding: 12, borderRadius: 10, backgroundColor: "#EFF6FF", borderWidth: 1, borderColor: "#BFDBFE", borderStyle: "dashed" },
   addMedText: { color: "#2563EB", fontWeight: "700" },
   
-  scheduleCard: { backgroundColor: "#FFF", borderRadius: 8, padding: 8, marginBottom: 8, borderWidth: 1, borderColor: "#E5E7EB" },
-  scheduleRow: { flexDirection: "row", alignItems: "center", marginBottom: 6, gap: 8 },
-  pillControl: { flexDirection: "row", alignItems: "center", backgroundColor: "#F3F4F6", borderRadius: 6, paddingHorizontal: 4 },
-  pillText: { marginHorizontal: 8, fontWeight: "700", fontSize: 13 },
+  doseFormCard: {
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 10,
+  },
+  doseCardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
+    paddingBottom: 6,
+  },
+  doseCardHeaderLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  doseCardTitle: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#64748B",
+  },
+  removeDoseBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+  },
+  removeDoseText: {
+    fontSize: 11,
+    color: "#EF4444",
+    fontWeight: "600",
+  },
+  doseRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    gap: 10,
+    marginBottom: 8,
+  },
+  todSegmentContainer: {
+    flex: 1,
+    flexDirection: "row",
+    backgroundColor: "#F1F5F9",
+    borderRadius: 8,
+    padding: 2,
+    height: 38,
+    alignItems: "center",
+  },
+  todSegmentBtn: {
+    flex: 1,
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+    borderRadius: 6,
+  },
+  todSegmentBtnActive: {
+    backgroundColor: "#2563EB",
+  },
+  todSegmentText: {
+    fontSize: 11,
+    color: "#64748B",
+    fontWeight: "500",
+  },
+  todSegmentTextActive: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+  },
+  timeInputContainer: {
+    width: 90,
+  },
+  doseFieldLabel: {
+    fontSize: 10,
+    color: "#64748B",
+    marginBottom: 4,
+    fontWeight: "600",
+  },
+  timeInput: {
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    height: 38,
+    fontSize: 14,
+    color: "#1F2937",
+    textAlign: "center",
+  },
+  pillCounterContainer: {
+    width: 100,
+  },
+  counterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+    borderRadius: 8,
+    backgroundColor: "#F8FAFC",
+    height: 38,
+  },
+  counterBtn: {
+    width: 30,
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  counterBtnText: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#64748B",
+  },
+  counterValueText: {
+    flex: 1,
+    textAlign: "center",
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#1F2937",
+  },
+  mealTimingContainer: {
+    flex: 1,
+  },
+  mealTimingRow: {
+    flexDirection: "row",
+    backgroundColor: "#F1F5F9",
+    borderRadius: 8,
+    padding: 2,
+    height: 38,
+    alignItems: "center",
+  },
+  mealTimingBtn: {
+    flex: 1,
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+    borderRadius: 6,
+  },
+  mealTimingBtnActive: {
+    backgroundColor: "#10B981",
+  },
+  mealTimingText: {
+    fontSize: 10,
+    color: "#64748B",
+    fontWeight: "500",
+  },
+  mealTimingTextActive: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+  },
   addDoseBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 6 },
   addDoseText: { color: "#2563EB", fontSize: 13, fontWeight: "600" },
 
   suggestionsBox: { position: "absolute", top: 45, left: 0, right: 0, backgroundColor: "#FFF", borderRadius: 8, borderWidth: 1, borderColor: "#E5E7EB", maxHeight: 150, zIndex: 100, elevation: 5, shadowColor: "#000", shadowOpacity: 0.1, shadowRadius: 5 },
   suggestionItem: { padding: 12, borderBottomWidth: 1, borderBottomColor: "#F3F4F6" },
   suggestionName: { fontSize: 14, fontWeight: "600", color: "#111827" },
+  errorAlert: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FEE2E2",
+    borderWidth: 1,
+    borderColor: "#FCA5A5",
+    borderRadius: 10,
+    padding: 12,
+    marginHorizontal: 16,
+    marginTop: 16,
+    gap: 8,
+  },
+  errorAlertText: {
+    flex: 1,
+    color: "#B91C1C",
+    fontSize: 13,
+    fontWeight: "600",
+  },
 });
