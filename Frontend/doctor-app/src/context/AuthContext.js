@@ -5,6 +5,7 @@ import * as LocalAuthentication from "expo-local-authentication";
 import * as authApi from "../api/authApi";
 import { setAuthFailureHandler } from "../api/httpClient";
 import { buildRealtimeSocketUrl } from "../api/chatApi";
+import { setCachedUserRole } from "../navigation/navigationRef";
 import {
   registerCurrentDevicePushToken,
   deactivateCurrentDevicePushToken,
@@ -12,6 +13,15 @@ import {
 } from "../services/pushNotificationService";
 
 const AuthContext = createContext(null);
+
+function isStaffRole(role) {
+  return (
+    role === "user.doctor" ||
+    role === "doctor" ||
+    role === "user.nurse" ||
+    role === "nurse"
+  );
+}
 
 function extractUser(response) {
   if (!response?.ok) return null;
@@ -25,9 +35,21 @@ export function AuthProvider({ children }) {
   const [isBiometricEnabled, setIsBiometricEnabled] = useState(false);
   const [sessionPassword, setSessionPassword] = useState(null);
 
-  // Realtime notification socket listener
+  const role = user?.role;
+  const isDoctor = role === "user.doctor" || role === "doctor";
+  const isNurse = role === "user.nurse" || role === "nurse";
+  const userRole = role;
+
+  // Cache role for push notification routing (navigationRef cannot access React context)
+  useEffect(() => {
+    setCachedUserRole(role || null);
+  }, [role]);
+
+  // Realtime notification socket listener — doctor only
   useEffect(() => {
     if (!user) return undefined;
+    // Guard: only connect WebSocket for doctors
+    if (!isDoctor) return undefined;
 
     let socket = null;
     let reconnectTimeout = null;
@@ -46,10 +68,7 @@ export function AuthProvider({ children }) {
             const payload = JSON.parse(event.data);
             console.log("[Realtime WS] Received event:", payload);
             if (payload?.type === "chat.alert_message" && payload?.data) {
-              // Emit global DeviceEventEmitter event
               DeviceEventEmitter.emit("NEW_ALERT", payload.data);
-              
-              // Trigger a visual popup
               const severityText = payload.data.severity === "high" ? "NGUY KỊCH ⚠️" : "Cảnh báo ⚠️";
               Alert.alert(
                 `Cảnh báo mới (${severityText})`,
@@ -79,14 +98,14 @@ export function AuthProvider({ children }) {
 
     return () => {
       if (socket) {
-        socket.onclose = null; // Prevent reconnect
+        socket.onclose = null;
         socket.close();
       }
       if (reconnectTimeout) clearTimeout(reconnectTimeout);
     };
-  }, [user?.id, user?._id]);
+  }, [user?.id, user?._id, isDoctor]);
 
-  // Register global auth failure handler so httpClient can trigger logout
+  // Register global auth failure handler
   useEffect(() => {
     setAuthFailureHandler(() => {
       setUser(null);
@@ -106,7 +125,7 @@ export function AuthProvider({ children }) {
       const result = await registerCurrentDevicePushToken();
       if (!mounted) return;
       if (!result?.ok && !result?.skipped) {
-        console.warn("[push] failed to register doctor device token", result?.error);
+        console.warn("[push] failed to register staff device token", result?.error);
       }
     })();
 
@@ -119,12 +138,15 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     (async () => {
       try {
-        const bioEnabled = await SecureStore.getItemAsync("doctor_biometric_enabled");
+        // Check biometric (try new staff key, fallback to old doctor key)
+        const bioEnabled =
+          (await SecureStore.getItemAsync("staff_biometric_enabled")) ||
+          (await SecureStore.getItemAsync("doctor_biometric_enabled"));
         setIsBiometricEnabled(bioEnabled === "true");
 
         const res = await authApi.me();
         const u = extractUser(res);
-        if (u && (u.role === "user.doctor" || u.role === "doctor")) {
+        if (u && isStaffRole(u.role)) {
           setUser(u);
         } else {
           setUser(null);
@@ -145,34 +167,47 @@ export function AuthProvider({ children }) {
 
     const token = res.body?.data?.accessToken || res.body?.accessToken;
     if (token) {
-      await SecureStore.setItemAsync("doctor_accessToken", token);
+      await SecureStore.setItemAsync("staff_accessToken", token);
     }
 
     const meRes = await authApi.me();
     const u = extractUser(meRes);
 
     if (!u) return { ok: false, error: "Không lấy được thông tin tài khoản" };
-    if (u.role !== "user.doctor" && u.role !== "doctor") {
-      await SecureStore.deleteItemAsync("doctor_accessToken");
-      return { ok: false, error: "Tài khoản này không phải bác sĩ" };
+
+    // Reject patients
+    if (u.role === "user.patient" || u.role === "patient") {
+      try { await SecureStore.deleteItemAsync("staff_accessToken"); } catch {}
+      return {
+        ok: false,
+        error: "Ứng dụng này chỉ dành cho bác sĩ/y tá. Vui lòng dùng app bệnh nhân.",
+      };
+    }
+
+    // Reject unknown roles
+    if (!isStaffRole(u.role)) {
+      try { await SecureStore.deleteItemAsync("staff_accessToken"); } catch {}
+      return { ok: false, error: "Tài khoản không có quyền truy cập ứng dụng này." };
     }
 
     setUser(u);
-    setSessionPassword(password); 
+    setSessionPassword(password);
     return { ok: true, data: u };
   };
 
   const logout = async () => {
-    // Deactivate push token before clearing session
     try {
       const result = await deactivateCurrentDevicePushToken();
       if (!result?.ok && !result?.skipped) {
-        console.warn("[push] failed to deactivate doctor device token", result?.error);
+        console.warn("[push] failed to deactivate staff device token", result?.error);
       }
     } catch {}
 
     try { await authApi.logout(); } catch {}
     try {
+      // Clear both old and new keys
+      await SecureStore.deleteItemAsync("staff_accessToken");
+      await SecureStore.deleteItemAsync("staff_refreshToken");
       await SecureStore.deleteItemAsync("doctor_accessToken");
       await SecureStore.deleteItemAsync("doctor_refreshToken");
     } catch {}
@@ -204,9 +239,9 @@ export function AuthProvider({ children }) {
         return { ok: false, error: "Không tìm thấy mật khẩu phiên. Vui lòng nhập mật khẩu để xác nhận." };
       }
 
-      await SecureStore.setItemAsync("doctor_email", emailToSave);
-      await SecureStore.setItemAsync("doctor_password", passwordToSave);
-      await SecureStore.setItemAsync("doctor_biometric_enabled", "true");
+      await SecureStore.setItemAsync("staff_email", emailToSave);
+      await SecureStore.setItemAsync("staff_password", passwordToSave);
+      await SecureStore.setItemAsync("staff_biometric_enabled", "true");
       setIsBiometricEnabled(true);
       return { ok: true };
     } catch (e) {
@@ -216,9 +251,13 @@ export function AuthProvider({ children }) {
 
   const disableBiometric = async () => {
     try {
-      await SecureStore.deleteItemAsync("doctor_email");
-      await SecureStore.deleteItemAsync("doctor_password");
-      await SecureStore.setItemAsync("doctor_biometric_enabled", "false");
+      await SecureStore.deleteItemAsync("staff_email");
+      await SecureStore.deleteItemAsync("staff_password");
+      await SecureStore.setItemAsync("staff_biometric_enabled", "false");
+      // Also clear old keys
+      try { await SecureStore.deleteItemAsync("doctor_email"); } catch {}
+      try { await SecureStore.deleteItemAsync("doctor_password"); } catch {}
+      try { await SecureStore.setItemAsync("doctor_biometric_enabled", "false"); } catch {}
       setIsBiometricEnabled(false);
       return { ok: true };
     } catch (e) {
@@ -232,10 +271,13 @@ export function AuthProvider({ children }) {
       initializing,
       login,
       logout,
+      isDoctor,
+      isNurse,
+      userRole,
       isBiometricEnabled,
       sessionPassword,
       enableBiometric,
-      disableBiometric
+      disableBiometric,
     }}>
       {children}
     </AuthContext.Provider>

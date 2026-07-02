@@ -19,13 +19,25 @@ function normalizePayload(payload) {
  * Notification types sent by the backend:
  *   - type = "alert"       → open Alerts screen (highlight the alert)
  *   - type = "reminder"    → open Reminders screen
- *   - type = "new_message" → open Chat screen
+ *   - type = "new_message" → open Chat screen (doctor only)
  *   - fallback             → open Alerts screen (safest default for doctors)
  */
-function buildNavigationAction(payload) {
+function buildNavigationAction(payload, isNurse) {
   const data = normalizePayload(payload);
   const type = data.type;
 
+  // Nurse routing: avoid Chat/VideoCall routes
+  if (isNurse) {
+    if (type === "alert" && data.patientId) {
+      return {
+        screen: "NursePatientDetail",
+        params: { patientId: data.patientId },
+      };
+    }
+    return { screen: "NursePatients", params: {} };
+  }
+
+  // Doctor routing
   if (type === "alert" && data.alertId) {
     return {
       screen: "Alerts",
@@ -45,7 +57,7 @@ function buildNavigationAction(payload) {
       screen: "ChatDetail",
       params: { 
         conversationId: data.conversationId,
-        patientId: data.senderId, // senderId is the patient who sent the message
+        patientId: data.senderId,
       },
     };
   }
@@ -54,24 +66,39 @@ function buildNavigationAction(payload) {
   return { screen: "Alerts", params: {} };
 }
 
+// Cache the current user role so navigationRef can access it without React context
+let _cachedRole = null;
+export function setCachedUserRole(role) {
+  _cachedRole = role;
+}
+
 function performNavigation(action) {
   if (!action) return false;
   if (!navigationRef.isReady()) {
     pendingNotificationAction = action;
     return false;
   }
-  navigationRef.navigate(action.screen, action.params);
+  try {
+    navigationRef.navigate(action.screen, action.params);
+  } catch (e) {
+    console.warn("[nav] Failed to navigate from notification:", e);
+  }
   return true;
 }
 
 export function navigateFromNotificationPayload(payload) {
-  return performNavigation(buildNavigationAction(payload));
+  const isNurse = _cachedRole === "user.nurse" || _cachedRole === "nurse";
+  return performNavigation(buildNavigationAction(payload, isNurse));
 }
 
 export function flushPendingNotificationNavigation() {
   if (!pendingNotificationAction || !navigationRef.isReady()) return false;
   const action = pendingNotificationAction;
   pendingNotificationAction = null;
-  navigationRef.navigate(action.screen, action.params);
+  try {
+    navigationRef.navigate(action.screen, action.params);
+  } catch (e) {
+    console.warn("[nav] Failed to flush pending navigation:", e);
+  }
   return true;
 }

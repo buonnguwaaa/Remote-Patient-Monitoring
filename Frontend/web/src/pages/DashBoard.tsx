@@ -277,8 +277,9 @@ function buildDashboardChartData(
 const TodoList: React.FC<{
   alerts: AlertResponse[];
   appointments: FollowUpAppointment[];
+  assignments: AssignmentResponse[];
   loading: boolean;
-}> = ({ alerts, appointments, loading }) => {
+}> = ({ alerts, appointments, assignments, loading }) => {
   const navigate = useNavigate();
 
   const pendingAlerts = useMemo(() => alerts.filter(a => a.status === "open").slice(0, 5), [alerts]);
@@ -326,7 +327,7 @@ const TodoList: React.FC<{
                     <div key={appt.id} className="flex items-center justify-between rounded-lg bg-blue-50 p-3 dark:bg-blue-900/10">
                       <div>
                         <p className="text-xs font-semibold text-gray-800 dark:text-slate-200">
-                          {new Date(appt.scheduledAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                          {new Date(appt.scheduledAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })} - {assignments.find(a => a.patientId === appt.patientId)?.patientName || "Bệnh nhân không rõ"}
                         </p>
                         <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-0.5">{appt.notes || "Khám định kỳ"}</p>
                       </div>
@@ -1028,7 +1029,7 @@ const DashBoard = () => {
 
           <div className="flex flex-col gap-3 lg:col-span-2 h-full">
             <div className="h-[300px]">
-              <TodoList alerts={alerts} appointments={appointments} loading={loading} />
+              <TodoList alerts={alerts} appointments={appointments} assignments={assignments} loading={loading} />
             </div>
             <div className="flex-1 min-h-[300px]">
               <RecentAlerts alerts={recentAlerts} loading={loading} />

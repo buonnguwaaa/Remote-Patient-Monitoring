@@ -8,7 +8,7 @@ import {
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuth } from "../hooks/useAuth";
@@ -38,11 +38,12 @@ import EducationHomeScreen from "../screens/patient/EducationHomeScreen";
 import EducationArticleScreen from "../screens/patient/EducationArticleScreen";
 import EducationQuizScreen from "../screens/patient/EducationQuizScreen";
 
-import NursePatientListScreen from "../screens/nurse/NursePatientListScreen";
-import MeasurementInputScreen from "../screens/nurse/MeasurementInputScreen";
-import NurseProfileScreen from "../screens/nurse/NurseProfileScreen";
-import PatientDetailScreen from "../screens/nurse/PatientDetailScreen";
-import NursePrescriptionScreen from "../screens/nurse/NursePrescriptionScreen";
+// Nurse screen imports kept for rollback — not used in navigation (moved to doctor-app)
+// import NursePatientListScreen from "../screens/nurse/NursePatientListScreen";
+// import MeasurementInputScreen from "../screens/nurse/MeasurementInputScreen";
+// import NurseProfileScreen from "../screens/nurse/NurseProfileScreen";
+// import PatientDetailScreen from "../screens/nurse/PatientDetailScreen";
+// import NursePrescriptionScreen from "../screens/nurse/NursePrescriptionScreen";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -114,55 +115,8 @@ function PatientTabNavigator() {
   );
 }
 
-function NurseTabNavigator() {
-  const insets = useSafeAreaInsets();
-  
-  return (
-    <Tab.Navigator
-      screenOptions={({ route }) => ({
-        headerShown: false,
-        tabBarActiveTintColor: "#2563EB",
-        tabBarInactiveTintColor: "#9CA3AF",
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: "600",
-        },
-        tabBarStyle: {
-          backgroundColor: "#FFFFFF",
-          borderTopWidth: 1,
-          borderTopColor: "#E5E7EB",
-          height: 60 + insets.bottom,
-          paddingBottom: insets.bottom + 8,
-          paddingTop: 6,
-        },
-        tabBarIcon: ({ color, size }) => {
-          if (route.name === "NursePatients") {
-            return <Ionicons name="people-outline" size={size} color={color} />;
-          }
-          if (route.name === "NurseMeasurementInput") {
-            return <Ionicons name="create-outline" size={size} color={color} />;
-          }
-          if (route.name === "NursePrescriptions") {
-            return <Ionicons name="receipt-outline" size={size} color={color} />;
-          }
-          if (route.name === "NurseProfile") {
-            return <MaterialIcons name="person-outline" size={size} color={color} />;
-          }
-          return null;
-        },
-      })}
-    >
-      <Tab.Screen name="NursePatients" component={NursePatientListScreen} options={{ title: "Bệnh nhân" }} />
-      <Tab.Screen
-        name="NurseMeasurementInput"
-        component={MeasurementInputScreen}
-        options={{ title: "Nhập liệu" }}
-      />
-      <Tab.Screen name="NursePrescriptions" component={NursePrescriptionScreen} options={{ title: "Đơn thuốc" }} />
-      <Tab.Screen name="NurseProfile" component={NurseProfileScreen} options={{ title: "Hồ sơ" }} />
-    </Tab.Navigator>
-  );
-}
+// NurseTabNavigator removed — nurse app moved to doctor-app (staff app)
+// Files kept for rollback; not imported in navigation.
 
 function RootNavigator() {
   const { user, initializing } = useAuth();
@@ -187,40 +141,25 @@ function RootNavigator() {
     );
   }
 
-  const role = user?.role || "patient";
-
+  // Patient-only app: all authenticated users go to patient navigator
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen
         name="MainTabs"
-        component={
-          role === "user.nurse" || role === "nurse"
-            ? NurseTabNavigator
-            : () => (
-                <BadgeProvider>
-                  <PatientTabNavigator />
-                </BadgeProvider>
-              )
-        }
+        component={() => (
+          <BadgeProvider>
+            <PatientTabNavigator />
+          </BadgeProvider>
+        )}
       />
-      {role !== "user.nurse" && role !== "nurse" && (
-        <>
-          <Stack.Screen name="InputMeasurementPatientScreen" component={InputMeasurementPatientScreen} />
-          <Stack.Screen name="PatientHistory" component={HistoryScreen} />
-          <Stack.Screen name="PatientAlerts" component={AlertScreen} />
-          <Stack.Screen name="PatientNotifications" component={NotificationInboxScreen} />
-          <Stack.Screen name="PatientMedications" component={MedicationScreen} />
-          <Stack.Screen name="VideoCall" component={VideoCallScreen} />
-          <Stack.Screen name="EducationArticle" component={EducationArticleScreen} />
-          <Stack.Screen name="EducationQuiz" component={EducationQuizScreen} />
-        </>
-      )}
-      {(role === "user.nurse" || role === "nurse") && (
-        <>
-          <Stack.Screen name="NursePatientDetail" component={PatientDetailScreen} />
-          <Stack.Screen name="NursePrescriptionDetail" component={NursePrescriptionScreen} />
-        </>
-      )}
+      <Stack.Screen name="InputMeasurementPatientScreen" component={InputMeasurementPatientScreen} />
+      <Stack.Screen name="PatientHistory" component={HistoryScreen} />
+      <Stack.Screen name="PatientAlerts" component={AlertScreen} />
+      <Stack.Screen name="PatientNotifications" component={NotificationInboxScreen} />
+      <Stack.Screen name="PatientMedications" component={MedicationScreen} />
+      <Stack.Screen name="VideoCall" component={VideoCallScreen} />
+      <Stack.Screen name="EducationArticle" component={EducationArticleScreen} />
+      <Stack.Screen name="EducationQuiz" component={EducationQuizScreen} />
     </Stack.Navigator>
   );
 }
