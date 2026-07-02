@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/constant"
 	domain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/service"
@@ -64,7 +65,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusCreated, gin.H{"data": resp, "message": "User registered successfully"})
+	c.JSON(http.StatusCreated, gin.H{"data": resp, "message": "Đăng ký người dùng thành công"})
 }
 
 // Login authenticates a user and returns a JWT token
@@ -99,7 +100,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	h.setAccessTokenCookie(c, resp.AccessToken)
 	h.setRefreshTokenCookie(c, resp.RefreshToken)
 
-	c.JSON(http.StatusOK, gin.H{"data": resp, "message": "User logged in successfully"})
+	c.JSON(http.StatusOK, gin.H{"data": resp, "message": "Đăng nhập thành công"})
 }
 
 // Me retrieves the authenticated user's information
@@ -114,7 +115,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 func (h *AuthHandler) Me(c *gin.Context) {
 	userID, exists := c.Get("userId")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": constant.MsgUnauthorized})
 		return
 	}
 
@@ -127,7 +128,7 @@ func (h *AuthHandler) Me(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": user, "message": "User info retrieved successfully"})
+	c.JSON(http.StatusOK, gin.H{"data": user, "message": "Lấy thông tin người dùng thành công"})
 }
 
 // Refresh issues a new access token given a valid refresh token
@@ -161,7 +162,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 	}
 
 	h.setAccessTokenCookie(c, accessToken)
-	c.JSON(http.StatusOK, gin.H{"message": "Refresh access token successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": "Làm mới token truy cập thành công"})
 }
 
 // @Summary Logout
@@ -178,7 +179,7 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil || req.RefreshToken == "" {
 		cookie, err := c.Cookie("refreshToken")
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "missing refresh token"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": constant.MsgMissingRefreshToken})
 			return
 		}
 		req.RefreshToken = cookie
@@ -200,7 +201,7 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 	c.SetCookie("accessToken", "", -1, "/", "", h.isSecure(c), true)
 	c.SetCookie("refreshToken", "", -1, "/", "", h.isSecure(c), true)
 
-	c.JSON(http.StatusOK, gin.H{"message": "Logged out successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": "Đăng xuất thành công"})
 }
 
 // @Summary Google Login
@@ -262,7 +263,7 @@ func (h *AuthHandler) ForgotPassword(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Reset password link was sent to your mailbox"})
+	c.JSON(http.StatusOK, gin.H{"message": "Liên kết đặt lại mật khẩu đã được gửi đến hộp thư của bạn"})
 }
 
 // @Summary Reset Password
@@ -294,7 +295,7 @@ func (h *AuthHandler) ResetPassword(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Password reset successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": "Đặt lại mật khẩu thành công"})
 }
 
 // @Summary Activate account
@@ -323,7 +324,7 @@ func (h *AuthHandler) ActivateAccount(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Account activated successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": "Kích hoạt tài khoản thành công"})
 }
 
 // @Summary Resend Activation Email
@@ -349,7 +350,7 @@ func (h *AuthHandler) ResendActivationEmail(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Activation email resent successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": "Đã gửi lại email kích hoạt thành công"})
 }
 
 // ========================================================

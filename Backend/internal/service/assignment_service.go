@@ -46,7 +46,7 @@ func (s *assignmentService) AssignPatient(ctx context.Context, input *usecase.As
 
 	// Verify Patient Exists
 	if exists, err := s.userRepo.ExistsByIDAndRole(ctx, patientID, userDomain.RolePatient); err != nil || !exists {
-		return nil, errors.New("patient not found")
+		return nil, errors.New("Không tìm thấy bệnh nhân")
 	}
 
 	var doctorID primitive.ObjectID
@@ -56,7 +56,7 @@ func (s *assignmentService) AssignPatient(ctx context.Context, input *usecase.As
 			return nil, err
 		}
 		if exists, err := s.userRepo.ExistsByIDAndRole(ctx, doctorID, userDomain.RoleDoctor); err != nil || !exists {
-			return nil, errors.New("doctor not found")
+			return nil, errors.New("Không tìm thấy bác sĩ")
 		}
 	}
 
@@ -67,12 +67,12 @@ func (s *assignmentService) AssignPatient(ctx context.Context, input *usecase.As
 			return nil, err
 		}
 		if exists, err := s.userRepo.ExistsByIDAndRole(ctx, nurseID, userDomain.RoleNurse); err != nil || !exists {
-			return nil, errors.New("nurse not found")
+			return nil, errors.New("Không tìm thấy y tá")
 		}
 	}
 
 	if doctorID.IsZero() && nurseID.IsZero() {
-		return nil, errors.New("must assign at least one doctor or nurse")
+		return nil, errors.New("Phải phân công ít nhất một bác sĩ hoặc y tá")
 	}
 
 	assignment := &domain.Assignment{
@@ -110,7 +110,7 @@ func (s *assignmentService) GetAssignmentsByRole(ctx context.Context, input *use
 	case userDomain.RoleNurse:
 		assignments, userInfoMap, err = s.assignmentRepo.FindByNurseIDWithNames(ctx, userID)
 	default:
-		return nil, errors.New("invalid role for getting assignments")
+		return nil, errors.New("Vai trò không hợp lệ để xem phân công")
 	}
 
 	if err != nil {
@@ -152,19 +152,19 @@ func (s *assignmentService) mapToResponseWithNames(a *domain.Assignment, userInf
 	nurse := userInfoMap[a.NurseID]
 
 	return &dto.AssignmentResponse{
-		ID:              a.ID,
-		PatientID:       a.PatientID,
-		PatientPublicID: patient.PublicID,
-		PatientName:     patient.Name,
-		DoctorID:        a.DoctorID,
-		DoctorPublicID:  doctor.PublicID,
-		DoctorName:      doctor.Name,
-		NurseID:         a.NurseID,
-		NursePublicID:   nurse.PublicID,
-		NurseName:       nurse.Name,
-		AssignedBy:      a.AssignedBy,
-		CreatedAt:       a.CreatedAt,
-		UpdatedAt:       a.UpdatedAt,
+		ID:                  a.ID,
+		PatientID:           a.PatientID,
+		PatientPublicID:     patient.PublicID,
+		PatientName:         patient.Name,
+		DoctorID:            a.DoctorID,
+		DoctorPublicID:      doctor.PublicID,
+		DoctorName:          doctor.Name,
+		NurseID:             a.NurseID,
+		NursePublicID:       nurse.PublicID,
+		NurseName:           nurse.Name,
+		AssignedBy:          a.AssignedBy,
+		CreatedAt:           a.CreatedAt,
+		UpdatedAt:           a.UpdatedAt,
 		PatientDiseaseTypes: &patient.DiseaseTypes,
 	}
 }

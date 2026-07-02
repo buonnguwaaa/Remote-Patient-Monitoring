@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/constant"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/service"
@@ -43,7 +44,7 @@ func (h *MedicationIntakeHandler) CreateMedicationIntake(c *gin.Context) {
 
 	userID, exists := c.Get("userId")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": constant.MsgUnauthorized})
 		return
 	}
 
@@ -69,7 +70,7 @@ func (h *MedicationIntakeHandler) CreateMedicationIntake(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"data": intake, "message": "Medication intake recorded"})
+	c.JSON(http.StatusCreated, gin.H{"data": intake, "message": "Đã ghi nhận uống thuốc"})
 }
 
 // GetTodayMedications returns today's medication checklist for the authenticated patient
@@ -84,7 +85,7 @@ func (h *MedicationIntakeHandler) CreateMedicationIntake(c *gin.Context) {
 func (h *MedicationIntakeHandler) GetTodayMedications(c *gin.Context) {
 	userID, exists := c.Get("userId")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": constant.MsgUnauthorized})
 		return
 	}
 
@@ -99,7 +100,7 @@ func (h *MedicationIntakeHandler) GetTodayMedications(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": medications, "message": "Today's medications retrieved successfully"})
+	c.JSON(http.StatusOK, gin.H{"data": medications, "message": "Lấy danh sách thuốc hôm nay thành công"})
 }
 
 // GetMedicationAdherence returns expected vs taken doses aggregated over a date range
@@ -119,7 +120,7 @@ func (h *MedicationIntakeHandler) GetTodayMedications(c *gin.Context) {
 func (h *MedicationIntakeHandler) GetMedicationAdherence(c *gin.Context) {
 	userID, exists := c.Get("userId")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": constant.MsgUnauthorized})
 		return
 	}
 
@@ -138,7 +139,7 @@ func (h *MedicationIntakeHandler) GetMedicationAdherence(c *gin.Context) {
 	if fromStr := c.Query("from"); fromStr != "" {
 		from, err := time.Parse("2006-01-02", fromStr)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid from date, use YYYY-MM-DD"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": constant.MsgInvalidFromDate})
 			return
 		}
 		input.From = &from
@@ -146,7 +147,7 @@ func (h *MedicationIntakeHandler) GetMedicationAdherence(c *gin.Context) {
 	if toStr := c.Query("to"); toStr != "" {
 		to, err := time.Parse("2006-01-02", toStr)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid to date, use YYYY-MM-DD"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": constant.MsgInvalidToDate})
 			return
 		}
 		input.To = &to
@@ -161,5 +162,5 @@ func (h *MedicationIntakeHandler) GetMedicationAdherence(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": adherence, "message": "Adherence retrieved successfully"})
+	c.JSON(http.StatusOK, gin.H{"data": adherence, "message": "Lấy dữ liệu tuân thủ uống thuốc thành công"})
 }

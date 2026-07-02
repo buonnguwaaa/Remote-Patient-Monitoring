@@ -77,13 +77,13 @@ func (s *authService) Login(ctx context.Context, input *usecase.LoginInput) (*dt
 
 	u, err := s.baseUserRepo.FindByEmail(ctx, email)
 	if err != nil {
-		return nil, errors.New("invalid credentials")
+		return nil, errors.New("Email hoặc mật khẩu không đúng")
 	}
 	if u.Status != domain.StatusActive {
-		return nil, errors.New("account not activated")
+		return nil, errors.New("Tài khoản chưa được kích hoạt")
 	}
 	if !util.ComparePassword(u.Password, input.Password) {
-		return nil, errors.New("invalid credentials")
+		return nil, errors.New("Email hoặc mật khẩu không đúng")
 	}
 
 	return s.issueTokens(ctx, u)
@@ -95,10 +95,10 @@ func (s *authService) Register(ctx context.Context, input *usecase.RegisterInput
 
 	existing, _ := s.baseUserRepo.FindByEmail(ctx, email)
 	if existing != nil {
-		return nil, errors.New("email already exists")
+		return nil, errors.New("Email đã tồn tại")
 	}
 	if input.Password != input.ConfirmedPassword {
-		return nil, errors.New("password and confirmed password do not match")
+		return nil, errors.New("Mật khẩu và mật khẩu xác nhận không khớp")
 	}
 
 	hashedPwd, err := util.HashPassword(input.Password)
@@ -162,7 +162,7 @@ func (s *authService) Refresh(ctx context.Context, input *usecase.RefreshInput) 
 		if err != nil {
 			return "", err
 		}
-		return "", errors.New("invalid refresh token")
+		return "", errors.New("Token làm mới không hợp lệ")
 	}
 
 	userId, err := util.MustHexToObjectID(claims.Subject)
@@ -179,17 +179,17 @@ func (s *authService) Refresh(ctx context.Context, input *usecase.RefreshInput) 
 
 func (s *authService) Logout(ctx context.Context, input *usecase.LogoutInput) error {
 	if input.RefreshToken == "" {
-		return errors.New("missing refresh token")
+		return errors.New("Thiếu token làm mới")
 	}
 
 	claims, err := s.jwtManager.VerifyRefreshToken(input.RefreshToken)
 	if err != nil {
-		return fmt.Errorf("invalid refresh token: %w", err)
+		return fmt.Errorf("token làm mới không hợp lệ: %w", err)
 	}
 
 	tokenHash := util.HashTokenSHA256(input.RefreshToken)
 	if ok, err := s.tokenRepo.IsValid(ctx, claims.Subject, tokenHash); err != nil || !ok {
-		return errors.New("token already revoked or invalid")
+		return errors.New("Token đã bị thu hồi hoặc không hợp lệ")
 	}
 
 	return s.tokenRepo.RevokeTokenByTokenHash(ctx, claims.Subject, tokenHash)
@@ -202,12 +202,12 @@ func (s *authService) GetGoogleLoginURL(state string) string {
 // HandleGoogleOAuth2Callback — Google OAuth luôn tạo Patient
 func (s *authService) HandleGoogleOAuth2Callback(ctx context.Context, input *usecase.GoogleOAuth2Input) (*dto.LoginResponse, error) {
 	if input.Code == "" {
-		return nil, errors.New("missing authorization code")
+		return nil, errors.New("Thiếu mã xác thực")
 	}
 
 	token, err := config.GoogleOAuth2Conf.Exchange(ctx, input.Code)
 	if err != nil {
-		return nil, fmt.Errorf("failed to exchange code for token: %w", err)
+		return nil, fmt.Errorf("không thể đổi mã xác thực lấy token: %w", err)
 	}
 
 	client := config.GoogleOAuth2Conf.Client(ctx, token)
@@ -217,7 +217,7 @@ func (s *authService) HandleGoogleOAuth2Callback(ctx context.Context, input *use
 		return nil, err
 	}
 	if !userInfo.VerifiedEmail {
-		return nil, errors.New("google account email not verified")
+		return nil, errors.New("Email tài khoản Google chưa được xác minh")
 	}
 
 	email := strings.ToLower(strings.TrimSpace(userInfo.Email))
@@ -226,7 +226,7 @@ func (s *authService) HandleGoogleOAuth2Callback(ctx context.Context, input *use
 	// Tìm theo BaseUser — không cần biết role cụ thể
 	existing, err := s.baseUserRepo.FindByEmail(ctx, email)
 	if err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
-		return nil, fmt.Errorf("failed to find user: %w", err)
+		return nil, fmt.Errorf("không thể tìm người dùng: %w", err)
 	}
 
 	if existing == nil {
@@ -243,7 +243,7 @@ func (s *authService) HandleGoogleOAuth2Callback(ctx context.Context, input *use
 		}
 		inserted, err := s.patientRepo.Create(ctx, patient)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create user from google profile: %w", err)
+			return nil, fmt.Errorf("không thể tạo người dùng từ hồ sơ Google: %w", err)
 		}
 		existing = &inserted.BaseUser
 	}
@@ -264,7 +264,7 @@ func (s *authService) ForgotPassword(ctx context.Context, input *usecase.ForgotP
 
 	otp, err := util.GenerateNumericOTP(6)
 	if err != nil {
-		return fmt.Errorf("failed to generate otp: %w", err)
+		return fmt.Errorf("không thể tạo mã OTP: %w", err)
 	}
 
 	tokenHash := util.HashTokenSHA256(otp)
@@ -289,19 +289,19 @@ func (s *authService) ResetPassword(ctx context.Context, input *usecase.ResetPas
 	otp := strings.TrimSpace(input.OTP)
 
 	if email == "" {
-		return errors.New("missing email")
+		return errors.New("Thiếu email")
 	}
 	if otp == "" {
-		return errors.New("missing otp")
+		return errors.New("Thiếu mã OTP")
 	}
 	if input.NewPassword != input.ConfirmedNewPassword {
-		return errors.New("password and confirmed password do not match")
+		return errors.New("Mật khẩu và mật khẩu xác nhận không khớp")
 	}
 
 	hashedOTP := util.HashTokenSHA256(otp)
 	u, err := s.baseUserRepo.FindByEmailAndResetOTP(ctx, email, hashedOTP)
 	if err != nil {
-		return errors.New("invalid or expired otp")
+		return errors.New("Mã OTP không hợp lệ hoặc đã hết hạn")
 	}
 
 	hashedPwd, err := util.HashPassword(input.NewPassword)
@@ -316,16 +316,16 @@ func (s *authService) ActivateAccount(ctx context.Context, input *usecase.Activa
 	email := strings.ToLower(strings.TrimSpace(input.Email))
 	otp := strings.TrimSpace(input.OTP)
 	if email == "" {
-		return errors.New("missing email")
+		return errors.New("Thiếu email")
 	}
 	if otp == "" {
-		return errors.New("missing otp")
+		return errors.New("Thiếu mã OTP")
 	}
 
 	hashedOTP := util.HashTokenSHA256(otp)
 	u, err := s.baseUserRepo.FindByEmailAndActivationHash(ctx, email, hashedOTP)
 	if err != nil {
-		return errors.New("invalid or expired otp")
+		return errors.New("Mã OTP không hợp lệ hoặc đã hết hạn")
 	}
 	if u.Status == domain.StatusActive {
 		return nil
@@ -339,10 +339,10 @@ func (s *authService) ResendActivationEmail(ctx context.Context, input *usecase.
 
 	u, err := s.baseUserRepo.FindByEmail(ctx, email)
 	if err != nil {
-		return errors.New("user not found")
+		return errors.New("Không tìm thấy người dùng")
 	}
 	if u.Status == domain.StatusActive {
-		return errors.New("account already activated")
+		return errors.New("Tài khoản đã được kích hoạt")
 	}
 
 	return s.sendActivationOTP(ctx, email, u.Name)
@@ -377,21 +377,21 @@ func (s *authService) createUserByRole(ctx context.Context, base domain.BaseUser
 		return &inserted.BaseUser, nil
 
 	default:
-		return nil, fmt.Errorf("unsupported role: %s", base.Role)
+		return nil, fmt.Errorf("vai trò không được hỗ trợ: %s", base.Role)
 	}
 }
 
 func (s *authService) sendActivationOTP(ctx context.Context, email, name string) error {
 	otp, err := util.GenerateNumericOTP(ActivationOTPLength)
 	if err != nil {
-		return fmt.Errorf("failed to generate activation otp: %w", err)
+		return fmt.Errorf("không thể tạo mã OTP kích hoạt: %w", err)
 	}
 
 	hashedOTP := util.HashTokenSHA256(otp)
 	expires := time.Now().Add(ActivationOTPTTL)
 
 	if err := s.baseUserRepo.SetActivationOTP(ctx, email, hashedOTP, expires); err != nil {
-		return fmt.Errorf("failed to set activation otp: %w", err)
+		return fmt.Errorf("không thể lưu mã OTP kích hoạt: %w", err)
 	}
 
 	go func() {
@@ -491,17 +491,17 @@ type googlePeopleData struct {
 func fetchGoogleUserInfo(client *http.Client) (*googleUserInfo, error) {
 	resp, err := client.Get("https://www.googleapis.com/oauth2/v2/userinfo")
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch user info from Google: %w", err)
+		return nil, fmt.Errorf("không thể lấy thông tin người dùng từ Google: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status code from Google API: %d", resp.StatusCode)
+		return nil, fmt.Errorf("Mã phản hồi từ Google API không mong đợi: %d", resp.StatusCode)
 	}
 
 	var info googleUserInfo
 	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
-		return nil, fmt.Errorf("failed to parse user info: %w", err)
+		return nil, fmt.Errorf("không thể phân tích thông tin người dùng từ Google: %w", err)
 	}
 	return &info, nil
 }

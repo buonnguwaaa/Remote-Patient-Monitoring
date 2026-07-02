@@ -68,7 +68,7 @@ func (h *ThresholdHandler) CreateThreshold(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": resp, "message": "Threshold created successfully"})
+	c.JSON(http.StatusOK, gin.H{"data": resp, "message": "Tạo ngưỡng cảnh báo thành công"})
 }
 
 // GetThresholds handles retrieving thresholds based on query parameters
@@ -118,7 +118,7 @@ func (h *ThresholdHandler) GetThresholds(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": resp, "message": "Thresholds retrieved successfully"})
+	c.JSON(http.StatusOK, gin.H{"data": resp, "message": "Lấy danh sách ngưỡng cảnh báo thành công"})
 }
 
 // UpdateThreshold handles updating an existing threshold
@@ -167,5 +167,5 @@ func (h *ThresholdHandler) UpdateThreshold(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": resp, "message": "Threshold updated successfully"})
+	c.JSON(http.StatusOK, gin.H{"data": resp, "message": "Cập nhật ngưỡng cảnh báo thành công"})
 }

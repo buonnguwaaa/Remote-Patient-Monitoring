@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/constant"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/service"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecase"
 	"github.com/gin-gonic/gin"
@@ -21,7 +22,7 @@ func NewNotificationHandler(notificationService service.NotificationService) *No
 func (h *NotificationHandler) GetMyNotifications(c *gin.Context) {
 	userID, exists := c.Get("userId")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": constant.MsgUnauthorized})
 		return
 	}
 
@@ -38,13 +39,13 @@ func (h *NotificationHandler) GetMyNotifications(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": notifications, "message": "Notifications retrieved successfully"})
+	c.JSON(http.StatusOK, gin.H{"data": notifications, "message": "Lấy danh sách thông báo thành công"})
 }
 
 func (h *NotificationHandler) MarkNotificationRead(c *gin.Context) {
 	userID, exists := c.Get("userId")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": constant.MsgUnauthorized})
 		return
 	}
 
@@ -60,17 +61,17 @@ func (h *NotificationHandler) MarkNotificationRead(c *gin.Context) {
 		return
 	}
 	if notification == nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "notification not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": constant.MsgNotificationNotFound})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": notification, "message": "Notification marked as read"})
+	c.JSON(http.StatusOK, gin.H{"data": notification, "message": "Đã đánh dấu thông báo là đã đọc"})
 }
 
 func (h *NotificationHandler) GetUnreadNotificationCount(c *gin.Context) {
 	userID, exists := c.Get("userId")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": constant.MsgUnauthorized})
 		return
 	}
 
@@ -83,5 +84,5 @@ func (h *NotificationHandler) GetUnreadNotificationCount(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": gin.H{"count": count}, "message": "Unread notification count retrieved successfully"})
+	c.JSON(http.StatusOK, gin.H{"data": gin.H{"count": count}, "message": "Lấy số thông báo chưa đọc thành công"})
 }

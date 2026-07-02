@@ -41,7 +41,7 @@ func (s *measurementService) CreateMeasurement(ctx context.Context, input *useca
 	}
 
 	if _, err := s.patientRepo.FindPatientByID(ctx, patientId); err != nil {
-		return nil, fmt.Errorf("user not found or not patient")
+		return nil, fmt.Errorf("Không tìm thấy người dùng hoặc người dùng không phải bệnh nhân")
 	}
 
 	// Tính MAP chỉ khi cả systolic và diastolic có giá trị
@@ -93,7 +93,7 @@ func (s *measurementService) UpdateMeasurement(ctx context.Context, input *useca
 
 	existing, err := s.measurementRepo.FindByID(ctx, id)
 	if err != nil {
-		return nil, fmt.Errorf("measurement not found")
+		return nil, fmt.Errorf("Không tìm thấy chỉ số đo")
 	}
 
 	if input.Temperature != nil {

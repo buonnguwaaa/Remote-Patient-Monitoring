@@ -14,10 +14,10 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useIsFocused, useRoute } from "@react-navigation/native";
-import Toast from "../components/Toast";
 import PatientSelectorModal from "../components/PatientSelectorModal";
 
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 import {
   getMyPatients,
   getPrescriptions,
@@ -171,6 +171,7 @@ export default function PrescriptionsScreen() {
   const isFocused = useIsFocused();
   const route = useRoute();
   const { user } = useAuth();
+  const { showToast } = useToast();
 
   const [patients, setPatients] = useState([]);
   const [selectedPatientId, setSelectedPatientId] = useState("");
@@ -194,7 +195,6 @@ export default function PrescriptionsScreen() {
   const [formData, setFormData] = useState(createDefaultFormData());
   const [saving, setSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
   const [focusedMedIdx, setFocusedMedIdx] = useState(null);
 
   const handleDrugSelect = (medIdx, suggestion) => {
@@ -362,7 +362,6 @@ export default function PrescriptionsScreen() {
     setIsFormVisible(true);
     setShowPatientListInForm(false);
     setErrorMessage("");
-    setSuccessMessage("");
   };
 
   const handleStatusUpdate = (prescription, nextStatus) => {
@@ -382,7 +381,7 @@ export default function PrescriptionsScreen() {
             try {
               const res = await updatePrescriptionStatus(prescription.id, nextStatus);
               if (res.ok) {
-                setSuccessMessage(`Đã cập nhật trạng thái đơn thuốc thành công.`);
+                showToast(`Đã cập nhật trạng thái đơn thuốc thành công.`);
                 fetchPrescriptions();
               } else {
                 setErrorMessage(res.body?.error || "Lỗi khi cập nhật trạng thái đơn thuốc.");
@@ -518,7 +517,6 @@ export default function PrescriptionsScreen() {
 
   const handleSave = async () => {
     setErrorMessage("");
-    setSuccessMessage("");
     const validationError = validateForm();
     if (validationError) {
       setErrorMessage(validationError);
@@ -574,7 +572,7 @@ export default function PrescriptionsScreen() {
       }
 
       if (res.ok) {
-        setSuccessMessage(
+        showToast(
           editingId ? "Cập nhật đơn thuốc thành công!" : "Tạo đơn thuốc mới thành công!"
         );
         setIsFormVisible(false);
@@ -608,6 +606,22 @@ export default function PrescriptionsScreen() {
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
+      {/* Stats */}
+      <View style={styles.statsRow}>
+        <View style={styles.statCard}>
+          <Text style={styles.statValue}>{prescriptions.length}</Text>
+          <Text style={styles.statLabel}>Tổng đơn</Text>
+        </View>
+        <View style={[styles.statCard, { borderColor: "#D1FAE5" }]}>
+          <Text style={[styles.statValue, { color: "#059669" }]}>{prescriptions.filter(p => p.status === "active").length}</Text>
+          <Text style={styles.statLabel}>Đang hoạt động</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={[styles.statValue, { color: "#6B7280" }]}>{prescriptions.filter(p => p.status !== "active").length}</Text>
+          <Text style={styles.statLabel}>Đã kết thúc</Text>
+        </View>
+      </View>
+
       {/* Patient Search Header */}
       <View style={styles.pickerHeader}>
         <Text style={styles.pickerTitle}>Lọc đơn thuốc theo bệnh nhân</Text>
@@ -702,7 +716,6 @@ export default function PrescriptionsScreen() {
               setIsFormVisible(true);
               setShowPatientListInForm(false);
               setErrorMessage("");
-              setSuccessMessage("");
             }}
           >
             <Ionicons name="add" size={16} color="#FFF" />
@@ -1264,24 +1277,19 @@ export default function PrescriptionsScreen() {
         </Modal>
       )}
 
-      <Toast
-        visible={!!successMessage}
-        message={successMessage}
-        type="success"
-        onDismiss={() => setSuccessMessage("")}
-      />
-      <Toast
-        visible={!!errorMessage}
-        message={errorMessage}
-        type="error"
-        onDismiss={() => setErrorMessage("")}
-      />
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F2F6FF" },
+  statsRow: { flexDirection: "row", gap: 8, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 6 },
+  statCard: {
+    flex: 1, backgroundColor: "#fff", borderRadius: 12, padding: 10,
+    borderWidth: 1, borderColor: "#E2E8F0", alignItems: "center",
+  },
+  statValue: { fontSize: 20, fontWeight: "800", color: "#1F2937" },
+  statLabel: { fontSize: 10, fontWeight: "500", color: "#6B7280", marginTop: 2 },
   pickerHeader: {
     backgroundColor: "#FFF",
     paddingVertical: 12,

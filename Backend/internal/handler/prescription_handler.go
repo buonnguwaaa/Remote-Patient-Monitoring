@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/constant"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
 	userDomain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
@@ -45,7 +46,7 @@ func (h *PrescriptionHandler) CreatePrescription(c *gin.Context) {
 
 	userID, exists := c.Get("userId")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": constant.MsgUnauthorized})
 		return
 	}
 
@@ -68,7 +69,7 @@ func (h *PrescriptionHandler) CreatePrescription(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"data": prescription, "message": "Prescription created successfully"})
+	c.JSON(http.StatusCreated, gin.H{"data": prescription, "message": "Tạo đơn thuốc thành công"})
 }
 
 // GetPrescriptions retrieves prescriptions based on filters
@@ -78,8 +79,8 @@ func (h *PrescriptionHandler) CreatePrescription(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param patientId query string false "Patient ID"
-// @Param status query string false "Prescription status (active, completed, discontinued, expired)"
-// @Param latest query bool false "Return only the latest prescription"
+// @Param status query string false "Prescription status (active, completed, discontinued). Active uses startDate/endDate to determine current prescriptions."
+// @Param latest query bool false "Return only the current open prescription for the patient"
 // @Param doctorId query string false "Filter prescriptions for patients assigned to this doctor"
 // @Param nurseId query string false "Filter prescriptions for patients assigned to this nurse"
 // @Param prescribedBy query string false "Filter prescriptions written by this doctor"
@@ -124,7 +125,7 @@ func (h *PrescriptionHandler) GetPrescriptions(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": prescriptions, "message": "Prescriptions retrieved successfully"})
+	c.JSON(http.StatusOK, gin.H{"data": prescriptions, "message": "Lấy danh sách đơn thuốc thành công"})
 }
 
 // GetMyPrescriptions retrieves prescriptions for the authenticated patient
@@ -133,8 +134,8 @@ func (h *PrescriptionHandler) GetPrescriptions(c *gin.Context) {
 // @Tags prescriptions
 // @Accept json
 // @Produce json
-// @Param status query string false "Prescription status (active, completed, discontinued, expired)"
-// @Param latest query bool false "Return only the latest prescription"
+// @Param status query string false "Prescription status (active, completed, discontinued). Active uses startDate/endDate to determine current prescriptions."
+// @Param latest query bool false "Return only the current open prescription for the patient"
 // @Success 200 {object} map[string]interface{} "Prescriptions retrieved successfully"
 // @Failure 401 {object} map[string]string "Unauthorized"
 // @Failure 403 {object} map[string]string "Forbidden"
@@ -142,7 +143,7 @@ func (h *PrescriptionHandler) GetPrescriptions(c *gin.Context) {
 func (h *PrescriptionHandler) GetMyPrescriptions(c *gin.Context) {
 	userID, exists := c.Get("userId")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": constant.MsgUnauthorized})
 		return
 	}
 
@@ -161,7 +162,7 @@ func (h *PrescriptionHandler) GetMyPrescriptions(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": prescriptions, "message": "Prescriptions retrieved successfully"})
+	c.JSON(http.StatusOK, gin.H{"data": prescriptions, "message": "Lấy danh sách đơn thuốc thành công"})
 }
 
 // GetPrescriptionByID retrieves a single prescription by ID
@@ -179,7 +180,7 @@ func (h *PrescriptionHandler) GetMyPrescriptions(c *gin.Context) {
 func (h *PrescriptionHandler) GetPrescriptionByID(c *gin.Context) {
 	userID, exists := c.Get("userId")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": constant.MsgUnauthorized})
 		return
 	}
 
@@ -197,18 +198,18 @@ func (h *PrescriptionHandler) GetPrescriptionByID(c *gin.Context) {
 	prescription, err := h.prescriptionService.GetPrescriptionByID(ctx, input)
 	if err != nil {
 		if errors.Is(err, service.ErrPrescriptionNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "prescription not found"})
+			c.JSON(http.StatusNotFound, gin.H{"error": constant.MsgPrescriptionNotFound})
 			return
 		}
 		if errors.Is(err, service.ErrPrescriptionAccessDenied) {
-			c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
+			c.JSON(http.StatusForbidden, gin.H{"error": constant.MsgAccessDenied})
 			return
 		}
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": prescription, "message": "Prescription retrieved successfully"})
+	c.JSON(http.StatusOK, gin.H{"data": prescription, "message": "Lấy đơn thuốc thành công"})
 }
 
 // UpdatePrescriptionByID updates a prescription
@@ -248,14 +249,14 @@ func (h *PrescriptionHandler) UpdatePrescriptionByID(c *gin.Context) {
 	prescription, err := h.prescriptionService.UpdatePrescriptionByID(ctx, input)
 	if err != nil {
 		if errors.Is(err, service.ErrPrescriptionNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "prescription not found"})
+			c.JSON(http.StatusNotFound, gin.H{"error": constant.MsgPrescriptionNotFound})
 			return
 		}
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": prescription, "message": "Prescription updated successfully"})
+	c.JSON(http.StatusOK, gin.H{"data": prescription, "message": "Cập nhật đơn thuốc thành công"})
 }
 
 // UpdatePrescriptionStatus updates only the status of a prescription
@@ -290,14 +291,14 @@ func (h *PrescriptionHandler) UpdatePrescriptionStatus(c *gin.Context) {
 	prescription, err := h.prescriptionService.UpdatePrescriptionStatus(ctx, input)
 	if err != nil {
 		if errors.Is(err, service.ErrPrescriptionNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "prescription not found"})
+			c.JSON(http.StatusNotFound, gin.H{"error": constant.MsgPrescriptionNotFound})
 			return
 		}
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": prescription, "message": "Prescription status updated successfully"})
+	c.JSON(http.StatusOK, gin.H{"data": prescription, "message": "Cập nhật trạng thái đơn thuốc thành công"})
 }
 
 func medicationsFromDTO(meds []dto.PrescriptionMedicationRequest) []domain.PrescriptionMedication {

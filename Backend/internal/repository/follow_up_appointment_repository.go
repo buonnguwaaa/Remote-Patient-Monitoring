@@ -16,6 +16,7 @@ type FollowUpAppointmentRepository interface {
 	Create(ctx context.Context, appointment *domain.FollowUpAppointment) (*domain.FollowUpAppointment, error)
 	FindWithFilter(ctx context.Context, filter FollowUpAppointmentFilter) ([]domain.FollowUpAppointment, error)
 	FindByID(ctx context.Context, id primitive.ObjectID) (*domain.FollowUpAppointment, error)
+	HasScheduledConflict(ctx context.Context, doctorID primitive.ObjectID, scheduledAt time.Time, durationMinutes int, excludeID *primitive.ObjectID) (bool, error)
 	Update(ctx context.Context, appointment *domain.FollowUpAppointment) (*domain.FollowUpAppointment, error)
 	UpdateStatusByID(ctx context.Context, id primitive.ObjectID, status domain.FollowUpAppointmentStatus) (*domain.FollowUpAppointment, error)
 }
@@ -64,6 +65,16 @@ func (r *followUpAppointmentRepository) ensureIndexes(ctx context.Context) error
 				{Key: "status", Value: 1},
 				{Key: "scheduledAt", Value: 1},
 			},
+		},
+		{
+			Keys: bson.D{
+				{Key: "doctorId", Value: 1},
+				{Key: "scheduledAt", Value: 1},
+			},
+			Options: options.Index().
+				SetUnique(true).
+				SetPartialFilterExpression(bson.M{"status": domain.FollowUpAppointmentStatusScheduled}).
+				SetName("ux_doctor_scheduled_slot"),
 		},
 	}
 
@@ -188,16 +199,65 @@ func (r *followUpAppointmentRepository) FindByID(ctx context.Context, id primiti
 	return &appointment, nil
 }
 
+func (r *followUpAppointmentRepository) HasScheduledConflict(
+	ctx context.Context,
+	doctorID primitive.ObjectID,
+	scheduledAt time.Time,
+	durationMinutes int,
+	excludeID *primitive.ObjectID,
+) (bool, error) {
+	slotStart := domain.NormalizeAppointmentSlot(scheduledAt)
+	durationMinutes = domain.NormalizeAppointmentDuration(durationMinutes)
+	windowStart := slotStart.Add(-time.Duration(domain.MaxAppointmentDurationMinutes) * time.Minute)
+	windowEnd := domain.AppointmentSlotEnd(scheduledAt, durationMinutes)
+
+	filter := bson.M{
+		"doctorId": doctorID,
+		"status":   domain.FollowUpAppointmentStatusScheduled,
+		"scheduledAt": bson.M{
+			"$gte": windowStart,
+			"$lt":  windowEnd,
+		},
+	}
+	if excludeID != nil && !excludeID.IsZero() {
+		filter["_id"] = bson.M{"$ne": *excludeID}
+	}
+
+	cursor, err := r.col.Find(ctx, filter)
+	if err != nil {
+		return false, err
+	}
+	defer cursor.Close(ctx)
+
+	for cursor.Next(ctx) {
+		var existing domain.FollowUpAppointment
+		if err := cursor.Decode(&existing); err != nil {
+			return false, err
+		}
+		if domain.AppointmentsOverlap(
+			existing.ScheduledAt,
+			existing.EffectiveDurationMinutes(),
+			scheduledAt,
+			durationMinutes,
+		) {
+			return true, nil
+		}
+	}
+
+	return false, cursor.Err()
+}
+
 func (r *followUpAppointmentRepository) Update(ctx context.Context, appointment *domain.FollowUpAppointment) (*domain.FollowUpAppointment, error) {
 	appointment.UpdatedAt = time.Now().UTC()
 
 	update := bson.M{
-		"scheduledAt": appointment.ScheduledAt,
-		"timezone":    appointment.Timezone,
-		"location":    appointment.Location,
-		"notes":       appointment.Notes,
-		"status":      appointment.Status,
-		"updatedAt":   appointment.UpdatedAt,
+		"scheduledAt":     appointment.ScheduledAt,
+		"durationMinutes": appointment.DurationMinutes,
+		"timezone":        appointment.Timezone,
+		"location":        appointment.Location,
+		"notes":           appointment.Notes,
+		"status":          appointment.Status,
+		"updatedAt":       appointment.UpdatedAt,
 	}
 
 	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)

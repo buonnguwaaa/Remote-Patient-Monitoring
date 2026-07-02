@@ -12,8 +12,8 @@ import (
 	"strconv"
 	"time"
 
-	chatDomain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/chat"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
+	chatDomain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/chat"
 	userDomain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/realtime"
@@ -24,13 +24,13 @@ import (
 
 // Video session service errors.
 var (
-	ErrVideoSessionNotFound      = errors.New("video: session not found")
-	ErrVideoSessionForbidden     = errors.New("video: user is not a participant of this session")
-	ErrVideoSessionNotDoctor     = errors.New("video: only doctor can create a video session")
-	ErrVideoSessionNotAssigned   = errors.New("video: doctor is not assigned to this patient")
-	ErrVideoSessionAlreadyActive = errors.New("video: an active or pending session already exists for this conversation")
-	ErrVideoSessionExpired       = errors.New("video: session has expired")
-	ErrVideoSessionBadStatus     = errors.New("video: operation not allowed in current session status")
+	ErrVideoSessionNotFound      = errors.New("Không tìm thấy phiên video")
+	ErrVideoSessionForbidden     = errors.New("Người dùng không phải thành viên của phiên video này")
+	ErrVideoSessionNotDoctor     = errors.New("Chỉ bác sĩ mới có thể tạo phiên video")
+	ErrVideoSessionNotAssigned   = errors.New("Bác sĩ chưa được phân công cho bệnh nhân này")
+	ErrVideoSessionAlreadyActive = errors.New("Đã có phiên video đang hoạt động hoặc đang chờ cho cuộc trò chuyện này")
+	ErrVideoSessionExpired       = errors.New("Phiên video đã hết hạn")
+	ErrVideoSessionBadStatus     = errors.New("Không thể thực hiện thao tác với trạng thái phiên hiện tại")
 )
 
 // VideoSessionService manages the full lifecycle of video call sessions.
@@ -45,9 +45,9 @@ type VideoSessionService interface {
 }
 
 type videoSessionService struct {
-	videoRepo       repository.VideoSessionRepository
-	assignmentRepo  repository.AssignmentRepository
-	chatService     ChatService
+	videoRepo         repository.VideoSessionRepository
+	assignmentRepo    repository.AssignmentRepository
+	chatService       ChatService
 	realtimePublisher *realtime.RedisUserEventPublisher
 }
 
@@ -100,7 +100,7 @@ func generateRoomName(conversationID primitive.ObjectID) (string, error) {
 
 	buf := make([]byte, 6)
 	if _, err := rand.Read(buf); err != nil {
-		return "", fmt.Errorf("failed to generate random token: %w", err)
+		return "", fmt.Errorf("không thể tạo token ngẫu nhiên: %w", err)
 	}
 	token := hex.EncodeToString(buf) // 12 hex chars
 
@@ -147,7 +147,7 @@ func (s *videoSessionService) CreateVideoSession(ctx context.Context, callerID p
 	// Validate assignment: doctor must be assigned to this patient.
 	hasAssignment, err := s.assignmentRepo.HasAssignmentRecordForPair(ctx, callerID, patientID)
 	if err != nil {
-		return nil, fmt.Errorf("video: failed to check assignment: %w", err)
+		return nil, fmt.Errorf("không thể kiểm tra phân công bác sĩ: %w", err)
 	}
 	if !hasAssignment {
 		return nil, ErrVideoSessionNotAssigned
@@ -162,11 +162,11 @@ func (s *videoSessionService) CreateVideoSession(ctx context.Context, callerID p
 			ParticipantIDs: []primitive.ObjectID{callerID, patientID},
 		})
 		if err != nil {
-			return nil, fmt.Errorf("video: failed to ensure conversation: %w", err)
+			return nil, fmt.Errorf("không thể tạo cuộc trò chuyện: %w", err)
 		}
 		convID, err := primitive.ObjectIDFromHex(conv.ID.Hex())
 		if err != nil {
-			return nil, fmt.Errorf("video: invalid conversation id: %w", err)
+			return nil, fmt.Errorf("ID cuộc trò chuyện không hợp lệ: %w", err)
 		}
 		conversationID = convID
 	}
@@ -174,7 +174,7 @@ func (s *videoSessionService) CreateVideoSession(ctx context.Context, callerID p
 	// Reject if an active/pending session already exists for this conversation.
 	existing, err := s.videoRepo.FindActiveByConversation(ctx, conversationID)
 	if err != nil {
-		return nil, fmt.Errorf("video: failed to check existing sessions: %w", err)
+		return nil, fmt.Errorf("không thể kiểm tra phiên video hiện có: %w", err)
 	}
 	if existing != nil {
 		return nil, ErrVideoSessionAlreadyActive
@@ -201,7 +201,7 @@ func (s *videoSessionService) CreateVideoSession(ctx context.Context, callerID p
 
 	created, err := s.videoRepo.Create(ctx, session)
 	if err != nil {
-		return nil, fmt.Errorf("video: failed to create session: %w", err)
+		return nil, fmt.Errorf("không thể tạo phiên video: %w", err)
 	}
 
 	// Send system chat message — contains videoSessionId and conversationId but NOT joinUrl.
@@ -217,6 +217,7 @@ func (s *videoSessionService) CreateVideoSession(ctx context.Context, callerID p
 	_, err = s.chatService.SendMessage(ctx, &usecase.SendMessageInput{
 		ConversationID: conversationID,
 		MessageSource:  chatDomain.SystemMessage,
+		SenderID:       &callerID,
 		Content:        string(inviteJSON),
 	})
 	if err != nil {
@@ -251,7 +252,7 @@ func (s *videoSessionService) publishInviteEvent(ctx context.Context, session *d
 func (s *videoSessionService) JoinVideoSession(ctx context.Context, callerID primitive.ObjectID, role userDomain.Role, sessionID primitive.ObjectID) (*dto.VideoSessionResponse, error) {
 	session, err := s.videoRepo.FindByID(ctx, sessionID)
 	if err != nil {
-		return nil, fmt.Errorf("video: db error: %w", err)
+		return nil, fmt.Errorf("lỗi cơ sở dữ liệu phiên video: %w", err)
 	}
 	if session == nil {
 		return nil, ErrVideoSessionNotFound
@@ -272,7 +273,7 @@ func (s *videoSessionService) JoinVideoSession(ctx context.Context, callerID pri
 	if session.Status == domain.VideoSessionPending {
 		now := time.Now()
 		if err := s.videoRepo.UpdateStatus(ctx, sessionID, domain.VideoSessionActive, &now, nil); err != nil {
-			return nil, fmt.Errorf("video: failed to activate session: %w", err)
+			return nil, fmt.Errorf("không thể kích hoạt phiên video: %w", err)
 		}
 		session.Status = domain.VideoSessionActive
 		session.StartedAt = &now
@@ -287,7 +288,7 @@ func (s *videoSessionService) JoinVideoSession(ctx context.Context, callerID pri
 func (s *videoSessionService) EndVideoSession(ctx context.Context, callerID primitive.ObjectID, sessionID primitive.ObjectID) (*dto.VideoSessionResponse, error) {
 	session, err := s.videoRepo.FindByID(ctx, sessionID)
 	if err != nil {
-		return nil, fmt.Errorf("video: db error: %w", err)
+		return nil, fmt.Errorf("lỗi cơ sở dữ liệu phiên video: %w", err)
 	}
 	if session == nil {
 		return nil, ErrVideoSessionNotFound
@@ -304,7 +305,7 @@ func (s *videoSessionService) EndVideoSession(ctx context.Context, callerID prim
 
 	now := time.Now()
 	if err := s.videoRepo.UpdateStatus(ctx, sessionID, domain.VideoSessionEnded, nil, &now); err != nil {
-		return nil, fmt.Errorf("video: failed to end session: %w", err)
+		return nil, fmt.Errorf("không thể kết thúc phiên video: %w", err)
 	}
 	session.Status = domain.VideoSessionEnded
 	session.EndedAt = &now
@@ -319,6 +320,7 @@ func (s *videoSessionService) EndVideoSession(ctx context.Context, callerID prim
 	_, _ = s.chatService.SendMessage(ctx, &usecase.SendMessageInput{
 		ConversationID: session.ConversationID,
 		MessageSource:  chatDomain.SystemMessage,
+		SenderID:       &callerID,
 		Content:        string(endedJSON),
 	})
 
@@ -342,7 +344,7 @@ func (s *videoSessionService) EndVideoSession(ctx context.Context, callerID prim
 func (s *videoSessionService) RejectVideoSession(ctx context.Context, callerID primitive.ObjectID, sessionID primitive.ObjectID) (*dto.VideoSessionResponse, error) {
 	session, err := s.videoRepo.FindByID(ctx, sessionID)
 	if err != nil {
-		return nil, fmt.Errorf("video: db error: %w", err)
+		return nil, fmt.Errorf("lỗi cơ sở dữ liệu phiên video: %w", err)
 	}
 	if session == nil {
 		return nil, ErrVideoSessionNotFound
@@ -355,7 +357,7 @@ func (s *videoSessionService) RejectVideoSession(ctx context.Context, callerID p
 	}
 
 	if err := s.videoRepo.UpdateStatus(ctx, sessionID, domain.VideoSessionRejected, nil, nil); err != nil {
-		return nil, fmt.Errorf("video: failed to reject session: %w", err)
+		return nil, fmt.Errorf("không thể từ chối phiên video: %w", err)
 	}
 	session.Status = domain.VideoSessionRejected
 	return mapVideoSessionToDTO(session, false), nil
@@ -366,7 +368,7 @@ func (s *videoSessionService) RejectVideoSession(ctx context.Context, callerID p
 func (s *videoSessionService) GetVideoSession(ctx context.Context, callerID primitive.ObjectID, sessionID primitive.ObjectID) (*dto.VideoSessionResponse, error) {
 	session, err := s.videoRepo.FindByID(ctx, sessionID)
 	if err != nil {
-		return nil, fmt.Errorf("video: db error: %w", err)
+		return nil, fmt.Errorf("lỗi cơ sở dữ liệu phiên video: %w", err)
 	}
 	if session == nil {
 		return nil, ErrVideoSessionNotFound
@@ -388,10 +390,10 @@ func (s *videoSessionService) GetActiveVideoSession(ctx context.Context, callerI
 	} else if patientID != nil && !patientID.IsZero() {
 		session, err = s.videoRepo.FindActiveByPatient(ctx, *patientID)
 	} else {
-		return nil, fmt.Errorf("video: conversationId or patientId is required")
+		return nil, fmt.Errorf("Cần cung cấp conversationId hoặc patientId")
 	}
 	if err != nil {
-		return nil, fmt.Errorf("video: db error: %w", err)
+		return nil, fmt.Errorf("lỗi cơ sở dữ liệu phiên video: %w", err)
 	}
 	if session == nil {
 		return nil, nil

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/constant"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/service"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecase"
@@ -39,7 +40,7 @@ func (h *NotificationTokenHandler) RegisterNotificationToken(c *gin.Context) {
 
 	userID, exists := c.Get("userId")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": constant.MsgUnauthorized})
 		return
 	}
 
@@ -58,7 +59,7 @@ func (h *NotificationTokenHandler) RegisterNotificationToken(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": registered, "message": "Notification token registered successfully"})
+	c.JSON(http.StatusOK, gin.H{"data": registered, "message": "Đăng ký token thông báo thành công"})
 }
 
 // DeactivateNotificationToken deactivates the current user's notification token for a device.
@@ -81,7 +82,7 @@ func (h *NotificationTokenHandler) DeactivateNotificationToken(c *gin.Context) {
 
 	userID, exists := c.Get("userId")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": constant.MsgUnauthorized})
 		return
 	}
 
@@ -96,5 +97,5 @@ func (h *NotificationTokenHandler) DeactivateNotificationToken(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Notification token deactivated successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": "Hủy kích hoạt token thông báo thành công"})
 }

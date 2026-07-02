@@ -22,6 +22,7 @@ type PrescriptionRepository interface {
 	FindByID(ctx context.Context, id primitive.ObjectID) (*domain.Prescription, error)
 	Update(ctx context.Context, p *domain.Prescription) (*domain.Prescription, error)
 	UpdateStatusByID(ctx context.Context, id primitive.ObjectID, status domain.PrescriptionStatus) (*domain.Prescription, error)
+	DiscontinueActiveForPatient(ctx context.Context, patientID primitive.ObjectID, excludeID *primitive.ObjectID) ([]primitive.ObjectID, error)
 	DeleteByID(ctx context.Context, id primitive.ObjectID) error
 }
 
@@ -54,23 +55,24 @@ func (r *prescriptionRepository) ensureIndexes(ctx context.Context) error {
 		{
 			Keys: bson.D{
 				{Key: "patientId", Value: 1},
-				{Key: "createdAt", Value: -1},
+				{Key: "startDate", Value: -1},
 			},
+			Options: options.Index().SetName("idx_prescription_patient_start_date"),
 		},
 		{
 			Keys: bson.D{
 				{Key: "prescribedBy", Value: 1},
-				{Key: "createdAt", Value: -1},
+				{Key: "startDate", Value: -1},
 			},
-			Options: options.Index().SetName("idx_prescription_prescribed_by_created"),
+			Options: options.Index().SetName("idx_prescription_prescribed_by_start_date"),
 		},
 		{
 			Keys: bson.D{
 				{Key: "patientId", Value: 1},
 				{Key: "status", Value: 1},
-				{Key: "createdAt", Value: -1},
+				{Key: "startDate", Value: -1},
 			},
-			Options: options.Index().SetName("idx_prescription_patient_status_created"),
+			Options: options.Index().SetName("idx_prescription_patient_status_start_date"),
 		},
 	}
 
@@ -92,31 +94,73 @@ func (r *prescriptionRepository) Create(ctx context.Context, prescription *domai
 	return prescription, nil
 }
 
-func (r *prescriptionRepository) FindWithFilter(ctx context.Context, filter PrescriptionFilter) ([]domain.Prescription, error) {
-	bsonFilter := bson.M{}
+func applyPrescriptionFilterDefaults(filter PrescriptionFilter) PrescriptionFilter {
+	if filter.IsLatest && filter.Status == "" {
+		filter.Status = domain.PrescriptionStatusActive
+	}
+	return filter
+}
+
+func buildPrescriptionQuery(filter PrescriptionFilter, now time.Time) bson.M {
+	query := bson.M{}
 
 	if filter.PatientID != "" {
-		patientID, err := primitive.ObjectIDFromHex(filter.PatientID)
-		if err != nil {
-			return nil, err
+		if patientID, err := primitive.ObjectIDFromHex(filter.PatientID); err == nil {
+			query["patientId"] = patientID
 		}
-		bsonFilter["patientId"] = patientID
 	}
 
 	if filter.Status != "" {
-		bsonFilter["status"] = filter.Status
+		query["status"] = filter.Status
 	}
 
 	if filter.PrescribedBy != "" {
-		prescribedBy, err := primitive.ObjectIDFromHex(filter.PrescribedBy)
-		if err != nil {
-			return nil, err
+		if prescribedBy, err := primitive.ObjectIDFromHex(filter.PrescribedBy); err == nil {
+			query["prescribedBy"] = prescribedBy
 		}
-		bsonFilter["prescribedBy"] = prescribedBy
 	}
 
+	if filter.IsLatest || filter.Status == domain.PrescriptionStatusActive {
+		query["startDate"] = bson.M{"$lte": now}
+	}
+
+	return query
+}
+
+func filterOpenPrescriptions(prescriptions []domain.Prescription, now time.Time) []domain.Prescription {
+	filtered := make([]domain.Prescription, 0, len(prescriptions))
+	for _, prescription := range prescriptions {
+		if domain.IsPrescriptionOpen(&prescription, now) {
+			filtered = append(filtered, prescription)
+		}
+	}
+	return filtered
+}
+
+func pickLatestOpenPrescription(prescriptions []domain.Prescription, now time.Time) []domain.Prescription {
+	for _, prescription := range prescriptions {
+		if domain.IsPrescriptionOpen(&prescription, now) {
+			return []domain.Prescription{prescription}
+		}
+	}
+	return []domain.Prescription{}
+}
+
+func applyActiveStatusFilter(prescriptions []domain.Prescription, filter PrescriptionFilter, now time.Time) []domain.Prescription {
+	if filter.Status != domain.PrescriptionStatusActive {
+		return prescriptions
+	}
+	return filterOpenPrescriptions(prescriptions, now)
+}
+
+func (r *prescriptionRepository) FindWithFilter(ctx context.Context, filter PrescriptionFilter) ([]domain.Prescription, error) {
+	filter = applyPrescriptionFilterDefaults(filter)
+	now := time.Now().UTC()
+	query := buildPrescriptionQuery(filter, now)
+	sort := bson.D{{Key: "startDate", Value: -1}}
+
 	if filter.DoctorID != "" || filter.NurseID != "" {
-		pipeline := mongo.Pipeline{{{Key: "$match", Value: bsonFilter}}}
+		pipeline := mongo.Pipeline{{{Key: "$match", Value: query}}}
 
 		if filter.DoctorID != "" {
 			doctorID, err := primitive.ObjectIDFromHex(filter.DoctorID)
@@ -154,13 +198,15 @@ func (r *prescriptionRepository) FindWithFilter(ctx context.Context, filter Pres
 			)
 		}
 
-		pipeline = append(pipeline, bson.D{{Key: "$sort", Value: bson.M{"createdAt": -1}}})
-
-		if filter.IsLatest {
-			pipeline = append(pipeline, bson.D{{Key: "$limit", Value: 1}})
+		pipeline = append(pipeline, bson.D{{Key: "$sort", Value: sort}})
+		if !filter.IsLatest {
+			pipeline = append(pipeline, bson.D{{Key: "$project", Value: bson.M{"assignment": 0}}})
+		} else {
+			pipeline = append(pipeline,
+				bson.D{{Key: "$limit", Value: 20}},
+				bson.D{{Key: "$project", Value: bson.M{"assignment": 0}}},
+			)
 		}
-
-		pipeline = append(pipeline, bson.D{{Key: "$project", Value: bson.M{"assignment": 0}}})
 
 		cursor, err := r.col.Aggregate(ctx, pipeline)
 		if err != nil {
@@ -173,37 +219,42 @@ func (r *prescriptionRepository) FindWithFilter(ctx context.Context, filter Pres
 			return nil, err
 		}
 
+		prescriptions = applyActiveStatusFilter(prescriptions, filter, now)
+		if filter.IsLatest {
+			return pickLatestOpenPrescription(prescriptions, now), nil
+		}
 		return prescriptions, nil
 	}
 
 	if filter.IsLatest {
-		opts := options.FindOne().SetSort(bson.D{{Key: "createdAt", Value: -1}})
-		var result domain.Prescription
-
-		err := r.col.FindOne(ctx, bsonFilter, opts).Decode(&result)
+		opts := options.Find().SetSort(sort).SetLimit(20)
+		cursor, err := r.col.Find(ctx, query, opts)
 		if err != nil {
-			if err == mongo.ErrNoDocuments {
-				return []domain.Prescription{}, nil
-			}
+			return nil, err
+		}
+		defer cursor.Close(ctx)
+
+		var prescriptions []domain.Prescription
+		if err := cursor.All(ctx, &prescriptions); err != nil {
 			return nil, err
 		}
 
-		return []domain.Prescription{result}, nil
+		return pickLatestOpenPrescription(prescriptions, now), nil
 	}
 
-	opts := options.Find().SetSort(bson.D{{Key: "createdAt", Value: -1}})
-	cursor, err := r.col.Find(ctx, bsonFilter, opts)
+	opts := options.Find().SetSort(sort)
+	cursor, err := r.col.Find(ctx, query, opts)
 	if err != nil {
 		return nil, err
 	}
 	defer cursor.Close(ctx)
 
 	var prescriptions []domain.Prescription
-	if err = cursor.All(ctx, &prescriptions); err != nil {
+	if err := cursor.All(ctx, &prescriptions); err != nil {
 		return nil, err
 	}
 
-	return prescriptions, nil
+	return applyActiveStatusFilter(prescriptions, filter, now), nil
 }
 
 func (r *prescriptionRepository) FindByID(ctx context.Context, id primitive.ObjectID) (*domain.Prescription, error) {
@@ -249,6 +300,51 @@ func (r *prescriptionRepository) Update(ctx context.Context, prescription *domai
 func (r *prescriptionRepository) DeleteByID(ctx context.Context, id primitive.ObjectID) error {
 	_, err := r.col.DeleteOne(ctx, bson.M{"_id": id})
 	return err
+}
+
+func (r *prescriptionRepository) DiscontinueActiveForPatient(ctx context.Context, patientID primitive.ObjectID, excludeID *primitive.ObjectID) ([]primitive.ObjectID, error) {
+	now := time.Now().UTC()
+	filter := bson.M{
+		"patientId": patientID,
+		"status":    domain.PrescriptionStatusActive,
+		"startDate": bson.M{"$lte": now},
+	}
+	if excludeID != nil {
+		filter["_id"] = bson.M{"$ne": *excludeID}
+	}
+
+	cursor, err := r.col.Find(ctx, filter, options.Find().SetSort(bson.D{{Key: "startDate", Value: -1}}))
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var candidates []domain.Prescription
+	if err := cursor.All(ctx, &candidates); err != nil {
+		return nil, err
+	}
+
+	open := filterOpenPrescriptions(candidates, now)
+	if len(open) == 0 {
+		return nil, nil
+	}
+
+	discontinued := make([]primitive.ObjectID, 0, len(open))
+	for _, prescription := range open {
+		discontinued = append(discontinued, prescription.ID)
+	}
+
+	_, err = r.col.UpdateMany(ctx, bson.M{"_id": bson.M{"$in": discontinued}}, bson.M{
+		"$set": bson.M{
+			"status":    domain.PrescriptionStatusDiscontinued,
+			"updatedAt": now,
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return discontinued, nil
 }
 
 func (r *prescriptionRepository) UpdateStatusByID(ctx context.Context, id primitive.ObjectID, status domain.PrescriptionStatus) (*domain.Prescription, error) {

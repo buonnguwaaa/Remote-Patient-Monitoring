@@ -19,8 +19,8 @@ import (
 )
 
 var (
-	ErrPrescriptionNotFound     = errors.New("prescription not found")
-	ErrPrescriptionAccessDenied = errors.New("access denied")
+	ErrPrescriptionNotFound     = errors.New("Không tìm thấy đơn thuốc")
+	ErrPrescriptionAccessDenied = errors.New("Không có quyền truy cập")
 )
 
 type prescriptionService struct {
@@ -55,7 +55,7 @@ func NewPrescriptionService(
 func (s *prescriptionService) CreatePrescription(ctx context.Context, input *usecase.CreatePrescriptionInput) (*dto.PrescriptionResponse, error) {
 	patientID, err := primitive.ObjectIDFromHex(input.PatientID)
 	if err != nil {
-		return nil, errors.New("invalid patient ID")
+		return nil, errors.New("ID bệnh nhân không hợp lệ")
 	}
 
 	if err := s.ensurePatient(ctx, patientID); err != nil {
@@ -68,6 +68,10 @@ func (s *prescriptionService) CreatePrescription(ctx context.Context, input *use
 	prescribedByID, err := primitive.ObjectIDFromHex(input.PrescribedBy)
 	if err != nil {
 		return nil, err
+	}
+
+	if err := s.discontinueOtherActivePrescriptions(ctx, patientID, nil); err != nil {
+		return nil, fmt.Errorf("không thể ngừng các đơn thuốc đang hoạt động trước đó: %w", err)
 	}
 
 	created, err := s.prescriptionRepo.Create(ctx, &domain.Prescription{
@@ -88,7 +92,7 @@ func (s *prescriptionService) CreatePrescription(ctx context.Context, input *use
 	reminderIDs, err := s.createMedicationReminders(ctx, created, input.PrescribedBy, endDate)
 	if err != nil {
 		s.rollbackPrescriptionCreation(ctx, created.ID, reminderIDs)
-		return nil, fmt.Errorf("failed to create medication reminders: %w", err)
+		return nil, fmt.Errorf("không thể tạo nhắc nhở uống thuốc: %w", err)
 	}
 
 	return toPrescriptionResponse(created), nil
@@ -103,11 +107,6 @@ func (s *prescriptionService) GetPrescriptions(ctx context.Context, input *useca
 		NurseID:      input.NurseID,
 		PrescribedBy: input.PrescribedBy,
 	})
-	if err != nil {
-		return nil, err
-	}
-
-	prescriptions, err = s.expirePrescriptionsIfNeeded(ctx, prescriptions)
 	if err != nil {
 		return nil, err
 	}
@@ -141,6 +140,9 @@ func (s *prescriptionService) UpdatePrescriptionByID(ctx context.Context, input 
 	if err := validatePrescriptionInput(input.Medications, input.Timezone, input.DaysOfWeek); err != nil {
 		return nil, err
 	}
+	if err := domain.ValidatePrescriptionStatus(input.Status); err != nil {
+		return nil, err
+	}
 
 	existing, err := s.requirePrescription(ctx, prescriptionID)
 	if err != nil {
@@ -163,18 +165,19 @@ func (s *prescriptionService) UpdatePrescriptionByID(ctx context.Context, input 
 		return nil, ErrPrescriptionNotFound
 	}
 
-	updated, err = s.expirePrescriptionIfNeeded(ctx, updated)
-	if err != nil {
-		return nil, err
+	if updated.Status == domain.PrescriptionStatusActive {
+		if err := s.discontinueOtherActivePrescriptions(ctx, updated.PatientID, &updated.ID); err != nil {
+			return nil, fmt.Errorf("đã cập nhật đơn thuốc nhưng không thể vô hiệu hóa các đơn thuốc đang hoạt động khác: %w", err)
+		}
 	}
 
 	if updated.Status != previousStatus {
 		if err := s.applyPrescriptionStatusToLinkedReminders(ctx, prescriptionID, updated.Status); err != nil {
-			return nil, fmt.Errorf("prescription status updated but failed to update linked reminders: %w", err)
+			return nil, fmt.Errorf("đã cập nhật trạng thái đơn thuốc nhưng không thể cập nhật nhắc nhở liên kết: %w", err)
 		}
 	} else if updated.Status == domain.PrescriptionStatusActive {
 		if err := s.syncPrescriptionReminders(ctx, updated); err != nil {
-			return nil, fmt.Errorf("prescription updated but failed to sync linked reminders: %w", err)
+			return nil, fmt.Errorf("đã cập nhật đơn thuốc nhưng không thể đồng bộ nhắc nhở liên kết: %w", err)
 		}
 	}
 
@@ -191,6 +194,9 @@ func (s *prescriptionService) UpdatePrescriptionStatus(ctx context.Context, inpu
 	if err != nil {
 		return nil, err
 	}
+	if err := domain.ValidatePrescriptionStatus(input.Status); err != nil {
+		return nil, err
+	}
 	if existing.Status == input.Status {
 		return toPrescriptionResponse(existing), nil
 	}
@@ -204,24 +210,40 @@ func (s *prescriptionService) UpdatePrescriptionStatus(ctx context.Context, inpu
 		return nil, ErrPrescriptionNotFound
 	}
 
-	updated, err = s.expirePrescriptionIfNeeded(ctx, updated)
-	if err != nil {
-		return nil, err
+	if updated.Status == domain.PrescriptionStatusActive {
+		if err := s.discontinueOtherActivePrescriptions(ctx, updated.PatientID, &updated.ID); err != nil {
+			return nil, fmt.Errorf("đã cập nhật trạng thái đơn thuốc nhưng không thể vô hiệu hóa các đơn thuốc đang hoạt động khác: %w", err)
+		}
 	}
 
 	if updated.Status != previousStatus {
 		if err := s.applyPrescriptionStatusToLinkedReminders(ctx, prescriptionID, updated.Status); err != nil {
-			return nil, fmt.Errorf("prescription status updated but failed to update linked reminders: %w", err)
+			return nil, fmt.Errorf("đã cập nhật trạng thái đơn thuốc nhưng không thể cập nhật nhắc nhở liên kết: %w", err)
 		}
 	}
 
 	return toPrescriptionResponse(updated), nil
 }
 
+func (s *prescriptionService) discontinueOtherActivePrescriptions(ctx context.Context, patientID primitive.ObjectID, excludeID *primitive.ObjectID) error {
+	discontinuedIDs, err := s.prescriptionRepo.DiscontinueActiveForPatient(ctx, patientID, excludeID)
+	if err != nil {
+		return err
+	}
+
+	for _, id := range discontinuedIDs {
+		if err := s.applyPrescriptionStatusToLinkedReminders(ctx, id, domain.PrescriptionStatusDiscontinued); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (s *prescriptionService) ensurePatient(ctx context.Context, patientID primitive.ObjectID) error {
 	exists, err := s.patientRepo.ExistsByIDAndRole(ctx, patientID, userDomain.RolePatient)
 	if err != nil || !exists {
-		return errors.New("user not found or not patient")
+		return errors.New("Không tìm thấy người dùng hoặc người dùng không phải bệnh nhân")
 	}
 	return nil
 }
@@ -234,47 +256,7 @@ func (s *prescriptionService) requirePrescription(ctx context.Context, id primit
 	if prescription == nil {
 		return nil, ErrPrescriptionNotFound
 	}
-	return s.expirePrescriptionIfNeeded(ctx, prescription)
-}
-
-func (s *prescriptionService) expirePrescriptionsIfNeeded(ctx context.Context, prescriptions []domain.Prescription) ([]domain.Prescription, error) {
-	for i := range prescriptions {
-		updated, err := s.expirePrescriptionIfNeeded(ctx, &prescriptions[i])
-		if err != nil {
-			return nil, err
-		}
-		if updated != nil {
-			prescriptions[i] = *updated
-		}
-	}
-	return prescriptions, nil
-}
-
-func (s *prescriptionService) expirePrescriptionIfNeeded(ctx context.Context, prescription *domain.Prescription) (*domain.Prescription, error) {
-	if prescription.Status != domain.PrescriptionStatusActive {
-		return prescription, nil
-	}
-	if !isPrescriptionPastEnd(prescription, time.Now().UTC()) {
-		return prescription, nil
-	}
-
-	updated, err := s.prescriptionRepo.UpdateStatusByID(ctx, prescription.ID, domain.PrescriptionStatusExpired)
-	if err != nil {
-		return nil, err
-	}
-	if updated == nil {
-		return prescription, nil
-	}
-
-	if err := s.applyPrescriptionStatusToLinkedReminders(ctx, prescription.ID, domain.PrescriptionStatusExpired); err != nil {
-		return nil, err
-	}
-
-	return updated, nil
-}
-
-func isPrescriptionPastEnd(prescription *domain.Prescription, now time.Time) bool {
-	return !now.Before(prescriptionEndDate(prescription.EndDate, prescription.StartDate))
+	return prescription, nil
 }
 
 func (s *prescriptionService) ensurePatientAccess(role userDomain.Role, userID string, patientID primitive.ObjectID) error {
@@ -348,7 +330,7 @@ func (s *prescriptionService) cancelReminders(ctx context.Context, reminderIDs [
 func (s *prescriptionService) applyPrescriptionStatusToLinkedReminders(ctx context.Context, prescriptionID primitive.ObjectID, status domain.PrescriptionStatus) error {
 	reminderStatus, ok := domain.ReminderStatusForPrescription(status)
 	if !ok {
-		return fmt.Errorf("unsupported prescription status: %s", status)
+		return fmt.Errorf("trạng thái đơn thuốc không được hỗ trợ: %s", status)
 	}
 
 	reminders, err := s.reminderRepo.FindWithFilter(ctx, repository.ReminderFilter{
@@ -367,7 +349,7 @@ func (s *prescriptionService) applyPrescriptionStatusToLinkedReminders(ctx conte
 			ID:     reminder.ID.Hex(),
 			Status: reminderStatus,
 		}); err != nil {
-			return fmt.Errorf("failed to update linked reminder %s: %w", reminder.ID.Hex(), err)
+			return fmt.Errorf("không thể cập nhật nhắc nhở liên kết %s: %w", reminder.ID.Hex(), err)
 		}
 	}
 
@@ -389,7 +371,7 @@ func (s *prescriptionService) syncPrescriptionReminders(ctx context.Context, pre
 				ID:     r.ID.Hex(),
 				Status: domain.ReminderStatusCanceled,
 			}); err != nil {
-				return fmt.Errorf("failed to cancel old reminder %s: %w", r.ID.Hex(), err)
+				return fmt.Errorf("không thể hủy nhắc nhở cũ %s: %w", r.ID.Hex(), err)
 			}
 		}
 	}
@@ -514,17 +496,17 @@ func validatePrescriptionInput(medications []domain.PrescriptionMedication, time
 
 func validateSchedule(timezone string, daysOfWeek []int) error {
 	if timezone == "" {
-		return errors.New("timezone is required")
+		return errors.New("Múi giờ là bắt buộc")
 	}
 	if _, err := time.LoadLocation(timezone); err != nil {
-		return errors.New("invalid timezone")
+		return errors.New("Múi giờ không hợp lệ")
 	}
 	if len(daysOfWeek) == 0 {
-		return errors.New("at least one day of week is required")
+		return errors.New("Cần ít nhất một ngày trong tuần")
 	}
 	for _, day := range daysOfWeek {
 		if day < 0 || day > 6 {
-			return errors.New("daysOfWeek values must be between 0 (Sunday) and 6 (Saturday)")
+			return errors.New("Giá trị ngày trong tuần phải từ 0 (Chủ nhật) đến 6 (Thứ bảy)")
 		}
 	}
 	return nil
@@ -532,7 +514,7 @@ func validateSchedule(timezone string, daysOfWeek []int) error {
 
 func validateMedications(medications []domain.PrescriptionMedication) error {
 	if len(medications) == 0 {
-		return errors.New("at least one medication is required")
+		return errors.New("Cần ít nhất một loại thuốc")
 	}
 
 	for i, med := range medications {
@@ -585,7 +567,7 @@ func formatDoseReminderMessage(med domain.PrescriptionMedication, dose domain.Me
 	if label := domain.MealTimingLabel(dose.MealTiming); label != "" {
 		suffix = " " + label
 	}
-	return fmt.Sprintf("Take %s %s (%s)%s", formatPillCount(dose.PillCount), med.DrugName, med.Dosage, suffix)
+	return fmt.Sprintf("Uống %s %s (%s)%s", formatPillCount(dose.PillCount), med.DrugName, med.Dosage, suffix)
 }
 
 func mealTimingPtr(m domain.MealTiming) *domain.MealTiming {
@@ -603,10 +585,7 @@ func formatPillCount(count float64) string {
 }
 
 func prescriptionEndDate(end *time.Time, start time.Time) time.Time {
-	if end != nil {
-		return *end
-	}
-	return start.AddDate(1, 0, 0)
+	return domain.PrescriptionEffectiveEndDate(end, start)
 }
 
 func toPrescriptionResponse(p *domain.Prescription) *dto.PrescriptionResponse {

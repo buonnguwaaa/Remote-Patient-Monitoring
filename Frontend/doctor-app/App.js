@@ -3,6 +3,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AuthProvider } from "./src/context/AuthContext";
 import { BadgeProvider } from "./src/context/BadgeContext";
 import { SnackbarProvider } from "./src/context/SnackbarContext";
+import { ToastProvider } from "./src/context/ToastContext";
 import AppNavigator from "./src/navigation/AppNavigator";
 import ErrorBoundary from "./src/components/ErrorBoundary";
 import {
@@ -25,14 +26,15 @@ export default function App() {
     <ErrorBoundary>
       <AuthProvider>
         <BadgeProvider>
-          <SnackbarProvider>
-            <SafeAreaProvider>
-              <AppNavigator />
-            </SafeAreaProvider>
-          </SnackbarProvider>
+          <ToastProvider>
+            <SnackbarProvider>
+              <SafeAreaProvider>
+                <AppNavigator />
+              </SafeAreaProvider>
+            </SnackbarProvider>
+          </ToastProvider>
         </BadgeProvider>
       </AuthProvider>
     </ErrorBoundary>
   );
 }
-

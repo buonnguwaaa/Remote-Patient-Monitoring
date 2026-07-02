@@ -16,12 +16,12 @@ import (
 )
 
 var (
-	ErrChatInvalidParticipants = errors.New("chat: invalid participants")
-	ErrChatConversationMissing = errors.New("chat: conversation not found")
-	ErrChatInvalidMessage      = errors.New("chat: invalid message")
-	ErrChatInvalidReplyTarget  = errors.New("chat: invalid reply target")
-	ErrChatForbidden           = errors.New("chat: user is not a participant")
-	ErrChatAssignmentMismatch  = errors.New("chat: participants must have an assignment record")
+	ErrChatInvalidParticipants = errors.New("Người tham gia không hợp lệ")
+	ErrChatConversationMissing = errors.New("Không tìm thấy cuộc trò chuyện")
+	ErrChatInvalidMessage      = errors.New("Tin nhắn không hợp lệ")
+	ErrChatInvalidReplyTarget  = errors.New("Tin nhắn trả lời không hợp lệ")
+	ErrChatForbidden           = errors.New("Người dùng không phải thành viên cuộc trò chuyện")
+	ErrChatAssignmentMismatch  = errors.New("Người tham gia phải có bản ghi phân công")
 )
 
 type ChatService interface {
@@ -448,7 +448,6 @@ func mapParticipantsToDTO(participants []chatDomain.Participant) []dto.Conversat
 
 	return results
 }
-
 
 func mapMessageToDTO(m *chatDomain.Message) *dto.MessageResponse {
 	if m == nil {

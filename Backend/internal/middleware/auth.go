@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/constant"
 	domain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/util"
 	"github.com/gin-gonic/gin"
@@ -31,16 +32,16 @@ func JWTAuthMiddleware(jwtManager *util.JWTManager) gin.HandlerFunc {
 		}
 
 		if token == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "missing access token"})
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": constant.MsgMissingAccessToken})
 			return
 		}
 
 		claims, err := jwtManager.VerifyAccessToken(token)
 		if err != nil {
 			if errors.Is(err, jwt.ErrTokenExpired) {
-				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "token expired"})
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": constant.MsgTokenExpired})
 			} else {
-				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": constant.MsgInvalidToken})
 			}
 			return
 		}
@@ -59,16 +60,16 @@ func RequireRoles(allowed ...domain.Role) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		roleVal, exists := c.Get("role")
 		if !exists {
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "missing role"})
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": constant.MsgMissingRole})
 			return
 		}
 		role, ok := roleVal.(domain.Role)
 		if !ok {
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "invalid role"})
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": constant.MsgInvalidRole})
 			return
 		}
 		if _, ok := allowedSet[role]; !ok {
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "insufficient permissions"})
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": constant.MsgInsufficientPermissions})
 			return
 		}
 		c.Next()

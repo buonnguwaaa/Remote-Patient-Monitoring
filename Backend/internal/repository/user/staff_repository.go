@@ -197,9 +197,9 @@ func expectedStaffRole[T StaffEntity]() domain.Role {
 func invalidStaffRoleError[T StaffEntity]() error {
 	expected := expectedStaffRole[T]()
 	if expected == "" {
-		return errors.New("invalid staff type")
+		return errors.New("loại nhân viên y tế không hợp lệ")
 	}
-	return fmt.Errorf("invalid role: expected %s", expected)
+	return fmt.Errorf("vai trò không hợp lệ: yêu cầu %s", expected)
 }
 
 func roleOfStaff[T StaffEntity](u T) domain.Role {

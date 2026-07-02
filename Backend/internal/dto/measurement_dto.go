@@ -35,7 +35,7 @@ type UpdateMeasurementRequest struct {
 	Height *float64 `json:"height,omitempty"`
 	Weight *float64 `json:"weight,omitempty"`
 
-	Glucose    *domain.Glucose     `json:"glucose,omitempty"`
+	Glucose    *domain.Glucose    `json:"glucose,omitempty"`
 	MealTiming *domain.MealTiming `json:"mealTiming,omitempty"`
 	Device     *string            `json:"device,omitempty"`
 	Note       *string            `json:"note,omitempty"`

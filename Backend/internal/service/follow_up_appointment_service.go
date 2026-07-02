@@ -19,8 +19,9 @@ import (
 )
 
 var (
-	ErrFollowUpAppointmentNotFound     = errors.New("follow-up appointment not found")
-	ErrFollowUpAppointmentAccessDenied = errors.New("access denied")
+	ErrFollowUpAppointmentNotFound     = errors.New("Không tìm thấy lịch tái khám")
+	ErrFollowUpAppointmentAccessDenied = errors.New("Không có quyền truy cập")
+	ErrDoctorScheduleConflict          = errors.New("Bác sĩ đã có lịch hẹn trong khung giờ này")
 )
 
 type FollowUpAppointmentService interface {
@@ -52,7 +53,7 @@ func NewFollowUpAppointmentService(
 func (s *followUpAppointmentService) CreateFollowUpAppointment(ctx context.Context, input *usecase.CreateFollowUpAppointmentInput) (*dto.FollowUpAppointmentResponse, error) {
 	patientID, err := primitive.ObjectIDFromHex(input.PatientID)
 	if err != nil {
-		return nil, errors.New("invalid patient ID")
+		return nil, errors.New("ID bệnh nhân không hợp lệ")
 	}
 
 	if err := s.ensurePatient(ctx, patientID); err != nil {
@@ -73,24 +74,34 @@ func (s *followUpAppointmentService) CreateFollowUpAppointment(ctx context.Conte
 		return nil, err
 	}
 
-	scheduledAt := input.ScheduledAt.UTC()
+	scheduledAt := domain.NormalizeAppointmentSlot(input.ScheduledAt.UTC())
 	if !scheduledAt.After(time.Now().UTC()) {
-		return nil, errors.New("scheduled time must be in the future")
+		return nil, errors.New("Thời gian hẹn phải ở trong tương lai")
+	}
+
+	durationMinutes, err := s.normalizeDurationMinutes(input.DurationMinutes)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.ensureDoctorScheduleAvailable(ctx, doctorID, scheduledAt, durationMinutes, nil); err != nil {
+		return nil, err
 	}
 
 	if input.Timezone == "" {
-		return nil, errors.New("timezone is required")
+		return nil, errors.New("Múi giờ là bắt buộc")
 	}
 
 	created, err := s.appointmentRepo.Create(ctx, &domain.FollowUpAppointment{
-		PatientID:   patientID,
-		DoctorID:    doctorID,
-		ScheduledAt: scheduledAt,
-		Timezone:    input.Timezone,
-		Location:    input.Location,
-		Notes:       input.Notes,
-		Status:      domain.FollowUpAppointmentStatusScheduled,
-		CreatedBy:   createdByID,
+		PatientID:       patientID,
+		DoctorID:        doctorID,
+		ScheduledAt:     scheduledAt,
+		DurationMinutes: durationMinutes,
+		Timezone:        input.Timezone,
+		Location:        input.Location,
+		Notes:           input.Notes,
+		Status:          domain.FollowUpAppointmentStatusScheduled,
+		CreatedBy:       createdByID,
 	})
 	if err != nil {
 		return nil, err
@@ -152,21 +163,41 @@ func (s *followUpAppointmentService) UpdateFollowUpAppointment(ctx context.Conte
 	}
 
 	if existing.Status != domain.FollowUpAppointmentStatusScheduled {
-		return nil, errors.New("only scheduled appointments can be updated")
+		return nil, errors.New("Chỉ có thể cập nhật lịch hẹn đang ở trạng thái đã lên lịch")
 	}
 
 	reschedule := false
+	scheduleChanged := false
+	candidateAt := existing.ScheduledAt
+	candidateDuration := existing.EffectiveDurationMinutes()
+
 	if input.ScheduledAt != nil {
-		scheduledAt := input.ScheduledAt.UTC()
+		scheduledAt := domain.NormalizeAppointmentSlot(input.ScheduledAt.UTC())
 		if !scheduledAt.After(time.Now().UTC()) {
-			return nil, errors.New("scheduled time must be in the future")
+			return nil, errors.New("Thời gian hẹn phải ở trong tương lai")
 		}
-		existing.ScheduledAt = scheduledAt
-		reschedule = true
+		candidateAt = scheduledAt
+		scheduleChanged = true
+	}
+	if input.DurationMinutes != nil {
+		durationMinutes, err := s.normalizeDurationMinutes(*input.DurationMinutes)
+		if err != nil {
+			return nil, err
+		}
+		candidateDuration = durationMinutes
+		scheduleChanged = true
+	}
+	if scheduleChanged {
+		if err := s.ensureDoctorScheduleAvailable(ctx, existing.DoctorID, candidateAt, candidateDuration, &existing.ID); err != nil {
+			return nil, err
+		}
+		existing.ScheduledAt = candidateAt
+		existing.DurationMinutes = candidateDuration
+		reschedule = input.ScheduledAt != nil
 	}
 	if input.Timezone != nil {
 		if *input.Timezone == "" {
-			return nil, errors.New("timezone cannot be empty")
+			return nil, errors.New("Múi giờ không được để trống")
 		}
 		existing.Timezone = *input.Timezone
 	}
@@ -187,7 +218,11 @@ func (s *followUpAppointmentService) UpdateFollowUpAppointment(ctx context.Conte
 
 	if reschedule {
 		if err := temporalclient.SignalAppointmentReminderWorkflow(ctx, updated.ID.Hex()); err != nil {
-			return nil, fmt.Errorf("appointment updated but failed to reschedule reminder: %w", err)
+			return nil, fmt.Errorf("đã cập nhật lịch hẹn nhưng không thể lên lại lịch nhắc nhở: %w", err)
+		}
+	} else if scheduleChanged {
+		if err := temporalclient.SignalAppointmentReminderWorkflow(ctx, updated.ID.Hex()); err != nil {
+			return nil, fmt.Errorf("đã cập nhật lịch hẹn nhưng không thể làm mới workflow nhắc nhở: %w", err)
 		}
 	}
 
@@ -219,18 +254,43 @@ func (s *followUpAppointmentService) UpdateFollowUpAppointmentStatus(ctx context
 
 	if input.Status != domain.FollowUpAppointmentStatusScheduled {
 		if err := temporalclient.SignalAppointmentReminderWorkflow(ctx, updated.ID.Hex()); err != nil {
-			return nil, fmt.Errorf("appointment status updated but failed to update reminder workflow: %w", err)
+			return nil, fmt.Errorf("đã cập nhật trạng thái lịch hẹn nhưng không thể cập nhật workflow nhắc nhở: %w", err)
 		}
 	}
 
 	return toFollowUpAppointmentResponse(updated), nil
 }
 
+func (s *followUpAppointmentService) ensureDoctorScheduleAvailable(
+	ctx context.Context,
+	doctorID primitive.ObjectID,
+	scheduledAt time.Time,
+	durationMinutes int,
+	excludeID *primitive.ObjectID,
+) error {
+	conflict, err := s.appointmentRepo.HasScheduledConflict(ctx, doctorID, scheduledAt, durationMinutes, excludeID)
+	if err != nil {
+		return err
+	}
+	if conflict {
+		return ErrDoctorScheduleConflict
+	}
+	return nil
+}
+
+func (s *followUpAppointmentService) normalizeDurationMinutes(minutes int) (int, error) {
+	normalized := domain.NormalizeAppointmentDuration(minutes)
+	if err := domain.ValidateAppointmentDuration(normalized); err != nil {
+		return 0, err
+	}
+	return normalized, nil
+}
+
 func (s *followUpAppointmentService) resolveDoctorID(ctx context.Context, input *usecase.CreateFollowUpAppointmentInput) (primitive.ObjectID, error) {
 	if input.DoctorID != "" {
 		doctorID, err := primitive.ObjectIDFromHex(input.DoctorID)
 		if err != nil {
-			return primitive.NilObjectID, errors.New("invalid doctor ID")
+			return primitive.NilObjectID, errors.New("ID bác sĩ không hợp lệ")
 		}
 		return doctorID, nil
 	}
@@ -246,12 +306,12 @@ func (s *followUpAppointmentService) resolveDoctorID(ctx context.Context, input 
 
 	patientID, err := primitive.ObjectIDFromHex(input.PatientID)
 	if err != nil {
-		return primitive.NilObjectID, errors.New("invalid patient ID")
+		return primitive.NilObjectID, errors.New("ID bệnh nhân không hợp lệ")
 	}
 
 	assignment, err := s.assignmentRepo.FindByPatientID(ctx, patientID)
 	if err != nil || assignment == nil || assignment.DoctorID.IsZero() {
-		return primitive.NilObjectID, errors.New("patient has no assigned doctor")
+		return primitive.NilObjectID, errors.New("Bệnh nhân chưa được phân công bác sĩ")
 	}
 
 	return assignment.DoctorID, nil
@@ -260,7 +320,7 @@ func (s *followUpAppointmentService) resolveDoctorID(ctx context.Context, input 
 func (s *followUpAppointmentService) ensurePatient(ctx context.Context, patientID primitive.ObjectID) error {
 	exists, err := s.patientRepo.ExistsByIDAndRole(ctx, patientID, userDomain.RolePatient)
 	if err != nil || !exists {
-		return errors.New("user not found or not patient")
+		return errors.New("Không tìm thấy người dùng hoặc người dùng không phải bệnh nhân")
 	}
 	return nil
 }
@@ -271,7 +331,7 @@ func (s *followUpAppointmentService) ensureStaffCanAccessPatient(ctx context.Con
 		return err
 	}
 	if !hasAssignment {
-		return errors.New("patient is not assigned to this doctor")
+		return errors.New("Bệnh nhân không được phân công cho bác sĩ này")
 	}
 	return nil
 }
@@ -323,17 +383,18 @@ func (s *followUpAppointmentService) ensureAppointmentAccess(ctx context.Context
 
 func toFollowUpAppointmentResponse(appointment *domain.FollowUpAppointment) *dto.FollowUpAppointmentResponse {
 	return &dto.FollowUpAppointmentResponse{
-		ID:          appointment.ID.Hex(),
-		PatientID:   appointment.PatientID.Hex(),
-		DoctorID:    appointment.DoctorID.Hex(),
-		ScheduledAt: appointment.ScheduledAt,
-		Timezone:    appointment.Timezone,
-		Location:    appointment.Location,
-		Notes:       appointment.Notes,
-		Status:      appointment.Status,
-		CreatedBy:   appointment.CreatedBy.Hex(),
-		CreatedAt:   appointment.CreatedAt,
-		UpdatedAt:   appointment.UpdatedAt,
+		ID:              appointment.ID.Hex(),
+		PatientID:       appointment.PatientID.Hex(),
+		DoctorID:        appointment.DoctorID.Hex(),
+		ScheduledAt:     appointment.ScheduledAt,
+		DurationMinutes: appointment.EffectiveDurationMinutes(),
+		Timezone:        appointment.Timezone,
+		Location:        appointment.Location,
+		Notes:           appointment.Notes,
+		Status:          appointment.Status,
+		CreatedBy:       appointment.CreatedBy.Hex(),
+		CreatedAt:       appointment.CreatedAt,
+		UpdatedAt:       appointment.UpdatedAt,
 	}
 }
 

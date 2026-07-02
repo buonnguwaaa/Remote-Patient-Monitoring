@@ -3,6 +3,7 @@ package ws
 import (
 	"net/http"
 
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/constant"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/realtime"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/service"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecase"
@@ -58,26 +59,26 @@ func (h *Handler) ServeWs(c *gin.Context) {
 	// 1. Get userID from JWT middleware
 	rawUserID, exists := c.Get("userId")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": constant.MsgUnauthorized})
 		return
 	}
 
 	// 2. Get conversationId from query param
 	rawConversationID := c.Query("conversationId")
 	if rawConversationID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "conversationId is required"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": constant.MsgConversationIDRequired})
 		return
 	}
 
 	userID, err := primitive.ObjectIDFromHex(rawUserID.(string))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid userID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": constant.MsgInvalidUserID})
 		return
 	}
 
 	conversationID, err := primitive.ObjectIDFromHex(rawConversationID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid conversationId"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": constant.MsgInvalidConversationID})
 		return
 	}
 
@@ -93,7 +94,7 @@ func (h *Handler) ServeWs(c *gin.Context) {
 		case service.ErrChatForbidden:
 			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
 		default:
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": constant.MsgInternalServerError})
 		}
 		return
 	}

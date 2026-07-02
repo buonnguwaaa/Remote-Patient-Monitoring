@@ -37,10 +37,10 @@ const VIOLATION_LABEL = {
 };
 
 const QUICK_ACTIONS = [
-  { label: "Bệnh nhân",  icon: "people-outline",              color: "#2563EB", screen: "Patients" },
-  { label: "Cảnh báo",  icon: "warning-outline",             color: "#DC2626", screen: "Alerts" },
-  { label: "Tin nhắn",  icon: "chatbubble-ellipses-outline",  color: "#7C3AED", screen: "Chat" },
-  { label: "Nhắc nhở",  icon: "alarm-outline",               color: "#D97706", screen: "Reminders" },
+  { label: "Cấu hình ngưỡng",    icon: "options-outline",                color: "#2563EB", screen: "Thresholds" },
+  { label: "Nhắc nhở",           icon: "alarm-outline",                  color: "#D97706", screen: "Reminders" },
+  { label: "Tuân thủ thuốc",     icon: "checkmark-done-circle-outline",  color: "#16A34A", screen: "Compliance" },
+  { label: "Đơn thuốc",          icon: "document-text-outline",          color: "#7C3AED", screen: "Prescriptions" },
 ];
 
 export default function HomeScreen({ onNavigate }) {
@@ -101,11 +101,29 @@ export default function HomeScreen({ onNavigate }) {
   const hour = now.getHours();
   const greeting = hour < 12 ? "Chào buổi sáng" : hour < 18 ? "Chào buổi chiều" : "Chào buổi tối";
 
+  const TAB_MAP = {
+    Patients: "PatientsTab",
+    Alerts: "AlertsTab",
+    Chat: "ChatTab",
+    Thresholds: ["MoreTab", "Thresholds"],
+    Reminders: ["MoreTab", "Reminders"],
+    Compliance: ["MoreTab", "Compliance"],
+    Prescriptions: ["MoreTab", "Prescriptions"],
+    Settings: ["MoreTab", "Settings"],
+  };
+
   const handleNavigate = (screen) => {
     if (onNavigate) {
       onNavigate(screen);
     } else {
-      navigation.navigate(screen);
+      const mapped = TAB_MAP[screen];
+      if (Array.isArray(mapped)) {
+        navigation.navigate(mapped[0], { screen: mapped[1] });
+      } else if (mapped) {
+        navigation.navigate(mapped);
+      } else {
+        navigation.navigate(screen);
+      }
     }
   };
 

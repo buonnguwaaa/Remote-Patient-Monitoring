@@ -34,7 +34,7 @@ func NewPatientRepository(db *mongo.Database) PatientRepository {
 	}
 }
 
-var ErrInvalidPatientRole = errors.New("invalid role: expected user.patient")
+var ErrInvalidPatientRole = errors.New("vai trò không hợp lệ: yêu cầu bệnh nhân")
 
 func (r *patientRepository) Create(ctx context.Context, u *domain.Patient) (*domain.Patient, error) {
 	id := primitive.NewObjectID()

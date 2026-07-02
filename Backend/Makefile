@@ -11,6 +11,10 @@ endif
 	@echo "Swagger docs generated successfully!"
 
 
+seed:
+	@echo "Seeding database..."
+	@go run cmd/seed/main.go
+
 server:
 	@echo "Running server..."
 	@go run cmd/server/main.go
