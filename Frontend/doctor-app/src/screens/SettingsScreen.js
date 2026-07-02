@@ -203,7 +203,7 @@ export default function SettingsScreen() {
         </TouchableOpacity>
 
         {/* Footer info */}
-        <Text style={styles.versionInfo}>Phiên bản 1.0.0 (Production) • RPM Doctor</Text>
+        <Text style={styles.versionInfo}>Phiên bản 1.0.0 (Production) • RPM Staff</Text>
       </ScrollView>
     </KeyboardAvoidingView>
   );

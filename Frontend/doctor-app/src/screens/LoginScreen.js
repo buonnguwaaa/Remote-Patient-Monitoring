@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   StyleSheet,
   Alert,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as SecureStore from '../utils/secureStoreHelper';
 import * as LocalAuthentication from 'expo-local-authentication';
 import ButtonPrimary from '../components/ButtonPrimary';
@@ -37,6 +38,7 @@ const biometricStyle = StyleSheet.create({
 });
 
 export default function LoginScreen() {
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -113,13 +115,12 @@ export default function LoginScreen() {
       style={{ flex: 1 }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={[styles.container, { paddingTop: Math.max(insets.top + 20, 60) }]} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
           <View style={styles.logoWrap}>
             <Text style={styles.logoText}>RPM</Text>
           </View>
           <Text style={styles.title}>Remote Patient Monitoring</Text>
-          <Text style={styles.subtitle}>Cổng đăng nhập</Text>
         </View>
 
         <View style={styles.form}>

@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native';
+import { colors, radius } from '../theme/rpmTheme';
 
 export default StyleSheet.create({
   container: {
@@ -7,7 +8,7 @@ export default StyleSheet.create({
     paddingBottom: 40,
     flexGrow: 1,
     justifyContent: 'flex-start',
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
   },
   header: {
     alignItems: 'center',
@@ -17,8 +18,8 @@ export default StyleSheet.create({
   logoWrap: {
     width: 84,
     height: 84,
-    borderRadius: 20,
-    backgroundColor: '#030213',
+    borderRadius: radius["3xl"],
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 14,
@@ -31,9 +32,10 @@ export default StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: '700',
+    color: colors.text,
   },
   subtitle: {
-    color: '#717182',
+    color: colors.textSecondary,
     marginTop: 6,
   },
   form: {
@@ -45,12 +47,14 @@ export default StyleSheet.create({
   label: {
     fontWeight: '600',
     marginBottom: 8,
+    color: colors.text,
   },
   input: {
     height: 52,
-    backgroundColor: '#f3f3f5',
-    borderRadius: 12,
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: radius.md,
     paddingHorizontal: 14,
+    color: colors.text,
   },
   passwordWrap: {
     position: 'relative',
@@ -61,14 +65,15 @@ export default StyleSheet.create({
     top: 14,
   },
   eyeText: {
-    color: '#717182',
+    color: colors.textSecondary,
   },
   forgot: {
     alignItems: 'flex-end',
     marginBottom: 8,
   },
   forgotText: {
-    color: '#030213',
+    color: colors.primary,
+    fontWeight: '600',
   },
   dividerWrap: {
     flexDirection: 'row',
@@ -78,11 +83,11 @@ export default StyleSheet.create({
   divider: {
     flex: 1,
     height: 1,
-    backgroundColor: '#e6e6e8',
+    backgroundColor: colors.border,
   },
   dividerText: {
     marginHorizontal: 12,
-    color: '#717182',
+    color: colors.textSecondary,
   },
   socialRow: {
     flexDirection: 'row',
@@ -95,26 +100,26 @@ export default StyleSheet.create({
     marginTop: 18,
   },
   footerText: {
-    color: '#717182',
+    color: colors.textSecondary,
   },
   signUp: {
-    color: '#030213',
+    color: colors.primary,
     fontWeight: '600',
   },
   dobButton: {
     height: 52,
-    backgroundColor: '#fff',
-    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: '#e6e6e8',
+    borderColor: colors.border,
     paddingHorizontal: 14,
     alignItems: 'center',
     flexDirection: 'row',
   },
   selectButton: {
     height: 52,
-    backgroundColor: '#f3f3f5',
-    borderRadius: 12,
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: radius.md,
     paddingHorizontal: 14,
     alignItems: 'center',
     flexDirection: 'row',
@@ -122,39 +127,39 @@ export default StyleSheet.create({
   },
   selectOptions: {
     marginTop: 8,
-    backgroundColor: '#fff',
-    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: '#e6e6e8',
+    borderColor: colors.border,
     overflow: 'hidden',
   },
   selectOption: {
     paddingVertical: 12,
     paddingHorizontal: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#e6e6e8',
+    borderBottomColor: colors.border,
   },
   selectOptionText: {
-    color: '#030213',
+    color: colors.text,
   },
   placeholderText: {
-    color: '#9aa0a6',
+    color: colors.textMuted,
   },
   inputText: {
-    color: '#030213',
+    color: colors.text,
   },
   dobText: {
-    color: '#9aa0a6',
+    color: colors.textMuted,
   },
   termsText: {
     textAlign: 'center',
-    color: '#717182',
+    color: colors.textSecondary,
     marginTop: 24,
     lineHeight: 20,
     paddingHorizontal: 6,
   },
   termsLink: {
-    color: '#030213',
+    color: colors.primary,
     fontWeight: '600',
   },
   modalContainer: {
@@ -163,15 +168,15 @@ export default StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.4)',
   },
   modalContent: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     paddingTop: 10,
     paddingBottom: 18,
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
+    borderTopLeftRadius: radius.md,
+    borderTopRightRadius: radius.md,
     alignItems: 'center',
   },
   modalTitle: {
-    color: '#717182',
+    color: colors.textSecondary,
     marginBottom: 6,
     fontSize: 16,
     fontWeight: '600',
@@ -181,12 +186,12 @@ export default StyleSheet.create({
     minHeight: 216,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
   },
   iosDatePicker: {
     width: '100%',
     height: 216,
-    color: '#030213',
+    color: colors.text,
   },
   modalActions: {
     width: '100%',
@@ -199,7 +204,7 @@ export default StyleSheet.create({
     paddingHorizontal: 24,
   },
   modalActionText: {
-    color: '#0a0a0adc',
+    color: colors.text,
     fontWeight: '600',
     fontSize: 16,
   },

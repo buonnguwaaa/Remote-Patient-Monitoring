@@ -7,6 +7,8 @@ import {
   Image,
   ActivityIndicator,
   RefreshControl,
+  Alert,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons, MaterialIcons, FontAwesome5 } from "@expo/vector-icons";
@@ -213,8 +215,9 @@ function InfoRow({ icon, label, value, hint, iconLib = "ionicons" }) {
 }
 
 export default function NurseProfileScreen() {
-  const { logout } = useAuth();
+  const { logout, isBiometricEnabled, enableBiometric, disableBiometric, sessionPassword } = useAuth();
   const [profile, setProfile] = useState(EMPTY_PROFILE);
+  const [biometricLoading, setBiometricLoading] = useState(false);
   const [departmentName, setDepartmentName] = useState("");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -272,6 +275,59 @@ export default function NurseProfileScreen() {
   const avatarInitial = getAvatarInitial(profile.name);
   const statusMeta = getStatusMeta(profile.status);
   const hasProfileData = Boolean(profile.id);
+
+  const handleToggleBiometric = async () => {
+    if (isBiometricEnabled) {
+      const res = await disableBiometric();
+      if (!res.ok) {
+        Alert.alert("Lỗi", res.error);
+      }
+    } else {
+      if (!sessionPassword) {
+        if (Platform.OS === "ios") {
+          Alert.prompt(
+            "Xác nhận mật khẩu",
+            "Vui lòng nhập mật khẩu tài khoản của bạn để bật tính năng này:",
+            [
+              { text: "Hủy", style: "cancel" },
+              {
+                text: "Xác nhận",
+                onPress: async (pwd) => {
+                  if (!pwd) {
+                    Alert.alert("Lỗi", "Mật khẩu không được để trống.");
+                    return;
+                  }
+                  setBiometricLoading(true);
+                  const res = await enableBiometric(pwd);
+                  setBiometricLoading(false);
+                  if (!res.ok) {
+                    Alert.alert("Lỗi", res.error);
+                  } else {
+                    Alert.alert("Thành công", "Đã bật đăng nhập sinh trắc học.");
+                  }
+                },
+              },
+            ],
+            "secure-text"
+          );
+        } else {
+          Alert.alert(
+            "Yêu cầu đăng nhập lại",
+            "Vì lý do bảo mật, vui lòng đăng xuất và đăng nhập lại bằng mật khẩu để có thể kích hoạt tính năng sinh trắc học trên thiết bị này."
+          );
+        }
+      } else {
+        setBiometricLoading(true);
+        const res = await enableBiometric();
+        setBiometricLoading(false);
+        if (!res.ok) {
+          Alert.alert("Lỗi", res.error);
+        } else {
+          Alert.alert("Thành công", "Đã bật đăng nhập sinh trắc học.");
+        }
+      }
+    }
+  };
 
   if (loading && !hasProfileData) {
     return (
@@ -433,6 +489,32 @@ export default function NurseProfileScreen() {
         </View>
 
 
+
+        <Text style={styles.sectionTitle}>Bảo mật</Text>
+        <View style={styles.infoCard}>
+          <View style={styles.securityRow}>
+            <View style={styles.securityInfo}>
+              <View style={styles.infoIconWrapper}>
+                <Ionicons name="finger-print-outline" size={18} color="#2563EB" />
+              </View>
+              <View style={styles.securityTextBlock}>
+                <Text style={styles.securityLabel}>Sinh trắc học (Vân tay / Face ID)</Text>
+                <Text style={styles.securitySub}>Kích hoạt đăng nhập nhanh không cần mật khẩu</Text>
+              </View>
+            </View>
+            {biometricLoading ? (
+              <ActivityIndicator size="small" color="#2563EB" />
+            ) : (
+              <TouchableOpacity
+                style={[styles.toggleBtn, isBiometricEnabled && styles.toggleBtnActive]}
+                onPress={handleToggleBiometric}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.toggleCircle, isBiometricEnabled && styles.toggleCircleActive]} />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
 
         <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
           <Text style={styles.logoutText}>Đăng xuất</Text>
@@ -722,5 +804,51 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontSize: 11,
     color: "#9CA3AF",
+  },
+
+  // Biometric
+  securityRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  securityInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  securityTextBlock: {
+    flex: 1,
+    marginLeft: 10,
+  },
+  securityLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#111827",
+  },
+  securitySub: {
+    fontSize: 11,
+    color: "#6B7280",
+    marginTop: 2,
+  },
+  toggleBtn: {
+    width: 44,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "#D1D5DB",
+    paddingHorizontal: 2,
+    justifyContent: "center",
+  },
+  toggleBtnActive: {
+    backgroundColor: "#10B981",
+  },
+  toggleCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "#FFFFFF",
+  },
+  toggleCircleActive: {
+    alignSelf: "flex-end",
   },
 });

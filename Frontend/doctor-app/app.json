@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "RPM Doctor",
+    "name": "RPM Staff",
     "slug": "rpm-doctor",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -20,7 +20,7 @@
       "icon": "./assets/icon.png",
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#2563EB"
       },
       "usesCleartextTraffic": true,
       "permissions": [

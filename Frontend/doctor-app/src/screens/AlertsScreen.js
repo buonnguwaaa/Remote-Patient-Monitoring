@@ -17,6 +17,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { getAlerts, acknowledgeAlert, getMyPatients } from "../api/patientApi";
 import { useToast } from "../context/ToastContext";
+import { colors, radius, spacing, typography, shadows } from "../theme/rpmTheme";
 
 const TABS = [
   { key: "PENDING", label: "Cần xử lý" },
@@ -265,7 +266,7 @@ export default function AlertsScreen() {
     <View style={styles.statsRow}>
       <View style={styles.statCard}>
         <View style={styles.statIconWrap}>
-          <Ionicons name="time-outline" size={20} color="#2563EB" />
+          <Ionicons name="time-outline" size={20} color={colors.primary} />
         </View>
         <View>
           <Text style={styles.statLabel}>Chờ xử lý</Text>
@@ -273,12 +274,12 @@ export default function AlertsScreen() {
         </View>
       </View>
       <View style={[styles.statCard, styles.statCardDanger]}>
-        <View style={[styles.statIconWrap, { backgroundColor: "#FEE2E2" }]}>
-          <Ionicons name="alert-circle" size={20} color="#DC2626" />
+        <View style={[styles.statIconWrap, { backgroundColor: colors.dangerSoftAlt }]}>
+          <Ionicons name="alert-circle" size={20} color={colors.danger} />
         </View>
         <View>
-          <Text style={[styles.statLabel, { color: "#DC2626" }]}>Nguy hiểm</Text>
-          <Text style={[styles.statValue, { color: "#B91C1C" }]}>{stats.pendingHigh}</Text>
+          <Text style={[styles.statLabel, { color: colors.danger }]}>Nguy hiểm</Text>
+          <Text style={[styles.statValue, { color: colors.dangerAccent }]}>{stats.pendingHigh}</Text>
         </View>
       </View>
     </View>
@@ -309,17 +310,17 @@ export default function AlertsScreen() {
     return (
       <View style={styles.filterContainer}>
         <View style={styles.searchBox}>
-          <Ionicons name="search-outline" size={16} color="#9CA3AF" />
+          <Ionicons name="search-outline" size={16} color={colors.textMuted} />
           <TextInput
             placeholder="Tìm bệnh nhân..."
             value={searchQuery}
             onChangeText={setSearchQuery}
             style={styles.searchInput}
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={colors.textMuted}
           />
           {searchQuery !== "" && (
             <TouchableOpacity onPress={() => setSearchQuery("")}>
-              <Ionicons name="close-circle" size={16} color="#9CA3AF" />
+              <Ionicons name="close-circle" size={16} color={colors.textMuted} />
             </TouchableOpacity>
           )}
         </View>
@@ -356,29 +357,29 @@ export default function AlertsScreen() {
           activeOpacity={0.7}
         >
           <View style={styles.groupAvatar}>
-            <Ionicons name="person" size={18} color="#2563EB" />
+            <Ionicons name="person" size={18} color={colors.primary} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.groupName}>{group.patientName}</Text>
             <View style={styles.groupBadges}>
               <Text style={styles.groupAlertCount}>{group.alerts.length} cảnh báo:</Text>
               {group.highCount > 0 && (
-                <View style={[styles.countBadge, { backgroundColor: "#FEE2E2" }]}>
-                  <Text style={[styles.countBadgeText, { color: "#DC2626" }]}>
+                <View style={[styles.countBadge, { backgroundColor: colors.dangerSoftAlt }]}>
+                  <Text style={[styles.countBadgeText, { color: colors.danger }]}>
                     {group.highCount} Nguy hiểm
                   </Text>
                 </View>
               )}
               {group.mediumCount > 0 && (
-                <View style={[styles.countBadge, { backgroundColor: "#FEF3C7" }]}>
-                  <Text style={[styles.countBadgeText, { color: "#B45309" }]}>
+                <View style={[styles.countBadge, { backgroundColor: colors.warningSoftBg }]}>
+                  <Text style={[styles.countBadgeText, { color: colors.warningAccent }]}>
                     {group.mediumCount} Cảnh báo
                   </Text>
                 </View>
               )}
               {group.lowCount > 0 && (
-                <View style={[styles.countBadge, { backgroundColor: "#DBEAFE" }]}>
-                  <Text style={[styles.countBadgeText, { color: "#1D4ED8" }]}>
+                <View style={[styles.countBadge, { backgroundColor: colors.primarySoftBg }]}>
+                  <Text style={[styles.countBadgeText, { color: colors.primaryAccent }]}>
                     {group.lowCount} Nhẹ
                   </Text>
                 </View>
@@ -390,7 +391,7 @@ export default function AlertsScreen() {
               </Text>
             )}
           </View>
-          <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={20} color="#6B7280" />
+          <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={20} color={colors.textSecondary} />
         </TouchableOpacity>
 
         {/* Group Actions */}
@@ -400,7 +401,7 @@ export default function AlertsScreen() {
             onPress={() => openResolveModal(group.alerts)}
             activeOpacity={0.7}
           >
-            <Ionicons name="checkmark-done" size={14} color="#fff" />
+            <Ionicons name="checkmark-done" size={14} color={colors.surface} />
             <Text style={styles.resolveAllBtnText}>Xử lý tất cả</Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -408,7 +409,7 @@ export default function AlertsScreen() {
             onPress={() => navigation.navigate("ChatTab", { screen: "Chat", params: { patientId: group.patientId } })}
             activeOpacity={0.7}
           >
-            <Ionicons name="chatbubble-ellipses-outline" size={14} color="#2563EB" />
+            <Ionicons name="chatbubble-ellipses-outline" size={14} color={colors.primary} />
             <Text style={styles.chatBtnText}>Nhắn tin</Text>
           </TouchableOpacity>
         </View>
@@ -426,7 +427,7 @@ export default function AlertsScreen() {
                   ]}>
                     <Text style={[
                       styles.severityBadgeText,
-                      { color: alert.severity === "high" ? "#DC2626" : alert.severity === "medium" ? "#B45309" : "#1D4ED8" },
+                      { color: alert.severity === "high" ? colors.danger : alert.severity === "medium" ? colors.warningAccent : colors.primaryAccent },
                     ]}>
                       {alert.severity === "high" ? "Nguy hiểm" : alert.severity === "medium" ? "Cảnh báo" : "Nhẹ"}
                     </Text>
@@ -471,7 +472,7 @@ export default function AlertsScreen() {
         ]}>
           <Text style={[
             styles.severityBadgeText,
-            { color: item.severity === "high" ? "#DC2626" : item.severity === "medium" ? "#B45309" : "#1D4ED8" },
+            { color: item.severity === "high" ? colors.danger : item.severity === "medium" ? colors.warningAccent : colors.primaryAccent },
           ]}>
             {item.severity === "high" ? "Nguy hiểm" : item.severity === "medium" ? "Cảnh báo" : "Nhẹ"}
           </Text>
@@ -489,12 +490,12 @@ export default function AlertsScreen() {
 
       <View style={styles.flatFooter}>
         <View style={styles.flatTimeRow}>
-          <Ionicons name="time-outline" size={12} color="#6B7280" />
+          <Ionicons name="time-outline" size={12} color={colors.textSecondary} />
           <Text style={styles.flatTime}>{formatDate(item.createdAt)}</Text>
         </View>
         {item.status === "ack" ? (
           <View style={styles.resolvedBadge}>
-            <Ionicons name="checkmark-circle" size={14} color="#059669" />
+            <Ionicons name="checkmark-circle" size={14} color={colors.success} />
             <Text style={styles.resolvedText}>
               Đã xử lý{item.acknowledgedByName ? ` • ${item.acknowledgedByName}` : ""}
             </Text>
@@ -505,14 +506,14 @@ export default function AlertsScreen() {
               style={styles.chatBtn}
               onPress={() => navigation.navigate("ChatTab", { screen: "Chat", params: { patientId: item.patientId } })}
             >
-              <Ionicons name="chatbubble-ellipses-outline" size={13} color="#2563EB" />
+              <Ionicons name="chatbubble-ellipses-outline" size={13} color={colors.primary} />
               <Text style={styles.chatBtnText}>Nhắn</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.resolveAllBtn}
               onPress={() => openResolveModal(item)}
             >
-              <Ionicons name="checkmark-circle-outline" size={13} color="#fff" />
+              <Ionicons name="checkmark-circle-outline" size={13} color={colors.surface} />
               <Text style={styles.resolveAllBtnText}>Xử lý</Text>
             </TouchableOpacity>
           </View>
@@ -535,7 +536,7 @@ export default function AlertsScreen() {
       if (groupedPending.length === 0) {
         return (
           <View style={styles.emptyBox}>
-            <Ionicons name="checkmark-circle-outline" size={56} color="#10B981" />
+            <Ionicons name="checkmark-circle-outline" size={56} color={colors.success} />
             <Text style={styles.emptyTitle}>Tuyệt vời!</Text>
             <Text style={styles.emptyText}>Không có cảnh báo nào cần xử lý</Text>
           </View>
@@ -547,28 +548,28 @@ export default function AlertsScreen() {
           keyExtractor={(item) => item.patientId}
           renderItem={renderPendingItem}
           contentContainerStyle={styles.listContent}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchAlerts(true)} tintColor="#2563EB" />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchAlerts(true)} tintColor={colors.primary} />}
           showsVerticalScrollIndicator={false}
         />
       );
     }
-
+ 
     if (filteredAlerts.length === 0) {
       return (
         <View style={styles.emptyBox}>
-          <Ionicons name="notifications-off-outline" size={48} color="#9CA3AF" />
+          <Ionicons name="notifications-off-outline" size={48} color={colors.textMuted} />
           <Text style={styles.emptyText}>Không có cảnh báo nào</Text>
         </View>
       );
     }
-
+ 
     return (
       <FlatList
         data={filteredAlerts}
         keyExtractor={(item) => item.id}
         renderItem={renderFlatItem}
         contentContainerStyle={styles.listContent}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchAlerts(true)} tintColor="#2563EB" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchAlerts(true)} tintColor={colors.primary} />}
         showsVerticalScrollIndicator={false}
       />
     );
@@ -593,20 +594,20 @@ export default function AlertsScreen() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Xác nhận xử lý</Text>
               <TouchableOpacity onPress={() => !submitting && setResolveModalVisible(false)}>
-                <Ionicons name="close" size={22} color="#4B5563" />
+                <Ionicons name="close" size={22} color={colors.textHint} />
               </TouchableOpacity>
             </View>
-
+ 
             <Text style={styles.modalBody}>
               Bạn đang xác nhận xử lý{" "}
               <Text style={{ fontWeight: "700" }}>{alertsToResolve.length}</Text> cảnh báo.
               Hệ thống sẽ ghi nhận bạn là người xử lý.
             </Text>
-
+ 
             <View style={styles.modalAlertList}>
               {alertsToResolve.slice(0, 5).map((a) => (
                 <View key={a.id} style={styles.modalAlertItem}>
-                  <Ionicons name="checkmark-circle" size={14} color="#10B981" />
+                  <Ionicons name="checkmark-circle" size={14} color={colors.success} />
                   <Text style={styles.modalAlertText} numberOfLines={1}>
                     {a.patientName}: {a.violations.map((v) => getViolationLabel(v.type)).join(", ")}
                   </Text>
@@ -616,7 +617,7 @@ export default function AlertsScreen() {
                 <Text style={styles.modalMoreText}>...và {alertsToResolve.length - 5} cảnh báo khác</Text>
               )}
             </View>
-
+ 
             <View style={styles.modalActions}>
               <TouchableOpacity
                 style={styles.cancelBtn}
@@ -631,7 +632,7 @@ export default function AlertsScreen() {
                 disabled={submitting}
               >
                 {submitting ? (
-                  <ActivityIndicator size="small" color="#fff" />
+                  <ActivityIndicator size="small" color={colors.surface} />
                 ) : (
                   <Text style={styles.confirmBtnText}>Xác nhận</Text>
                 )}
@@ -645,191 +646,194 @@ export default function AlertsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F8FAFC" },
+  container: { flex: 1, backgroundColor: colors.background },
 
   // Stats
-  statsRow: { flexDirection: "row", gap: 12, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 },
+  statsRow: { flexDirection: "row", gap: 12, paddingHorizontal: spacing.card, paddingTop: 12, paddingBottom: 8 },
   statCard: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fff",
-    borderRadius: 14,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
     padding: 14,
     gap: 12,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: colors.borderSoft,
+    ...shadows.cardSubtle,
   },
-  statCardDanger: { borderColor: "#FECACA" },
+  statCardDanger: { borderColor: colors.dangerBorder },
   statIconWrap: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#EFF6FF",
+    backgroundColor: colors.surfaceSoftBlue,
     alignItems: "center",
     justifyContent: "center",
   },
-  statLabel: { fontSize: 11, fontWeight: "500", color: "#6B7280" },
-  statValue: { fontSize: 22, fontWeight: "800", color: "#1F2937", marginTop: 2 },
+  statLabel: { fontSize: 11, fontWeight: "500", color: colors.textSecondary },
+  statValue: { fontSize: 22, fontWeight: "800", color: colors.text, marginTop: 2 },
 
   // Tabs
   tabRow: {
     flexDirection: "row",
-    marginHorizontal: 16,
-    backgroundColor: "#F1F5F9",
-    borderRadius: 10,
+    marginHorizontal: spacing.card,
+    backgroundColor: colors.borderSoft,
+    borderRadius: radius.md,
     padding: 3,
     marginBottom: 8,
   },
-  tabBtn: { flex: 1, paddingVertical: 8, alignItems: "center", borderRadius: 8 },
-  tabBtnActive: { backgroundColor: "#fff", shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
-  tabBtnText: { fontSize: 13, fontWeight: "600", color: "#6B7280" },
-  tabBtnTextActive: { color: "#2563EB" },
+  tabBtn: { flex: 1, paddingVertical: 8, alignItems: "center", borderRadius: radius.sm },
+  tabBtnActive: { backgroundColor: colors.surface, ...shadows.cardSubtle },
+  tabBtnText: { fontSize: 13, fontWeight: "600", color: colors.textSecondary },
+  tabBtnTextActive: { color: colors.primary },
 
   // Filters
-  filterContainer: { paddingHorizontal: 16, marginBottom: 8 },
+  filterContainer: { paddingHorizontal: spacing.card, marginBottom: 8 },
   searchBox: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fff",
-    borderRadius: 10,
+    backgroundColor: colors.surface,
+    borderRadius: radius.sm,
     paddingHorizontal: 12,
     height: 40,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: colors.borderSoft,
     marginBottom: 8,
   },
-  searchInput: { flex: 1, marginLeft: 8, fontSize: 13, color: "#1F2937" },
+  searchInput: { flex: 1, marginLeft: 8, fontSize: 13, color: colors.text },
   severityRow: { flexDirection: "row", gap: 8 },
   severityChip: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: "#F1F5F9",
+    borderRadius: radius.sm,
+    backgroundColor: colors.borderSoft,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: colors.borderSoft,
   },
-  severityChipActive: { backgroundColor: "#2563EB", borderColor: "#2563EB" },
-  severityChipText: { fontSize: 12, fontWeight: "600", color: "#4B5563" },
-  severityChipTextActive: { color: "#fff" },
+  severityChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  severityChipText: { fontSize: 12, fontWeight: "600", color: colors.textHint },
+  severityChipTextActive: { color: colors.surface },
 
   // Center/Empty
   centerBox: { flex: 1, alignItems: "center", justifyContent: "center" },
-  loadingText: { marginTop: 12, fontSize: 14, color: "#6B7280" },
+  loadingText: { marginTop: 12, fontSize: 14, color: colors.textSecondary },
   emptyBox: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32 },
-  emptyTitle: { fontSize: 18, fontWeight: "700", color: "#1F2937", marginTop: 12 },
-  emptyText: { fontSize: 14, color: "#6B7280", marginTop: 6, textAlign: "center" },
-  listContent: { padding: 16, gap: 12, paddingBottom: 32 },
+  emptyTitle: { fontSize: 18, fontWeight: "700", color: colors.text, marginTop: 12 },
+  emptyText: { fontSize: 14, color: colors.textSecondary, marginTop: 6, textAlign: "center" },
+  listContent: { padding: spacing.card, gap: 12, paddingBottom: 32 },
 
   // Grouped Pending
   groupCard: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: colors.borderSoft,
     overflow: "hidden",
+    ...shadows.card,
   },
   groupHeader: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 16,
+    padding: spacing.card,
     gap: 12,
   },
   groupAvatar: {
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: "#EFF6FF",
+    backgroundColor: colors.surfaceSoftBlue,
     alignItems: "center",
     justifyContent: "center",
   },
-  groupName: { fontSize: 15, fontWeight: "700", color: "#1F2937" },
+  groupName: { fontSize: 15, fontWeight: "700", color: colors.text },
   groupBadges: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 6, marginTop: 4 },
-  groupAlertCount: { fontSize: 12, fontWeight: "500", color: "#4B5563" },
-  countBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
+  groupAlertCount: { fontSize: 12, fontWeight: "500", color: colors.textHint },
+  countBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: radius.xs },
   countBadgeText: { fontSize: 10, fontWeight: "700" },
-  groupTime: { fontSize: 11, color: "#9CA3AF", marginTop: 4 },
+  groupTime: { fontSize: 11, color: colors.textMuted, marginTop: 4 },
   groupActions: {
     flexDirection: "row",
     gap: 8,
-    paddingHorizontal: 16,
+    paddingHorizontal: spacing.card,
     paddingBottom: 12,
   },
   resolveAllBtn: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#2563EB",
+    backgroundColor: colors.primary,
     paddingHorizontal: 12,
     height: 32,
-    borderRadius: 8,
+    borderRadius: radius.sm,
     gap: 4,
   },
-  resolveAllBtnText: { fontSize: 12, fontWeight: "600", color: "#fff" },
+  resolveAllBtnText: { fontSize: 12, fontWeight: "600", color: colors.surface },
   chatBtn: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#EFF6FF",
+    backgroundColor: colors.surfaceSoftBlue,
     borderWidth: 1,
-    borderColor: "#BFDBFE",
+    borderColor: colors.primarySoftBg,
     paddingHorizontal: 12,
     height: 32,
-    borderRadius: 8,
+    borderRadius: radius.sm,
     gap: 4,
   },
-  chatBtnText: { fontSize: 12, fontWeight: "600", color: "#2563EB" },
+  chatBtnText: { fontSize: 12, fontWeight: "600", color: colors.primary },
 
   // Expanded alerts
   expandedContainer: {
-    backgroundColor: "#F8FAFC",
+    backgroundColor: colors.background,
     borderTopWidth: 1,
-    borderTopColor: "#E2E8F0",
+    borderTopColor: colors.borderSoft,
     padding: 12,
     gap: 10,
   },
   alertItem: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
     padding: 12,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: colors.borderSoft,
   },
   alertItemHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
-  alertItemTime: { fontSize: 11, color: "#6B7280" },
+  alertItemTime: { fontSize: 11, color: colors.textSecondary },
   resolveOneBtn: {
     alignSelf: "flex-end",
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 8,
+    borderRadius: radius.sm,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: colors.borderSoft,
     marginTop: 8,
   },
-  resolveOneBtnText: { fontSize: 12, fontWeight: "600", color: "#4B5563" },
+  resolveOneBtnText: { fontSize: 12, fontWeight: "600", color: colors.textHint },
 
   // Severity badges
-  severityBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
-  sevHigh: { backgroundColor: "#FEE2E2" },
-  sevMed: { backgroundColor: "#FEF3C7" },
-  sevLow: { backgroundColor: "#DBEAFE" },
+  severityBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.xs },
+  sevHigh: { backgroundColor: colors.dangerSoftAlt },
+  sevMed: { backgroundColor: colors.warningSoftBg },
+  sevLow: { backgroundColor: colors.primarySoftBg },
   severityBadgeText: { fontSize: 11, fontWeight: "700" },
 
   // Violations
   violationsBlock: { gap: 4 },
-  violationText: { fontSize: 13, color: "#4B5563", lineHeight: 18 },
-  violationObserved: { fontWeight: "700", color: "#DC2626" },
-  violationThreshold: { fontSize: 11, color: "#9CA3AF" },
+  violationText: { fontSize: 13, color: colors.textHint, lineHeight: 18 },
+  violationObserved: { fontWeight: "700", color: colors.danger },
+  violationThreshold: { fontSize: 11, color: colors.textMuted },
 
   // Flat card (All/Resolved)
   flatCard: {
-    backgroundColor: "#fff",
-    borderRadius: 14,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
     padding: 14,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: colors.borderSoft,
+    ...shadows.card,
   },
   flatHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 },
-  flatName: { fontSize: 14, fontWeight: "700", color: "#1F2937" },
-  flatCode: { fontSize: 11, color: "#6B7280", marginTop: 2 },
+  flatName: { fontSize: 14, fontWeight: "700", color: colors.text },
+  flatCode: { fontSize: 11, color: colors.textSecondary, marginTop: 2 },
   flatFooter: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -837,25 +841,22 @@ const styles = StyleSheet.create({
     marginTop: 10,
     paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: "#F1F5F9",
+    borderTopColor: colors.borderSoft,
   },
   flatTimeRow: { flexDirection: "row", alignItems: "center", gap: 4 },
-  flatTime: { fontSize: 11, color: "#6B7280" },
+  flatTime: { fontSize: 11, color: colors.textSecondary },
   flatActions: { flexDirection: "row", gap: 8 },
   resolvedBadge: { flexDirection: "row", alignItems: "center", gap: 4 },
-  resolvedText: { fontSize: 11, fontWeight: "600", color: "#059669" },
+  resolvedText: { fontSize: 11, fontWeight: "600", color: colors.success },
 
   // Modal
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", alignItems: "center" },
+  modalOverlay: { flex: 1, backgroundColor: colors.overlayLight, justifyContent: "center", alignItems: "center" },
   modalContent: {
-    backgroundColor: "#fff",
-    borderRadius: 20,
+    backgroundColor: colors.surface,
+    borderRadius: radius["3xl"],
     width: "88%",
     padding: 20,
-    shadowColor: "#000",
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    elevation: 5,
+    ...shadows.cardElevated,
   },
   modalHeader: {
     flexDirection: "row",
@@ -863,39 +864,39 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 16,
   },
-  modalTitle: { fontSize: 16, fontWeight: "700", color: "#1F2937" },
-  modalBody: { fontSize: 14, color: "#4B5563", lineHeight: 20, marginBottom: 12 },
+  modalTitle: { fontSize: 16, fontWeight: "700", color: colors.text },
+  modalBody: { fontSize: 14, color: colors.textHint, lineHeight: 20, marginBottom: 12 },
   modalAlertList: {
-    backgroundColor: "#F8FAFC",
-    borderRadius: 10,
+    backgroundColor: colors.background,
+    borderRadius: radius.md,
     padding: 12,
     gap: 8,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: colors.borderSoft,
   },
   modalAlertItem: { flexDirection: "row", alignItems: "center", gap: 8 },
-  modalAlertText: { fontSize: 12, color: "#4B5563", flex: 1 },
-  modalMoreText: { fontSize: 12, color: "#6B7280", fontStyle: "italic" },
+  modalAlertText: { fontSize: 12, color: colors.textHint, flex: 1 },
+  modalMoreText: { fontSize: 12, color: colors.textSecondary, fontStyle: "italic" },
   modalActions: { flexDirection: "row", justifyContent: "flex-end", gap: 10 },
   cancelBtn: {
     paddingHorizontal: 16,
     height: 38,
-    borderRadius: 10,
+    borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: colors.borderSoft,
     alignItems: "center",
     justifyContent: "center",
   },
-  cancelBtnText: { fontSize: 13, fontWeight: "600", color: "#4B5563" },
+  cancelBtnText: { fontSize: 13, fontWeight: "600", color: colors.textHint },
   confirmBtn: {
     paddingHorizontal: 16,
     height: 38,
-    borderRadius: 10,
-    backgroundColor: "#2563EB",
+    borderRadius: radius.md,
+    backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
     minWidth: 90,
   },
-  confirmBtnText: { fontSize: 13, fontWeight: "600", color: "#fff" },
+  confirmBtnText: { fontSize: 13, fontWeight: "600", color: colors.surface },
 });

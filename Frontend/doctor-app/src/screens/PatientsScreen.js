@@ -15,6 +15,7 @@ import { useNavigation } from "@react-navigation/native";
 import { getMyPatients, getAlerts, getPatientById, getMeasurements, getThresholds } from "../api/patientApi";
 import PatientCard from "../components/PatientCard";
 import PatientDetailModal from "../components/PatientDetailModal";
+import { colors, radius, spacing, shadows, chip as chipTheme } from "../theme/rpmTheme";
 
 export default function PatientsScreen() {
   const navigation = useNavigation();
@@ -224,12 +225,12 @@ export default function PatientsScreen() {
       {/* Patients List */}
       {loading ? (
         <View style={styles.centerBox}>
-          <ActivityIndicator size="large" color="#2563EB" />
+          <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>Đang tải danh sách bệnh nhân...</Text>
         </View>
       ) : error ? (
         <View style={styles.centerBox}>
-          <Ionicons name="alert-circle-outline" size={48} color="#DC2626" />
+          <Ionicons name="alert-circle-outline" size={48} color={colors.danger} />
           <Text style={styles.errorText}>{error}</Text>
           <TouchableOpacity style={styles.retryButton} onPress={loadPatients}>
             <Text style={styles.retryText}>Tải lại</Text>
@@ -237,7 +238,7 @@ export default function PatientsScreen() {
         </View>
       ) : filteredPatients.length === 0 ? (
         <View style={styles.centerBox}>
-          <Ionicons name="people-outline" size={48} color="#9CA3AF" />
+          <Ionicons name="people-outline" size={48} color={colors.textMuted} />
           <Text style={styles.emptyText}>Không tìm thấy bệnh nhân nào</Text>
         </View>
       ) : (
@@ -254,7 +255,7 @@ export default function PatientsScreen() {
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2563EB" />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
           }
         />
       )}
@@ -270,55 +271,28 @@ export default function PatientsScreen() {
         detailLoading={detailLoading}
         detailError={detailError}
         onActionChat={(patientId) => navigation.navigate("ChatTab", { screen: "Chat", params: { patientId } })}
-        onActionReminder={(patientId) => navigation.navigate("MoreTab", { screen: "Reminders", params: { patientId } })}
-        onActionPrescription={(patientId) => navigation.navigate("MoreTab", { screen: "Prescriptions", params: { patientId } })}
+        onActionReminder={(patientId) => navigation.navigate("Reminders", { patientId })}
+        onActionPrescription={(patientId) => navigation.navigate("Prescriptions", { patientId })}
       />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F2F6FF" },
-  searchContainer: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12 },
-  searchBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#fff",
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    height: 46,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    shadowColor: "#000",
-    shadowOpacity: 0.02,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-  },
-  searchInput: { flex: 1, marginLeft: 8, fontSize: 14, color: "#1F2937" },
-  tabContainer: { flexDirection: "row", gap: 10, paddingHorizontal: 16, marginBottom: 10 },
-  tab: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: "#fff",
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-  },
-  tabActive: { backgroundColor: "#2563EB", borderColor: "#2563EB" },
-  tabText: { fontSize: 13, fontWeight: "600", color: "#6B7280" },
-  tabTextActive: { color: "#fff" },
+  container: { flex: 1, backgroundColor: colors.background },
+  searchContainer: { paddingHorizontal: spacing.lg, paddingTop: 8, paddingBottom: 12 },
+  searchBox: { flexDirection: "row", alignItems: "center", backgroundColor: colors.surface, borderRadius: radius.lg, paddingHorizontal: 12, height: 46, borderWidth: 1, borderColor: colors.border, ...shadows.cardSubtle },
+  searchInput: { flex: 1, marginLeft: 8, fontSize: 14, color: colors.text },
+  tabContainer: { flexDirection: "row", gap: 10, paddingHorizontal: spacing.lg, marginBottom: 10 },
+  tab: { ...chipTheme.container },
+  tabActive: { ...chipTheme.containerActive },
+  tabText: { ...chipTheme.text },
+  tabTextActive: { ...chipTheme.textActive },
   centerBox: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32 },
-  loadingText: { marginTop: 12, fontSize: 14, color: "#4B5563" },
-  errorText: { marginTop: 12, fontSize: 14, color: "#DC2626", textAlign: "center" },
-  emptyText: { marginTop: 16, fontSize: 14, color: "#9CA3AF", textAlign: "center" },
-  retryButton: {
-    marginTop: 16,
-    backgroundColor: "#2563EB",
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 12,
-  },
-  retryText: { color: "#fff", fontWeight: "600", fontSize: 13 },
+  loadingText: { marginTop: 12, fontSize: 14, color: colors.textHint },
+  errorText: { marginTop: 12, fontSize: 14, color: colors.danger, textAlign: "center" },
+  emptyText: { marginTop: 16, fontSize: 14, color: colors.textMuted, textAlign: "center" },
+  retryButton: { marginTop: 16, backgroundColor: colors.primary, paddingHorizontal: 20, paddingVertical: 10, borderRadius: radius.md },
+  retryText: { color: colors.surface, fontWeight: "600", fontSize: 13 },
   listContent: { paddingBottom: 24 },
 });
