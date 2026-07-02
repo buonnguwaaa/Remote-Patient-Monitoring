@@ -277,8 +277,9 @@ function buildDashboardChartData(
 const TodoList: React.FC<{
   alerts: AlertResponse[];
   appointments: FollowUpAppointment[];
+  assignments: AssignmentResponse[];
   loading: boolean;
-}> = ({ alerts, appointments, loading }) => {
+}> = ({ alerts, appointments, assignments, loading }) => {
   const navigate = useNavigate();
 
   const pendingAlerts = useMemo(() => alerts.filter(a => a.status === "open").slice(0, 5), [alerts]);
@@ -1028,7 +1029,7 @@ const DashBoard = () => {
 
           <div className="flex flex-col gap-3 lg:col-span-2 h-full">
             <div className="h-[300px]">
-              <TodoList alerts={alerts} appointments={appointments} loading={loading} />
+              <TodoList alerts={alerts} appointments={appointments} assignments={assignments} loading={loading} />
             </div>
             <div className="flex-1 min-h-[300px]">
               <RecentAlerts alerts={recentAlerts} loading={loading} />
