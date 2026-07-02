@@ -91,7 +91,20 @@ export function AuthProvider({ children }) {
 
     const meResponse = await authApi.me();
     const meUser = extractUserPayload(meResponse);
+
     if (meUser) {
+      // Reject doctor and nurse — they must use the staff app
+      const role = meUser.role;
+      if (
+        role === "user.doctor" || role === "doctor" ||
+        role === "user.nurse" || role === "nurse"
+      ) {
+        try { await authApi.logout(); } catch {}
+        return {
+          ok: false,
+          error: "Ứng dụng này chỉ dành cho bệnh nhân. Vui lòng dùng app nhân viên y tế.",
+        };
+      }
       setUser(meUser);
       setSessionPassword(password);
       return { ok: true, data: meUser };

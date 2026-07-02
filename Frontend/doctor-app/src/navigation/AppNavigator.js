@@ -3,12 +3,13 @@ import { View, Text, ActivityIndicator, StyleSheet, TouchableOpacity } from "rea
 import { NavigationContainer, useNavigation } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { navigationRef, flushPendingNotificationNavigation } from "./navigationRef";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useAuth } from "../context/AuthContext";
 import { useBadges } from "../context/BadgeContext";
 
-// Screens
+// Doctor Screens
 import LoginScreen from "../screens/LoginScreen";
 import HomeScreen from "../screens/HomeScreen";
 import ProfileScreen from "../screens/ProfileScreen";
@@ -23,6 +24,13 @@ import SettingsScreen from "../screens/SettingsScreen";
 import VideoCallScreen from "../screens/VideoCallScreen";
 import ComplianceScreen from "../screens/ComplianceScreen";
 import MoreScreen from "../screens/MoreScreen";
+
+// Nurse Screens
+import NursePatientListScreen from "../screens/nurse/NursePatientListScreen";
+import MeasurementInputScreen from "../screens/nurse/MeasurementInputScreen";
+import NurseProfileScreen from "../screens/nurse/NurseProfileScreen";
+import PatientDetailScreen from "../screens/nurse/PatientDetailScreen";
+import NursePrescriptionScreen from "../screens/nurse/NursePrescriptionScreen";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -50,7 +58,8 @@ const commonHeaderOptions = {
   headerShadowVisible: false,
 };
 
-// Stacks for each tab
+// ─── Doctor Stacks ────────────────────────────────────────────────────────────
+
 const HomeStack = () => (
   <Stack.Navigator screenOptions={commonHeaderOptions}>
     <Stack.Screen name="Home" component={HomeScreen} options={{ title: "Tổng quan" }} />
@@ -88,7 +97,9 @@ const MoreStack = () => (
   </Stack.Navigator>
 );
 
-function MainTabs() {
+// ─── Doctor Main Tabs (unchanged) ─────────────────────────────────────────────
+
+function DoctorMainTabs() {
   const badges = useBadges() || { unreadAlertsCount: 0, unreadChatsCount: 0 };
   const { unreadAlertsCount, unreadChatsCount } = badges;
 
@@ -121,45 +132,99 @@ function MainTabs() {
         },
       })}
     >
-      <Tab.Screen 
-        name="HomeTab" 
-        component={HomeStack} 
-        options={{ tabBarLabel: "Tổng quan" }} 
+      <Tab.Screen
+        name="HomeTab"
+        component={HomeStack}
+        options={{ tabBarLabel: "Tổng quan" }}
       />
-      <Tab.Screen 
-        name="PatientsTab" 
-        component={PatientsStack} 
-        options={{ tabBarLabel: "Bệnh nhân" }} 
+      <Tab.Screen
+        name="PatientsTab"
+        component={PatientsStack}
+        options={{ tabBarLabel: "Bệnh nhân" }}
       />
-      <Tab.Screen 
-        name="AlertsTab" 
-        component={AlertsStack} 
-        options={{ 
+      <Tab.Screen
+        name="AlertsTab"
+        component={AlertsStack}
+        options={{
           tabBarLabel: "Cảnh báo",
           tabBarBadge: unreadAlertsCount > 0 ? (unreadAlertsCount > 99 ? "99+" : unreadAlertsCount) : null,
           tabBarBadgeStyle: { backgroundColor: "#EF4444", fontSize: 10, minWidth: 16, height: 16, lineHeight: 16 }
-        }} 
+        }}
       />
-      <Tab.Screen 
-        name="ChatTab" 
-        component={ChatStack} 
-        options={{ 
+      <Tab.Screen
+        name="ChatTab"
+        component={ChatStack}
+        options={{
           tabBarLabel: "Tin nhắn",
           tabBarBadge: unreadChatsCount > 0 ? (unreadChatsCount > 99 ? "99+" : unreadChatsCount) : null,
           tabBarBadgeStyle: { backgroundColor: "#EF4444", fontSize: 10, minWidth: 16, height: 16, lineHeight: 16 }
-        }} 
+        }}
       />
-      <Tab.Screen 
-        name="MoreTab" 
-        component={MoreStack} 
-        options={{ tabBarLabel: "Thêm" }} 
+      <Tab.Screen
+        name="MoreTab"
+        component={MoreStack}
+        options={{ tabBarLabel: "Thêm" }}
       />
     </Tab.Navigator>
   );
 }
 
+// ─── Nurse Main Tabs ──────────────────────────────────────────────────────────
+
+function NurseMainTabs() {
+  const insets = useSafeAreaInsets();
+
+  return (
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarActiveTintColor: "#2563EB",
+        tabBarInactiveTintColor: "#9CA3AF",
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: "600",
+        },
+        tabBarStyle: {
+          backgroundColor: "#FFFFFF",
+          borderTopWidth: 1,
+          borderTopColor: "#E5E7EB",
+          height: 60 + insets.bottom,
+          paddingBottom: insets.bottom + 8,
+          paddingTop: 6,
+        },
+        tabBarIcon: ({ color, size }) => {
+          if (route.name === "NursePatients") {
+            return <Ionicons name="people-outline" size={size} color={color} />;
+          }
+          if (route.name === "NurseMeasurementInput") {
+            return <Ionicons name="create-outline" size={size} color={color} />;
+          }
+          if (route.name === "NursePrescriptions") {
+            return <Ionicons name="receipt-outline" size={size} color={color} />;
+          }
+          if (route.name === "NurseProfile") {
+            return <MaterialIcons name="person-outline" size={size} color={color} />;
+          }
+          return null;
+        },
+      })}
+    >
+      <Tab.Screen name="NursePatients" component={NursePatientListScreen} options={{ title: "Bệnh nhân" }} />
+      <Tab.Screen
+        name="NurseMeasurementInput"
+        component={MeasurementInputScreen}
+        options={{ title: "Nhập liệu" }}
+      />
+      <Tab.Screen name="NursePrescriptions" component={NursePrescriptionScreen} options={{ title: "Đơn thuốc" }} />
+      <Tab.Screen name="NurseProfile" component={NurseProfileScreen} options={{ title: "Hồ sơ" }} />
+    </Tab.Navigator>
+  );
+}
+
+// ─── Root Navigator ───────────────────────────────────────────────────────────
+
 function RootNavigator() {
-  const { user, initializing } = useAuth();
+  const { user, initializing, isDoctor, isNurse } = useAuth();
 
   if (initializing) {
     return (
@@ -178,9 +243,21 @@ function RootNavigator() {
     );
   }
 
+  // Nurse navigator
+  if (isNurse) {
+    return (
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="NurseMainTabs" component={NurseMainTabs} />
+        <Stack.Screen name="NursePatientDetail" component={PatientDetailScreen} />
+        <Stack.Screen name="NursePrescriptionDetail" component={NursePrescriptionScreen} />
+      </Stack.Navigator>
+    );
+  }
+
+  // Doctor navigator (default)
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="MainTabs" component={MainTabs} />
+      <Stack.Screen name="MainTabs" component={DoctorMainTabs} />
       <Stack.Screen name="VideoCall" component={VideoCallScreen} />
     </Stack.Navigator>
   );

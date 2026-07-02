@@ -326,7 +326,7 @@ const TodoList: React.FC<{
                     <div key={appt.id} className="flex items-center justify-between rounded-lg bg-blue-50 p-3 dark:bg-blue-900/10">
                       <div>
                         <p className="text-xs font-semibold text-gray-800 dark:text-slate-200">
-                          {new Date(appt.scheduledAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                          {new Date(appt.scheduledAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })} - {assignments.find(a => a.patientId === appt.patientId)?.patientName || "Bệnh nhân không rõ"}
                         </p>
                         <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-0.5">{appt.notes || "Khám định kỳ"}</p>
                       </div>

@@ -26,13 +26,14 @@ function getInitials(name) {
   );
 }
 
-function MetricPill({ icon, label, value, unit, color = "#4B5563" }) {
+function MetricPill({ icon, label, value, unit, color = "#4B5563", isWarning = false }) {
+  if (value == null || value === "") return null;
   return (
-    <View style={styles.metricPill}>
-      <Ionicons name={icon} size={14} color={color} />
-      <Text style={styles.metricLabel}>{label}</Text>
-      <Text style={styles.metricValue}>{value ?? "—"}</Text>
-      {value != null && unit && <Text style={styles.metricUnit}>{unit}</Text>}
+    <View style={[styles.metricPill, isWarning && styles.metricPillWarning]}>
+      <Ionicons name={icon} size={14} color={isWarning ? "#DC2626" : color} />
+      <Text style={[styles.metricLabel, isWarning && styles.metricLabelWarning]}>{label}</Text>
+      <Text style={[styles.metricValue, isWarning && styles.metricValueWarning]}>{value}</Text>
+      {unit && <Text style={[styles.metricUnit, isWarning && styles.metricUnitWarning]}>{unit}</Text>}
     </View>
   );
 }
@@ -49,6 +50,23 @@ const NursePatientCard = memo(({ patient, onPress }) => {
 
   const cardStyle = hasHighAlert ? styles.cardHigh : styles.cardNormal;
   
+  const m = patient?.lastMeasurements;
+  const t = patient?.thresholds || {};
+
+  const isBpHpWarning = m?.bp?.systolic != null && t.systolicMax != null && m.bp.systolic > t.systolicMax;
+  const isBpLpWarning = m?.bp?.systolic != null && t.systolicMin != null && m.bp.systolic < t.systolicMin;
+  const isBpDiaHigh = m?.bp?.diastolic != null && t.diastolicMax != null && m.bp.diastolic > t.diastolicMax;
+  const isBpDiaLow = m?.bp?.diastolic != null && t.diastolicMin != null && m.bp.diastolic < t.diastolicMin;
+  const isBpWarning = isBpHpWarning || isBpLpWarning || isBpDiaHigh || isBpDiaLow;
+
+  const isHrWarning = m?.heartRate?.value != null && ((t.heartRateMax != null && m.heartRate.value > t.heartRateMax) || (t.heartRateMin != null && m.heartRate.value < t.heartRateMin));
+  const isSpo2Warning = m?.spo2?.value != null && ((t.spo2Max != null && m.spo2.value > t.spo2Max) || (t.spo2Min != null && m.spo2.value < t.spo2Min));
+  const isTempWarning = m?.temp?.value != null && ((t.temperatureMax != null && m.temp.value > t.temperatureMax) || (t.temperatureMin != null && m.temp.value < t.temperatureMin));
+  const isGlucoseWarning = m?.glucose?.value != null && ((t.glucoseMax != null && m.glucose.value > t.glucoseMax) || (t.glucoseMin != null && m.glucose.value < t.glucoseMin));
+  const isRespWarning = m?.respiratoryRate?.value != null && ((t.respiratoryRateMax != null && m.respiratoryRate.value > t.respiratoryRateMax) || (t.respiratoryRateMin != null && m.respiratoryRate.value < t.respiratoryRateMin));
+
+  const hasOutlier = isBpWarning || isHrWarning || isSpo2Warning || isTempWarning || isGlucoseWarning || isRespWarning;
+
   return (
     <TouchableOpacity
       style={[styles.card, cardStyle]}
@@ -75,6 +93,10 @@ const NursePatientCard = memo(({ patient, onPress }) => {
             <View style={styles.badgeMedium}>
               <Text style={styles.badgeMediumText}>{totalAlerts} cảnh báo</Text>
             </View>
+          ) : hasOutlier ? (
+            <View style={styles.badgeMedium}>
+              <Text style={styles.badgeMediumText}>Chỉ số bất thường</Text>
+            </View>
           ) : (
             <View style={styles.badgeNormal}>
               <Text style={styles.badgeNormalText}>Ổn định</Text>
@@ -88,26 +110,44 @@ const NursePatientCard = memo(({ patient, onPress }) => {
           <MetricPill 
             icon="heart" 
             label="HA" 
-            value={patient.lastMeasurements.bp?.systolic ? `${patient.lastMeasurements.bp.systolic}/${patient.lastMeasurements.bp.diastolic}` : null} 
+            value={m?.bp?.systolic ? `${m.bp.systolic}/${m.bp.diastolic}` : null} 
             color="#EF4444" 
+            isWarning={isBpWarning}
           />
           <MetricPill 
             icon="pulse" 
             label="Nhịp tim" 
-            value={patient.lastMeasurements.heartRate?.value || patient.lastMeasurements.bp?.pulse} 
+            value={m?.heartRate?.value || m?.bp?.pulse} 
             color="#EAB308" 
+            isWarning={isHrWarning}
           />
           <MetricPill 
             icon="medical" 
             label="SpO2" 
-            value={patient.lastMeasurements.spo2?.value} 
+            value={m?.spo2?.value} 
             color="#06B6D4" 
+            isWarning={isSpo2Warning}
           />
           <MetricPill 
             icon="thermometer" 
             label="Nhiệt độ" 
-            value={patient.lastMeasurements.temp?.value} 
+            value={m?.temp?.value} 
             color="#F97316" 
+            isWarning={isTempWarning}
+          />
+          <MetricPill 
+            icon="water" 
+            label="Đường huyết" 
+            value={m?.glucose?.value} 
+            color="#3B82F6" 
+            isWarning={isGlucoseWarning}
+          />
+          <MetricPill 
+            icon="fitness" 
+            label="Nhịp thở" 
+            value={m?.respiratoryRate?.value} 
+            color="#8B5CF6" 
+            isWarning={isRespWarning}
           />
         </View>
       ) : (
@@ -173,9 +213,13 @@ const styles = StyleSheet.create({
 
   body: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 4, marginBottom: 16 },
   metricPill: { flexDirection: "row", alignItems: "center", backgroundColor: "#F9FAFB", paddingHorizontal: 8, paddingVertical: 6, borderRadius: 8, gap: 4, borderWidth: 1, borderColor: "#F3F4F6", flexBasis: "48%" },
+  metricPillWarning: { backgroundColor: "#FEF2F2", borderColor: "#FECACA" },
   metricLabel: { fontSize: 12, color: "#6B7280" },
+  metricLabelWarning: { color: "#DC2626" },
   metricValue: { fontSize: 13, fontWeight: "700", color: "#111827" },
+  metricValueWarning: { color: "#991B1B" },
   metricUnit: { fontSize: 11, color: "#9CA3AF" },
+  metricUnitWarning: { color: "#DC2626" },
   
   emptyBody: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4, marginBottom: 16, backgroundColor: "#F9FAFB", padding: 12, borderRadius: 8, borderWidth: 1, borderColor: "#E5E7EB", borderStyle: "dashed", justifyContent: "center" },
   emptyBodyText: { fontSize: 13, color: "#6B7280" },
