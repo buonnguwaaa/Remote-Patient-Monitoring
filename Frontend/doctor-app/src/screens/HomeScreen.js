@@ -13,6 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useAuth } from "../context/AuthContext";
 import { getMyPatients, getAlerts } from "../api/patientApi";
+import { colors, radius, spacing, typography, shadows, cards } from "../theme/rpmTheme";
 
 function isAttentionAlert(alert) {
   return (alert.severity === "high" || alert.severity === "medium") && alert.status === "open";
@@ -105,11 +106,11 @@ export default function HomeScreen({ onNavigate }) {
     Patients: "PatientsTab",
     Alerts: "AlertsTab",
     Chat: "ChatTab",
-    Thresholds: ["MoreTab", "Thresholds"],
-    Reminders: ["MoreTab", "Reminders"],
-    Compliance: ["MoreTab", "Compliance"],
-    Prescriptions: ["MoreTab", "Prescriptions"],
-    Settings: ["MoreTab", "Settings"],
+    Thresholds: "Thresholds",
+    Reminders: "Reminders",
+    Compliance: "Compliance",
+    Prescriptions: "Prescriptions",
+    Settings: "Settings",
   };
 
   const handleNavigate = (screen) => {
@@ -132,20 +133,33 @@ export default function HomeScreen({ onNavigate }) {
       style={styles.container}
       showsVerticalScrollIndicator={false}
       contentContainerStyle={{ paddingBottom: 32 }}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2563EB" />}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
     >
-      {/* Greeting banner */}
-      <View style={styles.banner}>
-        <View>
-          <Text style={styles.bannerGreeting}>{greeting},</Text>
-          <Text style={styles.bannerName}>{user?.name || user?.username || "Bác sĩ"}</Text>
-          <Text style={styles.bannerDate}>
-            {now.toLocaleDateString("vi-VN", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" })}
-          </Text>
+      {/* Greeting card */}
+      <View style={styles.greetingCard}>
+        <View style={styles.greetingHeader}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.greetingHello}>{greeting} 👋</Text>
+            <Text style={styles.greetingName}>{user?.name || user?.username || "Bác sĩ"}</Text>
+            <Text style={styles.greetingDate}>
+              {now.toLocaleDateString("vi-VN", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" })}
+            </Text>
+          </View>
+          <View style={styles.greetingAvatar}>
+            <Ionicons name="medkit" size={24} color={colors.primary} />
+          </View>
         </View>
-        <View style={styles.bannerIcon}>
-          <Ionicons name="pulse-outline" size={30} color="#fff" />
-        </View>
+        {attention > 0 ? (
+          <View style={styles.greetingAlertBox}>
+            <Ionicons name="warning" size={16} color={colors.danger} />
+            <Text style={styles.greetingAlertText}>Có {attention} bệnh nhân cần chú ý</Text>
+          </View>
+        ) : (
+          <View style={[styles.greetingAlertBox, { backgroundColor: colors.successBg, borderColor: colors.successBorder }]}>
+            <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+            <Text style={[styles.greetingAlertText, { color: colors.success }]}>Tất cả bệnh nhân đang ổn định</Text>
+          </View>
+        )}
       </View>
 
       {error ? (
@@ -202,7 +216,7 @@ export default function HomeScreen({ onNavigate }) {
       <Text style={styles.sectionTitle}>Cảnh báo gần đây</Text>
       <View style={styles.card}>
         {loading ? (
-          <ActivityIndicator color="#2563EB" style={{ padding: 20 }} />
+          <ActivityIndicator color={colors.primary} style={{ padding: 20 }} />
         ) : recentAlerts.length === 0 ? (
           <View style={styles.emptyBox}>
             <Ionicons name="checkmark-circle-outline" size={28} color="#16A34A" />
@@ -248,113 +262,49 @@ export default function HomeScreen({ onNavigate }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingHorizontal: 16, paddingTop: 16 },
-  banner: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "#1E3A8A",
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 20,
-    shadowColor: "#1E3A8A",
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
+  container: { flex: 1, padding: spacing.screen },
+  // Greeting card (matches patient HomeScreen greetingCard)
+  greetingCard: {
+    backgroundColor: colors.surface,
+    padding: spacing.lg,
+    borderRadius: radius["2xl"],
+    marginBottom: spacing.lg,
+    ...shadows.cardElevated,
   },
-  bannerGreeting: { fontSize: 13, color: "#93C5FD", fontWeight: "500" },
-  bannerName: { fontSize: 22, fontWeight: "800", color: "#fff", marginTop: 2 },
-  bannerDate: { fontSize: 12, color: "#BFDBFE", marginTop: 4 },
-  bannerIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 15,
-    backgroundColor: "rgba(255,255,255,0.15)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  errorBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: "#FEF2F2",
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 16,
-  },
-  errorText: { flex: 1, fontSize: 13, color: "#DC2626" },
-  retryText: { fontSize: 13, color: "#2563EB", fontWeight: "600" },
-  kpiRow: { flexDirection: "row", gap: 10, marginBottom: 24 },
-  kpiCard: {
-    flex: 1,
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 12,
-    alignItems: "flex-start",
-    borderLeftWidth: 4,
-    shadowColor: "#000",
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-  },
-  kpiIconWrap: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 8,
-  },
-  kpiValue: { fontSize: 20, fontWeight: "800", color: "#1E293B" },
-  kpiLabel: { fontSize: 11, fontWeight: "600", color: "#6B7280", marginTop: 2 },
-  quickRow: { flexDirection: "row", gap: 10, marginBottom: 24 },
-  quickCard: {
-    flex: 1,
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 12,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: "#F1F5F9",
-  },
-  quickIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 8,
-  },
-  quickLabel: { fontSize: 11, fontWeight: "600", color: "#4B5563", textAlign: "center" },
-  sectionTitle: { fontSize: 15, fontWeight: "700", color: "#1E293B", marginBottom: 12 },
-  card: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    overflow: "hidden",
-    marginBottom: 20,
-    shadowColor: "#000",
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: "#F1F5F9",
-  },
-  rowBorder: { borderBottomWidth: 1, borderBottomColor: "#F3F4F6" },
+  greetingHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.lg },
+  greetingHello: { fontSize: 14, color: colors.textSecondary },
+  greetingName: { ...typography.screenTitle, marginTop: 2 },
+  greetingDate: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
+  greetingAvatar: { width: 48, height: 48, backgroundColor: colors.surfaceSoftBlue, borderRadius: 24, alignItems: "center", justifyContent: "center" },
+  greetingAlertBox: { flexDirection: "row", alignItems: "center", backgroundColor: colors.dangerSoftAlt, paddingHorizontal: 12, paddingVertical: 10, borderRadius: radius.md, borderWidth: 1, borderColor: colors.dangerBorder, gap: 8 },
+  greetingAlertText: { fontSize: 13, fontWeight: "600", color: colors.danger, flex: 1 },
+  // Error
+  errorBox: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.dangerSoftAlt, borderRadius: radius.md, padding: 14, marginBottom: spacing.lg },
+  errorText: { flex: 1, fontSize: 13, color: colors.danger },
+  retryText: { fontSize: 13, color: colors.primary, fontWeight: "600" },
+  // KPI row
+  kpiRow: { flexDirection: "row", gap: 10, marginBottom: spacing.section },
+  kpiCard: { flex: 1, backgroundColor: colors.surface, borderRadius: radius.xl, padding: 12, alignItems: "flex-start", borderLeftWidth: 4, ...shadows.card },
+  kpiIconWrap: { width: 28, height: 28, borderRadius: radius.sm, alignItems: "center", justifyContent: "center", marginBottom: 8 },
+  kpiValue: { fontSize: 20, fontWeight: "800", color: colors.text },
+  kpiLabel: { ...typography.hint, fontWeight: "600", marginTop: 2 },
+  // Quick actions
+  quickRow: { flexDirection: "row", gap: 10, marginBottom: spacing.section },
+  quickCard: { flex: 1, backgroundColor: colors.surface, borderRadius: radius.xl, padding: 12, alignItems: "center", borderWidth: 1, borderColor: colors.borderSoft, ...shadows.card },
+  quickIcon: { width: 44, height: 44, borderRadius: radius.lg, alignItems: "center", justifyContent: "center", marginBottom: 8 },
+  quickLabel: { fontSize: 11, fontWeight: "600", color: colors.textHint, textAlign: "center" },
+  // Section
+  sectionTitle: { ...typography.cardTitle, marginBottom: 12 },
+  // Alert card
+  card: { backgroundColor: colors.surface, borderRadius: radius.xl, overflow: "hidden", marginBottom: spacing.section, borderWidth: 1, borderColor: colors.borderSoft, ...shadows.card },
+  rowBorder: { borderBottomWidth: 1, borderBottomColor: colors.borderSoft },
   emptyBox: { alignItems: "center", paddingVertical: 24, gap: 8 },
-  emptyText: { fontSize: 13, color: "#6B7280" },
+  emptyText: { ...typography.caption },
   alertRow: { flexDirection: "row", alignItems: "center", padding: 14, gap: 10 },
   alertIcon: { width: 32, height: 32, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   alertTopRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  alertPatient: { fontSize: 13, fontWeight: "600", color: "#1E293B", flex: 1, marginRight: 8 },
-  alertTime: { fontSize: 11, color: "#9CA3AF" },
-  alertDetail: { fontSize: 11, color: "#6B7280", marginTop: 2 },
+  alertPatient: { fontSize: 13, fontWeight: "600", color: colors.text, flex: 1, marginRight: 8 },
+  alertTime: { ...typography.hint },
+  alertDetail: { fontSize: 11, color: colors.textSecondary, marginTop: 2 },
   alertDot: { width: 7, height: 7, borderRadius: 4 },
 });

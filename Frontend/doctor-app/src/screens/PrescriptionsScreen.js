@@ -811,21 +811,31 @@ export default function PrescriptionsScreen() {
 
                 {/* Linked Reminders */}
                 {(() => {
-                  const linkedReminders = reminders.filter((r) => r.prescriptionId === p.id);
+                  const linkedReminders = reminders.filter((r) => r.prescriptionId === p.id && r.status === "active");
                   if (linkedReminders.length === 0) return null;
                   return (
                     <View style={styles.linkedRemindersSection}>
                       <Text style={styles.linkedRemindersTitle}>
                         <Ionicons name="alarm-outline" size={13} color="#B45309" /> Nhắc nhở liên kết:
                       </Text>
-                      {linkedReminders.map((r, rIdx) => (
-                        <View key={r.id || rIdx} style={styles.linkedReminderRow}>
-                          <View style={[styles.reminderStatusDot, { backgroundColor: r.status === "active" ? "#10B981" : "#9CA3AF" }]} />
-                          <Text style={styles.linkedReminderText} numberOfLines={1}>
-                            [{r.time}] {r.message || "Uống thuốc"} ({r.status === "active" ? "Đang hoạt động" : r.status === "paused" ? "Tạm dừng" : r.status === "completed" ? "Đã xong" : "Đã ngưng"})
-                          </Text>
-                        </View>
-                      ))}
+                      {linkedReminders.map((r, rIdx) => {
+                        const timeStr = (r.hour != null && r.minute != null)
+                          ? `${String(r.hour).padStart(2, "0")}:${String(r.minute).padStart(2, "0")}`
+                          : r.time || "";
+                        const statusLabel = r.status === "active" ? "Đang hoạt động"
+                          : r.status === "paused" ? "Tạm dừng"
+                          : r.status === "completed" ? "Đã xong"
+                          : r.status === "canceled" ? "Đã ngưng"
+                          : "Đã ngưng";
+                        return (
+                          <View key={r.id || rIdx} style={styles.linkedReminderRow}>
+                            <View style={[styles.reminderStatusDot, { backgroundColor: r.status === "active" ? "#10B981" : "#9CA3AF" }]} />
+                            <Text style={styles.linkedReminderText} numberOfLines={1}>
+                              [{timeStr}] {r.message || "Uống thuốc"} ({statusLabel})
+                            </Text>
+                          </View>
+                        );
+                      })}
                     </View>
                   );
                 })()}

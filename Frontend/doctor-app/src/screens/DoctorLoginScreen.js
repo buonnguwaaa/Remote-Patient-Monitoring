@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -121,7 +121,7 @@ export default function LoginScreen() {
             <View style={styles.logoCircle}>
               <Ionicons name="medical" size={40} color="#fff" />
             </View>
-            <Text style={styles.appName}>RPM Doctor</Text>
+            <Text style={styles.appName}>RPM Staff</Text>
             <Text style={styles.appSub}>Há»‡ thá»‘ng theo dÃµi bá»‡nh nhÃ¢n tá»« xa</Text>
           </View>
 

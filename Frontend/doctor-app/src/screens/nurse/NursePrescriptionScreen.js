@@ -188,8 +188,16 @@ export default function NursePrescriptionScreen() {
         showSuccess(data.id ? "Cập nhật thành công!" : "Tạo đơn thuốc thành công!");
         setFormVisible(false);
         fetchPrescriptions();
-      } else { showError(res.body?.error || "Lỗi lưu đơn thuốc"); }
-    } catch { showError("Lỗi kết nối máy chủ"); }
+        return { success: true };
+      } else {
+        const errMsg = res.body?.error || "Lỗi lưu đơn thuốc";
+        showError(errMsg);
+        return { success: false, error: errMsg };
+      }
+    } catch (e) {
+      showError("Lỗi kết nối máy chủ");
+      return { success: false, error: "Lỗi kết nối máy chủ" };
+    }
   };
 
   const openEdit = (p) => {
@@ -225,7 +233,7 @@ export default function NursePrescriptionScreen() {
       <View style={styles.searchContainer}>
         <View style={styles.searchBox}>
           <Ionicons name="search" size={18} color="#9CA3AF" />
-          <TextInput style={styles.searchInput} value={searchQuery} onChangeText={setSearchQuery} placeholder="Tìm tên bệnh nhân, tên thuốc..." />
+          <TextInput style={styles.searchInput} value={searchQuery} onChangeText={setSearchQuery} placeholder="Tìm tên bệnh nhân, tên thuốc..." placeholderTextColor="#9CA3AF" />
           {searchQuery ? <TouchableOpacity onPress={() => setSearchQuery("")}><Ionicons name="close-circle" size={16} color="#9CA3AF" /></TouchableOpacity> : null}
         </View>
         {selectedPatientId && (
@@ -282,14 +290,14 @@ const styles = StyleSheet.create({
   createBtnText: { color: "#FFF", fontWeight: "700", fontSize: 13 },
   searchContainer: { paddingHorizontal: 14, marginTop: 12, flexDirection: "row", gap: 10 },
   searchBox: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#FFF", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: "#E5E7EB" },
-  searchInput: { flex: 1, fontSize: 14 },
+  searchInput: { flex: 1, fontSize: 14, color: "#111827" },
   clearPatientBtn: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#E5E7EB", paddingHorizontal: 10, borderRadius: 10 },
   clearPatientText: { fontSize: 12, fontWeight: "600", color: "#4B5563" },
-  filterBar: { maxHeight: 40, marginTop: 12, marginBottom: 4 },
+  filterBar: { height: 46, marginTop: 12, marginBottom: 4 },
   filterContent: { paddingHorizontal: 14, gap: 8, alignItems: "center" },
-  filterChip: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, backgroundColor: "#E5E7EB" },
+  filterChip: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, backgroundColor: "#E5E7EB", justifyContent: "center", alignItems: "center" },
   filterChipActive: { backgroundColor: "#DBEAFE" },
-  filterText: { fontSize: 13, fontWeight: "600", color: "#6B7280" },
+  filterText: { fontSize: 13, fontWeight: "600", color: "#6B7280", lineHeight: 18 },
   filterTextActive: { color: "#1D4ED8" },
   list: { padding: 14 },
   emptyState: { alignItems: "center", marginTop: 60, gap: 10 },

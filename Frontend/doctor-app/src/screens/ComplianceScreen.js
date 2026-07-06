@@ -381,7 +381,7 @@ export default function ComplianceScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F9FAFB" },
+  container: { flex: 1, backgroundColor: "#F2F6FF" },
   header: {
     flexDirection: "row",
     alignItems: "center",

@@ -724,80 +724,80 @@ export default function ThresholdsScreen() {
           </View>
 
           <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-          <ScrollView style={styles.formBody} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
-            {/* Patient Selector */}
-            <View style={styles.formSection}>
-              <Text style={styles.formSecTitle}>Bệnh nhân</Text>
-              <TouchableOpacity
-                style={styles.patientPickerBtn}
-                onPress={() => setShowPatientModal(true)}
-                disabled={!!editingPatientId}
-                activeOpacity={0.7}
-              >
-                <Text style={selectedFormPatient ? styles.patientPickerText : styles.patientPickerPlaceholder}>
-                  {selectedFormPatient?.patientName || "Nhấn để chọn bệnh nhân..."}
-                </Text>
-                <Ionicons name="chevron-down" size={18} color="#6B7280" />
-              </TouchableOpacity>
-              {editingPatientId && (
-                <Text style={styles.editNote}>Lưu cấu hình mới sẽ tự động ngưng cấu hình hiện tại.</Text>
-              )}
-            </View>
+            <ScrollView style={styles.formBody} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+              {/* Patient Selector */}
+              <View style={styles.formSection}>
+                <Text style={styles.formSecTitle}>Bệnh nhân</Text>
+                <TouchableOpacity
+                  style={styles.patientPickerBtn}
+                  onPress={() => setShowPatientModal(true)}
+                  disabled={!!editingPatientId}
+                  activeOpacity={0.7}
+                >
+                  <Text style={selectedFormPatient ? styles.patientPickerText : styles.patientPickerPlaceholder}>
+                    {selectedFormPatient?.patientName || "Nhấn để chọn bệnh nhân..."}
+                  </Text>
+                  <Ionicons name="chevron-down" size={18} color="#6B7280" />
+                </TouchableOpacity>
+                {editingPatientId && (
+                  <Text style={styles.editNote}>Lưu cấu hình mới sẽ tự động ngưng cấu hình hiện tại.</Text>
+                )}
+              </View>
 
-            {renderFormField("Nhiệt độ (°C)", "temperatureMin", "temperatureMax")}
-            {renderFormField("HA tâm thu (mmHg)", "systolicMin", "systolicMax")}
-            {renderFormField("HA tâm trương (mmHg)", "diastolicMin", "diastolicMax")}
-            {renderFormField("Nhịp tim (bpm)", "pulseMin", "pulseMax")}
-            {renderFormField("Nhịp thở (nhịp/ph)", "respiratoryRateMin", "respiratoryRateMax")}
+              {renderFormField("Nhiệt độ (°C)", "temperatureMin", "temperatureMax")}
+              {renderFormField("HA tâm thu (mmHg)", "systolicMin", "systolicMax")}
+              {renderFormField("HA tâm trương (mmHg)", "diastolicMin", "diastolicMax")}
+              {renderFormField("Nhịp tim (bpm)", "pulseMin", "pulseMax")}
+              {renderFormField("Nhịp thở (nhịp/ph)", "respiratoryRateMin", "respiratoryRateMax")}
 
-            <View style={styles.formSection}>
-              <Text style={styles.formSecTitle}>SpO2 tối thiểu (%)</Text>
-              <TextInput
-                style={styles.input}
-                keyboardType="numeric"
-                value={formData.spo2Min}
-                onChangeText={(val) => setFormData({ ...formData, spo2Min: val })}
-              />
-            </View>
+              <View style={styles.formSection}>
+                <Text style={styles.formSecTitle}>SpO2 tối thiểu (%)</Text>
+                <TextInput
+                  style={styles.input}
+                  keyboardType="numeric"
+                  value={formData.spo2Min}
+                  onChangeText={(val) => setFormData({ ...formData, spo2Min: val })}
+                />
+              </View>
 
-            {renderFormField("Đường huyết (mmol/L)", "glucoseMin", "glucoseMax")}
+              {renderFormField("Đường huyết (mmol/L)", "glucoseMin", "glucoseMax")}
 
-            <View style={styles.formSection}>
-              <Text style={styles.formSecTitle}>Thời gian hiệu lực</Text>
-              <View style={styles.row}>
-                <View style={styles.col}>
-                  <Text style={styles.inputLabel}>Bắt đầu</Text>
-                  <TouchableOpacity style={[styles.input, styles.dateBtn]} onPress={() => openDatePicker("effectiveFrom")}>
-                    <Text style={styles.dateBtnText}>{formData.effectiveFrom || "Chọn"}</Text>
-                    <Ionicons name="calendar-outline" size={16} color="#6B7280" />
-                  </TouchableOpacity>
-                </View>
-                <View style={styles.col}>
-                  <Text style={styles.inputLabel}>Kết thúc (tùy chọn)</Text>
-                  <TouchableOpacity style={[styles.input, styles.dateBtn]} onPress={() => openDatePicker("effectiveTo")}>
-                    <Text style={styles.dateBtnText}>{formData.effectiveTo || "Không hạn"}</Text>
-                    <Ionicons name="calendar-outline" size={16} color="#6B7280" />
-                  </TouchableOpacity>
+              <View style={styles.formSection}>
+                <Text style={styles.formSecTitle}>Thời gian hiệu lực</Text>
+                <View style={styles.row}>
+                  <View style={styles.col}>
+                    <Text style={styles.inputLabel}>Bắt đầu</Text>
+                    <TouchableOpacity style={[styles.input, styles.dateBtn]} onPress={() => openDatePicker("effectiveFrom")}>
+                      <Text style={styles.dateBtnText}>{formData.effectiveFrom || "Chọn"}</Text>
+                      <Ionicons name="calendar-outline" size={16} color="#6B7280" />
+                    </TouchableOpacity>
+                  </View>
+                  <View style={styles.col}>
+                    <Text style={styles.inputLabel}>Kết thúc (tùy chọn)</Text>
+                    <TouchableOpacity style={[styles.input, styles.dateBtn]} onPress={() => openDatePicker("effectiveTo")}>
+                      <Text style={styles.dateBtnText}>{formData.effectiveTo || "Không hạn"}</Text>
+                      <Ionicons name="calendar-outline" size={16} color="#6B7280" />
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </View>
-            </View>
 
-            {errorMessage ? (
-              <View style={styles.errorBox}>
-                <Ionicons name="alert-circle" size={16} color="#DC2626" />
-                <Text style={styles.errorText}>{errorMessage}</Text>
+              {errorMessage ? (
+                <View style={styles.errorBox}>
+                  <Ionicons name="alert-circle" size={16} color="#DC2626" />
+                  <Text style={styles.errorText}>{errorMessage}</Text>
+                </View>
+              ) : null}
+
+              <View style={styles.formActions}>
+                <TouchableOpacity style={styles.cancelBtn} onPress={() => setIsFormVisible(false)} disabled={saving}>
+                  <Text style={styles.cancelBtnText}>Hủy</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.saveBtn, saving && { opacity: 0.6 }]} onPress={handleSave} disabled={saving}>
+                  {saving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.saveBtnText}>Lưu cấu hình</Text>}
+                </TouchableOpacity>
               </View>
-            ) : null}
-
-            <View style={styles.formActions}>
-              <TouchableOpacity style={styles.cancelBtn} onPress={() => setIsFormVisible(false)} disabled={saving}>
-                <Text style={styles.cancelBtnText}>Hủy</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.saveBtn, saving && { opacity: 0.6 }]} onPress={handleSave} disabled={saving}>
-                {saving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.saveBtnText}>Lưu cấu hình</Text>}
-              </TouchableOpacity>
-            </View>
-          </ScrollView>
+            </ScrollView>
           </KeyboardAvoidingView>
 
           {/* Patient Selector Modal - inside form modal so it renders on top */}
@@ -822,7 +822,7 @@ export default function ThresholdsScreen() {
 
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F8FAFC" },
+  container: { flex: 1, backgroundColor: "#F2F6FF" },
 
   // Stats
   statsRow: { flexDirection: "row", gap: 8, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 },
