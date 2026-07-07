@@ -1121,7 +1121,7 @@ const ChatPage = ({
                         <Info size={14} />
                       )}
                       {alertContext.severity === "high"
-                        ? t("chat.severe") : alertContext.severity === "medium" ? t("alerts.medium", "Cảnh báo") : t("alerts.low", "Nhẹ")}
+                        ? t("chat.severe") : alertContext.severity === "medium" ? t("alerts.medium", "Cảnh báo") : t("alerts.low", "Cần theo dõi")}
                     </span>
                     <span
                       className={`rounded-md px-3 py-1 text-xs font-medium ${alertContext.status === "ack"
@@ -1245,7 +1245,7 @@ const ChatPage = ({
                             : "bg-slate-100 text-slate-700 dark:bg-slate-500/20 dark:text-slate-300"
                             }`}>
                             <AlertTriangle size={9} />
-                            {isHighSeverity ? t("chat.severe") : isMediumSeverity ? t("patients.warning", "Cảnh báo") : t("alerts.low", "Nhẹ")}
+                            {isHighSeverity ? t("chat.severe") : isMediumSeverity ? t("patients.warning", "Cảnh báo") : t("alerts.low", "Cần theo dõi")}
                           </span>
                         )}
                       </div>

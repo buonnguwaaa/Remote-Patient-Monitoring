@@ -125,11 +125,11 @@ export default function NursePrescriptionScreen() {
   const fetchPrescriptions = useCallback(async ({ isRefresh = false } = {}) => {
     if (isRefresh) setRefreshing(true); else setLoadingPres(true);
     try {
-      const list = await getPrescriptions({ patientId: selectedPatientId || undefined, status: statusFilter === "all" ? undefined : statusFilter });
+      const list = await getPrescriptions({ patientId: selectedPatientId || undefined });
       setPrescriptions([...(Array.isArray(list) ? list : [])].sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
     } catch { showError("Không tải được danh sách đơn thuốc."); }
     finally { setLoadingPres(false); setRefreshing(false); }
-  }, [selectedPatientId, statusFilter, showError]);
+  }, [selectedPatientId, showError]);
 
   useFocusEffect(useCallback(() => { fetchPrescriptions(); }, [fetchPrescriptions]));
 
@@ -152,6 +152,17 @@ export default function NursePrescriptionScreen() {
 
   const grouped = useMemo(() => {
     let list = prescriptions;
+
+    if (statusFilter !== "all") {
+      const now = new Date();
+      list = list.filter(p => {
+        if (statusFilter === "expired") {
+          return p.status === "active" && p.endDate && new Date(p.endDate) < new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+        }
+        return p.status === statusFilter;
+      });
+    }
+
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       list = list.filter(p => {
@@ -160,7 +171,7 @@ export default function NursePrescriptionScreen() {
       });
     }
     return groupPrescriptionsByPatient(list);
-  }, [prescriptions, searchQuery, patientMap]);
+  }, [prescriptions, searchQuery, patientMap, statusFilter]);
 
   const handleSaveForm = async (data) => {
     const payload = {

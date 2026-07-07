@@ -142,7 +142,7 @@ export function buildAlertPreviewItems(alerts, limit = 3) {
         title: summary.title,
         iconName: summary.iconName,
         observedText: formatAlertObservedValue(primaryViolation),
-        severityText: isHigh ? "Nguy hiểm" : isMedium ? "Cảnh báo" : "Nhẹ",
+        severityText: isHigh ? "Nghiêm trọng" : isMedium ? "Cảnh báo" : "Cần theo dõi",
         statusText: alert?.status === "open" ? "Chờ xác nhận" : "Đã xác nhận",
         isAcknowledged: alert?.status === "ack",
         ruleText: primaryViolation?.rule || summary.summary,

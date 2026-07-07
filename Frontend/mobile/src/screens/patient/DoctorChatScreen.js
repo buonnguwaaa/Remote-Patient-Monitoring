@@ -916,7 +916,7 @@ export default function DoctorChatScreen() {
                             <View style={[styles.systemSeverityBadge, isHigh ? styles.severityHigh : isMedium ? styles.severityWarn : styles.severityInfo]}>
                               <Ionicons name="warning-outline" size={9} color={isHigh ? "#DC2626" : isMedium ? "#D97706" : "#2563EB"} />
                               <Text style={[styles.systemSeverityText, isHigh ? styles.severityHighText : isMedium ? styles.severityWarnText : styles.severityInfoText]}>
-                                {isHigh ? "Nghiêm trọng" : isMedium ? "Cảnh báo" : "Nhẹ"}
+                                {isHigh ? "Nghiêm trọng" : isMedium ? "Cảnh báo" : "Cần theo dõi"}
                               </Text>
                             </View>
                           ) : null}

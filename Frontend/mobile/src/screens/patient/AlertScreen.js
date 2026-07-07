@@ -422,7 +422,7 @@ export default function AlertScreen({ isEmbedded }) {
                               style={statusMeta.isOpen ? (isHigh ? styles.levelPillHigh : isMedium ? styles.levelPillMedium : styles.levelPillInfo) : styles.levelPillAck}
                             >
                               <Text style={statusMeta.isOpen ? (isHigh ? styles.levelTextHigh : isMedium ? styles.levelTextMedium : styles.levelTextInfo) : styles.levelTextAck}>
-                                {isHigh ? "Nguy hiểm" : isMedium ? "Cảnh báo" : "Nhẹ"}
+                                {isHigh ? "Nghiêm trọng" : isMedium ? "Cảnh báo" : "Cần theo dõi"}
                               </Text>
                             </View>
                           </View>
@@ -509,7 +509,7 @@ export default function AlertScreen({ isEmbedded }) {
                   <View style={styles.metaRow}>
                     <Text style={styles.metaLabel}>Mức độ</Text>
                     <Text style={[styles.metaValue, selectedAlert?.severity === "high" ? styles.metaHigh : selectedAlert?.severity === "medium" ? styles.metaMedium : styles.metaInfo]}>
-                      {selectedAlert?.severity === "high" ? "Nguy hiểm" : selectedAlert?.severity === "medium" ? "Cảnh báo" : "Nhẹ"}
+                      {selectedAlert?.severity === "high" ? "Nghiêm trọng" : selectedAlert?.severity === "medium" ? "Cảnh báo" : "Cần theo dõi"}
                     </Text>
                   </View>
                   <View style={styles.metaRow}>

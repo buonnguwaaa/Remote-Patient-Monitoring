@@ -32,11 +32,11 @@ export const AlertSeverity = {
 export const getSeverityLabel = (level: string) => {
   switch (level) {
     case AlertSeverity.HIGH:
-      return "Nguy hiểm";
+      return "Nghiêm trọng";
     case AlertSeverity.MEDIUM:
       return "Cảnh báo";
     case AlertSeverity.LOW:
-      return "Nhẹ";
+      return "Cần theo dõi";
     default:
       return "Không rõ";
   }
@@ -320,7 +320,7 @@ const ThresholdAlert = () => {
       </div>
       <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-red-200 dark:border-red-900/50 flex items-center justify-between">
         <div>
-          <p className="text-sm font-medium text-red-600 dark:text-red-400">Nguy hiểm (Chờ xử lý)</p>
+          <p className="text-sm font-medium text-red-600 dark:text-red-400">Nghiêm trọng (Chờ xử lý)</p>
           <p className="text-3xl font-bold text-red-700 dark:text-red-300 mt-1">{stats.pendingHigh}</p>
         </div>
         <div className="h-12 w-12 rounded-full bg-red-100 dark:bg-red-500/20 flex items-center justify-center">
@@ -373,9 +373,9 @@ const ThresholdAlert = () => {
             className="pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
           >
             <option value="ALL">Mức độ (Tất cả)</option>
-            <option value="HIGH">Nguy hiểm</option>
+            <option value="HIGH">Nghiêm trọng</option>
             <option value="MEDIUM">Cảnh báo</option>
-            <option value="LOW">Nhẹ</option>
+            <option value="LOW">Cần theo dõi</option>
           </select>
         </div>
       </div>
@@ -421,7 +421,7 @@ const ThresholdAlert = () => {
                       </span>
                       {group.highCount > 0 && (
                         <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-400">
-                          <FaExclamationTriangle /> {group.highCount} Nguy hiểm
+                          <FaExclamationTriangle /> {group.highCount} Nghiêm trọng
                         </span>
                       )}
                       {group.mediumCount > 0 && (
@@ -431,7 +431,7 @@ const ThresholdAlert = () => {
                       )}
                       {group.lowCount > 0 && (
                         <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-400">
-                          <FaInfoCircle /> {group.lowCount} Nhẹ
+                          <FaInfoCircle /> {group.lowCount} Cần theo dõi
                         </span>
                       )}
                     </div>

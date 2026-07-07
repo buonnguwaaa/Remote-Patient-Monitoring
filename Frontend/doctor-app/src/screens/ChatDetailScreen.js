@@ -864,7 +864,7 @@ export default function ChatDetailScreen() {
                                   isHigh ? styles.severityHighText : isMedium ? styles.severityWarnText : styles.severityInfoText,
                                 ]}
                               >
-                                {isHigh ? "Nguy kịch" : isMedium ? "Cảnh báo" : "Nhẹ"}
+                                {isHigh ? "Nghiêm trọng" : isMedium ? "Cảnh báo" : "Cần theo dõi"}
                               </Text>
                             </View>
                           ) : null}
