@@ -112,7 +112,8 @@ func (s *Seeder) seedMeasurements(ctx context.Context, data *seedData) ([]*domai
 			note := fmt.Sprintf("Seed measurement %02d", i+1)
 
 			var measurement domain.Measurement
-			if i%3 == 0 {
+			switch i % 3 {
+			case 0:
 				measurement = domain.Measurement{
 					PatientID:       patient.ID,
 					Temperature:     fp(36.5 + float64(i%5)*0.1),
@@ -127,7 +128,7 @@ func (s *Seeder) seedMeasurements(ctx context.Context, data *seedData) ([]*domai
 					Device: &device,
 					Note:   &note,
 				}
-			} else if i%3 == 1 {
+			case 1:
 				measurement = domain.Measurement{
 					PatientID: patient.ID,
 					Glucose: domain.Glucose{
@@ -136,7 +137,7 @@ func (s *Seeder) seedMeasurements(ctx context.Context, data *seedData) ([]*domai
 					MealTiming: &preMeal,
 					Device:     &device,
 				}
-			} else {
+			default:
 				measurement = domain.Measurement{
 					PatientID: patient.ID,
 					Glucose: domain.Glucose{
