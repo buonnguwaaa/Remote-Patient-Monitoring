@@ -23,6 +23,13 @@ func CalculateNextReminderTime(
 		return time.Time{}, false
 	}
 
+	// Don't start searching before the reminder becomes active. Without this,
+	// a reminder whose StartDate is more than the search window (2 weeks) in the
+	// future would yield no candidate and be wrongly treated as expired.
+	if start := r.StartDate.In(loc); from.Before(start) {
+		from = start
+	}
+
 	for i := 0; i < 14; i++ { // search max 2 weeks ahead
 		candidateDate := from.AddDate(0, 0, i)
 
