@@ -47,6 +47,7 @@ type MainServerContainer struct {
 	AlertService               service.AlertService
 	DepartmentService          service.DepartmentService
 	AssignmentService          service.AssignmentService
+	PatientOverviewService     service.PatientOverviewService
 	ReminderService            service.ReminderService
 	PrescriptionService        service.PrescriptionService
 	MedicationIntakeService    service.MedicationIntakeService
@@ -62,6 +63,7 @@ type MainServerContainer struct {
 	AlertHandler               *handler.AlertHandler
 	DepartmentHandler          *handler.DepartmentHandler
 	AssignmentHandler          *handler.AssignmentHandler
+	PatientOverviewHandler     *handler.PatientOverviewHandler
 	ReminderHandler            *handler.ReminderHandler
 	PrescriptionHandler        *handler.PrescriptionHandler
 	MedicationIntakeHandler    *handler.MedicationIntakeHandler
@@ -138,6 +140,7 @@ func NewMainServerContainer() *MainServerContainer {
 	c.AlertService = service.NewAlertService(c.AlertRepo)
 	c.DepartmentService = service.NewDepartmentService(c.DepartmentRepo, c.DoctorRepo, c.NurseRepo)
 	c.AssignmentService = service.NewAssignmentService(c.AssignmentRepo, c.BaseUserRepo)
+	c.PatientOverviewService = service.NewPatientOverviewService(c.AssignmentRepo, c.PatientRepo, c.MeasurementRepo, c.ThresholdRepo, c.AlertRepo)
 	c.ReminderService = service.NewReminderService(c.PatientRepo, c.ReminderRepo)
 	c.PrescriptionService = service.NewPrescriptionService(c.PatientRepo, c.PrescriptionRepo, c.ReminderRepo, c.ReminderService)
 	c.MedicationIntakeService = service.NewMedicationIntakeService(c.PatientRepo, c.PrescriptionRepo, c.MedicationIntakeRepo, c.ReminderRepo)
@@ -152,6 +155,7 @@ func NewMainServerContainer() *MainServerContainer {
 	c.AlertHandler = handler.NewAlertHandler(c.AlertService)
 	c.DepartmentHandler = handler.NewDepartmentHandler(c.DepartmentService)
 	c.AssignmentHandler = handler.NewAssignmentHandler(c.AssignmentService)
+	c.PatientOverviewHandler = handler.NewPatientOverviewHandler(c.PatientOverviewService)
 	c.ReminderHandler = handler.NewReminderHandler(c.ReminderService)
 	c.PrescriptionHandler = handler.NewPrescriptionHandler(c.PrescriptionService)
 	c.MedicationIntakeHandler = handler.NewMedicationIntakeHandler(c.MedicationIntakeService)

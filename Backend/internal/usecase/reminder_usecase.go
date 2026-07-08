@@ -10,8 +10,7 @@ type CreateReminderInput struct {
 	PatientID      string
 	Kind           domain.Kind
 	Message        string
-	Hour           int
-	Minute         int
+	Times          []domain.ReminderTime
 	DaysOfWeek     []int
 	Timezone       string
 	StartDate      time.Time
@@ -33,8 +32,7 @@ type UpdateReminderInput struct {
 	ID      string
 	Message string
 
-	Hour       int
-	Minute     int
+	Times      []domain.ReminderTime
 	DaysOfWeek []int
 
 	Timezone string
