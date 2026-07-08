@@ -19,32 +19,53 @@ func CalculateNextReminderTime(
 
 	from = from.In(loc)
 
-	// Start searching from next minute
-	start := from.Add(time.Minute)
+	if len(r.Times) == 0 {
+		return time.Time{}, false
+	}
+
+	// Don't start searching before the reminder becomes active. Without this,
+	// a reminder whose StartDate is more than the search window (2 weeks) in the
+	// future would yield no candidate and be wrongly treated as expired.
+	if start := r.StartDate.In(loc); from.Before(start) {
+		from = start
+	}
 
 	for i := 0; i < 14; i++ { // search max 2 weeks ahead
-		candidateDate := start.AddDate(0, 0, i)
+		candidateDate := from.AddDate(0, 0, i)
 
 		weekday := int(candidateDate.Weekday()) // 0=Sunday
 		if !containsDay(r.DaysOfWeek, weekday) {
 			continue
 		}
 
-		candidate := time.Date(
-			candidateDate.Year(),
-			candidateDate.Month(),
-			candidateDate.Day(),
-			r.Hour,
-			r.Minute,
-			0,
-			0,
-			loc,
-		)
+		// A reminder may have several fire times per day; pick the earliest
+		// valid one that is still in the future relative to `from`.
+		var best time.Time
+		found := false
+		for _, t := range r.Times {
+			candidate := time.Date(
+				candidateDate.Year(),
+				candidateDate.Month(),
+				candidateDate.Day(),
+				t.Hour,
+				t.Minute,
+				0,
+				0,
+				loc,
+			)
 
-		if candidate.After(from) &&
-			!candidate.Before(r.StartDate) &&
-			!candidate.After(r.EndDate) {
-			return candidate.UTC(), true
+			if candidate.After(from) &&
+				!candidate.Before(r.StartDate) &&
+				!candidate.After(r.EndDate) {
+				if !found || candidate.Before(best) {
+					best = candidate
+					found = true
+				}
+			}
+		}
+
+		if found {
+			return best.UTC(), true
 		}
 	}
 

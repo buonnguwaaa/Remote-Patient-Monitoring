@@ -17,6 +17,7 @@ type PatientRepository interface {
 	Create(ctx context.Context, u *domain.Patient) (*domain.Patient, error)
 	FindPatients(ctx context.Context, f UserFilter) ([]domain.Patient, error)
 	FindPatientByID(ctx context.Context, id primitive.ObjectID) (*domain.Patient, error)
+	FindPatientsByIDs(ctx context.Context, ids []primitive.ObjectID) ([]domain.Patient, error)
 	FindPatientByEmail(ctx context.Context, email string) (*domain.Patient, error)
 	Update(ctx context.Context, id primitive.ObjectID, updateData map[string]interface{}) error
 	Delete(ctx context.Context, id primitive.ObjectID) error
@@ -116,6 +117,29 @@ func (r *patientRepository) FindPatientByID(ctx context.Context, id primitive.Ob
 	}
 
 	return &u, nil
+}
+
+func (r *patientRepository) FindPatientsByIDs(ctx context.Context, ids []primitive.ObjectID) ([]domain.Patient, error) {
+	if len(ids) == 0 {
+		return []domain.Patient{}, nil
+	}
+
+	filter := bson.M{
+		"_id":  bson.M{"$in": ids},
+		"role": domain.RolePatient,
+	}
+
+	cursor, err := r.col.Find(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var patients []domain.Patient
+	if err := cursor.All(ctx, &patients); err != nil {
+		return nil, err
+	}
+	return patients, nil
 }
 
 func (r *patientRepository) Update(ctx context.Context, id primitive.ObjectID, updateData map[string]interface{}) error {

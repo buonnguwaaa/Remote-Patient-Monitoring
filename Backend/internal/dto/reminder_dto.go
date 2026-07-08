@@ -6,23 +6,26 @@ import (
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
 )
 
+type ReminderTimeInput struct {
+	Hour   int `json:"hour" binding:"min=0,max=23"`
+	Minute int `json:"minute" binding:"min=0,max=59"`
+}
+
 type CreateReminderRequest struct {
-	PatientID  string             `json:"patientId" binding:"required"`
-	Kind       domain.Kind        `json:"kind" binding:"required"`
-	Message    string             `json:"message" binding:"required"`
-	Hour       int                `json:"hour" binding:"min=0,max=23"`
-	Minute     int                `json:"minute" binding:"min=0,max=59"`
-	DaysOfWeek []int              `json:"daysOfWeek" binding:"required"`
-	Timezone   string             `json:"timezone" binding:"required"`
-	StartDate  time.Time          `json:"startDate" binding:"required"`
-	EndDate    time.Time          `json:"endDate" binding:"required"`
-	MealTiming *domain.MealTiming `json:"mealTiming" binding:"omitempty,oneof=pre_meal post_meal"`
+	PatientID  string              `json:"patientId" binding:"required"`
+	Kind       domain.Kind         `json:"kind" binding:"required"`
+	Message    string              `json:"message" binding:"required"`
+	Times      []ReminderTimeInput `json:"times" binding:"required,min=1,dive"`
+	DaysOfWeek []int               `json:"daysOfWeek" binding:"required"`
+	Timezone   string              `json:"timezone" binding:"required"`
+	StartDate  time.Time           `json:"startDate" binding:"required"`
+	EndDate    time.Time           `json:"endDate" binding:"required"`
+	MealTiming *domain.MealTiming  `json:"mealTiming" binding:"omitempty,oneof=pre_meal post_meal"`
 }
 
 type UpdateReminderRequest struct {
 	Message    string                `json:"message" binding:"required"`
-	Hour       int                   `json:"hour" binding:"min=0,max=23"`
-	Minute     int                   `json:"minute" binding:"min=0,max=59"`
+	Times      []ReminderTimeInput   `json:"times" binding:"required,min=1,dive"`
 	DaysOfWeek []int                 `json:"daysOfWeek" binding:"required"`
 	Timezone   string                `json:"timezone" binding:"required"`
 	Status     domain.ReminderStatus `json:"status" binding:"required"`
@@ -39,8 +42,7 @@ type ReminderResponse struct {
 	PatientID      string                `json:"patientId"`
 	Kind           domain.Kind           `json:"kind"`
 	Message        string                `json:"message"`
-	Hour           int                   `json:"hour"`
-	Minute         int                   `json:"minute"`
+	Times          []domain.ReminderTime `json:"times"`
 	DaysOfWeek     []int                 `json:"daysOfWeek"`
 	Timezone       string                `json:"timezone"`
 	Status         domain.ReminderStatus `json:"status"`

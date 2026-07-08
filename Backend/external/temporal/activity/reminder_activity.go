@@ -62,14 +62,6 @@ func (a *ReminderActivity) SendReminderActivity(ctx context.Context, reminderID 
 		return false, fmt.Errorf("invalid scheduled reminder time: %w", err)
 	}
 
-	skip, err := service.ShouldSkipMedicationReminder(ctx, a.prescriptionRepo, a.intakeRepo, reminder, scheduledAt)
-	if err != nil {
-		return false, err
-	}
-	if skip {
-		return true, nil
-	}
-
 	var title string
 	body := strings.TrimSpace(reminder.Message)
 	targetScreen := "PatientNotifications"
@@ -81,6 +73,18 @@ func (a *ReminderActivity) SendReminderActivity(ctx context.Context, reminderID 
 		}
 	} else {
 		title = "Nhắc nhở dùng thuốc"
+
+		// Resolve the doses due at this specific fire time; skip if all taken.
+		occurrence, err := service.ResolveMedicationOccurrence(ctx, a.prescriptionRepo, a.intakeRepo, reminder, scheduledAt)
+		if err != nil {
+			return false, err
+		}
+		if occurrence.Skip {
+			return true, nil
+		}
+		if occurrence.Message != "" {
+			body = occurrence.Message
+		}
 		if body == "" {
 			body = "Đã đến giờ thực hiện nhắc nhở sức khỏe của bạn."
 		}

@@ -131,7 +131,7 @@ func (s *medicationIntakeService) finalizeIntake(ctx context.Context, prescripti
 		s.reminderSync.SnoozeRemindersAfterIntake(
 			ctx,
 			prescription,
-			intake.Dose.TimeOfDay,
+			intake.Dose,
 			intake.ScheduledDate,
 			intake.TakenAt,
 		)

@@ -161,8 +161,7 @@ func (r *reminderRepository) Update(ctx context.Context, reminder *domain.Remind
 	update := bson.M{
 		"message":    reminder.Message,
 		"status":     reminder.Status,
-		"hour":       reminder.Hour,
-		"minute":     reminder.Minute,
+		"times":      reminder.Times,
 		"daysOfWeek": reminder.DaysOfWeek,
 		"timezone":   reminder.Timezone,
 		"startDate":  reminder.StartDate,

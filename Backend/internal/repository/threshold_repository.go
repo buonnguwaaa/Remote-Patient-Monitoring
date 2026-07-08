@@ -21,6 +21,7 @@ type ThresholdRepository interface {
 	Create(ctx context.Context, t *domain.Threshold) (*domain.Threshold, error)
 	FindWithFilter(ctx context.Context, filter ThresholdFilter) ([]domain.Threshold, error)
 	FindByID(ctx context.Context, id primitive.ObjectID) (*domain.Threshold, error)
+	FindLatestActiveByPatientIDs(ctx context.Context, patientIDs []primitive.ObjectID) (map[primitive.ObjectID]*domain.Threshold, error)
 	Update(ctx context.Context, t *domain.Threshold) (*domain.Threshold, error)
 }
 
@@ -166,6 +167,53 @@ func (r *thresholdRepository) FindWithFilter(ctx context.Context, filter Thresho
 	}
 
 	return results, nil
+}
+
+// FindLatestActiveByPatientIDs returns the currently effective threshold for
+// each of the given patients in a single aggregation, keyed by patient id.
+func (r *thresholdRepository) FindLatestActiveByPatientIDs(ctx context.Context, patientIDs []primitive.ObjectID) (map[primitive.ObjectID]*domain.Threshold, error) {
+	result := make(map[primitive.ObjectID]*domain.Threshold)
+	if len(patientIDs) == 0 {
+		return result, nil
+	}
+
+	now := time.Now().UTC()
+	pipeline := mongo.Pipeline{
+		{{Key: "$match", Value: bson.M{
+			"patientId":     bson.M{"$in": patientIDs},
+			"effectiveFrom": bson.M{"$lte": now},
+			"$or": []bson.M{
+				{"effectiveTo": bson.M{"$exists": false}},
+				{"effectiveTo": nil},
+				{"effectiveTo": bson.M{"$gt": now}},
+			},
+		}}},
+		{{Key: "$sort", Value: bson.D{{Key: "effectiveFrom", Value: -1}}}},
+		{{Key: "$group", Value: bson.M{
+			"_id": "$patientId",
+			"doc": bson.M{"$first": "$$ROOT"},
+		}}},
+	}
+
+	cursor, err := r.col.Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var grouped []struct {
+		PatientID primitive.ObjectID `bson:"_id"`
+		Threshold domain.Threshold   `bson:"doc"`
+	}
+	if err := cursor.All(ctx, &grouped); err != nil {
+		return nil, err
+	}
+
+	for i := range grouped {
+		t := grouped[i].Threshold
+		result[grouped[i].PatientID] = &t
+	}
+	return result, nil
 }
 
 func (r *thresholdRepository) FindByID(ctx context.Context, id primitive.ObjectID) (*domain.Threshold, error) {
