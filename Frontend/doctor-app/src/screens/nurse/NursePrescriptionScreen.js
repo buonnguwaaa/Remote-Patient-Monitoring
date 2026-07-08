@@ -125,11 +125,11 @@ export default function NursePrescriptionScreen() {
   const fetchPrescriptions = useCallback(async ({ isRefresh = false } = {}) => {
     if (isRefresh) setRefreshing(true); else setLoadingPres(true);
     try {
-      const list = await getPrescriptions({ patientId: selectedPatientId || undefined, status: statusFilter === "all" ? undefined : statusFilter });
+      const list = await getPrescriptions({ patientId: selectedPatientId || undefined });
       setPrescriptions([...(Array.isArray(list) ? list : [])].sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
     } catch { showError("Không tải được danh sách đơn thuốc."); }
     finally { setLoadingPres(false); setRefreshing(false); }
-  }, [selectedPatientId, statusFilter, showError]);
+  }, [selectedPatientId, showError]);
 
   useFocusEffect(useCallback(() => { fetchPrescriptions(); }, [fetchPrescriptions]));
 
@@ -152,6 +152,17 @@ export default function NursePrescriptionScreen() {
 
   const grouped = useMemo(() => {
     let list = prescriptions;
+
+    if (statusFilter !== "all") {
+      const now = new Date();
+      list = list.filter(p => {
+        if (statusFilter === "expired") {
+          return p.status === "active" && p.endDate && new Date(p.endDate) < new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+        }
+        return p.status === statusFilter;
+      });
+    }
+
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       list = list.filter(p => {
@@ -160,7 +171,7 @@ export default function NursePrescriptionScreen() {
       });
     }
     return groupPrescriptionsByPatient(list);
-  }, [prescriptions, searchQuery, patientMap]);
+  }, [prescriptions, searchQuery, patientMap, statusFilter]);
 
   const handleSaveForm = async (data) => {
     const payload = {
@@ -252,7 +263,11 @@ export default function NursePrescriptionScreen() {
         ))}
       </ScrollView>
 
-      <ScrollView style={styles.list} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchPrescriptions({ isRefresh: true })} />}>
+      <ScrollView 
+        style={styles.listWrapper} 
+        contentContainerStyle={styles.listContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchPrescriptions({ isRefresh: true })} />}
+      >
         <PrescriptionStatsHeader stats={stats} />
         
         {loadingPres && !prescriptions.length ? <ActivityIndicator size="large" color="#2563EB" style={{ marginTop: 40 }} /> : null}
@@ -293,13 +308,14 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, fontSize: 14, color: "#111827" },
   clearPatientBtn: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#E5E7EB", paddingHorizontal: 10, borderRadius: 10 },
   clearPatientText: { fontSize: 12, fontWeight: "600", color: "#4B5563" },
-  filterBar: { height: 46, marginTop: 12, marginBottom: 4 },
+  filterBar: { height: 46, flexGrow: 0, marginTop: 12, marginBottom: 4 },
   filterContent: { paddingHorizontal: 14, gap: 8, alignItems: "center" },
   filterChip: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, backgroundColor: "#E5E7EB", justifyContent: "center", alignItems: "center" },
   filterChipActive: { backgroundColor: "#DBEAFE" },
   filterText: { fontSize: 13, fontWeight: "600", color: "#6B7280", lineHeight: 18 },
   filterTextActive: { color: "#1D4ED8" },
-  list: { padding: 14 },
+  listWrapper: { flex: 1 },
+  listContent: { padding: 14, paddingBottom: 100 },
   emptyState: { alignItems: "center", marginTop: 60, gap: 10 },
   emptyStateText: { color: "#9CA3AF", fontSize: 14 },
   

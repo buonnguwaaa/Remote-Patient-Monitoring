@@ -32,6 +32,10 @@ func JWTAuthMiddleware(jwtManager *util.JWTManager) gin.HandlerFunc {
 		}
 
 		if token == "" {
+			token = c.Query("token")
+		}
+
+		if token == "" {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": constant.MsgMissingAccessToken})
 			return
 		}

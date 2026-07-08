@@ -496,84 +496,101 @@ export default function DoctorChatScreen() {
   }, [conversation?.id, isFocused]);
 
   useEffect(() => {
+    let cancelled = false;
     if (!conversation?.id) {
       return undefined;
     }
 
     setSocketState("connecting");
 
-    const socket = new WebSocket(buildConversationSocketUrl(conversation.id));
-    socketRef.current = socket;
+    const connectSocket = async () => {
+      try {
+        const url = await buildConversationSocketUrl(conversation.id);
+        if (cancelled) return;
 
-    socket.onopen = () => {
-      setSocketState("open");
-      setError(null);
+        const socket = new WebSocket(url);
+        socketRef.current = socket;
+
+        socket.onopen = () => {
+          setSocketState("open");
+          setError(null);
+        };
+
+        socket.onmessage = (event) => {
+          const payloads = parseSocketPayload(event.data);
+
+          payloads.forEach((payload) => {
+            if (isSocketErrorPayload(payload)) {
+              setError(payload.error || "Không thể gửi tin nhắn.");
+              return;
+            }
+
+            if (isMessageEnvelope(payload)) {
+              setMessages((current) => mergeMessages(current, [normalizeMessage(payload.data)]));
+              return;
+            }
+
+            if (isDeliveredEnvelope(payload)) {
+              setConversation((current) =>
+                updateConversationParticipantState(current, payload.data.userId, {
+                  lastDeliveredMessageId: payload.data.messageId,
+                })
+              );
+              return;
+            }
+
+            if (isReadEnvelope(payload)) {
+              setConversation((current) =>
+                updateConversationParticipantState(current, payload.data.userId, {
+                  lastDeliveredMessageId: payload.data.lastReadMessageId,
+                  lastReadMessageId: payload.data.lastReadMessageId,
+                })
+              );
+              return;
+            }
+
+            if (isDirectMessagePayload(payload)) {
+              setMessages((current) => mergeMessages(current, [normalizeMessage(payload)]));
+            }
+
+            // Handle video call system messages via NEW_MESSAGE
+            if (isMessageEnvelope(payload) && payload.data?.messageSource === "system") {
+              const content = payload.data?.content || "";
+              if (content.includes('"type":"video_call_invite"')) {
+                try {
+                  const parsed = JSON.parse(content);
+                  if (parsed.videoSessionId) setActiveVideoSessionId(parsed.videoSessionId);
+                } catch (_) { }
+              }
+              if (content.includes('"type":"video_call_ended"')) {
+                setActiveVideoSessionId(null);
+              }
+            }
+          });
+        };
+
+        socket.onerror = () => {
+          setError("Kết nối chat đang gặp lỗi. Bạn thử mở lại màn hình này nhé.");
+        };
+
+        socket.onclose = () => {
+          setSocketState("closed");
+        };
+      } catch (err) {
+        if (!cancelled) {
+          setError("Không thể khởi tạo kết nối.");
+        }
+      }
     };
 
-    socket.onmessage = (event) => {
-      const payloads = parseSocketPayload(event.data);
-
-      payloads.forEach((payload) => {
-        if (isSocketErrorPayload(payload)) {
-          setError(payload.error || "Không thể gửi tin nhắn.");
-          return;
-        }
-
-        if (isMessageEnvelope(payload)) {
-          setMessages((current) => mergeMessages(current, [normalizeMessage(payload.data)]));
-          return;
-        }
-
-        if (isDeliveredEnvelope(payload)) {
-          setConversation((current) =>
-            updateConversationParticipantState(current, payload.data.userId, {
-              lastDeliveredMessageId: payload.data.messageId,
-            })
-          );
-          return;
-        }
-
-        if (isReadEnvelope(payload)) {
-          setConversation((current) =>
-            updateConversationParticipantState(current, payload.data.userId, {
-              lastDeliveredMessageId: payload.data.lastReadMessageId,
-              lastReadMessageId: payload.data.lastReadMessageId,
-            })
-          );
-          return;
-        }
-
-        if (isDirectMessagePayload(payload)) {
-          setMessages((current) => mergeMessages(current, [normalizeMessage(payload)]));
-        }
-
-        // Handle video call system messages via NEW_MESSAGE
-        if (isMessageEnvelope(payload) && payload.data?.messageSource === "system") {
-          const content = payload.data?.content || "";
-          if (content.includes('"type":"video_call_invite"')) {
-            try {
-              const parsed = JSON.parse(content);
-              if (parsed.videoSessionId) setActiveVideoSessionId(parsed.videoSessionId);
-            } catch (_) { }
-          }
-          if (content.includes('"type":"video_call_ended"')) {
-            setActiveVideoSessionId(null);
-          }
-        }
-      });
-    };
-
-    socket.onerror = () => {
-      setError("Kết nối chat đang gặp lỗi. Bạn thử mở lại màn hình này nhé.");
-    };
-
-    socket.onclose = () => {
-      setSocketState("closed");
-    };
+    connectSocket();
 
     return () => {
-      socket.close();
-      socketRef.current = null;
+      cancelled = true;
+      if (socketRef.current) {
+        socketRef.current.close();
+        socketRef.current = null;
+      }
     };
   }, [conversation?.id]);
 
@@ -916,7 +933,7 @@ export default function DoctorChatScreen() {
                             <View style={[styles.systemSeverityBadge, isHigh ? styles.severityHigh : isMedium ? styles.severityWarn : styles.severityInfo]}>
                               <Ionicons name="warning-outline" size={9} color={isHigh ? "#DC2626" : isMedium ? "#D97706" : "#2563EB"} />
                               <Text style={[styles.systemSeverityText, isHigh ? styles.severityHighText : isMedium ? styles.severityWarnText : styles.severityInfoText]}>
-                                {isHigh ? "Nghiêm trọng" : isMedium ? "Cảnh báo" : "Nhẹ"}
+                                {isHigh ? "Nghiêm trọng" : isMedium ? "Cảnh báo" : "Cần theo dõi"}
                               </Text>
                             </View>
                           ) : null}

@@ -309,7 +309,7 @@ const TodoList: React.FC<{
                     <div key={alert.id} className="flex items-center justify-between rounded-lg bg-red-50 p-3 dark:bg-red-900/10">
                       <div>
                         <p className="text-xs font-semibold text-gray-800 dark:text-slate-200">{alert.patientName || "Chưa rõ"}</p>
-                        <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-0.5">Mức độ: {alert.severity === 'high' ? 'Nguy hiểm' : alert.severity === 'medium' ? 'Cảnh báo' : 'Thấp'}</p>
+                        <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-0.5">Mức độ: {alert.severity === 'high' ? 'Nghiêm trọng' : alert.severity === 'medium' ? 'Cảnh báo' : 'Thấp'}</p>
                       </div>
                       <button onClick={() => navigate("/threshold-alerts")} className="rounded bg-red-100 px-2 py-1 text-[10px] font-medium text-red-600 hover:bg-red-200 dark:bg-red-500/20 dark:text-red-400 dark:hover:bg-red-500/30">
                         Xử lý
@@ -364,11 +364,15 @@ const RecentAlerts: React.FC<{
     glucose: t("patientDetail.glucose"),
     temperature: t("patientDetail.temperature"),
     spo2: "SpO2",
+    spO2: "SpO2",
     respiratoryRate: t("patientDetail.respiratoryRate"),
     heart_rate: t("patientDetail.heartRate"),
+    heartRate: t("patientDetail.heartRate"),
     respiratory_rate: t("patientDetail.respiratoryRate"),
     blood_pressure_systolic: t("patientDetail.systolic"),
+    bloodPressureSystolic: t("patientDetail.systolic"),
     blood_pressure_diastolic: t("patientDetail.diastolic"),
+    bloodPressureDiastolic: t("patientDetail.diastolic"),
   };
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white dark:border-slate-700/60 dark:bg-slate-800">

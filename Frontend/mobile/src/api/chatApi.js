@@ -25,9 +25,16 @@ export async function getConversationMessages(conversationId, limit = 100, curso
   );
 }
 
-export function buildConversationSocketUrl(conversationId) {
+import * as SecureStore from "../utils/secureStoreHelper";
+
+export async function buildConversationSocketUrl(conversationId) {
   const wsBase = BASE_URL.replace(/^http:/i, "ws:").replace(/^https:/i, "wss:");
-  return `${wsBase}/chat/ws?conversationId=${encodeURIComponent(conversationId)}`;
+  let token = "";
+  try {
+    token = await SecureStore.getItemAsync("accessToken");
+  } catch (e) {}
+
+  return `${wsBase}/chat/ws?conversationId=${encodeURIComponent(conversationId)}&token=${encodeURIComponent(token || "")}`;
 }
 
 export default {

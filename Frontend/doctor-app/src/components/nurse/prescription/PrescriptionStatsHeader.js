@@ -5,25 +5,56 @@ import { Ionicons } from "@expo/vector-icons";
 export function PrescriptionStatsHeader({ stats }) {
   return (
     <View style={styles.statsContainer}>
-      <View style={styles.statCard}>
-        <Ionicons name="receipt-outline" size={20} color="#2563EB" />
-        <Text style={styles.statNum}>{stats.total || 0}</Text>
-        <Text style={styles.statLabel}>Tổng đơn</Text>
-      </View>
-      <View style={styles.statCard}>
-        <Ionicons name="pulse-outline" size={20} color="#16A34A" />
-        <Text style={styles.statNum}>{stats.active || 0}</Text>
-        <Text style={styles.statLabel}>Đang dùng</Text>
-      </View>
-      <View style={styles.statCard}>
-        <Ionicons name="warning-outline" size={20} color="#F59E0B" />
-        <Text style={styles.statNum}>{stats.expiring || 0}</Text>
-        <Text style={styles.statLabel}>Sắp hết</Text>
-      </View>
-      <View style={styles.statCard}>
-        <Ionicons name="stop-circle-outline" size={20} color="#6B7280" />
-        <Text style={styles.statNum}>{stats.stopped || 0}</Text>
-        <Text style={styles.statLabel}>Đã dừng</Text>
+      <View style={styles.mainCard}>
+        <View style={styles.row}>
+          <View style={styles.miniStat}>
+            <View style={[styles.iconWrap, { backgroundColor: '#EFF6FF' }]}>
+              <Ionicons name="receipt" size={16} color="#2563EB" />
+            </View>
+            <View style={styles.textWrap}>
+              <Text style={[styles.statNum, { color: '#1D4ED8' }]}>{stats.total || 0}</Text>
+              <Text style={styles.statLabel}>Tổng đơn</Text>
+            </View>
+          </View>
+
+          <View style={styles.divider} />
+
+          <View style={styles.miniStat}>
+            <View style={[styles.iconWrap, { backgroundColor: '#F0FDF4' }]}>
+              <Ionicons name="pulse" size={16} color="#16A34A" />
+            </View>
+            <View style={styles.textWrap}>
+              <Text style={[styles.statNum, { color: '#15803D' }]}>{stats.active || 0}</Text>
+              <Text style={styles.statLabel}>Đang dùng</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.hDivider} />
+
+        <View style={styles.row}>
+          <View style={styles.miniStat}>
+            <View style={[styles.iconWrap, { backgroundColor: '#FFF7ED' }]}>
+              <Ionicons name="warning" size={16} color="#EA580C" />
+            </View>
+            <View style={styles.textWrap}>
+              <Text style={[styles.statNum, { color: '#C2410C' }]}>{stats.expiring || 0}</Text>
+              <Text style={styles.statLabel}>Sắp hết</Text>
+            </View>
+          </View>
+
+          <View style={styles.divider} />
+
+          <View style={styles.miniStat}>
+            <View style={[styles.iconWrap, { backgroundColor: '#F3F4F6' }]}>
+              <Ionicons name="stop-circle" size={16} color="#4B5563" />
+            </View>
+            <View style={styles.textWrap}>
+              <Text style={[styles.statNum, { color: '#374151' }]}>{stats.stopped || 0}</Text>
+              <Text style={styles.statLabel}>Đã dừng</Text>
+            </View>
+          </View>
+        </View>
       </View>
     </View>
   );
@@ -31,23 +62,52 @@ export function PrescriptionStatsHeader({ stats }) {
 
 const styles = StyleSheet.create({
   statsContainer: {
-    flexDirection: "row",
-    paddingHorizontal: 14,
-    gap: 10,
     marginBottom: 16,
   },
-  statCard: {
-    flex: 1,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    padding: 10,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.03,
-    shadowRadius: 5,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+  mainCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
   },
-  statNum: { fontSize: 16, fontWeight: "700", color: "#111827", marginVertical: 4 },
-  statLabel: { fontSize: 10, color: "#6B7280", textAlign: "center" },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  miniStat: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  iconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  textWrap: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  statNum: { fontSize: 18, fontWeight: '800', marginBottom: 2 },
+  statLabel: { fontSize: 12, color: '#6B7280', fontWeight: '500' },
+  divider: {
+    width: 1,
+    height: 36,
+    backgroundColor: '#E5E7EB',
+    marginHorizontal: 16,
+  },
+  hDivider: {
+    height: 1,
+    backgroundColor: '#E5E7EB',
+    marginVertical: 12,
+  },
 });
