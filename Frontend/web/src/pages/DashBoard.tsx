@@ -363,11 +363,15 @@ const RecentAlerts: React.FC<{
     glucose: t("patientDetail.glucose"),
     temperature: t("patientDetail.temperature"),
     spo2: "SpO2",
+    spO2: "SpO2",
     respiratoryRate: t("patientDetail.respiratoryRate"),
     heart_rate: t("patientDetail.heartRate"),
+    heartRate: t("patientDetail.heartRate"),
     respiratory_rate: t("patientDetail.respiratoryRate"),
     blood_pressure_systolic: t("patientDetail.systolic"),
+    bloodPressureSystolic: t("patientDetail.systolic"),
     blood_pressure_diastolic: t("patientDetail.diastolic"),
+    bloodPressureDiastolic: t("patientDetail.diastolic"),
   };
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white dark:border-slate-700/60 dark:bg-slate-800">

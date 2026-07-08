@@ -171,11 +171,17 @@ const ThresholdAlert = () => {
     const viNames: Record<string, string> = {
       temperature: "Nhiệt độ",
       blood_pressure_systolic: "Huyết áp tâm thu",
+      bloodPressureSystolic: "Huyết áp tâm thu",
       blood_pressure_diastolic: "Huyết áp tâm trương",
+      bloodPressureDiastolic: "Huyết áp tâm trương",
       blood_pressure: "Huyết áp",
       heart_rate: "Nhịp tim",
+      heartRate: "Nhịp tim",
+      respiratory_rate: "Nhịp thở",
+      respiratoryRate: "Nhịp thở",
       glucose: "Đường huyết",
       spo2: "SpO2",
+      spO2: "SpO2",
       weight: "Cân nặng"
     };
 
@@ -186,12 +192,14 @@ const ThresholdAlert = () => {
       unit = "mg/dL";
     } else if (v.type === "temperature") {
       unit = "°C";
-    } else if (v.type === "blood_pressure") {
+    } else if (v.type === "blood_pressure" || v.type === "bloodPressureSystolic" || v.type === "bloodPressureDiastolic") {
       unit = "mmHg";
-    } else if (v.type === "spo2") {
+    } else if (v.type === "spo2" || v.type === "spO2") {
       unit = "%";
-    } else if (v.type === "heart_rate") {
+    } else if (v.type === "heart_rate" || v.type === "heartRate") {
       unit = "bpm";
+    } else if (v.type === "respiratory_rate" || v.type === "respiratoryRate") {
+      unit = "lần/phút";
     } else if (v.type === "weight") {
       unit = "kg";
     }

@@ -53,7 +53,9 @@ function formatNumber(value) {
 const VIOLATION_LABELS = {
   temperature: "Nhiệt độ",
   heart_rate: "Nhịp tim",
+  heartRate: "Nhịp tim",
   respiratory_rate: "Nhịp thở",
+  respiratoryRate: "Nhịp thở",
   spo2: "SpO2",
   blood_pressure_systolic: "Huyết áp tâm thu",
   blood_pressure_diastolic: "Huyết áp tâm trương",
@@ -63,10 +65,16 @@ const VIOLATION_LABELS = {
   sys_min: "Huyết áp tâm thu",
   bp_diastolic_min: "Huyết áp tâm trương",
   bp_diastolic_max: "Huyết áp tâm trương",
+  dia_max: "Huyết áp tâm trương",
+  dia_min: "Huyết áp tâm trương",
   temperature_max: "Nhiệt độ",
   temperature_min: "Nhiệt độ",
   heart_rate_max: "Nhịp tim",
   heart_rate_min: "Nhịp tim",
+  heartRate_max: "Nhịp tim",
+  heartRate_min: "Nhịp tim",
+  respiratoryRate_max: "Nhịp thở",
+  respiratoryRate_min: "Nhịp thở",
   spo2_min: "SpO2",
   glucose_min: "Đường huyết",
   glucose_max: "Đường huyết",
@@ -92,13 +100,16 @@ function getViolationIcon(type) {
     case "temperature":
       return "thermometer-outline";
     case "heart_rate":
+    case "heartRate":
       return "heart-outline";
     case "respiratory_rate":
+    case "respiratoryRate":
       return "pulse-outline";
     case "spo2":
       return "water-outline";
     case "blood_pressure_systolic":
     case "blood_pressure_diastolic":
+    case "bloodPressure":
       return "fitness-outline";
     case "glucose":
       return "flask-outline";
@@ -112,13 +123,16 @@ function getViolationUnit(type) {
     case "temperature":
       return "°C";
     case "heart_rate":
+    case "heartRate":
       return "bpm";
     case "respiratory_rate":
+    case "respiratoryRate":
       return "lần/phút";
     case "spo2":
       return "%";
     case "blood_pressure_systolic":
     case "blood_pressure_diastolic":
+    case "bloodPressure":
       return "mmHg";
     case "glucose":
       return "mg/dL";
@@ -428,7 +442,7 @@ export default function AlertScreen({ isEmbedded }) {
                           </View>
                         </View>
 
-                        {summary.labels.length > 0 ? (
+                        {summary.labels.length > 1 ? (
                           <View style={styles.fieldWrap}>
                             {summary.labels.map((label) => (
                               <View key={`${alert.id}-${label}`} style={styles.fieldChip}>
@@ -442,10 +456,11 @@ export default function AlertScreen({ isEmbedded }) {
                           {getViolations(alert).map((violation, index) => {
                             const dir = getViolationDirection(violation);
                             const isOver = dir === "Cao";
+                            const rowLabel = summary.labels.length === 1 ? "Kết quả đo" : getViolationLabel(violation.type);
                             return (
                               <View key={`${alert.id}-${violation.type}-${index}`} style={styles.violationRow}>
                                 <View style={styles.violationInfo}>
-                                  <Text style={styles.violationLabel}>{getViolationLabel(violation.type)}</Text>
+                                  <Text style={styles.violationLabel}>{rowLabel}</Text>
                                   <Text style={styles.violationThresholdInline}>
                                     Ngưỡng: {formatViolationReading(violation, "threshold")}
                                   </Text>

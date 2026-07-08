@@ -35,10 +35,15 @@ const SEVERITY_OPTIONS = [
 const VIOLATION_LABELS = {
   temperature: "Nhiệt độ",
   heart_rate: "Nhịp tim",
+  heartRate: "Nhịp tim",
   respiratory_rate: "Nhịp thở",
+  respiratoryRate: "Nhịp thở",
   spo2: "SpO2",
+  spO2: "SpO2",
   blood_pressure_systolic: "HA tâm thu",
+  bloodPressureSystolic: "HA tâm thu",
   blood_pressure_diastolic: "HA tâm trương",
+  bloodPressureDiastolic: "HA tâm trương",
   glucose: "Đường huyết",
   sys: "HA tâm thu",
   bp_diastolic: "HA tâm trương",
@@ -47,10 +52,15 @@ const VIOLATION_LABELS = {
 const UNITS = {
   temperature: "°C",
   heart_rate: "bpm",
+  heartRate: "bpm",
   respiratory_rate: "nhịp/phút",
+  respiratoryRate: "nhịp/phút",
   spo2: "%",
+  spO2: "%",
   blood_pressure_systolic: "mmHg",
+  bloodPressureSystolic: "mmHg",
   blood_pressure_diastolic: "mmHg",
+  bloodPressureDiastolic: "mmHg",
   glucose: "mmol/L",
 };
 

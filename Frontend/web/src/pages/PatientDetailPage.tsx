@@ -118,15 +118,20 @@ const mapViolationType = (type: string) => {
     systolic: "Huyết áp tâm thu",
     diastolic: "Huyết áp tâm trương",
     blood_pressure_systolic: "Huyết áp tâm thu",
+    bloodPressureSystolic: "Huyết áp tâm thu",
     blood_pressure_diastolic: "Huyết áp tâm trương",
+    bloodPressureDiastolic: "Huyết áp tâm trương",
     sys: "Huyết áp tâm thu",
     bp_diastolic: "Huyết áp tâm trương",
     bloodPressure: "Huyết áp",
     heart_rate: "Nhịp tim",
+    heartRate: "Nhịp tim",
     temperature: "Nhiệt độ",
     spo2: "SpO2",
+    spO2: "SpO2",
     glucose: "Đường huyết",
     respiratory_rate: "Nhịp thở",
+    respiratoryRate: "Nhịp thở",
   };
   return map[cleanType] || map[type] || type;
 };

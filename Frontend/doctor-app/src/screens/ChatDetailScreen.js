@@ -187,10 +187,15 @@ function getViolationLabel(type) {
   const labels = {
     temperature: "Nhiệt độ",
     heart_rate: "Nhịp tim",
+    heartRate: "Nhịp tim",
     respiratory_rate: "Nhịp thở",
+    respiratoryRate: "Nhịp thở",
     spo2: "SpO2",
+    spO2: "SpO2",
     blood_pressure_systolic: "Huyết áp tâm thu",
+    bloodPressureSystolic: "Huyết áp tâm thu",
     blood_pressure_diastolic: "Huyết áp tâm trương",
+    bloodPressureDiastolic: "Huyết áp tâm trương",
     glucose: "Đường huyết",
     sys: "Huyết áp tâm thu",
     bp_diastolic: "Huyết áp tâm trương"
@@ -202,13 +207,19 @@ function getUnit(type) {
   const units = {
     temperature: "°C",
     heart_rate: "bpm",
+    heartRate: "bpm",
     respiratory_rate: "nhịp/phút",
+    respiratoryRate: "nhịp/phút",
     spo2: "%",
+    spO2: "%",
     blood_pressure_systolic: "mmHg",
+    bloodPressureSystolic: "mmHg",
     blood_pressure_diastolic: "mmHg",
+    bloodPressureDiastolic: "mmHg",
     glucose: "mmol/L",
   };
-  return units[type] || "";
+  const clean = type?.replace(/_(max|min|high|low)$/, "");
+  return units[clean] || units[type] || "";
 }
 
 export default function ChatDetailScreen() {
@@ -359,85 +370,103 @@ export default function ChatDetailScreen() {
 
   // 5. Connect to WebSocket
   useEffect(() => {
+    let cancelled = false;
     if (!isFocused || !conversation?.id) {
       return undefined;
     }
 
     setSocketState("connecting");
-    const socket = new WebSocket(buildConversationSocketUrl(conversation.id));
-    socketRef.current = socket;
+    
+    const connectSocket = async () => {
+      try {
+        const url = await buildConversationSocketUrl(conversation.id);
+        if (cancelled) return;
 
-    socket.onopen = () => {
-      setSocketState("open");
-      setError(null);
-    };
+        const socket = new WebSocket(url);
+        socketRef.current = socket;
 
-    socket.onmessage = (event) => {
-      const payloads = parseSocketPayload(event.data);
+        socket.onopen = () => {
+          setSocketState("open");
+          setError(null);
+        };
 
-      payloads.forEach((payload) => {
-        if (payload?.type === "error") {
-          setError(payload.error || "Có lỗi xảy ra khi truyền tin nhắn.");
-          return;
-        }
+        socket.onmessage = (event) => {
+          const payloads = parseSocketPayload(event.data);
 
-        if (payload?.type === "NEW_MESSAGE" && payload?.data) {
-          setMessages((current) => mergeMessages(current, [normalizeMessage(payload.data)]));
-          return;
-        }
+          payloads.forEach((payload) => {
+            if (payload?.type === "error") {
+              setError(payload.error || "Có lỗi xảy ra khi truyền tin nhắn.");
+              return;
+            }
 
-        if (payload?.type === "DELIVERED" && payload?.data?.userId && payload?.data?.messageId) {
-          setConversation((current) => {
-            if (!current) return current;
-            return {
-              ...current,
-              participants: current.participants.map((p) =>
-                p.userId === payload.data.userId
-                  ? { ...p, lastDeliveredMessageId: payload.data.messageId }
-                  : p
-              ),
-            };
+            if (payload?.type === "NEW_MESSAGE" && payload?.data) {
+              setMessages((current) => mergeMessages(current, [normalizeMessage(payload.data)]));
+              return;
+            }
+
+            if (payload?.type === "DELIVERED" && payload?.data?.userId && payload?.data?.messageId) {
+              setConversation((current) => {
+                if (!current) return current;
+                return {
+                  ...current,
+                  participants: current.participants.map((p) =>
+                    p.userId === payload.data.userId
+                      ? { ...p, lastDeliveredMessageId: payload.data.messageId }
+                      : p
+                  ),
+                };
+              });
+              return;
+            }
+
+            if (payload?.type === "READ" && payload?.data?.userId && payload?.data?.lastReadMessageId) {
+              setConversation((current) => {
+                if (!current) return current;
+                return {
+                  ...current,
+                  participants: current.participants.map((p) =>
+                    p.userId === payload.data.userId
+                      ? {
+                        ...p,
+                        lastDeliveredMessageId: payload.data.lastReadMessageId,
+                        lastReadMessageId: payload.data.lastReadMessageId,
+                      }
+                      : p
+                  ),
+                };
+              });
+              return;
+            }
+
+            if (payload && typeof payload === "object" && (payload.id || payload._id) && payload.content) {
+              // Direct message object fallback
+              setMessages((current) => mergeMessages(current, [normalizeMessage(payload)]));
+            }
           });
-          return;
-        }
+        };
 
-        if (payload?.type === "READ" && payload?.data?.userId && payload?.data?.lastReadMessageId) {
-          setConversation((current) => {
-            if (!current) return current;
-            return {
-              ...current,
-              participants: current.participants.map((p) =>
-                p.userId === payload.data.userId
-                  ? {
-                    ...p,
-                    lastDeliveredMessageId: payload.data.lastReadMessageId,
-                    lastReadMessageId: payload.data.lastReadMessageId,
-                  }
-                  : p
-              ),
-            };
-          });
-          return;
-        }
+        socket.onerror = () => {
+          setError("Kết nối thời gian thực đang lỗi. Hãy mở lại màn hình.");
+        };
 
-        if (payload && typeof payload === "object" && (payload.id || payload._id) && payload.content) {
-          // Direct message object fallback
-          setMessages((current) => mergeMessages(current, [normalizeMessage(payload)]));
+        socket.onclose = () => {
+          setSocketState("closed");
+        };
+      } catch (err) {
+        if (!cancelled) {
+          setError("Không thể khởi tạo kết nối.");
         }
-      });
+      }
     };
 
-    socket.onerror = () => {
-      setError("Kết nối thời gian thực đang lỗi. Hãy mở lại màn hình.");
-    };
-
-    socket.onclose = () => {
-      setSocketState("closed");
-    };
+    connectSocket();
 
     return () => {
-      socket.close();
-      socketRef.current = null;
+      cancelled = true;
+      if (socketRef.current) {
+        socketRef.current.close();
+        socketRef.current = null;
+      }
     };
   }, [conversation?.id, isFocused]);
 

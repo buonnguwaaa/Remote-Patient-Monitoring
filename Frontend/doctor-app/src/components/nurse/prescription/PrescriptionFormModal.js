@@ -297,7 +297,7 @@ export function PrescriptionFormModal({ visible, onClose, initialData, onSave, p
               <TouchableOpacity style={styles.patientBox} onPress={() => setShowPatientPicker(true)}>
                 <Ionicons name="person" size={20} color="#2563EB" />
                 <Text style={styles.patientName}>
-                  {patients.find(p => p.user?._id === formData.patientId)?.user?.name || "Chọn bệnh nhân..."}
+                  {patients.find(p => (p.user?._id || p.patientId) === formData.patientId)?.user?.name || patients.find(p => (p.user?._id || p.patientId) === formData.patientId)?.patientName || "Chọn bệnh nhân..."}
                 </Text>
               </TouchableOpacity>
             </Section>
@@ -389,17 +389,17 @@ export function PrescriptionFormModal({ visible, onClose, initialData, onSave, p
                 placeholderTextColor="#9CA3AF"
               />
               <ScrollView style={{ maxHeight: 400 }}>
-                {patients.filter(p => p.user?.name?.toLowerCase().includes(searchPatient.toLowerCase())).map(p => (
+                {patients.filter(p => (p.user?.name || p.patientName)?.toLowerCase().includes(searchPatient.toLowerCase())).map(p => (
                   <TouchableOpacity 
-                    key={p.user?._id} 
+                    key={p.user?._id || p.patientId} 
                     style={styles.patientRow} 
                     onPress={() => {
-                      setFormData({ ...formData, patientId: p.user?._id });
+                      setFormData({ ...formData, patientId: p.user?._id || p.patientId });
                       setShowPatientPicker(false);
                     }}
                   >
                     <Ionicons name="person-circle" size={32} color="#9CA3AF" />
-                    <Text style={styles.patientRowName}>{p.user?.name}</Text>
+                    <Text style={styles.patientRowName}>{p.user?.name || p.patientName}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>

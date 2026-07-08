@@ -54,9 +54,9 @@ export function AuthProvider({ children }) {
     let socket = null;
     let reconnectTimeout = null;
 
-    const connectSocket = () => {
+    const connectSocket = async () => {
       try {
-        const url = buildRealtimeSocketUrl();
+        const url = await buildRealtimeSocketUrl();
         socket = new WebSocket(url);
 
         socket.onopen = () => {

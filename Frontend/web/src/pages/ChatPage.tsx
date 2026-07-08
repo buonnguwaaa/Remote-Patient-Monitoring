@@ -405,10 +405,15 @@ function getViolationLabel(type: string, t: (key: string) => string) {
   const labels: Record<string, string> = {
     temperature: t("patientDetail.temperature"),
     heart_rate: t("patientDetail.heartRate"),
+    heartRate: t("patientDetail.heartRate"),
     respiratory_rate: t("patientDetail.respiratoryRate"),
+    respiratoryRate: t("patientDetail.respiratoryRate"),
     spo2: "SpO2",
+    spO2: "SpO2",
     blood_pressure_systolic: t("patientDetail.systolic"),
+    bloodPressureSystolic: t("patientDetail.systolic"),
     blood_pressure_diastolic: t("patientDetail.diastolic"),
+    bloodPressureDiastolic: t("patientDetail.diastolic"),
     glucose: t("patientDetail.glucose"),
     sys: t("patientDetail.systolic"),
     bp_diastolic: t("patientDetail.diastolic")
