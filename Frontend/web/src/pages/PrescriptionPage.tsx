@@ -1,12 +1,14 @@
 import {
   type ChangeEvent,
   type FormEvent,
+  type MouseEvent,
   useCallback,
   useEffect,
   useMemo,
   useState,
 } from "react";
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
+import { createPortal } from "react-dom";
 import {
   FaChevronDown,
   FaChevronRight,
@@ -322,6 +324,8 @@ export default function PrescriptionPage() {
   const initialPatientId = searchParams.get("patientId") ?? "";
 
   // ---- State ----
+  const [hoveredPrescription, setHoveredPrescription] = useState<Prescription | null>(null);
+  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
   const [patients, setPatients] = useState<AssignmentResponse[]>([]);
   const [selectedPatientId, setSelectedPatientId] = useState(initialPatientId);
   const [statusFilter, setStatusFilter] = useState<PrescriptionStatus | "">("");
@@ -455,6 +459,21 @@ export default function PrescriptionPage() {
   useEffect(() => { setCurrentPage(1); }, [selectedPatientId, statusFilter, searchTerm]);
 
   // ---- Handlers ----
+  const handleTooltipMouseEnter = (e: MouseEvent<HTMLTableCellElement>, p: Prescription) => {
+    const rect = e.currentTarget.parentElement?.getBoundingClientRect();
+    if (rect) {
+      setHoveredPrescription(p);
+      setTooltipPosition({
+        x: rect.left + window.scrollX + 20,
+        y: rect.bottom + window.scrollY + 8
+      });
+    }
+  };
+
+  const handleTooltipMouseLeave = () => {
+    setHoveredPrescription(null);
+  };
+
   const handleOpenCreate = (patientId = selectedPatientId) => {
     setFormData(createDefaultFormData(patientId));
     setEditingPrescriptionId(null);
@@ -800,32 +819,34 @@ export default function PrescriptionPage() {
                               return (
                                 <tr 
                                   key={p.id} 
-                                  className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition cursor-pointer relative group"
+                                  className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition cursor-pointer relative"
                                   onClick={() => navigate(`/prescriptions/${p.id}`)}
                                 >
-                                  <td className="px-5 py-4">
+                                  <td 
+                                    className="px-5 py-4 relative"
+                                    onMouseEnter={(e) => handleTooltipMouseEnter(e, p)}
+                                    onMouseLeave={handleTooltipMouseLeave}
+                                  >
                                     <div className="font-medium text-slate-800 dark:text-slate-200">
                                       {drugsStr} {hasMore && <span className="text-slate-400 text-xs italic"> +{p.medications.length - 2} thuốc khác</span>}
                                     </div>
                                     <div className="text-xs text-slate-500 mt-1">{p.medications.length} loại thuốc</div>
-                                    {/* Hover tooltip */}
-                                    <div className="absolute left-1/4 top-[80%] hidden w-72 z-50 group-hover:block bg-slate-800 text-slate-100 p-4 rounded-xl shadow-xl text-xs border border-slate-700 pointer-events-none">
-                                      <h4 className="font-bold mb-2 text-sm text-blue-300">Chi tiết đơn thuốc:</h4>
-                                      <ul className="space-y-1.5 mb-2">
-                                         {(p.medications || []).map((m, i) => (
-                                           <li key={i}><span className="font-semibold text-white">{m.drugName}</span> - {m.dosage} ({(m.schedule || []).length} lần/ngày)</li>
-                                         ))}
-                                      </ul>
-                                      <div className="mt-2 pt-2 border-t border-slate-600 text-slate-400 italic">Click để xem toàn bộ thông tin đơn thuốc</div>
-                                    </div>
                                   </td>
-                                  <td className="px-5 py-4">
+                                  <td 
+                                    className="px-5 py-4"
+                                    onMouseEnter={(e) => handleTooltipMouseEnter(e, p)}
+                                    onMouseLeave={handleTooltipMouseLeave}
+                                  >
                                     <div className="text-slate-700 dark:text-slate-300">{formatDate(p.startDate)} {p.endDate && `- ${formatDate(p.endDate)}`}</div>
                                     <div className="text-xs text-slate-500 mt-1 truncate max-w-[200px]" title={p.daysOfWeek.map(d => WEEKDAY_OPTIONS.find(o=>o.value===d)?.label).join(", ")}>
                                       Lặp lại: {p.daysOfWeek.length===7 ? "Mỗi ngày" : p.daysOfWeek.map(d => WEEKDAY_OPTIONS.find(o=>o.value===d)?.label).join(", ")}
                                     </div>
                                   </td>
-                                  <td className="px-5 py-4">
+                                  <td 
+                                    className="px-5 py-4"
+                                    onMouseEnter={(e) => handleTooltipMouseEnter(e, p)}
+                                    onMouseLeave={handleTooltipMouseLeave}
+                                  >
                                     <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${getStatusClasses(p.status)}`}>
                                       {getStatusLabel(p.status)}
                                     </span>
@@ -1069,6 +1090,25 @@ export default function PrescriptionPage() {
              </div>
           </form>
         </div>
+      )}
+
+      {hoveredPrescription && createPortal(
+        <div 
+          className="absolute z-[9999] w-72 bg-slate-800 text-slate-100 p-4 rounded-xl shadow-xl text-xs border border-slate-700 pointer-events-none"
+          style={{
+            left: tooltipPosition.x,
+            top: tooltipPosition.y,
+          }}
+        >
+          <h4 className="font-bold mb-2 text-sm text-blue-300">Chi tiết đơn thuốc:</h4>
+          <ul className="space-y-1.5 mb-2">
+             {(hoveredPrescription.medications || []).map((m, i) => (
+               <li key={i}><span className="font-semibold text-white">{m.drugName}</span> - {m.dosage} ({(m.schedule || []).length} lần/ngày)</li>
+             ))}
+          </ul>
+          <div className="mt-2 pt-2 border-t border-slate-600 text-slate-400 italic">Click để xem toàn bộ thông tin đơn thuốc</div>
+        </div>,
+        document.body
       )}
     </div>
   );

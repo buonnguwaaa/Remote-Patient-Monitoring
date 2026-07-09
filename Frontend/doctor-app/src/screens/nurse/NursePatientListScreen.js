@@ -16,6 +16,7 @@ import { useNursePatientListData } from "../../hooks/useNursePatientListData";
 import NursePatientCard from "../../components/NursePatientCard";
 import { NursePatientListHeader } from "../../components/nurse/patientList/NursePatientListHeader";
 import { NursePatientListFilter } from "../../components/nurse/patientList/NursePatientListFilter";
+import { removeVietnameseTones } from "../../utils/stringUtils";
 
 export default function NursePatientListScreen() {
   const navigation = useNavigation();
@@ -39,8 +40,8 @@ export default function NursePatientListScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      loadPatients();
-    }, [loadPatients])
+      loadPatients({ showLoader: !patients.length });
+    }, [loadPatients, patients.length])
   );
 
   const handlePatientPress = useCallback(
@@ -59,10 +60,12 @@ export default function NursePatientListScreen() {
 
     // Filter by search
     if (search.trim()) {
-      const q = search.toLowerCase();
+      const q = removeVietnameseTones(search.toLowerCase());
       list = list.filter((p) => {
-        const nameMatch = p.user?.name?.toLowerCase().includes(q);
-        const codeMatch = p.patientCode?.toLowerCase().includes(q);
+        const normalizedName = removeVietnameseTones(p.user?.name?.toLowerCase() || "");
+        const normalizedCode = removeVietnameseTones(p.patientCode?.toLowerCase() || "");
+        const nameMatch = normalizedName.includes(q);
+        const codeMatch = normalizedCode.includes(q);
         return nameMatch || codeMatch;
       });
     }
@@ -134,46 +137,44 @@ export default function NursePatientListScreen() {
     );
   }, [loading, search]);
 
-  const renderListHeader = useCallback(() => (
-    <View style={{ paddingBottom: 8 }}>
-      <NursePatientListHeader 
-        nurseName={user?.name}
-        totalPatients={patients?.length || 0}
-        patientsWithAlerts={patientsWithAlertsCount}
-        search={search}
-        setSearch={setSearch}
-      />
-      {loadError ? (
-        <View style={styles.errorBox}>
-          <Ionicons name="warning" size={16} color="#B91C1C" />
-          <Text style={styles.errorText}>{loadError}</Text>
-        </View>
-      ) : null}
-      {loadNotice ? (
-        <View style={styles.noticeBox}>
-          <Ionicons name="information-circle" size={16} color="#B45309" />
-          <Text style={styles.noticeText}>{loadNotice}</Text>
-        </View>
-      ) : null}
-      <NursePatientListFilter 
-        filter={filter} 
-        setFilter={setFilter} 
-        counts={{
-          all: patients.length,
-          alerts: patientsWithAlertsCount,
-          stable: patients.length - patientsWithAlertsCount
-        }} 
-      />
-    </View>
-  ), [user, patients, patientsWithAlertsCount, search, filter, loadError, loadNotice]);
-
   return (
     <SafeAreaView style={styles.safeArea}>
       <FlatList
         data={sortedAndFilteredPatients}
         keyExtractor={(item) => item.patientId}
         renderItem={renderItem}
-        ListHeaderComponent={renderListHeader}
+        ListHeaderComponent={
+          <View style={{ paddingBottom: 8 }}>
+            <NursePatientListHeader 
+              nurseName={user?.name}
+              totalPatients={patients?.length || 0}
+              patientsWithAlerts={patientsWithAlertsCount}
+              search={search}
+              setSearch={setSearch}
+            />
+            {loadError ? (
+              <View style={styles.errorBox}>
+                <Ionicons name="warning" size={16} color="#B91C1C" />
+                <Text style={styles.errorText}>{loadError}</Text>
+              </View>
+            ) : null}
+            {loadNotice ? (
+              <View style={styles.noticeBox}>
+                <Ionicons name="information-circle" size={16} color="#B45309" />
+                <Text style={styles.noticeText}>{loadNotice}</Text>
+              </View>
+            ) : null}
+            <NursePatientListFilter 
+              filter={filter} 
+              setFilter={setFilter} 
+              counts={{
+                all: patients.length,
+                alerts: patientsWithAlertsCount,
+                stable: patients.length - patientsWithAlertsCount
+              }} 
+            />
+          </View>
+        }
         ListEmptyComponent={renderEmpty}
         contentContainerStyle={styles.listContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} />}

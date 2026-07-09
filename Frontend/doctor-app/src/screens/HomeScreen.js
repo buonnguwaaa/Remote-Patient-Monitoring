@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import {
   View,
   StyleSheet,
@@ -108,23 +108,31 @@ export default function HomeScreen({ onNavigate }) {
     }
   };
 
-  const patientIds = new Set(assignments.map((a) => a.patientId));
-  const myAlerts = alerts.filter((a) => patientIds.has(a.patientId));
+  const patientIds = useMemo(() => new Set(assignments.map((a) => a.patientId)), [assignments]);
+  const myAlerts = useMemo(() => alerts.filter((a) => patientIds.has(a.patientId)), [alerts, patientIds]);
 
-  const attentionPatients = new Set();
-  myAlerts.forEach((a) => {
-    if ((a.severity === "high" || a.severity === "medium") && a.status === "open") {
-      attentionPatients.add(a.patientId);
-    }
-  });
+  const { attention, stable, total } = useMemo(() => {
+    const attentionPatients = new Set();
+    myAlerts.forEach((a) => {
+      if ((a.severity === "high" || a.severity === "medium") && a.status === "open") {
+        attentionPatients.add(a.patientId);
+      }
+    });
+    const attentionCount = attentionPatients.size;
+    const totalCount = assignments.length;
+    const stableCount = Math.max(totalCount - attentionCount, 0);
+    return {
+      attention: attentionCount,
+      total: totalCount,
+      stable: stableCount,
+    };
+  }, [myAlerts, assignments]);
 
-  const attention = attentionPatients.size;
-  const total = assignments.length;
-  const stable = Math.max(total - attention, 0);
-
-  const recentAlerts = [...myAlerts]
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-    .slice(0, 5);
+  const recentAlerts = useMemo(() => {
+    return [...myAlerts]
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 5);
+  }, [myAlerts]);
 
   const now = new Date();
   const hour = now.getHours();
