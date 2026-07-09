@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   FaCheckCircle,
   FaCommentDots,
@@ -90,18 +90,46 @@ const ThresholdAlert = () => {
 
   const { toast, showToast, hideToast } = useToast();
 
+  const queryClient = useQueryClient();
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Reset page when filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, severityFilter, searchQuery]);
+
+  const activeStatus = activeTab === "PENDING" ? "open" : activeTab === "RESOLVED" ? "ack" : "";
+
+  // Query 1: Fetch all open alerts (lightweight) to compute statistics
+  const { data: openAlertsData = [] } = useQuery({
+    queryKey: ["alerts", "open"],
+    queryFn: () => getAlerts({ status: "open", limit: 1000 }),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Query 2: Fetch paginated alerts
   const { data: alertsData = [], isLoading: loading, isFetching: refreshing, refetch, dataUpdatedAt } = useQuery({
-    queryKey: ["alerts"],
-    queryFn: () => getAlerts({ limit: 1000, page: 1, sortOrder: "desc" }),
+    queryKey: ["alerts", { 
+      page: currentPage, 
+      limit: 10, 
+      status: activeStatus,
+      severity: severityFilter === "ALL" ? "" : severityFilter.toLowerCase(),
+      patientId: filterPatientId || ""
+    }],
+    queryFn: () => getAlerts({ 
+      page: currentPage, 
+      limit: 10, 
+      status: activeStatus || undefined,
+      severity: severityFilter === "ALL" ? undefined : severityFilter.toLowerCase() as any,
+      patientId: filterPatientId || undefined,
+      sortOrder: "desc"
+    }),
     staleTime: 5 * 60 * 1000,
   });
 
   const alerts = useMemo(() => {
-    if (filterPatientId) {
-      return alertsData.filter((a) => a.patientId === filterPatientId);
-    }
     return alertsData;
-  }, [alertsData, filterPatientId]);
+  }, [alertsData]);
 
   const lastUpdated = useMemo(() => {
     return dataUpdatedAt ? new Date(dataUpdatedAt).toLocaleTimeString() : null;
@@ -127,6 +155,7 @@ const ThresholdAlert = () => {
       showToast(`Đã xử lý thành công ${currentAlertsToResolve.length} cảnh báo`, "success");
       setShowResolveModal(false);
       setCurrentAlertsToResolve([]);
+      void queryClient.invalidateQueries({ queryKey: ["alerts", "open"] });
       void refetch();
     } catch (error: any) {
       showToast(error.message || "Lỗi khi xử lý cảnh báo", "error");
@@ -197,14 +226,7 @@ const ThresholdAlert = () => {
   const filteredAlerts = useMemo(() => {
     let result = alerts;
 
-    // Filter by tab
-    if (activeTab === "PENDING") {
-      result = result.filter(a => a.status === "open");
-    } else if (activeTab === "RESOLVED") {
-      result = result.filter(a => a.status === "ack");
-    }
-
-    // Search query
+    // Search query (filtered locally on current page results)
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter(a => 
@@ -213,22 +235,8 @@ const ThresholdAlert = () => {
       );
     }
 
-    // Severity
-    if (severityFilter !== "ALL") {
-      result = result.filter(a => a.severity === severityFilter.toLowerCase());
-    }
-
-    // Sort: High severity first, then newest
-    result.sort((a, b) => {
-      const severityMap: Record<string, number> = { "high": 3, "medium": 2, "low": 1 };
-      const sevA = severityMap[a.severity] || 0;
-      const sevB = severityMap[b.severity] || 0;
-      if (sevA !== sevB) return sevB - sevA; // DESC
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(); // DESC
-    });
-
     return result;
-  }, [alerts, activeTab, searchQuery, severityFilter]);
+  }, [alerts, searchQuery]);
 
   // Group alerts for pending tab
   const groupedPendingAlerts = useMemo(() => {
@@ -281,12 +289,14 @@ const ThresholdAlert = () => {
   }, [filteredAlerts, activeTab]);
 
   const stats = useMemo(() => {
-    const pending = alerts.filter(a => a.status === "open");
+    const pending = filterPatientId 
+      ? openAlertsData.filter(a => a.patientId === filterPatientId)
+      : openAlertsData;
     return {
       pendingTotal: pending.length,
       pendingHigh: pending.filter(a => a.severity === "high").length,
     };
-  }, [alerts]);
+  }, [openAlertsData, filterPatientId]);
 
   // Pagination for ALL / RESOLVED tabs
   // const itemsPerPage = 10;
@@ -617,6 +627,29 @@ const ThresholdAlert = () => {
       {renderFilters()}
 
       {activeTab === "PENDING" ? renderPendingTab() : renderTableTab()}
+
+      {/* Pagination */}
+      <div className="mt-4 flex items-center justify-between border-t border-slate-200 dark:border-slate-700 pt-4 px-4 pb-2">
+        <div className="text-xs text-slate-500 dark:text-slate-400">
+          Trang {currentPage}
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1 || loading}
+            className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+          >
+            Trang trước
+          </button>
+          <button
+            onClick={() => setCurrentPage(prev => prev + 1)}
+            disabled={alertsData.length < 10 || loading}
+            className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+          >
+            Trang sau
+          </button>
+        </div>
+      </div>
 
       {/* Resolve Modal */}
       {showResolveModal && (

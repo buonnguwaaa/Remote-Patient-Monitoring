@@ -42,7 +42,6 @@ interface KpiDef {
 }
 
 const CHART_BUCKETS = 4;
-const MAX_ALERT_FETCH = 1000;
 
 
 
@@ -512,17 +511,23 @@ const DashBoard = () => {
 
   const [assignments, setAssignments] = useState<AssignmentResponse[]>([]);
   const [alerts, setAlerts] = useState<AlertResponse[]>([]);
-  const { data: rawAlerts } = useQuery({
-    queryKey: ["alerts"],
-    queryFn: () => getAlerts({ limit: MAX_ALERT_FETCH, page: 1, sortOrder: "desc" }),
+  const { data: openAlerts = [] } = useQuery({
+    queryKey: ["alerts", "open"],
+    queryFn: () => getAlerts({ status: "open", limit: 1000 }),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: recentAlertsData = [] } = useQuery({
+    queryKey: ["alerts", { page: 1, limit: 10, status: "", severity: "", patientId: "" }],
+    queryFn: () => getAlerts({ page: 1, limit: 10, sortOrder: "desc" }),
     staleTime: 5 * 60 * 1000,
   });
 
   useEffect(() => {
-    if (rawAlerts) {
-      setAlerts(rawAlerts);
+    if (openAlerts) {
+      setAlerts(openAlerts);
     }
-  }, [rawAlerts]);
+  }, [openAlerts]);
 
   const [appointments, setAppointments] = useState<FollowUpAppointment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -722,11 +727,8 @@ const DashBoard = () => {
   }, [assignments, error, latestAlertsByPatient, loading]);
 
   const recentAlerts = useMemo(
-    () =>
-      [...filteredAlerts]
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-        .slice(0, 5),
-    [filteredAlerts],
+    () => recentAlertsData.slice(0, 5),
+    [recentAlertsData],
   );
 
   const chartPayload = useMemo(
