@@ -5,8 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/helper/measurement_helper"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
 	chatDomain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/chat"
 	userDomain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
@@ -19,7 +21,6 @@ import (
 
 func (s *Seeder) seedAssignments(ctx context.Context, data *seedData) error {
 	created := 0
-	now := time.Now().UTC()
 
 	for i := 0; i < seedCount; i++ {
 		patient := data.patients[i]
@@ -29,14 +30,21 @@ func (s *Seeder) seedAssignments(ctx context.Context, data *seedData) error {
 			return err
 		}
 
+		// assignmentRepo.Create doesn't override CreatedAt, so it can be set
+		// directly here: shortly after the patient's account was created
+		// (accountCreatedAt is 120+ days ago), and comfortably before the
+		// threshold/measurements/prescriptions that follow from having a
+		// doctor assigned in the first place (all <=114 days ago).
+		assignedAt := accountCreatedAt(i).AddDate(0, 0, 1+i%7)
+
 		assignment := &domain.Assignment{
 			ID:         primitive.NewObjectID(),
 			PatientID:  patient.ID,
 			DoctorID:   data.doctors[i%len(data.doctors)].ID,
 			NurseID:    data.nurses[i%len(data.nurses)].ID,
 			AssignedBy: data.admins[0].ID,
-			CreatedAt:  now,
-			UpdatedAt:  now,
+			CreatedAt:  assignedAt,
+			UpdatedAt:  assignedAt,
 		}
 		if _, err := s.assignmentRepo.Create(ctx, assignment); err != nil {
 			return err
@@ -48,7 +56,8 @@ func (s *Seeder) seedAssignments(ctx context.Context, data *seedData) error {
 	return nil
 }
 
-func (s *Seeder) seedThresholds(ctx context.Context, data *seedData) error {
+func (s *Seeder) seedThresholds(ctx context.Context, data *seedData) ([]*domain.Threshold, error) {
+	result := make([]*domain.Threshold, 0, seedCount)
 	created := 0
 	glucoseMin := 70.0
 	glucoseMax := 140.0
@@ -60,9 +69,10 @@ func (s *Seeder) seedThresholds(ctx context.Context, data *seedData) error {
 			PatientID: patient.ID.Hex(),
 		})
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if len(existing) > 0 {
+			result = append(result, &existing[0])
 			continue
 		}
 
@@ -83,16 +93,33 @@ func (s *Seeder) seedThresholds(ctx context.Context, data *seedData) error {
 			DiaMax:             90,
 			GlucoseMin:         &glucoseMin,
 			GlucoseMax:         &glucoseMax,
-			EffectiveFrom:      now.Add(-time.Duration(i) * time.Hour),
+			// Must predate every measurement seedAlerts will evaluate against
+			// it (measurements go back up to ~51 days, see seedMeasurements)
+			// but still land after the patient's own account was created
+			// (accountCreatedAt: 120+ days ago) - otherwise EvaluateAndCreate
+			// AlertActivity would find no threshold effective yet at
+			// measurement time and produce no alert at all, a state the real
+			// system can't reach.
+			EffectiveFrom: now.AddDate(0, 0, -(95 + i%20)),
 		}
-		if _, err := s.thresholdRepo.Create(ctx, threshold); err != nil {
-			return err
+		createdThreshold, err := s.thresholdRepo.Create(ctx, threshold)
+		if err != nil {
+			return nil, err
 		}
+		// thresholdRepo.Create hard-codes CreatedAt to time.Now(); pin it back
+		// to the same instant as EffectiveFrom so "when this threshold was set"
+		// matches "when it took effect".
+		if err := s.backdateCreatedAt(ctx, "thresholds", createdThreshold.ID, threshold.EffectiveFrom); err != nil {
+			return nil, err
+		}
+		createdThreshold.CreatedAt = threshold.EffectiveFrom
+		createdThreshold.UpdatedAt = threshold.EffectiveFrom
+		result = append(result, createdThreshold)
 		created++
 	}
 
 	log.Printf("[seed] thresholds: %d total (%d created)", seedCount, created)
-	return nil
+	return result, nil
 }
 
 func (s *Seeder) seedMeasurements(ctx context.Context, data *seedData) ([]*domain.Measurement, error) {
@@ -103,45 +130,91 @@ func (s *Seeder) seedMeasurements(ctx context.Context, data *seedData) ([]*domai
 
 	created := 0
 	if count < seedCount {
-		device := "home-monitor"
+		device := "Máy đo tại nhà"
 		preMeal := domain.MealTimingPreMeal
 		postMeal := domain.MealTimingPostMeal
 
 		for i := int(count); i < seedCount; i++ {
 			patient := data.patients[i]
-			note := fmt.Sprintf("Seed measurement %02d", i+1)
+			note := fmt.Sprintf("Số liệu đo mẫu %02d", i+1)
 
 			var measurement domain.Measurement
 			switch i % 3 {
 			case 0:
+				// Baseline vitals sit comfortably inside the seeded threshold
+				// (temp 36-37.5, HR 60-100, RR 12-20, SpO2>=95, sys 90-140,
+				// dia 60-90); a rotating subset is pushed out of range so
+				// seedAlerts (which evaluates against the real threshold) has
+				// a realistic mix of low/medium/high alerts instead of none.
+				temperature := 36.5 + float64(i%5)*0.1
+				heartRate := 70.0 + float64(i%20)
+				respiratoryRate := 14.0 + float64(i%6)
+				spo2 := 96.0 + float64(i%3)
+				systolic := 115.0 + float64(i%20)
+				diastolic := 75.0 + float64(i%10)
+
+				switch i % 8 {
+				case 0:
+					heartRate = 105 + float64(i%15) // tachycardia
+				case 3:
+					temperature = 38.6 + float64(i%4)*0.4 // fever
+				case 5:
+					spo2 = 92 - float64(i%5) // hypoxemia
+				case 7:
+					systolic = 148 + float64(i%15) // hypertension
+				}
+
 				measurement = domain.Measurement{
 					PatientID:       patient.ID,
-					Temperature:     fp(36.5 + float64(i%5)*0.1),
-					HeartRate:       fp(float64(70 + i%20)),
-					RespiratoryRate: fp(float64(14 + i%6)),
-					SpO2:            fp(float64(96 + i%3)),
+					Temperature:     fp(temperature),
+					HeartRate:       fp(heartRate),
+					RespiratoryRate: fp(respiratoryRate),
+					SpO2:            fp(spo2),
 					BloodPressure: domain.BloodPressure{
-						Systolic:  fp(float64(115 + i%20)),
-						Diastolic: fp(float64(75 + i%10)),
-						MAP:       fp(float64(90 + i%10)),
+						Systolic:  fp(systolic),
+						Diastolic: fp(diastolic),
+						MAP:       fp(calculateMAP(systolic, diastolic)),
 					},
 					Device: &device,
 					Note:   &note,
 				}
 			case 1:
+				// Pre-meal glucose baseline stays inside 70-140; a rotating
+				// subset simulates hyper/hypoglycemia for alert variety.
+				// This branch only ever sees i with i%3==1, so the anomaly
+				// switch must key off a modulus whose residues are actually
+				// reachable from that subset (i%6 here would always be 1 or
+				// 4, making a switch on 0/3 permanently dead) - i%9 cycles
+				// through 1, 4, 7 across i%3==1 values instead.
+				glucose := 90.0 + float64(i%35)
+				switch i % 9 {
+				case 1:
+					glucose = 145 + float64(i%30) // hyperglycemia
+				case 4:
+					glucose = 58 + float64(i%10) // hypoglycemia
+				}
+
 				measurement = domain.Measurement{
 					PatientID: patient.ID,
 					Glucose: domain.Glucose{
-						BloodGlucose: fp(float64(95 + i%40)),
+						BloodGlucose: fp(glucose),
 					},
 					MealTiming: &preMeal,
 					Device:     &device,
 				}
 			default:
+				// Post-meal glucose runs naturally higher but is kept under
+				// the (meal-agnostic) 140 threshold by default; a rotating
+				// subset spikes above it to simulate post-prandial hyperglycemia.
+				glucose := 105.0 + float64(i%34)
+				if i%5 == 0 {
+					glucose = 185 + float64(i%60)
+				}
+
 				measurement = domain.Measurement{
 					PatientID: patient.ID,
 					Glucose: domain.Glucose{
-						BloodGlucose: fp(float64(130 + i%50)),
+						BloodGlucose: fp(glucose),
 					},
 					MealTiming: &postMeal,
 					Device:     &device,
@@ -149,6 +222,18 @@ func (s *Seeder) seedMeasurements(ctx context.Context, data *seedData) ([]*domai
 			}
 
 			if _, err := s.measurementRepo.Create(ctx, &measurement); err != nil {
+				return nil, err
+			}
+
+			// measurementRepo.Create hard-codes CreatedAt to time.Now(), and
+			// Measurement has no separate "recordedAt" field - CreatedAt *is*
+			// when the reading was taken. Left alone, every seeded measurement
+			// would carry the same timestamp: the instant the seed ran, rather
+			// than being spread across the past like a real vitals history.
+			recordedAt := daysAgoWithin(i, 90).
+				Add(time.Duration(6+i%14) * time.Hour).
+				Add(time.Duration(i%60) * time.Minute)
+			if err := s.backdateCreatedAt(ctx, "measurements", measurement.ID, recordedAt); err != nil {
 				return nil, err
 			}
 			created++
@@ -189,58 +274,170 @@ func (s *Seeder) loadMeasurements(ctx context.Context, limit int) ([]*domain.Mea
 func (s *Seeder) seedPrescriptions(ctx context.Context, data *seedData) ([]*domain.Prescription, error) {
 	result := make([]*domain.Prescription, 0, seedCount)
 	now := time.Now().UTC()
+	remindersCreated := 0
 
 	for i := 0; i < seedCount; i++ {
 		patient := data.patients[i]
+		doctorID := data.doctors[i%len(data.doctors)].ID
+
+		var prescription *domain.Prescription
 		existing, err := s.prescriptionRepo.FindWithFilter(ctx, repository.PrescriptionFilter{
 			PatientID: patient.ID.Hex(),
 		})
 		if err != nil {
 			return nil, err
 		}
+
 		if len(existing) > 0 {
-			prescription := existing[0]
-			result = append(result, &prescription)
-			continue
+			prescription = &existing[0]
+		} else {
+			// +3 day buffer so there's always room to fit an EndDate strictly
+			// before now (see prescriptionEndDate and ensureMedicationReminder).
+			startDate := now.Add(-time.Duration(i+3) * 24 * time.Hour)
+			profile := buildPrescriptionProfile(i, startDate)
+
+			createdPrescription, err := s.prescriptionRepo.Create(ctx, &domain.Prescription{
+				ID:           primitive.NewObjectID(),
+				PatientID:    patient.ID,
+				PrescribedBy: doctorID,
+				Medications:  profile.Medications,
+				Timezone:     seedTimezone,
+				DaysOfWeek:   profile.DaysOfWeek,
+				StartDate:    startDate,
+				EndDate:      profile.EndDate,
+				Status:       profile.Status,
+			})
+			if err != nil {
+				return nil, err
+			}
+			// prescriptionRepo.Create hard-codes CreatedAt to time.Now(); pin
+			// it back to StartDate so "when this was prescribed" matches
+			// "when the course began" instead of the seed run's wall-clock.
+			if err := s.backdateCreatedAt(ctx, "prescriptions", createdPrescription.ID, startDate); err != nil {
+				return nil, err
+			}
+			createdPrescription.CreatedAt = startDate
+			createdPrescription.UpdatedAt = startDate
+			prescription = createdPrescription
 		}
+		result = append(result, prescription)
 
-		startDate := now.Add(-time.Duration(i) * 24 * time.Hour)
-		profile := buildPrescriptionProfile(i, startDate)
-		profile.Status = domain.PrescriptionStatusActive
-
-		prescription := &domain.Prescription{
-			ID:           primitive.NewObjectID(),
-			PatientID:    patient.ID,
-			PrescribedBy: data.doctors[i%len(data.doctors)].ID,
-			Medications:  profile.Medications,
-			Timezone:     seedTimezone,
-			DaysOfWeek:   profile.DaysOfWeek,
-			StartDate:    startDate,
-			EndDate:      profile.EndDate,
-			Status:       profile.Status,
-		}
-
-		createdPrescription, err := s.prescriptionRepo.Create(ctx, prescription)
+		// Medication reminders are only ever created through the prescription
+		// creation path (mirroring prescriptionService.createMedicationReminders),
+		// never as standalone reminders - see seedReminders.
+		created, err := s.ensureMedicationReminder(ctx, prescription, doctorID)
 		if err != nil {
 			return nil, err
 		}
-		result = append(result, createdPrescription)
+		if created {
+			remindersCreated++
+		}
 	}
 
 	log.Printf("[seed] prescriptions: %d total (%d created)", len(result), len(result))
+	log.Printf("[seed] medication reminders (from prescriptions): %d total (%d created)", len(result), remindersCreated)
 	return result, nil
 }
 
+// ensureMedicationReminder creates the single "medication" reminder linked to
+// a prescription, mirroring prescriptionService.createMedicationReminders: one
+// reminder per prescription, firing at every distinct dose clock time. It is
+// idempotent so re-running the seed doesn't duplicate reminders.
+func (s *Seeder) ensureMedicationReminder(ctx context.Context, prescription *domain.Prescription, prescribedBy primitive.ObjectID) (bool, error) {
+	existing, err := s.reminderRepo.FindWithFilter(ctx, repository.ReminderFilter{
+		PrescriptionID: prescription.ID.Hex(),
+		Kind:           domain.KindMedication,
+	})
+	if err != nil {
+		return false, err
+	}
+	if len(existing) > 0 {
+		return false, nil
+	}
+
+	slots := medicationReminderSlots(prescription.Medications)
+	if len(slots) == 0 {
+		return false, nil
+	}
+
+	times := make([]domain.ReminderTime, 0, len(slots))
+	messages := make([]string, 0, len(slots))
+	for _, slot := range slots {
+		times = append(times, domain.ReminderTime{Hour: slot.hour, Minute: slot.minute})
+		messages = append(messages, slot.messages...)
+	}
+
+	// No Temporal workflow is started for seeded reminders (seeding writes
+	// straight to Mongo, bypassing prescriptionService.createMedicationReminders),
+	// so - just like seedReminders - the window must already be closed and the
+	// status must reflect that. prescriptionEndDate already keeps
+	// prescription.EndDate itself in the past, but we still cap defensively
+	// here in case that ever changes, since domain.PrescriptionEffectiveEndDate
+	// falls back to "start + 1 year" for a nil EndDate.
+	now := time.Now().UTC()
+	endDate := domain.PrescriptionEffectiveEndDate(prescription.EndDate, prescription.StartDate)
+	if cutoff := now.AddDate(0, 0, -2); endDate.After(cutoff) {
+		endDate = cutoff
+	}
+	if !endDate.After(prescription.StartDate) {
+		endDate = prescription.StartDate.Add(24 * time.Hour)
+	}
+
+	status := domain.ReminderStatusExpired
+	if prescription.Status == domain.PrescriptionStatusDiscontinued {
+		status = domain.ReminderStatusCanceled
+	}
+
+	reminder := &domain.Reminder{
+		ID:             primitive.NewObjectID(),
+		PatientID:      prescription.PatientID,
+		Kind:           domain.KindMedication,
+		Message:        strings.Join(messages, "; "),
+		Times:          times,
+		DaysOfWeek:     prescription.DaysOfWeek,
+		Timezone:       prescription.Timezone,
+		Status:         status,
+		StartDate:      prescription.StartDate,
+		EndDate:        endDate,
+		PrescriptionID: &prescription.ID,
+		CreatedBy:      prescribedBy,
+	}
+
+	if _, err := s.reminderRepo.Create(ctx, reminder); err != nil {
+		return false, err
+	}
+	// reminderRepo.Create hard-codes CreatedAt to time.Now(); pin it back to
+	// StartDate so the reminder doesn't look like it was set up just now
+	// while everything else about it (StartDate/EndDate/Status) says it's
+	// long since expired.
+	if err := s.backdateCreatedAt(ctx, "reminders", reminder.ID, prescription.StartDate); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// seedAlerts mirrors ProcessingAlertActivity.EvaluateAndCreateAlertActivity:
+// it evaluates each measurement against its own patient's threshold using
+// the exact same helper the real Temporal activity uses, and only creates an
+// alert when a real violation is found - instead of attaching a fabricated
+// heart-rate violation to every measurement regardless of its actual values.
 func (s *Seeder) seedAlerts(ctx context.Context, data *seedData) error {
 	if len(data.measurements) < seedCount {
 		return fmt.Errorf("need at least %d measurements, got %d", seedCount, len(data.measurements))
 	}
+	if len(data.thresholds) < seedCount {
+		return fmt.Errorf("need at least %d thresholds, got %d", seedCount, len(data.thresholds))
+	}
+
+	thresholdByPatient := make(map[primitive.ObjectID]*domain.Threshold, len(data.thresholds))
+	for _, threshold := range data.thresholds {
+		thresholdByPatient[threshold.PatientID] = threshold
+	}
 
 	created := 0
-	severities := []domain.Severity{domain.SeverityLow, domain.SeverityMedium, domain.SeverityHigh}
+	skippedNoViolation := 0
 
-	for i := 0; i < seedCount; i++ {
-		measurement := data.measurements[i]
+	for _, measurement := range data.measurements {
 		existing, err := s.alertRepo.FindByMeasurementID(ctx, measurement.ID)
 		if err != nil {
 			return err
@@ -249,125 +446,185 @@ func (s *Seeder) seedAlerts(ctx context.Context, data *seedData) error {
 			continue
 		}
 
-		severity := pick(severities, i)
+		threshold, ok := thresholdByPatient[measurement.PatientID]
+		if !ok {
+			return fmt.Errorf("no threshold seeded for patient %s", measurement.PatientID.Hex())
+		}
+
+		violations := measurement_helper.EvaluateMeasurementAgainstThreshold(measurement, threshold)
+		if len(violations) == 0 {
+			skippedNoViolation++
+			continue
+		}
+
+		// A subset of alerts is acknowledged by the patient's assigned
+		// doctor shortly after being raised, so the alerts dashboard isn't
+		// 100% "open" - matching what a real clinician workflow produces
+		// over time instead of every alert sitting untouched forever.
+		acknowledged := created%3 == 0
+		status := domain.StatusOpen
+		if acknowledged {
+			status = domain.StatusAck
+		}
+
 		alert := &domain.Alert{
 			ID:            primitive.NewObjectID(),
 			PatientID:     measurement.PatientID,
 			MeasurementID: measurement.ID,
-			Violations: []domain.ThresholdViolation{
-				{
-					Type:      "heartRate",
-					Rule:      "heartRate_max",
-					Observed:  110 + float64(i%10),
-					Threshold: 100,
-					Severity:  severity,
-				},
-			},
-			Status:   domain.StatusOpen,
-			Severity: severity,
+			Violations:    violations,
+			Status:        status,
+			Severity:      measurement_helper.AggregateSeverity(violations),
 		}
 
 		if _, err := s.alertRepo.Create(ctx, alert); err != nil {
 			return err
 		}
+
+		// alertRepo.Create hard-codes CreatedAt to time.Now(), and Alert (like
+		// Measurement) has no separate "triggeredAt" field - CreatedAt *is*
+		// when the violation was raised. Anchor it a couple of minutes after
+		// the measurement's own (already-backdated) CreatedAt, mirroring the
+		// real evaluator's near-immediate reaction, instead of leaving every
+		// alert dated at the seed run's wall-clock regardless of how old the
+		// measurement it's about actually is.
+		triggeredAt := measurement.CreatedAt.Add(time.Duration(1+created%9) * time.Minute)
+		fields := bson.M{"createdAt": triggeredAt.UTC(), "updatedAt": triggeredAt.UTC()}
+
+		if acknowledged {
+			// Acknowledged shortly (15 min - 3h) after the alert fired, by
+			// the same doctor the threshold was set up by - never after
+			// "now", however recent the triggering measurement was.
+			ackAt := triggeredAt.Add(time.Duration(15+created%165) * time.Minute)
+			if now := time.Now().UTC(); !ackAt.Before(now) {
+				ackAt = now.Add(-time.Minute)
+			}
+			fields["acknowledgedBy"] = threshold.DoctorID
+			fields["acknowledgedAt"] = ackAt.UTC()
+			fields["updatedAt"] = ackAt.UTC()
+		}
+
+		if err := s.setTimestampFields(ctx, "alerts", alert.ID, fields); err != nil {
+			return err
+		}
 		created++
 	}
 
-	log.Printf("[seed] alerts: %d total (%d created)", seedCount, created)
+	log.Printf("[seed] alerts: %d created (%d measurements had no violation)", created, skippedNoViolation)
 	return nil
 }
 
+// seedReminders creates standalone "measure" reminders (e.g. reminders to
+// take vitals). "medication" reminders are never created here - they only
+// come from seedPrescriptions, via ensureMedicationReminder, matching how the
+// real API only lets prescriptions create medication reminders.
 func (s *Seeder) seedReminders(ctx context.Context, data *seedData) error {
-	count, err := s.countCollection(ctx, "reminders", bson.M{})
+	count, err := s.countCollection(ctx, "reminders", bson.M{"kind": domain.KindMeasure})
 	if err != nil {
 		return err
 	}
 	if count >= seedCount {
-		log.Printf("[seed] reminders: %d total (0 created)", count)
+		log.Printf("[seed] measure reminders: %d total (0 created)", count)
 		return nil
 	}
 
 	created := 0
 	now := time.Now().UTC()
-	kindMeasure := domain.KindMeasure
-	kindMedication := domain.KindMedication
-	timeMorning := domain.TimeOfDayMorning
 
 	for i := int(count); i < seedCount; i++ {
 		patient := data.patients[i]
-		prescription := data.prescriptions[i]
-		kind := kindMeasure
-		message := fmt.Sprintf("Take vitals for patient %02d", i+1)
-		if i%2 == 1 {
-			kind = kindMedication
-			message = fmt.Sprintf("Take medication for patient %02d", i+1)
-		}
+		message := fmt.Sprintf("Đo các chỉ số sinh tồn cho bệnh nhân %02d", i+1)
+
+		// No Temporal workflow is started for seeded reminders (seeding writes
+		// straight to Mongo, bypassing reminderService.CreateReminder), so the
+		// window must already be closed - otherwise this would look like a
+		// still-firing reminder that never actually fires.
+		startDate := now.AddDate(0, -3, -(i % 10))
+		endDate := now.AddDate(0, 0, -(7 + i%14))
 
 		reminder := &domain.Reminder{
 			ID:         primitive.NewObjectID(),
 			PatientID:  patient.ID,
-			Kind:       kind,
+			Kind:       domain.KindMeasure,
 			Message:    message,
 			Times:      []domain.ReminderTime{{Hour: 8 + (i % 10), Minute: (i * 5) % 60}},
-			DaysOfWeek: []int{1, 2, 3, 4, 5, 6, 7},
+			DaysOfWeek: allDaysOfWeek(),
 			Timezone:   seedTimezone,
-			Status:     domain.ReminderStatusActive,
-			StartDate:  now,
-			EndDate:    now.AddDate(0, 3, 0),
+			Status:     domain.ReminderStatusExpired,
+			StartDate:  startDate,
+			EndDate:    endDate,
 			CreatedBy:  data.doctors[i%len(data.doctors)].ID,
-		}
-		if kind == kindMedication {
-			reminder.PrescriptionID = &prescription.ID
-			reminder.TimeOfDay = &timeMorning
-			meal := domain.MealTimingPostMeal
-			reminder.MealTiming = &meal
 		}
 
 		if _, err := s.reminderRepo.Create(ctx, reminder); err != nil {
 			return err
 		}
-		created++
-	}
-
-	log.Printf("[seed] reminders: %d total (%d created)", seedCount, created)
-	return nil
-}
-
-func (s *Seeder) seedMedicationIntakes(ctx context.Context, data *seedData) error {
-	count, err := s.countCollection(ctx, "medication_intakes", bson.M{})
-	if err != nil {
-		return err
-	}
-	if count >= seedCount {
-		log.Printf("[seed] medication intakes: %d total (0 created)", count)
-		return nil
-	}
-
-	created := 0
-	for i := int(count); i < seedCount; i++ {
-		patient := data.patients[i]
-		prescription := data.prescriptions[i]
-		medication, dose := pickPrescriptionDose(prescription, i)
-		scheduled := daysAgo(i)
-
-		intake := &domain.MedicationIntake{
-			ID:             primitive.NewObjectID(),
-			PatientID:      patient.ID,
-			PrescriptionID: prescription.ID,
-			DrugName:       medication.DrugName,
-			Dosage:         medication.Dosage,
-			Dose:           dose,
-			ScheduledDate:  scheduled,
-			TakenAt:        scheduled.Add(15 * time.Minute),
-		}
-
-		if _, err := s.medicationIntakeRepo.Create(ctx, intake); err != nil {
+		// reminderRepo.Create hard-codes CreatedAt to time.Now(); pin it back
+		// to StartDate, same as the medication reminders created above.
+		if err := s.backdateCreatedAt(ctx, "reminders", reminder.ID, startDate); err != nil {
 			return err
 		}
 		created++
 	}
 
-	log.Printf("[seed] medication intakes: %d total (%d created)", seedCount, created)
+	log.Printf("[seed] measure reminders: %d total (%d created)", seedCount, created)
+	return nil
+}
+
+// seedMedicationIntakes creates one intake record per dose slot in each
+// patient's own prescription, so the seeded intake history fully matches
+// that prescription's medications instead of covering only one random dose.
+// It is idempotent per (patient, prescription, drug, dose, day) via
+// FindBySlot, matching the unique index the real intake collection enforces.
+func (s *Seeder) seedMedicationIntakes(ctx context.Context, data *seedData) error {
+	created := 0
+	skipped := 0
+	now := time.Now().UTC()
+
+	for i := 0; i < seedCount; i++ {
+		patient := data.patients[i]
+		prescription := data.prescriptions[i]
+
+		slot := 0
+		for _, medication := range prescription.Medications {
+			for _, dose := range medication.Schedule {
+				scheduledDate, takenAt := medicationIntakeSchedule(prescription, dose, i+slot, now)
+				slot++
+
+				existing, err := s.medicationIntakeRepo.FindBySlot(ctx, patient.ID, prescription.ID, medication.DrugName, dose, scheduledDate)
+				if err != nil {
+					return err
+				}
+				if existing != nil {
+					skipped++
+					continue
+				}
+
+				intake := &domain.MedicationIntake{
+					ID:             primitive.NewObjectID(),
+					PatientID:      patient.ID,
+					PrescriptionID: prescription.ID,
+					DrugName:       medication.DrugName,
+					Dosage:         medication.Dosage,
+					Dose:           dose,
+					ScheduledDate:  scheduledDate,
+					TakenAt:        takenAt,
+				}
+
+				if _, err := s.medicationIntakeRepo.Create(ctx, intake); err != nil {
+					return err
+				}
+				// medicationIntakeRepo.Create hard-codes CreatedAt to
+				// time.Now(); pin it back to TakenAt, since CreatedAt is
+				// meant to record when the "mark as taken" event happened.
+				if err := s.backdateCreatedAtOnly(ctx, "medication_intakes", intake.ID, takenAt); err != nil {
+					return err
+				}
+				created++
+			}
+		}
+	}
+
+	log.Printf("[seed] medication intakes: %d created (%d already existed)", created, skipped)
 	return nil
 }
 
@@ -382,28 +639,42 @@ func (s *Seeder) seedFollowUpAppointments(ctx context.Context, data *seedData) e
 	}
 
 	created := 0
+	// ScheduledAt is always in the past (see daysAgoWithin), so an appointment
+	// can never still be "scheduled" (pending) by the time it's seeded - that
+	// slot has already come and gone. Only completed/canceled are consistent
+	// outcomes for a past-dated appointment.
 	statuses := []domain.FollowUpAppointmentStatus{
-		domain.FollowUpAppointmentStatusScheduled,
 		domain.FollowUpAppointmentStatusCompleted,
 		domain.FollowUpAppointmentStatusCanceled,
 	}
 
 	for i := int(count); i < seedCount; i++ {
 		doctor := data.doctors[i%len(data.doctors)]
+		scheduledAt := daysAgoWithin(i, 60)
+		// bookedAt: when the appointment was made, comfortably before the
+		// visit itself actually happened.
+		bookedAt := scheduledAt.Add(-time.Duration(3+i%11) * 24 * time.Hour)
+
 		appointment := &domain.FollowUpAppointment{
 			ID:              primitive.NewObjectID(),
 			PatientID:       data.patients[i].ID,
 			DoctorID:        doctor.ID,
-			ScheduledAt:     daysAhead(i),
+			ScheduledAt:     scheduledAt,
 			DurationMinutes: pick([]int{15, 30, 45, 60}, i),
 			Timezone:        seedTimezone,
-			Location:        "City General Hospital - Room " + fmt.Sprintf("%d", 100+i),
-			Notes:           fmt.Sprintf("Follow-up visit %02d", i+1),
+			Location:        fmt.Sprintf("Bệnh viện Đa khoa Thành phố - Phòng %d", 100+i),
+			Notes:           fmt.Sprintf("Lịch tái khám %02d", i+1),
 			Status:          pick(statuses, i),
 			CreatedBy:       doctor.ID,
 		}
 
 		if _, err := s.followUpAppointmentRepo.Create(ctx, appointment); err != nil {
+			return err
+		}
+		// followUpAppointmentRepo.Create hard-codes CreatedAt to time.Now();
+		// pin it back to when the appointment was booked, not to the seed
+		// run's wall-clock.
+		if err := s.backdateCreatedAt(ctx, "follow_up_appointments", appointment.ID, bookedAt); err != nil {
 			return err
 		}
 		created++
@@ -433,6 +704,16 @@ func (s *Seeder) seedConversations(ctx context.Context, data *seedData) ([]*chat
 			}
 
 			if _, err := s.conversationRepo.Create(ctx, conversation); err != nil {
+				return nil, err
+			}
+
+			// conversationRepo.Create hard-codes CreatedAt to time.Now().
+			// loadConversations below re-sorts by createdAt ascending, so the
+			// offset must stay monotonic in i (older index -> older
+			// conversation) or seedMessages' index-based lookups into the
+			// reloaded slice would end up paired with the wrong conversation.
+			conversationCreatedAt := time.Now().UTC().Add(-time.Duration(seedCount-i) * 24 * time.Hour)
+			if err := s.backdateCreatedAt(ctx, "conversations", conversation.ID, conversationCreatedAt); err != nil {
 				return nil, err
 			}
 			created++
@@ -495,11 +776,19 @@ func (s *Seeder) seedMessages(ctx context.Context, data *seedData) error {
 			ConversationID: conversation.ID,
 			MessageSource:  chatDomain.UserMessage,
 			SenderID:       &senderID,
-			Content:        fmt.Sprintf("Seed message %02d: please monitor your vitals today.", i+1),
+			Content:        fmt.Sprintf("Tin nhắn mẫu %02d: hãy theo dõi các chỉ số sức khỏe của bạn hôm nay.", i+1),
 		}
 
 		createdMessage, err := s.messageRepo.Create(ctx, message)
 		if err != nil {
+			return err
+		}
+		// messageRepo.Create hard-codes CreatedAt to time.Now(); anchor it a
+		// few hours after the conversation's own (already-backdated)
+		// CreatedAt so the message doesn't look like it was sent the instant
+		// the seed ran, days after the conversation supposedly started.
+		messageCreatedAt := conversation.CreatedAt.Add(time.Duration(1+i%6) * time.Hour)
+		if err := s.backdateCreatedAtOnly(ctx, "messages", createdMessage.ID, messageCreatedAt); err != nil {
 			return err
 		}
 		created++
@@ -511,54 +800,6 @@ func (s *Seeder) seedMessages(ctx context.Context, data *seedData) error {
 	}
 
 	log.Printf("[seed] messages: %d total (%d created)", seedCount, created)
-	return nil
-}
-
-func (s *Seeder) seedVideoSessions(ctx context.Context, data *seedData) error {
-	if len(data.conversations) < seedCount {
-		return fmt.Errorf("need at least %d conversations, got %d", seedCount, len(data.conversations))
-	}
-
-	count, err := s.countCollection(ctx, "video_sessions", bson.M{})
-	if err != nil {
-		return err
-	}
-	if count >= seedCount {
-		log.Printf("[seed] video sessions: %d total (0 created)", count)
-		return nil
-	}
-
-	created := 0
-	statuses := []domain.VideoSessionStatus{
-		domain.VideoSessionPending,
-		domain.VideoSessionActive,
-		domain.VideoSessionEnded,
-	}
-
-	for i := int(count); i < seedCount; i++ {
-		doctor := data.doctors[i%len(data.doctors)]
-		patient := data.patients[i]
-		conversation := data.conversations[i]
-
-		session := &domain.VideoSession{
-			ID:             primitive.NewObjectID(),
-			ConversationID: conversation.ID,
-			DoctorID:       doctor.ID,
-			PatientID:      patient.ID,
-			CreatedBy:      doctor.ID,
-			Provider:       "jitsi",
-			RoomName:       fmt.Sprintf("rpm_%s_seed%02d", conversation.ID.Hex()[:8], i+1),
-			Status:         pick(statuses, i),
-			ExpiresAt:      daysAhead(i + 1),
-		}
-
-		if _, err := s.videoSessionRepo.Create(ctx, session); err != nil {
-			return err
-		}
-		created++
-	}
-
-	log.Printf("[seed] video sessions: %d total (%d created)", seedCount, created)
 	return nil
 }
 
@@ -587,7 +828,7 @@ func (s *Seeder) seedActivityLogs(ctx context.Context, data *seedData) error {
 			admin.Name,
 			string(userDomain.RoleAdmin),
 			pick(types, i),
-			fmt.Sprintf("Seed activity %02d", i+1),
+			fmt.Sprintf("Hoạt động mẫu %02d", i+1),
 		)
 		entry.Resource = pick([]string{"patient", "doctor", "department", "prescription"}, i)
 		entry.Method = "POST"
@@ -597,66 +838,15 @@ func (s *Seeder) seedActivityLogs(ctx context.Context, data *seedData) error {
 		if err := s.activityLogRepo.Create(ctx, entry); err != nil {
 			return err
 		}
+		// activityLogRepo.Create hard-codes CreatedAt to time.Now(); spread
+		// entries across the past so the audit trail doesn't look like a
+		// burst of activity that all happened in the same second.
+		if err := s.backdateCreatedAtOnly(ctx, "activity_logs", entry.ID, daysAgoWithin(i, 45)); err != nil {
+			return err
+		}
 		created++
 	}
 
 	log.Printf("[seed] activity logs: %d total (%d created)", seedCount, created)
-	return nil
-}
-
-func (s *Seeder) seedUserNotifications(ctx context.Context, data *seedData) error {
-	created := 0
-	types := []domain.NotificationType{
-		domain.NotificationTypeAlert,
-		domain.NotificationTypeReminder,
-		domain.NotificationTypeAppointment,
-	}
-
-	for i := 0; i < seedCount; i++ {
-		patient := data.patients[i]
-		dedupKey := fmt.Sprintf("seed-notification-%02d", i+1)
-
-		notification := &domain.UserNotification{
-			UserID:         patient.ID,
-			Type:           pick(types, i),
-			Title:          fmt.Sprintf("Seed notification %02d", i+1),
-			Body:           "This is a seeded in-app notification for development.",
-			DedupKey:       dedupKey,
-			DeliveryStatus: domain.NotificationDeliverySent,
-		}
-
-		if _, createdNew, err := s.notificationRepo.CreateOrGetByDedupKey(ctx, notification); err != nil {
-			return err
-		} else if createdNew {
-			created++
-		}
-	}
-
-	log.Printf("[seed] user notifications: %d total (%d created)", seedCount, created)
-	return nil
-}
-
-func (s *Seeder) seedNotificationTokens(ctx context.Context, data *seedData) error {
-	created := 0
-	platforms := []string{"ios", "android", "web"}
-
-	for i := 0; i < seedCount; i++ {
-		patient := data.patients[i]
-		token := &domain.NotificationToken{
-			UserID:   patient.ID,
-			DeviceID: fmt.Sprintf("seed-device-%02d", i+1),
-			Platform: pick(platforms, i),
-			Provider: "fcm",
-			Token:    fmt.Sprintf("seed-fcm-token-%02d", i+1),
-			IsActive: true,
-		}
-
-		if _, err := s.notificationTokenRepo.UpsertByUserAndDevice(ctx, token); err != nil {
-			return err
-		}
-		created++
-	}
-
-	log.Printf("[seed] notification tokens: %d total (%d upserted)", seedCount, created)
 	return nil
 }
