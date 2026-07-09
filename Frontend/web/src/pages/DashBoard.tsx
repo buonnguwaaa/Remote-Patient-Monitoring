@@ -38,6 +38,7 @@ interface KpiDef {
   up?: boolean;
   Icon: React.ElementType;
   variant?: "danger" | "warning" | "success" | "info" | "default";
+  loading?: boolean;
 }
 
 const CHART_BUCKETS = 4;
@@ -57,7 +58,7 @@ const Badge: React.FC<{ value: number; up: boolean }> = ({ value, up }) => (
   </span>
 );
 
-const KpiCard: React.FC<KpiDef> = ({ label, value, change, up, Icon, variant = "default" }) => {
+const KpiCard: React.FC<KpiDef> = ({ label, value, change, up, Icon, variant = "default", loading }) => {
   const bgClass =
     variant === "danger" ? "bg-red-50 dark:bg-red-900/10" :
     variant === "warning" ? "bg-amber-50 dark:bg-amber-900/10" :
@@ -71,6 +72,22 @@ const KpiCard: React.FC<KpiDef> = ({ label, value, change, up, Icon, variant = "
     variant === "success" ? "text-emerald-500" :
     variant === "info" ? "text-blue-500" :
     "text-gray-400 dark:text-slate-500";
+
+  if (loading) {
+    return (
+      <div className="rounded-2xl border border-gray-100 p-5 dark:border-slate-700/60 bg-white dark:bg-slate-800 animate-pulse">
+        <div className="mb-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="h-4 w-4 rounded-lg bg-slate-200 dark:bg-slate-700" />
+            <div className="h-3.5 w-24 rounded bg-slate-200 dark:bg-slate-700" />
+          </div>
+        </div>
+        <div className="flex items-end gap-2">
+          <div className="h-8 w-16 rounded bg-slate-200 dark:bg-slate-700" />
+        </div>
+      </div>
+    );
+  }
     
   return (
     <div className={`rounded-2xl border border-gray-100 p-5 dark:border-slate-700/60 ${bgClass}`}>
@@ -297,7 +314,22 @@ const TodoList: React.FC<{
 
       <div className="flex-1 overflow-auto border-t border-gray-50 dark:border-slate-700/40">
         {loading ? (
-          <p className="py-8 text-center text-xs text-gray-400">Đang tải...</p>
+          <div className="space-y-4 p-4 animate-pulse">
+            <div>
+              <div className="mb-2 h-3.5 w-32 rounded bg-slate-200 dark:bg-slate-700" />
+              <div className="space-y-2">
+                {[...Array(2)].map((_, i) => (
+                  <div key={i} className="flex items-center justify-between rounded-lg border border-gray-50 bg-gray-50/50 p-3 dark:border-slate-700/30 dark:bg-slate-700/20">
+                    <div className="space-y-1.5 flex-1">
+                      <div className="h-3.5 w-28 rounded bg-slate-200 dark:bg-slate-700" />
+                      <div className="h-3 w-20 rounded bg-slate-100 dark:bg-slate-800" />
+                    </div>
+                    <div className="h-6 w-14 rounded bg-slate-200 dark:bg-slate-700 shrink-0" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         ) : pendingAlerts.length === 0 && appointments.length === 0 ? (
           <p className="py-8 text-center text-xs text-gray-400">Không có việc cần xử lý hôm nay.</p>
         ) : (
@@ -394,9 +426,20 @@ const RecentAlerts: React.FC<{
 
       <div className="flex-1 overflow-auto border-t border-gray-50 dark:border-slate-700/40">
         {loading ? (
-          <p className="py-8 text-center text-xs text-gray-400">
-            {t("dashboard.loadingAlerts")}
-          </p>
+          <div className="divide-y divide-gray-50 dark:divide-slate-700/30 p-4 space-y-3 animate-pulse">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="flex items-start gap-3 pt-3 first:pt-0">
+                <div className="h-7 w-7 rounded-lg bg-slate-200 dark:bg-slate-700 shrink-0" />
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="h-3.5 w-24 rounded bg-slate-200 dark:bg-slate-700" />
+                    <div className="h-3 w-10 rounded bg-slate-100 dark:bg-slate-800 shrink-0" />
+                  </div>
+                  <div className="h-3 w-40 rounded bg-slate-100 dark:bg-slate-800" />
+                </div>
+              </div>
+            ))}
+          </div>
         ) : alerts.length === 0 ? (
           <p className="py-8 text-center text-xs text-gray-400">
             {t("dashboard.noAlerts")}
@@ -1094,7 +1137,7 @@ const DashBoard = () => {
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           {kpis.map((kpi) => (
-            <KpiCard key={kpi.label} {...kpi} />
+            <KpiCard key={kpi.label} {...kpi} loading={loading} />
           ))}
         </div>
 

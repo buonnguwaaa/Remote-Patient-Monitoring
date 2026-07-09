@@ -204,8 +204,27 @@ export const Chart: React.FC<ChartProps> = ({
 
       <div className="mt-8 h-80">
         {loading ? (
-          <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-gray-200 text-sm text-gray-400 dark:border-slate-700 dark:text-slate-500">
-            {t("dashboard.loadingChartData") || "Đang tải dữ liệu biểu đồ..."}
+          <div className="flex h-[256px] flex-col justify-end space-y-4 px-4 pb-4 animate-pulse">
+            <div className="flex h-full items-end justify-between space-x-6">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="flex flex-1 items-end space-x-2 h-full pt-4">
+                  <div 
+                    className="w-full bg-slate-200 dark:bg-slate-700 rounded-t"
+                    style={{ height: `${25 + (i % 3) * 20}%` }}
+                  />
+                  <div 
+                    className="w-full bg-slate-100 dark:bg-slate-800 rounded-t"
+                    style={{ height: `${15 + (i % 2) * 15}%` }}
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="h-px bg-slate-200 dark:bg-slate-700 w-full" />
+            <div className="flex justify-between px-2">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="h-3 w-8 bg-slate-200 dark:bg-slate-700 rounded" />
+              ))}
+            </div>
           </div>
         ) : chartData.length === 0 ? (
           <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-gray-200 text-sm text-gray-400 dark:border-slate-700 dark:text-slate-500">
