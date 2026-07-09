@@ -461,24 +461,6 @@ export default function ThresholdSettingsPage() {
       <div className="w-full space-y-4 px-4 py-8 pb-24 sm:px-6 lg:px-8">
         {toast && <Toast toast={toast} onClose={hideToast} />}
 
-      {/* Stats Bar */}
-      <div className="mb-8 grid gap-4 grid-cols-3">
-        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-sm">
-          <div className="text-sm font-medium text-slate-500 dark:text-slate-400">Bệnh nhân đang quản lý</div>
-          <div className="mt-2 text-3xl font-semibold text-slate-900 dark:text-slate-100">{patientOptions.length}</div>
-        </div>
-        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-sm">
-          <div className="text-sm font-medium text-slate-500 dark:text-slate-400">Đã có ngưỡng</div>
-          <div className="mt-2 text-3xl font-semibold text-emerald-600 dark:text-emerald-400">{activePatients.length}</div>
-        </div>
-        <div className={`rounded-xl border p-5 shadow-sm transition-colors ${missingPatients.length > 0 ? 'border-amber-200 bg-amber-50 dark:border-amber-900/40 dark:bg-amber-900/10' : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800'}`}>
-          <div className={`text-sm font-medium ${missingPatients.length > 0 ? 'text-amber-800 dark:text-amber-400' : 'text-slate-500 dark:text-slate-400'}`}>Chưa có ngưỡng</div>
-          <div className={`mt-2 text-3xl font-semibold ${missingPatients.length > 0 ? 'text-amber-600 dark:text-amber-500' : 'text-slate-900 dark:text-slate-100'}`}>
-            {missingPatients.length}
-          </div>
-        </div>
-      </div>
-
       {/* Main Content Area */}
       <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
         <h1 className="text-3xl font-bold text-gray-800 dark:text-slate-100">Quản trị ngưỡng cảnh báo</h1>
@@ -496,6 +478,24 @@ export default function ThresholdSettingsPage() {
           >
             <FaSyncAlt className={`mr-2 h-3.5 w-3.5 ${loadingThresholds ? "animate-spin" : ""}`} /> Làm mới
           </button>
+        </div>
+      </div>
+
+      {/* Stats Bar */}
+      <div className="mb-8 grid gap-4 grid-cols-3">
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-sm">
+          <div className="text-sm font-medium text-slate-500 dark:text-slate-400">Bệnh nhân đang quản lý</div>
+          <div className="mt-2 text-3xl font-semibold text-slate-900 dark:text-slate-100">{patientOptions.length}</div>
+        </div>
+        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-sm">
+          <div className="text-sm font-medium text-slate-500 dark:text-slate-400">Đã có ngưỡng</div>
+          <div className="mt-2 text-3xl font-semibold text-emerald-600 dark:text-emerald-400">{activePatients.length}</div>
+        </div>
+        <div className={`rounded-xl border p-5 shadow-sm transition-colors ${missingPatients.length > 0 ? 'border-amber-200 bg-amber-50 dark:border-amber-900/40 dark:bg-amber-900/10' : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800'}`}>
+          <div className={`text-sm font-medium ${missingPatients.length > 0 ? 'text-amber-800 dark:text-amber-400' : 'text-slate-500 dark:text-slate-400'}`}>Chưa có ngưỡng</div>
+          <div className={`mt-2 text-3xl font-semibold ${missingPatients.length > 0 ? 'text-amber-600 dark:text-amber-500' : 'text-slate-900 dark:text-slate-100'}`}>
+            {missingPatients.length}
+          </div>
         </div>
       </div>
 
