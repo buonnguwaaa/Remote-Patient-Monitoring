@@ -108,6 +108,10 @@ func (r *cachedAlertRepository) FindWithFilter(ctx context.Context, filter Alert
 	return alerts, userData, nil
 }
 
+func (r *cachedAlertRepository) CountWithFilter(ctx context.Context, filter AlertFilter) (int64, error) {
+	return r.next.CountWithFilter(ctx, filter)
+}
+
 func (r *cachedAlertRepository) FindAlertByID(ctx context.Context, id primitive.ObjectID) (*domain.Alert, *AlertUserData, error) {
 	key := alertByIDCacheKey(id)
 

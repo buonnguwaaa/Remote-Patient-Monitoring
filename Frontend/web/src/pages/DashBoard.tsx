@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { FaArrowTrendDown, FaArrowTrendUp } from "react-icons/fa6";
 import {
   FaDownload,
@@ -37,10 +38,10 @@ interface KpiDef {
   up?: boolean;
   Icon: React.ElementType;
   variant?: "danger" | "warning" | "success" | "info" | "default";
+  loading?: boolean;
 }
 
 const CHART_BUCKETS = 4;
-const MAX_ALERT_FETCH = 1000;
 
 
 
@@ -56,7 +57,7 @@ const Badge: React.FC<{ value: number; up: boolean }> = ({ value, up }) => (
   </span>
 );
 
-const KpiCard: React.FC<KpiDef> = ({ label, value, change, up, Icon, variant = "default" }) => {
+const KpiCard: React.FC<KpiDef> = ({ label, value, change, up, Icon, variant = "default", loading }) => {
   const bgClass =
     variant === "danger" ? "bg-red-50 dark:bg-red-900/10" :
     variant === "warning" ? "bg-amber-50 dark:bg-amber-900/10" :
@@ -70,6 +71,22 @@ const KpiCard: React.FC<KpiDef> = ({ label, value, change, up, Icon, variant = "
     variant === "success" ? "text-emerald-500" :
     variant === "info" ? "text-blue-500" :
     "text-gray-400 dark:text-slate-500";
+
+  if (loading) {
+    return (
+      <div className="rounded-2xl border border-gray-100 p-5 dark:border-slate-700/60 bg-white dark:bg-slate-800 animate-pulse">
+        <div className="mb-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="h-4 w-4 rounded-lg bg-slate-200 dark:bg-slate-700" />
+            <div className="h-3.5 w-24 rounded bg-slate-200 dark:bg-slate-700" />
+          </div>
+        </div>
+        <div className="flex items-end gap-2">
+          <div className="h-8 w-16 rounded bg-slate-200 dark:bg-slate-700" />
+        </div>
+      </div>
+    );
+  }
     
   return (
     <div className={`rounded-2xl border border-gray-100 p-5 dark:border-slate-700/60 ${bgClass}`}>
@@ -296,7 +313,22 @@ const TodoList: React.FC<{
 
       <div className="flex-1 overflow-auto border-t border-gray-50 dark:border-slate-700/40">
         {loading ? (
-          <p className="py-8 text-center text-xs text-gray-400">Đang tải...</p>
+          <div className="space-y-4 p-4 animate-pulse">
+            <div>
+              <div className="mb-2 h-3.5 w-32 rounded bg-slate-200 dark:bg-slate-700" />
+              <div className="space-y-2">
+                {[...Array(2)].map((_, i) => (
+                  <div key={i} className="flex items-center justify-between rounded-lg border border-gray-50 bg-gray-50/50 p-3 dark:border-slate-700/30 dark:bg-slate-700/20">
+                    <div className="space-y-1.5 flex-1">
+                      <div className="h-3.5 w-28 rounded bg-slate-200 dark:bg-slate-700" />
+                      <div className="h-3 w-20 rounded bg-slate-100 dark:bg-slate-800" />
+                    </div>
+                    <div className="h-6 w-14 rounded bg-slate-200 dark:bg-slate-700 shrink-0" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         ) : pendingAlerts.length === 0 && appointments.length === 0 ? (
           <p className="py-8 text-center text-xs text-gray-400">Không có việc cần xử lý hôm nay.</p>
         ) : (
@@ -393,9 +425,20 @@ const RecentAlerts: React.FC<{
 
       <div className="flex-1 overflow-auto border-t border-gray-50 dark:border-slate-700/40">
         {loading ? (
-          <p className="py-8 text-center text-xs text-gray-400">
-            {t("dashboard.loadingAlerts")}
-          </p>
+          <div className="divide-y divide-gray-50 dark:divide-slate-700/30 p-4 space-y-3 animate-pulse">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="flex items-start gap-3 pt-3 first:pt-0">
+                <div className="h-7 w-7 rounded-lg bg-slate-200 dark:bg-slate-700 shrink-0" />
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="h-3.5 w-24 rounded bg-slate-200 dark:bg-slate-700" />
+                    <div className="h-3 w-10 rounded bg-slate-100 dark:bg-slate-800 shrink-0" />
+                  </div>
+                  <div className="h-3 w-40 rounded bg-slate-100 dark:bg-slate-800" />
+                </div>
+              </div>
+            ))}
+          </div>
         ) : alerts.length === 0 ? (
           <p className="py-8 text-center text-xs text-gray-400">
             {t("dashboard.noAlerts")}
@@ -468,6 +511,26 @@ const DashBoard = () => {
 
   const [assignments, setAssignments] = useState<AssignmentResponse[]>([]);
   const [alerts, setAlerts] = useState<AlertResponse[]>([]);
+  const { data: openAlertsResult } = useQuery({
+    queryKey: ["alerts", "open"],
+    queryFn: () => getAlerts({ status: "open", limit: 1000 }),
+    staleTime: 5 * 60 * 1000,
+  });
+  const openAlerts = openAlertsResult?.alerts || [];
+
+  const { data: recentAlertsResult } = useQuery({
+    queryKey: ["alerts", { page: 1, limit: 10, status: "", severity: "", patientId: "" }],
+    queryFn: () => getAlerts({ page: 1, limit: 10, sortOrder: "desc" }),
+    staleTime: 5 * 60 * 1000,
+  });
+  const recentAlertsData = recentAlertsResult?.alerts || [];
+
+  useEffect(() => {
+    if (openAlerts) {
+      setAlerts(openAlerts);
+    }
+  }, [openAlerts]);
+
   const [appointments, setAppointments] = useState<FollowUpAppointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -526,13 +589,8 @@ const DashBoard = () => {
         today.setHours(23, 59, 59, 999);
         const todayEnd = today.toISOString();
 
-        const [assignmentList, alertList, appointmentList] = await Promise.all([
+        const [assignmentList, appointmentList] = await Promise.all([
           getMyPatients(),
-          getAlerts({
-            limit: MAX_ALERT_FETCH,
-            page: 1,
-            sortOrder: "desc",
-          }),
           getMyAppointments({
             from: todayStart,
             to: todayEnd,
@@ -540,7 +598,6 @@ const DashBoard = () => {
         ]);
 
         setAssignments(assignmentList);
-        setAlerts(alertList);
         setAppointments(appointmentList);
       } catch (loadError: any) {
         console.error("Failed to load doctor dashboard", loadError);
@@ -672,11 +729,8 @@ const DashBoard = () => {
   }, [assignments, error, latestAlertsByPatient, loading]);
 
   const recentAlerts = useMemo(
-    () =>
-      [...filteredAlerts]
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-        .slice(0, 5),
-    [filteredAlerts],
+    () => recentAlertsData.slice(0, 5),
+    [recentAlertsData],
   );
 
   const chartPayload = useMemo(
@@ -782,11 +836,10 @@ const DashBoard = () => {
 
     try {
       const selectedAssignments = assignments.filter(a => selectedPatients.has(a.patientId));
-      const reportData: PatientReportData[] = [];
       let current = 0;
 
-      // Fetch data for each selected patient
-      for (const assignment of selectedAssignments) {
+      // Fetch data for each selected patient in parallel
+      const reportPromises = selectedAssignments.map(async (assignment) => {
         try {
           const [measurements, thresholds] = await Promise.all([
             getMeasurements({
@@ -809,19 +862,25 @@ const DashBoard = () => {
           // Calculate statistics
           const stats = calculateHealthStatistics(filteredMeasurements, threshold);
 
-          reportData.push({
+          current++;
+          setReportProgress({ current, total: selectedPatients.size });
+
+          return {
             assignment,
             measurements: filteredMeasurements,
             threshold,
             stats,
-          });
-
-          current++;
-          setReportProgress({ current, total: selectedPatients.size });
+          };
         } catch (error) {
           console.error(`Error fetching data for patient ${assignment.patientId}:`, error);
+          current++;
+          setReportProgress({ current, total: selectedPatients.size });
+          return null;
         }
-      }
+      });
+
+      const results = await Promise.all(reportPromises);
+      const reportData = results.filter((item): item is PatientReportData => item !== null);
 
       // Generate Excel file
       exportHealthReportToExcel(reportData, reportStartDate, reportEndDate);
@@ -899,25 +958,29 @@ const DashBoard = () => {
           daysCount: complianceDays,
         });
       } else {
-        // Multiple patients → fetch all adherence data then export combined
-        const patientsData: MultiCompliancePatientData[] = [];
+        // Multiple patients → fetch all adherence data in parallel then export combined
         let current = 0;
-
-        for (const patient of selectedAssignments) {
+        const compliancePromises = selectedAssignments.map(async (patient) => {
           try {
             const adherence = await getAdherence({ patientId: patient.patientId, days: complianceDays });
-            patientsData.push({
+            current++;
+            setComplianceProgress({ current, total: selectedAssignments.length });
+            return {
               adherence,
               patientName: patient.patientName || "Bệnh nhân",
               patientCode: patient.patientCode || patient.patientPublicId || "-",
               daysCount: complianceDays,
-            });
+            };
           } catch (err) {
             console.error(`Compliance fetch failed for ${patient.patientId}`, err);
+            current++;
+            setComplianceProgress({ current, total: selectedAssignments.length });
+            return null;
           }
-          current++;
-          setComplianceProgress({ current, total: selectedAssignments.length });
-        }
+        });
+
+        const results = await Promise.all(compliancePromises);
+        const patientsData = results.filter((item): item is MultiCompliancePatientData => item !== null);
 
         if (patientsData.length > 0) {
           await exportMultiComplianceToExcel({ patients: patientsData });
@@ -1078,7 +1141,7 @@ const DashBoard = () => {
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           {kpis.map((kpi) => (
-            <KpiCard key={kpi.label} {...kpi} />
+            <KpiCard key={kpi.label} {...kpi} loading={loading} />
           ))}
         </div>
 

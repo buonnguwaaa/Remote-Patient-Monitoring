@@ -91,6 +91,16 @@ func (r *cachedAssignmentRepository) FindByNurseIDWithNames(ctx context.Context,
 	return assignments, userInfo, nil
 }
 
+// Paginated queries are not cached — they pass through directly to the
+// underlying repository to avoid cache-key explosion and stale-subset issues.
+func (r *cachedAssignmentRepository) FindByDoctorIDWithNamesPaginated(ctx context.Context, doctorID primitive.ObjectID, offset, limit int) ([]*domain.Assignment, map[primitive.ObjectID]UserDisplayInfo, int64, error) {
+	return r.AssignmentRepository.FindByDoctorIDWithNamesPaginated(ctx, doctorID, offset, limit)
+}
+
+func (r *cachedAssignmentRepository) FindByNurseIDWithNamesPaginated(ctx context.Context, nurseID primitive.ObjectID, offset, limit int) ([]*domain.Assignment, map[primitive.ObjectID]UserDisplayInfo, int64, error) {
+	return r.AssignmentRepository.FindByNurseIDWithNamesPaginated(ctx, nurseID, offset, limit)
+}
+
 // Create invalidates the new assignment's doctor/nurse list caches.
 //
 // Note: if this call reassigns a patient away from a previous doctor/nurse,

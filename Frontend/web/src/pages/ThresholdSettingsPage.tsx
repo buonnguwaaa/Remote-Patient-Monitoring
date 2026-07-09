@@ -457,8 +457,29 @@ export default function ThresholdSettingsPage() {
   ] as const;
 
   return (
-    <div className="w-full px-4 py-8 sm:px-6 lg:px-8">
-      {toast && <Toast toast={toast} onClose={hideToast} />}
+    <div className="min-h-screen bg-[#f5f6fa] font-sans dark:bg-slate-900">
+      <div className="w-full space-y-4 px-4 py-8 pb-24 sm:px-6 lg:px-8">
+        {toast && <Toast toast={toast} onClose={hideToast} />}
+
+      {/* Main Content Area */}
+      <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+        <h1 className="text-3xl font-bold text-gray-800 dark:text-slate-100">Quản trị ngưỡng cảnh báo</h1>
+        <div className="flex gap-2">
+          <button
+            onClick={() => handleOpenCreateForm()}
+            className="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          >
+            <FaPlus className="mr-2 h-3.5 w-3.5" /> Tạo cấu hình
+          </button>
+          <button
+            onClick={() => void loadData()}
+            disabled={loadingThresholds || loadingPatients}
+            className="inline-flex items-center rounded-lg border border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-800 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+          >
+            <FaSyncAlt className={`mr-2 h-3.5 w-3.5 ${loadingThresholds ? "animate-spin" : ""}`} /> Làm mới
+          </button>
+        </div>
+      </div>
 
       {/* Stats Bar */}
       <div className="mb-8 grid gap-4 grid-cols-3">
@@ -475,26 +496,6 @@ export default function ThresholdSettingsPage() {
           <div className={`mt-2 text-3xl font-semibold ${missingPatients.length > 0 ? 'text-amber-600 dark:text-amber-500' : 'text-slate-900 dark:text-slate-100'}`}>
             {missingPatients.length}
           </div>
-        </div>
-      </div>
-
-      {/* Main Content Area */}
-      <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Quản trị ngưỡng cảnh báo</h1>
-        <div className="flex gap-2">
-          <button
-            onClick={() => handleOpenCreateForm()}
-            className="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-          >
-            <FaPlus className="mr-2 h-3.5 w-3.5" /> Tạo cấu hình
-          </button>
-          <button
-            onClick={() => void loadData()}
-            disabled={loadingThresholds || loadingPatients}
-            className="inline-flex items-center rounded-lg border border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-800 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
-          >
-            <FaSyncAlt className={`mr-2 h-3.5 w-3.5 ${loadingThresholds ? "animate-spin" : ""}`} /> Làm mới
-          </button>
         </div>
       </div>
 
@@ -775,6 +776,7 @@ export default function ThresholdSettingsPage() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

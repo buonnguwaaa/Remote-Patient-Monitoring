@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   FaCheckCircle,
   FaCommentDots,
@@ -15,6 +16,7 @@ import {
 import Toast from "../components/ui/Toast";
 import Table from "../components/ui/Table";
 import type { Column } from "../components/ui/Table";
+import Pagination from "../components/ui/Pagination";
 import { useToast } from "../hooks/useToast";
 import {
   acknowledgeAlert,
@@ -76,15 +78,9 @@ const ThresholdAlert = () => {
   const filterPatientId = searchParams.get("patientId");
   const { t } = useTranslation();
   
-  const [alerts, setAlerts] = useState<AlertResponse[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
-  
   const [activeTab, setActiveTab] = useState<TabType>("PENDING");
   const [searchQuery, setSearchQuery] = useState("");
   const [severityFilter, setSeverityFilter] = useState<string>("ALL");
-  // const [currentPage, setCurrentPage] = useState(1);
   
   const [expandedPatients, setExpandedPatients] = useState<Set<string>>(new Set());
   
@@ -95,39 +91,61 @@ const ThresholdAlert = () => {
 
   const { toast, showToast, hideToast } = useToast();
 
-  const fetchAlerts = async (showLoadingState = true) => {
-    try {
-      if (showLoadingState) setLoading(true);
-      else setRefreshing(true);
+  const queryClient = useQueryClient();
+  const [currentPage, setCurrentPage] = useState(1);
 
-      const response = await getAlerts({
-        limit: 1000, 
-        page: 1,
-      });
-
-      if (response && Array.isArray(response)) {
-        let alertsData = response;
-        if (filterPatientId) {
-          alertsData = alertsData.filter(
-            (a) => a.patientId === filterPatientId
-          );
-        }
-        setAlerts(alertsData);
-        setLastUpdated(new Date().toLocaleTimeString());
-      }
-    } catch (err: any) {
-      showToast(err.message || "Không thể tải danh sách cảnh báo", "error");
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
-
+  // Reset page when filter changes
   useEffect(() => {
-    fetchAlerts();
-    const interval = setInterval(() => fetchAlerts(false), 30000);
-    return () => clearInterval(interval);
-  }, [filterPatientId]);
+    setCurrentPage(1);
+  }, [activeTab, severityFilter, searchQuery]);
+
+  const activeStatus = activeTab === "PENDING" ? "open" : activeTab === "RESOLVED" ? "ack" : "";
+
+  // Query 1: Fetch all open alerts (lightweight) to compute statistics
+  const { data: openAlertsResult } = useQuery({
+    queryKey: ["alerts", "open"],
+    queryFn: async () => {
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      return getAlerts({ status: "open", limit: 1000 });
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+  const openAlertsData = openAlertsResult?.alerts || [];
+
+  // Query 2: Fetch paginated alerts
+  const { data: alertsResult, isLoading: loading, isFetching: refreshing, refetch, dataUpdatedAt } = useQuery({
+    queryKey: ["alerts", { 
+      page: currentPage, 
+      limit: 10, 
+      status: activeStatus,
+      severity: severityFilter === "ALL" ? "" : severityFilter.toLowerCase(),
+      patientId: filterPatientId || ""
+    }],
+    queryFn: async () => {
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      return getAlerts({ 
+        page: currentPage, 
+        limit: 10, 
+        status: activeStatus || undefined,
+        severity: severityFilter === "ALL" ? undefined : severityFilter.toLowerCase() as any,
+        patientId: filterPatientId || undefined,
+        sortOrder: "desc"
+      });
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const alertsData = alertsResult?.alerts || [];
+  const totalItems = alertsResult?.total || 0;
+  const totalPages = Math.ceil(totalItems / 10);
+
+  const alerts = useMemo(() => {
+    return alertsData;
+  }, [alertsData]);
+
+  const lastUpdated = useMemo(() => {
+    return dataUpdatedAt ? new Date(dataUpdatedAt).toLocaleTimeString() : null;
+  }, [dataUpdatedAt]);
 
   const togglePatientExpanded = (patientId: string) => {
     setExpandedPatients((prev) => {
@@ -149,7 +167,8 @@ const ThresholdAlert = () => {
       showToast(`Đã xử lý thành công ${currentAlertsToResolve.length} cảnh báo`, "success");
       setShowResolveModal(false);
       setCurrentAlertsToResolve([]);
-      fetchAlerts(false);
+      void queryClient.invalidateQueries({ queryKey: ["alerts", "open"] });
+      void refetch();
     } catch (error: any) {
       showToast(error.message || "Lỗi khi xử lý cảnh báo", "error");
     } finally {
@@ -219,14 +238,7 @@ const ThresholdAlert = () => {
   const filteredAlerts = useMemo(() => {
     let result = alerts;
 
-    // Filter by tab
-    if (activeTab === "PENDING") {
-      result = result.filter(a => a.status === "open");
-    } else if (activeTab === "RESOLVED") {
-      result = result.filter(a => a.status === "ack");
-    }
-
-    // Search query
+    // Search query (filtered locally on current page results)
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter(a => 
@@ -235,22 +247,8 @@ const ThresholdAlert = () => {
       );
     }
 
-    // Severity
-    if (severityFilter !== "ALL") {
-      result = result.filter(a => a.severity === severityFilter.toLowerCase());
-    }
-
-    // Sort: High severity first, then newest
-    result.sort((a, b) => {
-      const severityMap: Record<string, number> = { "high": 3, "medium": 2, "low": 1 };
-      const sevA = severityMap[a.severity] || 0;
-      const sevB = severityMap[b.severity] || 0;
-      if (sevA !== sevB) return sevB - sevA; // DESC
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(); // DESC
-    });
-
     return result;
-  }, [alerts, activeTab, searchQuery, severityFilter]);
+  }, [alerts, searchQuery]);
 
   // Group alerts for pending tab
   const groupedPendingAlerts = useMemo(() => {
@@ -303,40 +301,54 @@ const ThresholdAlert = () => {
   }, [filteredAlerts, activeTab]);
 
   const stats = useMemo(() => {
-    const pending = alerts.filter(a => a.status === "open");
+    const pending = filterPatientId 
+      ? openAlertsData.filter(a => a.patientId === filterPatientId)
+      : openAlertsData;
     return {
       pendingTotal: pending.length,
       pendingHigh: pending.filter(a => a.severity === "high").length,
     };
-  }, [alerts]);
+  }, [openAlertsData, filterPatientId]);
 
   // Pagination for ALL / RESOLVED tabs
   // const itemsPerPage = 10;
   // const totalPages = Math.ceil(filteredAlerts.length / itemsPerPage);
   // const paginatedAlerts = filteredAlerts.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-  const renderStats = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-      <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Chờ xử lý</p>
-          <p className="text-3xl font-bold text-slate-900 dark:text-white mt-1">{stats.pendingTotal}</p>
+  const renderStats = () => {
+    const isStatsLoading = loading && openAlertsData.length === 0;
+
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Chờ xử lý</p>
+            {isStatsLoading ? (
+              <div className="h-9 w-16 rounded bg-slate-200 dark:bg-slate-700 animate-pulse mt-1" />
+            ) : (
+              <p className="text-3xl font-bold text-slate-900 dark:text-white mt-1">{stats.pendingTotal}</p>
+            )}
+          </div>
+          <div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center">
+            <FaRegClock className="text-xl text-blue-600 dark:text-blue-400" />
+          </div>
         </div>
-        <div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center">
-          <FaRegClock className="text-xl text-blue-600 dark:text-blue-400" />
+        <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-red-200 dark:border-red-900/50 flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-red-600 dark:text-red-400">Nghiêm trọng (Chờ xử lý)</p>
+            {isStatsLoading ? (
+              <div className="h-9 w-16 rounded bg-slate-200 dark:bg-slate-700 animate-pulse mt-1" />
+            ) : (
+              <p className="text-3xl font-bold text-red-700 dark:text-red-300 mt-1">{stats.pendingHigh}</p>
+            )}
+          </div>
+          <div className="h-12 w-12 rounded-full bg-red-100 dark:bg-red-500/20 flex items-center justify-center">
+            <FaExclamationTriangle className="text-xl text-red-600 dark:text-red-400" />
+          </div>
         </div>
       </div>
-      <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-red-200 dark:border-red-900/50 flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium text-red-600 dark:text-red-400">Nghiêm trọng (Chờ xử lý)</p>
-          <p className="text-3xl font-bold text-red-700 dark:text-red-300 mt-1">{stats.pendingHigh}</p>
-        </div>
-        <div className="h-12 w-12 rounded-full bg-red-100 dark:bg-red-500/20 flex items-center justify-center">
-          <FaExclamationTriangle className="text-xl text-red-600 dark:text-red-400" />
-        </div>
-      </div>
-    </div>
-  );
+    );
+  };
 
   const renderFilters = () => (
     <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 mb-6">
@@ -390,7 +402,37 @@ const ThresholdAlert = () => {
     </div>
   );
 
+  const renderPendingSkeleton = () => (
+    <div className="space-y-4">
+      {Array.from({ length: 3 }).map((_, idx) => (
+        <div
+          key={idx}
+          className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 animate-pulse"
+        >
+          <div className="flex items-start gap-4 w-full md:w-auto">
+            <div className="h-10 w-10 rounded-full bg-slate-200 dark:bg-slate-700 flex-shrink-0" />
+            <div className="space-y-2 flex-1 md:w-64">
+              <div className="h-5 w-48 rounded bg-slate-200 dark:bg-slate-700" />
+              <div className="flex flex-wrap gap-2 mt-1">
+                <div className="h-4 w-28 rounded bg-slate-200 dark:bg-slate-700" />
+                <div className="h-4 w-20 rounded bg-slate-200 dark:bg-slate-700" />
+              </div>
+              <div className="h-3 w-32 rounded bg-slate-200 dark:bg-slate-700" />
+            </div>
+          </div>
+          <div className="flex items-center gap-2 self-end md:self-auto">
+            <div className="h-9 w-24 rounded-lg bg-slate-200 dark:bg-slate-700" />
+            <div className="h-9 w-9 rounded-lg bg-slate-200 dark:bg-slate-700" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
   const renderPendingTab = () => {
+    if (loading && groupedPendingAlerts.length === 0) {
+      return renderPendingSkeleton();
+    }
     if (groupedPendingAlerts.length === 0) {
       return (
         <div className="text-center py-12 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
@@ -603,19 +645,25 @@ const ThresholdAlert = () => {
 
     return (
       <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-        <Table columns={columns} data={filteredAlerts} />
+        <Table 
+          columns={columns} 
+          data={filteredAlerts} 
+          loading={loading}
+          loadingRows={10}
+        />
       </div>
     );
   };
 
   return (
-    <div className="w-full px-4 py-8 mx-auto sm:px-6 lg:px-8">
-      <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
-            Quản Lý Cảnh Báo
-            {loading && <FaSyncAlt className="w-5 h-5 text-blue-500 animate-spin" />}
-          </h1>
+    <div className="min-h-screen bg-[#f5f6fa] font-sans dark:bg-slate-900">
+      <div className="w-full space-y-4 px-4 py-8 pb-24 sm:px-6 lg:px-8">
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-800 dark:text-slate-100 flex items-center gap-3">
+              Quản Lý Cảnh Báo
+              {loading && <FaSyncAlt className="w-5 h-5 text-blue-500 animate-spin" />}
+            </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
             Theo dõi và xử lý các chỉ số sinh tồn vượt ngưỡng của bệnh nhân.
             {lastUpdated && ` Cập nhật lúc: ${lastUpdated}`}
@@ -623,7 +671,7 @@ const ThresholdAlert = () => {
         </div>
         
         <button
-          onClick={() => fetchAlerts(true)}
+          onClick={() => void refetch()}
           disabled={loading || refreshing}
           className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
         >
@@ -638,6 +686,40 @@ const ThresholdAlert = () => {
       {renderFilters()}
 
       {activeTab === "PENDING" ? renderPendingTab() : renderTableTab()}
+
+      {/* Pagination */}
+      {(totalPages > 1 || loading) && (
+        <div className={`mt-4 flex flex-col items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:flex-row ${loading ? "opacity-60 pointer-events-none" : ""}`}>
+          {loading && totalItems === 0 ? (
+            <>
+              <div className="h-4 w-40 rounded bg-slate-100 dark:bg-slate-800 animate-pulse" />
+              <div className="flex h-8 items-center gap-1">
+                <div className="h-8 w-8 rounded border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800 animate-pulse" />
+                <div className="h-8 w-8 rounded border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800 animate-pulse" />
+                <div className="h-8 w-8 rounded border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800 animate-pulse" />
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                {t("common.showing")}{" "}
+                <span className="font-medium text-slate-700 dark:text-slate-200">
+                  {(currentPage - 1) * 10 + 1}–{Math.min(currentPage * 10, totalItems)}
+                </span>{" "}
+                {t("common.of")}{" "}
+                <span className="font-medium text-slate-700 dark:text-slate-200">
+                  {totalItems}
+                </span>
+              </p>
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={(page) => !loading && setCurrentPage(page)}
+              />
+            </>
+          )}
+        </div>
+      )}
 
       {/* Resolve Modal */}
       {showResolveModal && (
@@ -693,6 +775,7 @@ const ThresholdAlert = () => {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 };
