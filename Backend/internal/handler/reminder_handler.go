@@ -7,6 +7,7 @@ import (
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/constant"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
+	userDomain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/service"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecase"
@@ -97,6 +98,38 @@ func (h *ReminderHandler) GetReminders(c *gin.Context) {
 	defer cancel()
 
 	reminders, err := h.reminderService.GetReminders(ctx, input)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": reminders, "message": "Lấy danh sách lời nhắc thành công"})
+}
+
+func (h *ReminderHandler) GetMyReminders(c *gin.Context) {
+	userID, exists := c.Get("userId")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": constant.MsgUnauthorized})
+		return
+	}
+
+	input := &usecase.GetMyRemindersInput{
+		UserID:    userID.(string),
+		PatientID: c.Query("patientId"),
+		Status:    domain.ReminderStatus(c.Query("status")),
+		Kind:      domain.Kind(c.Query("kind")),
+	}
+
+	if roleVal, roleExists := c.Get("role"); roleExists {
+		if role, ok := roleVal.(userDomain.Role); ok {
+			input.Role = role
+		}
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
+	defer cancel()
+
+	reminders, err := h.reminderService.GetMyReminders(ctx, input)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

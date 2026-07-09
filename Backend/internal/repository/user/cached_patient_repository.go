@@ -69,6 +69,25 @@ func patientProfileCacheKey(id primitive.ObjectID) string {
 	return "patient:profile:" + id.Hex()
 }
 
+func (r *cachedPatientRepository) FindPatientByID(ctx context.Context, id primitive.ObjectID) (*domain.Patient, error) {
+	var cached cachedPatient
+	if err := r.store.Get(ctx, patientProfileCacheKey(id), &cached); err == nil {
+		p := cached.toDomain()
+		return &p, nil
+	}
+
+	patient, err := r.PatientRepository.FindPatientByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := r.store.Set(ctx, patientProfileCacheKey(id), toCachedPatient(patient), r.ttl); err != nil {
+		log.Printf("[WARN] failed to cache patient %s: %v", id.Hex(), err)
+	}
+
+	return patient, nil
+}
+
 // FindPatientsByIDs serves each patient's profile from the cache when
 // present, and only queries MongoDB for the patients that missed,
 // backfilling the cache with what it finds.

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"log"
 	"time"
 
@@ -19,6 +20,7 @@ type reminderRepository struct {
 type ReminderRepository interface {
 	Create(ctx context.Context, r *domain.Reminder) (*domain.Reminder, error)
 	FindWithFilter(ctx context.Context, filter ReminderFilter) ([]domain.Reminder, error)
+	FindByPatientIDs(ctx context.Context, patientIDs []primitive.ObjectID, filter ReminderFilter) ([]domain.Reminder, error)
 	FindByID(ctx context.Context, id primitive.ObjectID) (*domain.Reminder, error)
 	Update(ctx context.Context, r *domain.Reminder) (*domain.Reminder, error)
 	UpdateStatusByID(ctx context.Context, id primitive.ObjectID, status domain.ReminderStatus) (*domain.Reminder, error)
@@ -139,6 +141,43 @@ func (r *reminderRepository) FindWithFilter(ctx context.Context, filter Reminder
 		return nil, err
 	}
 
+	return reminders, nil
+}
+
+func (r *reminderRepository) FindByPatientIDs(ctx context.Context, patientIDs []primitive.ObjectID, filter ReminderFilter) ([]domain.Reminder, error) {
+	if len(patientIDs) == 0 {
+		return []domain.Reminder{}, nil
+	}
+
+	bsonFilter := bson.M{"patientId": bson.M{"$in": patientIDs}}
+	if filter.PrescriptionID != "" {
+		prescriptionID, err := primitive.ObjectIDFromHex(filter.PrescriptionID)
+		if err != nil {
+			return nil, err
+		}
+		bsonFilter["prescriptionId"] = prescriptionID
+	}
+	if filter.Status != "" {
+		bsonFilter["status"] = filter.Status
+	}
+	if filter.Kind != "" {
+		bsonFilter["kind"] = filter.Kind
+	}
+	if filter.IsLatest {
+		return nil, errors.New("latest filter is not supported for batch patient reminder lookup")
+	}
+
+	opts := options.Find().SetSort(bson.D{{Key: "createdAt", Value: -1}})
+	cursor, err := r.col.Find(ctx, bsonFilter, opts)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var reminders []domain.Reminder
+	if err = cursor.All(ctx, &reminders); err != nil {
+		return nil, err
+	}
 	return reminders, nil
 }
 

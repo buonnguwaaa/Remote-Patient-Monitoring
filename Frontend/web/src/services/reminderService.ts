@@ -106,6 +106,22 @@ export const getReminders = async (params?: {
   return (response.data.data || []).map(mapReminder);
 };
 
+export const getMyReminders = async (params?: {
+  patientId?: string;
+  status?: ReminderStatus;
+  kind?: ReminderKind;
+}) => {
+  const response = await api.get<{ data: ReminderApiResponse[] | null }>("/reminders/me", {
+    params: {
+      patientId: params?.patientId,
+      status: params?.status,
+      kind: params?.kind,
+    },
+  });
+
+  return (response.data.data || []).map(mapReminder);
+};
+
 export const createReminder = async (payload: ReminderBasePayload) => {
   const response = await api.post<{ data: ReminderApiResponse }>("/reminders", payload);
   return mapReminder(response.data.data);

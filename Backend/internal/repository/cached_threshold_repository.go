@@ -41,7 +41,34 @@ func (r *cachedThresholdRepository) Create(ctx context.Context, t *domain.Thresh
 }
 
 func (r *cachedThresholdRepository) FindWithFilter(ctx context.Context, filter ThresholdFilter) ([]domain.Threshold, error) {
-	return r.next.FindWithFilter(ctx, filter)
+	if !filter.IsLatest || filter.PatientID == "" || filter.DoctorID != "" {
+		return r.next.FindWithFilter(ctx, filter)
+	}
+
+	patientID, err := primitive.ObjectIDFromHex(filter.PatientID)
+	if err != nil {
+		return r.next.FindWithFilter(ctx, filter)
+	}
+
+	key := thresholdLatestActiveCacheKey(patientID)
+
+	var cached domain.Threshold
+	if err := r.store.Get(ctx, key, &cached); err == nil {
+		return []domain.Threshold{cached}, nil
+	}
+
+	thresholds, err := r.next.FindWithFilter(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(thresholds) > 0 {
+		if err := r.store.Set(ctx, key, thresholds[0], r.ttl); err != nil {
+			log.Printf("[WARN] failed to cache threshold for patient %s: %v", patientID.Hex(), err)
+		}
+	}
+
+	return thresholds, nil
 }
 
 func (r *cachedThresholdRepository) FindByID(ctx context.Context, id primitive.ObjectID) (*domain.Threshold, error) {

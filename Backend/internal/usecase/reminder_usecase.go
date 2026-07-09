@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
+	userDomain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
 )
 
 type CreateReminderInput struct {
@@ -26,6 +27,14 @@ type GetRemindersInput struct {
 	Status    domain.ReminderStatus
 	Kind      domain.Kind
 	IsLatest  bool
+}
+
+type GetMyRemindersInput struct {
+	UserID    string
+	Role      userDomain.Role
+	PatientID string
+	Status    domain.ReminderStatus
+	Kind      domain.Kind
 }
 
 type UpdateReminderInput struct {

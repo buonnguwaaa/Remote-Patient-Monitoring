@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"math/rand/v2"
 	"time"
 
@@ -77,6 +78,8 @@ func (s *Store) Get(ctx context.Context, key string, dest any) error {
 	if err := json.Unmarshal(raw, dest); err != nil {
 		return fmt.Errorf("cache: unmarshal %q: %w", key, err)
 	}
+
+	log.Printf("[INFO] cache hit: %s", key)
 	return nil
 }
 
@@ -131,6 +134,36 @@ func (s *Store) Delete(ctx context.Context, keys ...string) error {
 	if err := s.client.Del(ctx, namespaced...).Err(); err != nil {
 		return fmt.Errorf("cache: delete %v: %w", keys, err)
 	}
+	return nil
+}
+
+// DeleteByPrefix removes every key whose namespaced form starts with prefix.
+func (s *Store) DeleteByPrefix(ctx context.Context, prefix string) error {
+	if !s.Enabled() || prefix == "" {
+		return nil
+	}
+
+	match := s.namespacedKey(prefix) + "*"
+	var cursor uint64
+
+	for {
+		keys, nextCursor, err := s.client.Scan(ctx, cursor, match, 100).Result()
+		if err != nil {
+			return fmt.Errorf("cache: scan prefix %q: %w", prefix, err)
+		}
+
+		if len(keys) > 0 {
+			if err := s.client.Del(ctx, keys...).Err(); err != nil {
+				return fmt.Errorf("cache: delete prefix %q: %w", prefix, err)
+			}
+		}
+
+		cursor = nextCursor
+		if cursor == 0 {
+			break
+		}
+	}
+
 	return nil
 }
 
