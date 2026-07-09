@@ -123,7 +123,7 @@ export default function SettingsScreen() {
         <Text style={[styles.sectionTitle, darkMode && styles.sectionTitleDark]}>Cài đặt hệ thống</Text>
 
         <View style={[styles.settingsGroup, darkMode && styles.cardDark]}>
-          {/* Language Selector */}
+          {/* Language Selector - Hidden for now
           <View style={styles.settingRow}>
             <View style={styles.settingInfo}>
               <Ionicons name="globe-outline" size={20} color={darkMode ? "#93C5FD" : "#2563EB"} />
@@ -150,8 +150,9 @@ export default function SettingsScreen() {
           </View>
 
           <View style={styles.divider} />
+          */}
 
-          {/* Dark Mode toggle */}
+          {/* Dark Mode toggle - Hidden for now
           <View style={styles.settingRow}>
             <View style={styles.settingInfo}>
               <Ionicons name="moon-outline" size={20} color={darkMode ? "#93C5FD" : "#2563EB"} />
@@ -170,6 +171,7 @@ export default function SettingsScreen() {
           </View>
 
           <View style={styles.divider} />
+          */}
 
           {/* Biometric toggle */}
           <View style={styles.settingRow}>

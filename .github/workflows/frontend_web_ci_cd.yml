@@ -21,7 +21,7 @@ jobs:
         with:
           node-version: 22
           cache: 'npm'
-          cache-dependency-path: Frontend/web/package.json
+          cache-dependency-path: Frontend/web/package-lock.json
 
       - name: Install deps
         working-directory: Frontend/web

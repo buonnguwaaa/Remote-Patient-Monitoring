@@ -1,0 +1,139 @@
+name: Mobile CI
+
+# Chạy khi tạo PR hoặc push vào develop/master
+# Mục tiêu: kiểm tra code không lỗi bundle trước khi merge
+on:
+  pull_request:
+    branches:
+      - develop
+      - master
+    paths:
+      - 'Frontend/mobile/**'
+      - 'Frontend/doctor-app/**'
+      - '.github/workflows/mobile-ci.yml'
+  push:
+    branches:
+      - develop
+    paths:
+      - 'Frontend/mobile/**'
+      - 'Frontend/doctor-app/**'
+      - '.github/workflows/mobile-ci.yml'
+
+jobs:
+  # ─────────────────────────────────────────────
+  # Job 1: Kiểm tra Patient App (Frontend/mobile)
+  # ─────────────────────────────────────────────
+  ci-patient-app:
+    name: CI – Patient App (mobile)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: Frontend/mobile/package-lock.json
+
+      - name: Install dependencies
+        working-directory: Frontend/mobile
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+
+      # Chạy lint nếu script tồn tại (không fail nếu thiếu)
+      - name: Run lint (nếu có)
+        working-directory: Frontend/mobile
+        run: |
+          if node -e "const p = require('./package.json'); process.exit(p.scripts && p.scripts.lint ? 0 : 1);" 2>/dev/null; then
+            echo "Script 'lint' found, running..."
+            npm run lint
+          else
+            echo "⚠️  Script 'lint' không tồn tại, bỏ qua."
+          fi
+
+      # Chạy typecheck nếu script tồn tại (không fail nếu thiếu)
+      - name: Run typecheck (nếu có)
+        working-directory: Frontend/mobile
+        run: |
+          if node -e "const p = require('./package.json'); process.exit(p.scripts && p.scripts.typecheck ? 0 : 1);" 2>/dev/null; then
+            echo "Script 'typecheck' found, running..."
+            npm run typecheck
+          else
+            echo "⚠️  Script 'typecheck' không tồn tại, bỏ qua."
+          fi
+
+      # Kiểm tra build JS bundle Android - không cần máy native
+      - name: Check Android JS bundle (expo export)
+        working-directory: Frontend/mobile
+        env:
+          EXPO_PUBLIC_BASE_URL: http://localhost:8080
+          BASE_URL: http://localhost:8080
+        run: |
+          npx expo export --platform android --output-dir /tmp/mobile-export
+          echo "✅ Android bundle build thành công"
+
+  # ────────────────────────────────────────────────
+  # Job 2: Kiểm tra Doctor/Staff App (Frontend/doctor-app)
+  # ────────────────────────────────────────────────
+  ci-doctor-app:
+    name: CI – Doctor/Staff App
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: Frontend/doctor-app/package-lock.json
+
+      - name: Install dependencies
+        working-directory: Frontend/doctor-app
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+
+      # Chạy lint nếu script tồn tại (không fail nếu thiếu)
+      - name: Run lint (nếu có)
+        working-directory: Frontend/doctor-app
+        run: |
+          if node -e "const p = require('./package.json'); process.exit(p.scripts && p.scripts.lint ? 0 : 1);" 2>/dev/null; then
+            echo "Script 'lint' found, running..."
+            npm run lint
+          else
+            echo "⚠️  Script 'lint' không tồn tại, bỏ qua."
+          fi
+
+      # Chạy typecheck nếu script tồn tại (không fail nếu thiếu)
+      - name: Run typecheck (nếu có)
+        working-directory: Frontend/doctor-app
+        run: |
+          if node -e "const p = require('./package.json'); process.exit(p.scripts && p.scripts.typecheck ? 0 : 1);" 2>/dev/null; then
+            echo "Script 'typecheck' found, running..."
+            npm run typecheck
+          else
+            echo "⚠️  Script 'typecheck' không tồn tại, bỏ qua."
+          fi
+
+      # Kiểm tra build JS bundle Android - không cần máy native
+      - name: Check Android JS bundle (expo export)
+        working-directory: Frontend/doctor-app
+        env:
+          EXPO_PUBLIC_BASE_URL: http://localhost:8080
+          BASE_URL: http://localhost:8080
+        run: |
+          npx expo export --platform android --output-dir /tmp/doctor-export
+          echo "✅ Android bundle build thành công"

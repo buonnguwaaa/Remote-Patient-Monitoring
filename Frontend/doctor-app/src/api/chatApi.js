@@ -32,14 +32,28 @@ export async function ensureConversation(patientId) {
   });
 }
 
-export function buildConversationSocketUrl(conversationId) {
+import * as SecureStore from "../utils/secureStoreHelper";
+
+export async function buildConversationSocketUrl(conversationId) {
   const wsBase = BASE_URL.replace(/^http:/i, "ws:").replace(/^https:/i, "wss:");
-  return `${wsBase}/chat/ws?conversationId=${encodeURIComponent(conversationId)}`;
+  let token = "";
+  try {
+    token = await SecureStore.getItemAsync("staff_accessToken");
+    if (!token) token = await SecureStore.getItemAsync("doctor_accessToken");
+  } catch (e) {}
+  
+  return `${wsBase}/chat/ws?conversationId=${encodeURIComponent(conversationId)}&token=${encodeURIComponent(token || "")}`;
 }
 
-export function buildRealtimeSocketUrl() {
+export async function buildRealtimeSocketUrl() {
   const wsBase = BASE_URL.replace(/^http:/i, "ws:").replace(/^https:/i, "wss:");
-  return `${wsBase}/realtime/ws`;
+  let token = "";
+  try {
+    token = await SecureStore.getItemAsync("staff_accessToken");
+    if (!token) token = await SecureStore.getItemAsync("doctor_accessToken");
+  } catch (e) {}
+
+  return `${wsBase}/realtime/ws?token=${encodeURIComponent(token || "")}`;
 }
 
 export default {

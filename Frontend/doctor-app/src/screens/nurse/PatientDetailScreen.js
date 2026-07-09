@@ -42,7 +42,7 @@ export default function PatientDetailScreen() {
   const openAlertCount = alerts.filter(a => a.status === "open").length;
 
   const handleInputMeasurement = useCallback(() => {
-    navigation.navigate("MainTabs", {
+    navigation.navigate("NurseMainTabs", {
       screen: "NurseMeasurementInput",
       params: {
         preselectedPatient: {
@@ -61,7 +61,7 @@ export default function PatientDetailScreen() {
   }, []);
 
   const handlePrescriptionNav = useCallback(() => {
-    navigation.navigate("MainTabs", { 
+    navigation.navigate("NurseMainTabs", { 
       screen: "NursePrescriptions", 
       params: { patientId } 
     });

@@ -695,19 +695,21 @@ export default function ThresholdsScreen() {
         </View>
       )}
 
-      {/* Action buttons */}
-      <View style={styles.actionBtnsRow}>
-        <TouchableOpacity style={styles.createFloatBtn} onPress={() => handleOpenCreate()}>
-          <Ionicons name="add" size={16} color="#fff" />
-          <Text style={styles.createFloatBtnText}>Tạo cấu hình</Text>
-        </TouchableOpacity>
-        {stats.missing > 0 && (
-          <TouchableOpacity style={styles.createAllBtn} onPress={handleCreateForAll} disabled={saving}>
-            <Ionicons name="people" size={16} color="#D97706" />
-            <Text style={styles.createAllBtnText}>Tạo cho tất cả ({stats.missing})</Text>
+      {/* Action buttons — only show on "Cần cấu hình" tab */}
+      {activeTab === "MISSING" && (
+        <View style={styles.actionBtnsRow}>
+          <TouchableOpacity style={styles.createFloatBtn} onPress={() => handleOpenCreate()}>
+            <Ionicons name="add" size={16} color="#fff" />
+            <Text style={styles.createFloatBtnText}>Tạo cấu hình</Text>
           </TouchableOpacity>
-        )}
-      </View>
+          {stats.missing > 0 && (
+            <TouchableOpacity style={styles.createAllBtn} onPress={handleCreateForAll} disabled={saving}>
+              <Ionicons name="people" size={16} color="#D97706" />
+              <Text style={styles.createAllBtnText}>Tạo cho tất cả ({stats.missing})</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
 
       {renderContent()}
 

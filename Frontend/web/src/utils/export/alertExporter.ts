@@ -20,9 +20,12 @@ const violationLabel: Record<string, string> = {
   spo2: "SpO2",
   respiratoryRate: t("patientDetail.respiratoryRate"),
   heart_rate: t("patientDetail.heartRate"),
+  heartRate: t("patientDetail.heartRate"),
   respiratory_rate: t("patientDetail.respiratoryRate"),
   blood_pressure_systolic: t("patientDetail.systolic"),
+  bloodPressureSystolic: t("patientDetail.systolic"),
   blood_pressure_diastolic: t("patientDetail.diastolic"),
+  bloodPressureDiastolic: t("patientDetail.diastolic"),
 };
 
 interface AlertExportData {

@@ -88,7 +88,7 @@ const QuickChatWidget = () => {
 
   const loadConversations = async (mode: "initial" | "refresh" = "initial") => {
     if (!user?.id) {
-      setError("Khong tim thay thong tin bac si de tai cuoc tro chuyen.");
+      setError("Không tìm thấy thông tin bác sĩ để tải cuộc trò chuyện.");
       setLoading(false);
       setRefreshing(false);
       return;
@@ -135,7 +135,7 @@ const QuickChatWidget = () => {
           return {
             conversationId: conversation.id,
             patientId: otherParticipant,
-            patientName: assignment?.patientName || "Benh nhan",
+            patientName: assignment?.patientName || "Bệnh nhân",
             lastMessage,
             updatedAt: lastMessage?.createdAt || conversation.updatedAt,
           } as ConversationPreview;
@@ -166,7 +166,7 @@ const QuickChatWidget = () => {
       setError(
         err?.response?.data?.error ||
           err?.message ||
-          "Khong the tai danh sach cuoc tro chuyen.",
+          "Không thể tải danh sách cuộc trò chuyện.",
       );
     } finally {
       setLoading(false);
@@ -329,13 +329,13 @@ const QuickChatWidget = () => {
               <div className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900">
                 <div className="flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-slate-100">
                   <MessageCircle size={18} />
-                  Tin nhan nhanh
+                  Tin nhắn nhanh
                 </div>
                 <button
                   type="button"
                   onClick={handleClose}
                   className="rounded-full p-1 text-slate-500 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
-                  aria-label="Dong chat nhanh"
+                  aria-label="Đóng chat nhanh"
                 >
                   <X size={18} />
                 </button>
@@ -347,7 +347,7 @@ const QuickChatWidget = () => {
                   <input
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
-                    placeholder="Tim benh nhan..."
+                    placeholder="Tìm bệnh nhân..."
                     className="w-full rounded-md border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-blue-500/20"
                   />
                 </div>
@@ -356,7 +356,7 @@ const QuickChatWidget = () => {
                   onClick={() => void loadConversations("refresh")}
                   disabled={refreshing}
                   className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-                  aria-label="Lam moi danh sach chat"
+                  aria-label="Làm mới danh sách chat"
                 >
                   {refreshing ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -369,7 +369,7 @@ const QuickChatWidget = () => {
               <div className="flex-1 overflow-y-auto">
                 {loading ? (
                   <div className="flex h-full items-center justify-center text-sm text-slate-500 dark:text-slate-400">
-                    Dang tai cuoc tro chuyen...
+                    Đang tải cuộc trò chuyện...
                   </div>
                 ) : error ? (
                   <div className="p-4 text-sm text-red-600 dark:text-red-400">
@@ -377,7 +377,7 @@ const QuickChatWidget = () => {
                   </div>
                 ) : filteredConversations.length === 0 ? (
                   <div className="p-4 text-center text-sm text-slate-500 dark:text-slate-400">
-                    Khong co cuoc tro chuyen phu hop.
+                    Không có cuộc trò chuyện phù hợp.
                   </div>
                 ) : (
                   filteredConversations.map((conversation) => {
@@ -434,7 +434,7 @@ const QuickChatWidget = () => {
             </div>
           ) : (
             <div className="flex h-full items-center justify-center p-4 text-sm text-slate-500 dark:text-slate-400">
-              Khong tim thay benh nhan de mo chat.
+              Không tìm thấy bệnh nhân để mở chat.
             </div>
           )}
         </div>
