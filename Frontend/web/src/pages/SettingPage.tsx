@@ -106,12 +106,12 @@ const SettingPage = () => {
     <>
       <Toast toast={toast} onClose={hideToast} />
 
-      <div className="min-h-screen bg-gray-50 p-6 dark:bg-slate-900 transition-colors duration-300">
-        <div className="mx-auto space-y-6">
+      <div className="min-h-screen bg-[#f5f6fa] font-sans dark:bg-slate-900 transition-colors duration-300">
+        <div className="w-full space-y-4 px-4 py-8 pb-24 sm:px-6 lg:px-8">
           <section className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800 transition-colors duration-300">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">
+                <h1 className="text-3xl font-bold text-gray-800 dark:text-slate-100">
                   {t("settings.title")}
                 </h1>
                 <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">

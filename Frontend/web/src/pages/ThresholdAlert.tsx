@@ -609,13 +609,14 @@ const ThresholdAlert = () => {
   };
 
   return (
-    <div className="w-full px-4 py-8 mx-auto sm:px-6 lg:px-8">
-      <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
-            Quản Lý Cảnh Báo
-            {loading && <FaSyncAlt className="w-5 h-5 text-blue-500 animate-spin" />}
-          </h1>
+    <div className="min-h-screen bg-[#f5f6fa] font-sans dark:bg-slate-900">
+      <div className="w-full space-y-4 px-4 py-8 pb-24 sm:px-6 lg:px-8">
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-800 dark:text-slate-100 flex items-center gap-3">
+              Quản Lý Cảnh Báo
+              {loading && <FaSyncAlt className="w-5 h-5 text-blue-500 animate-spin" />}
+            </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
             Theo dõi và xử lý các chỉ số sinh tồn vượt ngưỡng của bệnh nhân.
             {lastUpdated && ` Cập nhật lúc: ${lastUpdated}`}
@@ -693,6 +694,7 @@ const ThresholdAlert = () => {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 };

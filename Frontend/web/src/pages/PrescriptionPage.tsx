@@ -687,8 +687,9 @@ export default function PrescriptionPage() {
   };
 
   return (
-    <div className="w-full px-4 py-8 pb-24 sm:px-6 lg:px-8">
-      {toast && <Toast toast={toast} onClose={hideToast} />}
+    <div className="min-h-screen bg-[#f5f6fa] font-sans dark:bg-slate-900">
+      <div className="w-full space-y-4 px-4 py-8 pb-24 sm:px-6 lg:px-8">
+        {toast && <Toast toast={toast} onClose={hideToast} />}
 
       {!isFormVisible ? (
         <>
@@ -1110,6 +1111,7 @@ export default function PrescriptionPage() {
         </div>,
         document.body
       )}
+      </div>
     </div>
   );
 }

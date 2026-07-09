@@ -457,8 +457,9 @@ export default function ThresholdSettingsPage() {
   ] as const;
 
   return (
-    <div className="w-full px-4 py-8 sm:px-6 lg:px-8">
-      {toast && <Toast toast={toast} onClose={hideToast} />}
+    <div className="min-h-screen bg-[#f5f6fa] font-sans dark:bg-slate-900">
+      <div className="w-full space-y-4 px-4 py-8 pb-24 sm:px-6 lg:px-8">
+        {toast && <Toast toast={toast} onClose={hideToast} />}
 
       {/* Stats Bar */}
       <div className="mb-8 grid gap-4 grid-cols-3">
@@ -480,7 +481,7 @@ export default function ThresholdSettingsPage() {
 
       {/* Main Content Area */}
       <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Quản trị ngưỡng cảnh báo</h1>
+        <h1 className="text-3xl font-bold text-gray-800 dark:text-slate-100">Quản trị ngưỡng cảnh báo</h1>
         <div className="flex gap-2">
           <button
             onClick={() => handleOpenCreateForm()}
@@ -775,6 +776,7 @@ export default function ThresholdSettingsPage() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

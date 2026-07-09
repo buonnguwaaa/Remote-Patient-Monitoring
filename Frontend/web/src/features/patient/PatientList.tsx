@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useQuery } from "@tanstack/react-query";
 
 import Table, { type Column } from "../../components/ui/Table";
 import Pagination from "../../components/ui/Pagination";
@@ -14,30 +15,22 @@ const PatientList = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
 
-  const [patients, setPatients] = useState<PatientItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
 
   // Server-side pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
 
-  const fetchPatients = useCallback(async (page: number) => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Simulate 500ms network delay for testing skeleton loader
-      await new Promise((resolve) => setTimeout(resolve, 500));
+  const { data, isLoading: loading, error } = useQuery({
+    queryKey: ["patients", currentPage],
+    queryFn: async () => {
+      // Simulate 200ms network delay for testing skeleton loader
+      await new Promise((resolve) => setTimeout(resolve, 200));
 
       const [assignmentsResult, alerts] = await Promise.all([
-        getMyPatientsPaginated(page, ITEMS_PER_PAGE),
+        getMyPatientsPaginated(currentPage, ITEMS_PER_PAGE),
         getAlerts({ limit: 1000, page: 1, sortOrder: "desc" })
       ]);
-
-      setTotalItems(assignmentsResult.total);
 
       const patientSeverity = new Map<string, string>();
 
@@ -73,17 +66,15 @@ const PatientList = () => {
         };
       });
 
-      setPatients(patientItems);
-    } catch (err: any) {
-      setError(err?.response?.data?.error || err?.message || t("patients.loadError"));
-    } finally {
-      setLoading(false);
-    }
-  }, [t]);
+      return {
+        patients: patientItems,
+        total: assignmentsResult.total
+      };
+    },
+  });
 
-  useEffect(() => {
-    void fetchPatients(currentPage);
-  }, [currentPage, fetchPatients]);
+  const patients = data?.patients || [];
+  const totalItems = data?.total || 0;
 
   // Client-side filtering on the current page's data
   const filteredPatients = useMemo(() => {
@@ -189,18 +180,25 @@ const PatientList = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-100 p-4 dark:bg-slate-900 md:p-8">
-        <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 p-4 text-red-700 dark:text-red-400">
-          <p className="font-semibold">{t("common.error")}</p>
-          <p>{error}</p>
+      <div className="min-h-screen bg-[#f5f6fa] font-sans dark:bg-slate-900">
+        <div className="w-full px-4 py-8 sm:px-6 lg:px-8">
+          <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 p-4 text-red-700 dark:text-red-400">
+            <p className="font-semibold">{t("common.error")}</p>
+            <p>{error instanceof Error ? error.message : t("patients.loadError")}</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 p-4 dark:bg-slate-900 md:p-8">
-      <h1 className="mb-4 text-2xl font-bold text-gray-800 dark:text-slate-100 md:text-3xl">{t("patients.title")}</h1>
+    <div className="min-h-screen bg-[#f5f6fa] font-sans dark:bg-slate-900">
+      <div className="w-full space-y-4 px-4 py-8 pb-24 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold text-gray-800 dark:text-slate-100">
+            {t("patients.title")}
+          </h1>
+        </div>
 
       <div className="mb-4 flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900 md:flex-row md:items-center md:justify-between md:gap-4 md:p-4">
         <div className="w-full flex-1">
@@ -360,7 +358,8 @@ const PatientList = () => {
         )}
       </div>
     </div>
-  );
+  </div>
+);
 };
 
 export default PatientList;

@@ -1472,13 +1472,14 @@ export default function AppointmentPage() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="mx-auto p-6 pb-24">
-      <Toast toast={toast} onClose={hideToast} />
+    <div className="min-h-screen bg-[#f5f6fa] font-sans dark:bg-slate-900">
+      <div className="w-full space-y-4 px-4 py-8 pb-24 sm:px-6 lg:px-8">
+        <Toast toast={toast} onClose={hideToast} />
 
-      {/* Header */}
-      <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <h1 className="flex items-center gap-3 text-2xl font-bold tracking-tight text-slate-800 dark:text-slate-100">
+        {/* Header */}
+        <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h1 className="flex items-center gap-3 text-3xl font-bold text-gray-800 dark:text-slate-100">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400">
               <FaCalendarAlt size={20} />
             </div>
@@ -1943,6 +1944,7 @@ export default function AppointmentPage() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }
