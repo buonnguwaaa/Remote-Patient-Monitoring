@@ -19,21 +19,28 @@ import (
 )
 
 type reminderService struct {
-	patientRepo  userRepository.PatientRepository
-	reminderRepo repository.ReminderRepository
+	patientRepo    userRepository.PatientRepository
+	reminderRepo   repository.ReminderRepository
+	assignmentRepo repository.AssignmentRepository
 }
 
 type ReminderService interface {
 	CreateReminder(ctx context.Context, input *usecase.CreateReminderInput) (*dto.ReminderResponse, error)
 	GetReminders(ctx context.Context, input *usecase.GetRemindersInput) ([]dto.ReminderResponse, error)
+	GetMyReminders(ctx context.Context, input *usecase.GetMyRemindersInput) ([]dto.ReminderResponse, error)
 	UpdateReminderByID(ctx context.Context, input *usecase.UpdateReminderInput) (*dto.ReminderResponse, error)
 	UpdateReminderStatus(ctx context.Context, input *usecase.UpdateReminderStatusInput) (*dto.ReminderResponse, error)
 }
 
-func NewReminderService(patientRepo userRepository.PatientRepository, reminderRepo repository.ReminderRepository) ReminderService {
+func NewReminderService(
+	patientRepo userRepository.PatientRepository,
+	reminderRepo repository.ReminderRepository,
+	assignmentRepo repository.AssignmentRepository,
+) ReminderService {
 	return &reminderService{
-		patientRepo:  patientRepo,
-		reminderRepo: reminderRepo,
+		patientRepo:    patientRepo,
+		reminderRepo:   reminderRepo,
+		assignmentRepo: assignmentRepo,
 	}
 }
 
@@ -131,7 +138,93 @@ func (s *reminderService) GetReminders(ctx context.Context, input *usecase.GetRe
 		return nil, err
 	}
 
-	var responses []dto.ReminderResponse
+	return mapReminderResponses(reminders), nil
+}
+
+func (s *reminderService) GetMyReminders(ctx context.Context, input *usecase.GetMyRemindersInput) ([]dto.ReminderResponse, error) {
+	if input.Role == userDomain.RoleAdmin {
+		return s.GetReminders(ctx, &usecase.GetRemindersInput{
+			PatientID: input.PatientID,
+			Status:    input.Status,
+			Kind:      input.Kind,
+		})
+	}
+
+	userID, err := util.MustHexToObjectID(input.UserID)
+	if err != nil {
+		return nil, err
+	}
+
+	patientIDs, err := s.assignedPatientIDs(ctx, input.Role, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	if input.PatientID != "" {
+		patientID, err := util.MustHexToObjectID(input.PatientID)
+		if err != nil {
+			return nil, errors.New("ID bệnh nhân không hợp lệ")
+		}
+		if !containsObjectID(patientIDs, patientID) {
+			return []dto.ReminderResponse{}, nil
+		}
+		patientIDs = []primitive.ObjectID{patientID}
+	}
+
+	reminders, err := s.reminderRepo.FindByPatientIDs(ctx, patientIDs, repository.ReminderFilter{
+		Status: input.Status,
+		Kind:   input.Kind,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return mapReminderResponses(reminders), nil
+}
+
+func (s *reminderService) assignedPatientIDs(ctx context.Context, role userDomain.Role, userID primitive.ObjectID) ([]primitive.ObjectID, error) {
+	switch role {
+	case userDomain.RolePatient:
+		return []primitive.ObjectID{userID}, nil
+	case userDomain.RoleDoctor:
+		assignments, err := s.assignmentRepo.FindByDoctorID(ctx, userID)
+		if err != nil {
+			return nil, err
+		}
+		return assignmentPatientIDs(assignments), nil
+	case userDomain.RoleNurse:
+		assignments, _, err := s.assignmentRepo.FindByNurseIDWithNames(ctx, userID)
+		if err != nil {
+			return nil, err
+		}
+		return assignmentPatientIDs(assignments), nil
+	default:
+		return nil, errors.New("Không có quyền truy cập")
+	}
+}
+
+func assignmentPatientIDs(assignments []*domain.Assignment) []primitive.ObjectID {
+	patientIDs := make([]primitive.ObjectID, 0, len(assignments))
+	for _, assignment := range assignments {
+		if assignment == nil || assignment.PatientID.IsZero() {
+			continue
+		}
+		patientIDs = append(patientIDs, assignment.PatientID)
+	}
+	return patientIDs
+}
+
+func containsObjectID(ids []primitive.ObjectID, target primitive.ObjectID) bool {
+	for _, id := range ids {
+		if id == target {
+			return true
+		}
+	}
+	return false
+}
+
+func mapReminderResponses(reminders []domain.Reminder) []dto.ReminderResponse {
+	responses := make([]dto.ReminderResponse, 0, len(reminders))
 	for _, reminder := range reminders {
 		responses = append(responses, dto.ReminderResponse{
 			ID:             reminder.ID.Hex(),
@@ -152,8 +245,7 @@ func (s *reminderService) GetReminders(ctx context.Context, input *usecase.GetRe
 			UpdatedAt:      reminder.UpdatedAt,
 		})
 	}
-
-	return responses, nil
+	return responses
 }
 
 func (s *reminderService) UpdateReminderByID(ctx context.Context, input *usecase.UpdateReminderInput) (*dto.ReminderResponse, error) {

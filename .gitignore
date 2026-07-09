@@ -8,6 +8,8 @@ debug.log
 # Dependencies
 node_modules/
 package-lock.json
+!Frontend/mobile/package-lock.json
+!Frontend/doctor-app/package-lock.json
 yarn.lock
 pnpm-lock.yaml
 

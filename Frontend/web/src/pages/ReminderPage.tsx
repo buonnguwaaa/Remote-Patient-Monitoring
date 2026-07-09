@@ -25,7 +25,7 @@ import { useToast } from "../hooks/useToast";
 import { getMyPatients } from "../services/patientService";
 import {
   createReminder,
-  getReminders,
+  getMyReminders,
   updateReminder,
   updateReminderStatus,
   type ReminderBasePayload,
@@ -422,16 +422,15 @@ const ReminderPage = () => {
   const loadReminders = async () => {
     try {
       setLoadingReminders(true);
-      const targetPatientIds = selectedPatientId ? [selectedPatientId] : patientOptions.map((item) => item.patientId);
-      if (targetPatientIds.length === 0) {
+      if (!selectedPatientId && patientOptions.length === 0) {
         setReminders([]);
         return;
       }
-      const reminderGroups = await Promise.all(
-        targetPatientIds.map((patientId) => getReminders({ patientId }))
+
+      const reminders = await getMyReminders(
+        selectedPatientId ? { patientId: selectedPatientId } : undefined
       );
-      const merged = reminderGroups.flat();
-      const uniqueReminders = Array.from(new Map(merged.map((item) => [item.id, item])).values());
+      const uniqueReminders = Array.from(new Map(reminders.map((item) => [item.id, item])).values());
       setReminders(uniqueReminders);
       
       // Update viewing group if modal is open
