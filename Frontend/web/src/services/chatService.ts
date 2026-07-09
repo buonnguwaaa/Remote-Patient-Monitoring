@@ -9,6 +9,7 @@ export interface ConversationParticipantResponse {
 export interface ConversationResponse {
   id: string;
   participants: ConversationParticipantResponse[];
+  lastMessage: MessageResponse | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -46,6 +47,7 @@ interface ConversationApiResponse {
     lastReadMessageId?: string | null;
     lastDeliveredMessageId?: string | null;
   }> | null;
+  lastMessage?: MessageResponse | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -68,6 +70,7 @@ function normalizeConversationResponse(
       lastReadMessageId: participant.lastReadMessageId || null,
       lastDeliveredMessageId: participant.lastDeliveredMessageId || null,
     })),
+    lastMessage: conversation.lastMessage || null,
     createdAt: conversation.createdAt,
     updatedAt: conversation.updatedAt,
   };

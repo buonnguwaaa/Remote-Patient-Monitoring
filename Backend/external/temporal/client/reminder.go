@@ -53,6 +53,7 @@ func SignalReminderWorkflow(
 func SignalReminderSkipOccurrence(
 	ctx context.Context,
 	reminderID string,
+	occurrence string,
 ) error {
 	c, err := New()
 	if err != nil {
@@ -67,6 +68,6 @@ func SignalReminderSkipOccurrence(
 		workflowID,
 		"",
 		workflow.ReminderSkipSignal,
-		nil,
+		occurrence,
 	)
 }

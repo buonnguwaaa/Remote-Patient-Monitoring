@@ -21,6 +21,7 @@ type MeasurementRepository interface {
 	Update(ctx context.Context, m *domain.Measurement) (*domain.Measurement, error)
 	FindWithFilter(ctx context.Context, f MeasurementFilter) ([]domain.Measurement, error)
 	FindByID(ctx context.Context, id primitive.ObjectID) (*domain.Measurement, error)
+	FindLatestByPatientIDs(ctx context.Context, patientIDs []primitive.ObjectID) (map[primitive.ObjectID]*domain.Measurement, error)
 }
 
 type MeasurementFilter struct {
@@ -152,6 +153,44 @@ func (r *measurementRepository) FindWithFilter(ctx context.Context, f Measuremen
 	}
 
 	return results, nil
+}
+
+// FindLatestByPatientIDs returns the most recent measurement for each of the
+// given patients in a single aggregation, keyed by patient id.
+func (r *measurementRepository) FindLatestByPatientIDs(ctx context.Context, patientIDs []primitive.ObjectID) (map[primitive.ObjectID]*domain.Measurement, error) {
+	result := make(map[primitive.ObjectID]*domain.Measurement)
+	if len(patientIDs) == 0 {
+		return result, nil
+	}
+
+	pipeline := mongo.Pipeline{
+		{{Key: "$match", Value: bson.M{"patientId": bson.M{"$in": patientIDs}}}},
+		{{Key: "$sort", Value: bson.D{{Key: "createdAt", Value: -1}}}},
+		{{Key: "$group", Value: bson.M{
+			"_id": "$patientId",
+			"doc": bson.M{"$first": "$$ROOT"},
+		}}},
+	}
+
+	cursor, err := r.col.Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var grouped []struct {
+		PatientID   primitive.ObjectID `bson:"_id"`
+		Measurement domain.Measurement `bson:"doc"`
+	}
+	if err := cursor.All(ctx, &grouped); err != nil {
+		return nil, err
+	}
+
+	for i := range grouped {
+		m := grouped[i].Measurement
+		result[grouped[i].PatientID] = &m
+	}
+	return result, nil
 }
 
 func (r *measurementRepository) FindByID(ctx context.Context, id primitive.ObjectID) (*domain.Measurement, error) {

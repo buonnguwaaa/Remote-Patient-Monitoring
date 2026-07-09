@@ -117,17 +117,6 @@ func FormatDoseClock(dose MedicationDose) string {
 	return FormatClock(hour, minute)
 }
 
-// ReminderTimeOfDay returns the dose bucket for a prescription-linked reminder.
-func ReminderTimeOfDay(reminder *Reminder) (TimeOfDay, bool) {
-	if reminder == nil {
-		return "", false
-	}
-	if reminder.TimeOfDay != nil && reminder.TimeOfDay.IsValid() {
-		return *reminder.TimeOfDay, true
-	}
-	return TimeOfDayForClock(reminder.Hour, reminder.Minute)
-}
-
 // ReminderSlotTime builds the local fire time for a reminder on a scheduled day.
 func ReminderSlotTime(scheduledDate time.Time, timezone string, hour, minute int) (time.Time, error) {
 	loc, err := time.LoadLocation(timezone)

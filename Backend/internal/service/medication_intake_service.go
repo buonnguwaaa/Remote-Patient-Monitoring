@@ -131,7 +131,7 @@ func (s *medicationIntakeService) finalizeIntake(ctx context.Context, prescripti
 		s.reminderSync.SnoozeRemindersAfterIntake(
 			ctx,
 			prescription,
-			intake.Dose.TimeOfDay,
+			intake.Dose,
 			intake.ScheduledDate,
 			intake.TakenAt,
 		)
@@ -249,7 +249,7 @@ func (s *medicationIntakeService) GetMedicationAdherence(ctx context.Context, in
 
 	prescriptions = filterPrescriptionsForAdherence(prescriptions)
 	if len(prescriptions) == 0 {
-		return emptyAdherenceResponse(input), nil
+		return emptyAdherenceResponse(), nil
 	}
 
 	refTZ := prescriptions[0].Timezone
@@ -408,7 +408,7 @@ func resolveAdherenceRange(input *usecase.GetMedicationAdherenceInput, timezone 
 	return from, to, nil
 }
 
-func emptyAdherenceResponse(input *usecase.GetMedicationAdherenceInput) *dto.MedicationAdherenceResponse {
+func emptyAdherenceResponse() *dto.MedicationAdherenceResponse {
 	return &dto.MedicationAdherenceResponse{
 		Summary: dto.MedicationAdherenceSummaryResponse{},
 		Days:    []dto.MedicationAdherenceDayResponse{},

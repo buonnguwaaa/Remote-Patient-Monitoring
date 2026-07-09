@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/client"
 	edto "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/dto"
@@ -62,12 +63,16 @@ func (s *reminderService) CreateReminder(ctx context.Context, input *usecase.Cre
 		prescriptionID = &id
 	}
 
+	times, err := normalizeReminderTimes(input.Times)
+	if err != nil {
+		return nil, err
+	}
+
 	reminder := &domain.Reminder{
 		PatientID:      patientID,
 		Kind:           input.Kind,
 		Message:        input.Message,
-		Hour:           input.Hour,
-		Minute:         input.Minute,
+		Times:          times,
 		DaysOfWeek:     input.DaysOfWeek,
 		Timezone:       input.Timezone,
 		Status:         domain.ReminderStatusActive,
@@ -98,8 +103,7 @@ func (s *reminderService) CreateReminder(ctx context.Context, input *usecase.Cre
 		PatientID:      createdReminder.PatientID.Hex(),
 		Kind:           createdReminder.Kind,
 		Message:        createdReminder.Message,
-		Hour:           createdReminder.Hour,
-		Minute:         createdReminder.Minute,
+		Times:          createdReminder.Times,
 		DaysOfWeek:     createdReminder.DaysOfWeek,
 		Timezone:       createdReminder.Timezone,
 		Status:         createdReminder.Status,
@@ -134,8 +138,7 @@ func (s *reminderService) GetReminders(ctx context.Context, input *usecase.GetRe
 			PatientID:      reminder.PatientID.Hex(),
 			Kind:           reminder.Kind,
 			Message:        reminder.Message,
-			Hour:           reminder.Hour,
-			Minute:         reminder.Minute,
+			Times:          reminder.Times,
 			DaysOfWeek:     reminder.DaysOfWeek,
 			Timezone:       reminder.Timezone,
 			Status:         reminder.Status,
@@ -168,11 +171,15 @@ func (s *reminderService) UpdateReminderByID(ctx context.Context, input *usecase
 		return nil, errors.New("Không tìm thấy nhắc nhở")
 	}
 
+	times, err := normalizeReminderTimes(input.Times)
+	if err != nil {
+		return nil, err
+	}
+
 	// Update fields
 	existingReminder.Message = input.Message
 	existingReminder.Status = input.Status
-	existingReminder.Hour = input.Hour
-	existingReminder.Minute = input.Minute
+	existingReminder.Times = times
 	existingReminder.DaysOfWeek = input.DaysOfWeek
 	existingReminder.Timezone = input.Timezone
 	existingReminder.StartDate = input.StartDate
@@ -198,8 +205,7 @@ func (s *reminderService) UpdateReminderByID(ctx context.Context, input *usecase
 		PatientID:      updatedReminder.PatientID.Hex(),
 		Kind:           updatedReminder.Kind,
 		Message:        updatedReminder.Message,
-		Hour:           updatedReminder.Hour,
-		Minute:         updatedReminder.Minute,
+		Times:          updatedReminder.Times,
 		DaysOfWeek:     updatedReminder.DaysOfWeek,
 		Timezone:       updatedReminder.Timezone,
 		Status:         updatedReminder.Status,
@@ -249,8 +255,7 @@ func (s *reminderService) UpdateReminderStatus(ctx context.Context, input *useca
 		PatientID:      updatedReminder.PatientID.Hex(),
 		Kind:           updatedReminder.Kind,
 		Message:        updatedReminder.Message,
-		Hour:           updatedReminder.Hour,
-		Minute:         updatedReminder.Minute,
+		Times:          updatedReminder.Times,
 		DaysOfWeek:     updatedReminder.DaysOfWeek,
 		Timezone:       updatedReminder.Timezone,
 		Status:         updatedReminder.Status,
@@ -270,4 +275,33 @@ func objectIDToHex(id *primitive.ObjectID) string {
 		return ""
 	}
 	return id.Hex()
+}
+
+// normalizeReminderTimes cleans up requested reminder times: it validates the
+// range, removes duplicates, and sorts them chronologically. It returns an
+// error when no valid time remains.
+func normalizeReminderTimes(times []domain.ReminderTime) ([]domain.ReminderTime, error) {
+	seen := make(map[int]struct{}, len(times))
+	normalized := make([]domain.ReminderTime, 0, len(times))
+	for _, t := range times {
+		if t.Hour < 0 || t.Hour > 23 || t.Minute < 0 || t.Minute > 59 {
+			return nil, errors.New("Thời điểm nhắc không hợp lệ (giờ 0-23, phút 0-59)")
+		}
+		key := t.Hour*60 + t.Minute
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		normalized = append(normalized, t)
+	}
+
+	if len(normalized) == 0 {
+		return nil, errors.New("Vui lòng chọn ít nhất một thời điểm nhắc")
+	}
+
+	sort.Slice(normalized, func(i, j int) bool {
+		return normalized[i].Hour*60+normalized[i].Minute < normalized[j].Hour*60+normalized[j].Minute
+	})
+
+	return normalized, nil
 }

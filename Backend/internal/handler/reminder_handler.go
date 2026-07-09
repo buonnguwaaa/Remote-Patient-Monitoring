@@ -52,8 +52,7 @@ func (h *ReminderHandler) CreateReminder(c *gin.Context) {
 		PatientID:  req.PatientID,
 		Kind:       req.Kind,
 		Message:    req.Message,
-		Hour:       req.Hour,
-		Minute:     req.Minute,
+		Times:      toDomainReminderTimes(req.Times),
 		DaysOfWeek: req.DaysOfWeek,
 		Timezone:   req.Timezone,
 		StartDate:  req.StartDate,
@@ -131,8 +130,7 @@ func (h *ReminderHandler) UpdateReminderByID(c *gin.Context) {
 	input := &usecase.UpdateReminderInput{
 		ID:         reminderID,
 		Message:    req.Message,
-		Hour:       req.Hour,
-		Minute:     req.Minute,
+		Times:      toDomainReminderTimes(req.Times),
 		DaysOfWeek: req.DaysOfWeek,
 		Timezone:   req.Timezone,
 		Status:     req.Status,
@@ -189,4 +187,13 @@ func (h *ReminderHandler) UpdateReminderStatus(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": reminder, "message": "Cập nhật trạng thái lời nhắc thành công"})
+}
+
+// toDomainReminderTimes maps request times into domain times.
+func toDomainReminderTimes(times []dto.ReminderTimeInput) []domain.ReminderTime {
+	result := make([]domain.ReminderTime, 0, len(times))
+	for _, t := range times {
+		result = append(result, domain.ReminderTime{Hour: t.Hour, Minute: t.Minute})
+	}
+	return result
 }

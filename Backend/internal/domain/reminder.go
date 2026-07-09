@@ -22,15 +22,20 @@ const (
 	ReminderStatusCanceled ReminderStatus = "canceled"
 )
 
+// ReminderTime represents a single clock time (HH:MM) at which a reminder fires.
+type ReminderTime struct {
+	Hour   int `json:"hour" bson:"hour"`     // 0–23
+	Minute int `json:"minute" bson:"minute"` // 0–59
+}
+
 type Reminder struct {
 	ID        primitive.ObjectID `json:"id" bson:"_id,omitempty"`
 	PatientID primitive.ObjectID `json:"patientId" bson:"patientId"`
 	Kind      Kind               `json:"kind" bson:"kind"`
 	Message   string             `json:"message" bson:"message"`
 
-	Hour       int   `json:"hour" bson:"hour"`             // 0–23
-	Minute     int   `json:"minute" bson:"minute"`         // 0–59
-	DaysOfWeek []int `json:"daysOfWeek" bson:"daysOfWeek"` // 0=Sunday..6=Saturday
+	Times      []ReminderTime `json:"times" bson:"times"`
+	DaysOfWeek []int          `json:"daysOfWeek" bson:"daysOfWeek"` // 0=Sunday..6=Saturday
 
 	Timezone string `json:"timezone" bson:"timezone"`
 
