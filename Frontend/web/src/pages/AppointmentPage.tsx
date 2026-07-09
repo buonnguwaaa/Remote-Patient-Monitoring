@@ -579,10 +579,9 @@ const defaultForm = (patientId = ""): FormData => {
 interface MiniCalendarProps {
   selected: Date;
   onSelect: (d: Date) => void;
-  appointments: FollowUpAppointment[];
 }
 
-function MiniCalendar({ selected, onSelect, appointments }: MiniCalendarProps) {
+function MiniCalendar({ selected, onSelect }: MiniCalendarProps) {
   const [viewMonth, setViewMonth] = useState(() => {
     const d = new Date(selected);
     d.setDate(1);
@@ -607,18 +606,7 @@ function MiniCalendar({ selected, onSelect, appointments }: MiniCalendarProps) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  // Days with appointments (YYYY-MM-DD set)
-  const apptDays = useMemo(() => {
-    const set = new Set<string>();
-    appointments.forEach((a) => {
-      set.add(
-        new Date(a.scheduledAt).toLocaleDateString("sv-SE", {
-          timeZone: TIMEZONE,
-        }),
-      );
-    });
-    return set;
-  }, [appointments]);
+
 
   const year = viewMonth.getFullYear();
   const month = viewMonth.getMonth();
@@ -690,10 +678,8 @@ function MiniCalendar({ selected, onSelect, appointments }: MiniCalendarProps) {
       <div className="grid grid-cols-7 gap-y-0.5">
         {cells.map((date, idx) => {
           if (!date) return <div key={idx} />;
-          const ymd = dateToYMD(date);
           const isToday = isSameDay(date, today);
           const isSelected = isSameDay(date, selected);
-          const hasAppt = apptDays.has(ymd);
 
           return (
             <button
@@ -708,13 +694,6 @@ function MiniCalendar({ selected, onSelect, appointments }: MiniCalendarProps) {
               }`}
             >
               {date.getDate()}
-              {/* Dot for days with appointments */}
-              {hasAppt && !isSelected && (
-                <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 h-1 w-1 rounded-full bg-indigo-500 dark:bg-indigo-400" />
-              )}
-              {hasAppt && isSelected && (
-                <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 h-1 w-1 rounded-full bg-white/70" />
-              )}
             </button>
           );
         })}
@@ -862,7 +841,6 @@ function CalendarView({
             setCurrentDate(d);
             setMode("day");
           }}
-          appointments={appointments}
         />
 
         {/* Quick jump buttons */}
