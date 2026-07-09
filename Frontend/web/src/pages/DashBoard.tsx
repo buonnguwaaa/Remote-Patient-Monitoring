@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { FaArrowTrendDown, FaArrowTrendUp } from "react-icons/fa6";
 import {
   FaDownload,
@@ -468,6 +469,18 @@ const DashBoard = () => {
 
   const [assignments, setAssignments] = useState<AssignmentResponse[]>([]);
   const [alerts, setAlerts] = useState<AlertResponse[]>([]);
+  const { data: rawAlerts } = useQuery({
+    queryKey: ["alerts"],
+    queryFn: () => getAlerts({ limit: MAX_ALERT_FETCH, page: 1, sortOrder: "desc" }),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  useEffect(() => {
+    if (rawAlerts) {
+      setAlerts(rawAlerts);
+    }
+  }, [rawAlerts]);
+
   const [appointments, setAppointments] = useState<FollowUpAppointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -526,13 +539,8 @@ const DashBoard = () => {
         today.setHours(23, 59, 59, 999);
         const todayEnd = today.toISOString();
 
-        const [assignmentList, alertList, appointmentList] = await Promise.all([
+        const [assignmentList, appointmentList] = await Promise.all([
           getMyPatients(),
-          getAlerts({
-            limit: MAX_ALERT_FETCH,
-            page: 1,
-            sortOrder: "desc",
-          }),
           getMyAppointments({
             from: todayStart,
             to: todayEnd,
@@ -540,7 +548,6 @@ const DashBoard = () => {
         ]);
 
         setAssignments(assignmentList);
-        setAlerts(alertList);
         setAppointments(appointmentList);
       } catch (loadError: any) {
         console.error("Failed to load doctor dashboard", loadError);

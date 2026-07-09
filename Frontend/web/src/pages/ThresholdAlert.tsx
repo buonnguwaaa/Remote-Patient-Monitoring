@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useQuery } from "@tanstack/react-query";
 import {
   FaCheckCircle,
   FaCommentDots,
@@ -76,15 +77,9 @@ const ThresholdAlert = () => {
   const filterPatientId = searchParams.get("patientId");
   const { t } = useTranslation();
   
-  const [alerts, setAlerts] = useState<AlertResponse[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
-  
   const [activeTab, setActiveTab] = useState<TabType>("PENDING");
   const [searchQuery, setSearchQuery] = useState("");
   const [severityFilter, setSeverityFilter] = useState<string>("ALL");
-  // const [currentPage, setCurrentPage] = useState(1);
   
   const [expandedPatients, setExpandedPatients] = useState<Set<string>>(new Set());
   
@@ -95,39 +90,22 @@ const ThresholdAlert = () => {
 
   const { toast, showToast, hideToast } = useToast();
 
-  const fetchAlerts = async (showLoadingState = true) => {
-    try {
-      if (showLoadingState) setLoading(true);
-      else setRefreshing(true);
+  const { data: alertsData = [], isLoading: loading, isFetching: refreshing, refetch, dataUpdatedAt } = useQuery({
+    queryKey: ["alerts"],
+    queryFn: () => getAlerts({ limit: 1000, page: 1, sortOrder: "desc" }),
+    staleTime: 5 * 60 * 1000,
+  });
 
-      const response = await getAlerts({
-        limit: 1000, 
-        page: 1,
-      });
-
-      if (response && Array.isArray(response)) {
-        let alertsData = response;
-        if (filterPatientId) {
-          alertsData = alertsData.filter(
-            (a) => a.patientId === filterPatientId
-          );
-        }
-        setAlerts(alertsData);
-        setLastUpdated(new Date().toLocaleTimeString());
-      }
-    } catch (err: any) {
-      showToast(err.message || "Không thể tải danh sách cảnh báo", "error");
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
+  const alerts = useMemo(() => {
+    if (filterPatientId) {
+      return alertsData.filter((a) => a.patientId === filterPatientId);
     }
-  };
+    return alertsData;
+  }, [alertsData, filterPatientId]);
 
-  useEffect(() => {
-    fetchAlerts();
-    const interval = setInterval(() => fetchAlerts(false), 30000);
-    return () => clearInterval(interval);
-  }, [filterPatientId]);
+  const lastUpdated = useMemo(() => {
+    return dataUpdatedAt ? new Date(dataUpdatedAt).toLocaleTimeString() : null;
+  }, [dataUpdatedAt]);
 
   const togglePatientExpanded = (patientId: string) => {
     setExpandedPatients((prev) => {
@@ -149,7 +127,7 @@ const ThresholdAlert = () => {
       showToast(`Đã xử lý thành công ${currentAlertsToResolve.length} cảnh báo`, "success");
       setShowResolveModal(false);
       setCurrentAlertsToResolve([]);
-      fetchAlerts(false);
+      void refetch();
     } catch (error: any) {
       showToast(error.message || "Lỗi khi xử lý cảnh báo", "error");
     } finally {
@@ -624,7 +602,7 @@ const ThresholdAlert = () => {
         </div>
         
         <button
-          onClick={() => fetchAlerts(true)}
+          onClick={() => void refetch()}
           disabled={loading || refreshing}
           className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
         >
