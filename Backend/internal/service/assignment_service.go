@@ -19,6 +19,7 @@ type AssignmentService interface {
 	AssignPatient(ctx context.Context, input *usecase.AssignPatientInput) (*dto.AssignmentResponse, error)
 	GetAllAssignments(ctx context.Context) ([]*dto.AssignmentResponse, error)
 	GetAssignmentsByRole(ctx context.Context, input *usecase.GetAssignmentsByRoleInput) ([]*dto.AssignmentResponse, error)
+	GetAssignmentsByRolePaginated(ctx context.Context, input *usecase.GetAssignmentsByRoleInput) ([]*dto.AssignmentResponse, int64, error)
 	DeleteAssignmentByID(ctx context.Context, input *usecase.DeleteAssignmentInput) error
 }
 
@@ -118,6 +119,34 @@ func (s *assignmentService) GetAssignmentsByRole(ctx context.Context, input *use
 	}
 
 	return s.mapListToResponse(assignments, userInfoMap), nil
+}
+
+func (s *assignmentService) GetAssignmentsByRolePaginated(ctx context.Context, input *usecase.GetAssignmentsByRoleInput) ([]*dto.AssignmentResponse, int64, error) {
+	userID, err := util.MustHexToObjectID(input.UserID)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	var (
+		assignments []*domain.Assignment
+		userInfoMap map[primitive.ObjectID]repository.UserDisplayInfo
+		total       int64
+	)
+
+	switch input.Role {
+	case userDomain.RoleDoctor:
+		assignments, userInfoMap, total, err = s.assignmentRepo.FindByDoctorIDWithNamesPaginated(ctx, userID, input.Offset, input.Limit)
+	case userDomain.RoleNurse:
+		assignments, userInfoMap, total, err = s.assignmentRepo.FindByNurseIDWithNamesPaginated(ctx, userID, input.Offset, input.Limit)
+	default:
+		return nil, 0, errors.New("Vai trò không hợp lệ để xem phân công")
+	}
+
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return s.mapListToResponse(assignments, userInfoMap), total, nil
 }
 
 func (s *assignmentService) GetAllAssignments(ctx context.Context) ([]*dto.AssignmentResponse, error) {

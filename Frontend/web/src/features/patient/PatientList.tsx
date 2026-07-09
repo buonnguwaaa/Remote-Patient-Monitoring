@@ -1,11 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import Table, { type Column } from "../../components/ui/Table";
-import { getAlerts, getMyPatients } from "../../services/patientService";
+import Pagination from "../../components/ui/Pagination";
+import { getAlerts, getMyPatientsPaginated } from "../../services/patientService";
 import type { PatientItem } from "../../types/patient";
 import { Chat, Edit } from "./ActionButton";
+
+const ITEMS_PER_PAGE = 10;
 
 const PatientList = () => {
   const navigate = useNavigate();
@@ -17,62 +20,72 @@ const PatientList = () => {
   const [filterStatus, setFilterStatus] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
 
-  useEffect(() => {
-    const fetchPatients = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+  // Server-side pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
 
-        const [assignments, alerts] = await Promise.all([
-          getMyPatients(),
-          getAlerts({ limit: 1000, page: 1, sortOrder: "desc" })
-        ]);
+  const fetchPatients = useCallback(async (page: number) => {
+    try {
+      setLoading(true);
+      setError(null);
 
-        const patientSeverity = new Map<string, string>();
+      // Simulate 500ms network delay for testing skeleton loader
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
-        alerts.forEach((alert) => {
-          if (alert.status === "open") {
-            const curr = patientSeverity.get(alert.patientId);
-            if (
-              !curr ||
-              (curr !== "high" && alert.severity === "high") ||
-              (curr === "low" && alert.severity === "medium")
-            ) {
-              patientSeverity.set(alert.patientId, alert.severity);
-            }
+      const [assignmentsResult, alerts] = await Promise.all([
+        getMyPatientsPaginated(page, ITEMS_PER_PAGE),
+        getAlerts({ limit: 1000, page: 1, sortOrder: "desc" })
+      ]);
+
+      setTotalItems(assignmentsResult.total);
+
+      const patientSeverity = new Map<string, string>();
+
+      alerts.forEach((alert) => {
+        if (alert.status === "open") {
+          const curr = patientSeverity.get(alert.patientId);
+          if (
+            !curr ||
+            (curr !== "high" && alert.severity === "high") ||
+            (curr === "low" && alert.severity === "medium")
+          ) {
+            patientSeverity.set(alert.patientId, alert.severity);
           }
-        });
+        }
+      });
 
-        const patientItems: PatientItem[] = assignments.map((assignment) => {
-          let status: PatientItem["status"] = t("patients.normal");
+      const patientItems: PatientItem[] = assignmentsResult.data.map((assignment) => {
+        let status: PatientItem["status"] = t("patients.normal");
 
-          const severity = patientSeverity.get(assignment.patientId);
-          if (severity === "high" || severity === "medium") {
-            status = t("patients.warning");
-          }
+        const severity = patientSeverity.get(assignment.patientId);
+        if (severity === "high" || severity === "medium") {
+          status = t("patients.warning");
+        }
 
-          return {
-            id: assignment.patientId,
-            name: assignment.patientName || t("common.noData"),
-            patientCode: assignment.patientCode || t("patients.noCode"),
-            updatedAt: assignment.updatedAt
-              ? new Date(assignment.updatedAt).toISOString().split("T")[0]
-              : undefined,
-            status,
-          };
-        });
+        return {
+          id: assignment.patientId,
+          name: assignment.patientName || t("common.noData"),
+          patientCode: assignment.patientCode || t("patients.noCode"),
+          updatedAt: assignment.updatedAt
+            ? new Date(assignment.updatedAt).toISOString().split("T")[0]
+            : undefined,
+          status,
+        };
+      });
 
-        setPatients(patientItems);
-      } catch (err: any) {
-        setError(err?.response?.data?.error || err?.message || t("patients.loadError"));
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    void fetchPatients();
+      setPatients(patientItems);
+    } catch (err: any) {
+      setError(err?.response?.data?.error || err?.message || t("patients.loadError"));
+    } finally {
+      setLoading(false);
+    }
   }, [t]);
 
+  useEffect(() => {
+    void fetchPatients(currentPage);
+  }, [currentPage, fetchPatients]);
+
+  // Client-side filtering on the current page's data
   const filteredPatients = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
 
@@ -91,10 +104,12 @@ const PatientList = () => {
     });
   }, [patients, filterStatus, searchQuery]);
 
+  const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+
   const columns: Column<PatientItem>[] = [
     {
       header: t("patients.index"),
-      render: (patient) => <span className="font-bold">{filteredPatients.indexOf(patient) + 1}</span>,
+      render: (patient) => <span className="font-bold">{(currentPage - 1) * ITEMS_PER_PAGE + filteredPatients.indexOf(patient) + 1}</span>,
       className: "w-10 px-3",
     },
     {
@@ -168,16 +183,9 @@ const PatientList = () => {
     navigate(`/patient/${patient.id}`);
   };
 
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-100 p-4 dark:bg-slate-900 md:p-8">
-        <div className="text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-500 border-r-transparent" />
-          <p className="mt-2 text-sm text-gray-600 dark:text-slate-400">{t("patients.loading")}</p>
-        </div>
-      </div>
-    );
-  }
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
 
   if (error) {
     return (
@@ -219,7 +227,28 @@ const PatientList = () => {
       </div>
 
       <div className="space-y-3 md:hidden">
-        {filteredPatients.length === 0 ? (
+        {loading ? (
+          Array.from({ length: 5 }).map((_, index) => (
+            <div
+              key={`skeleton-${index}`}
+              className="animate-pulse rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"
+            >
+              <div className="mb-2 flex items-start justify-between gap-2">
+                <div className="w-2/3 space-y-2">
+                  <div className="h-3 w-1/4 rounded bg-slate-200 dark:bg-slate-700" />
+                  <div className="h-4 w-3/4 rounded bg-slate-200 dark:bg-slate-700" />
+                  <div className="h-3 w-1/2 rounded bg-slate-200 dark:bg-slate-700" />
+                </div>
+                <div className="h-6 w-16 rounded-full bg-slate-200 dark:bg-slate-700" />
+              </div>
+              <div className="mb-3 h-3 w-1/3 rounded bg-slate-200 dark:bg-slate-700" />
+              <div className="grid grid-cols-2 gap-2">
+                <div className="h-9 rounded-lg bg-slate-200 dark:bg-slate-700" />
+                <div className="h-9 rounded-lg bg-slate-200 dark:bg-slate-700" />
+              </div>
+            </div>
+          ))
+        ) : filteredPatients.length === 0 ? (
           <div className="rounded-xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
             {t("common.noData")}
           </div>
@@ -231,7 +260,7 @@ const PatientList = () => {
             >
               <div className="mb-2 flex items-start justify-between gap-2">
                 <div>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">{t("patients.index")} {index + 1}</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">{t("patients.index")} {(currentPage - 1) * ITEMS_PER_PAGE + index + 1}</p>
                   <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">{patient.name}</h3>
                   <p className="text-sm text-slate-500 dark:text-slate-400">{t("patients.patientCode")}: {patient.patientCode}</p>
                 </div>
@@ -263,10 +292,72 @@ const PatientList = () => {
             </div>
           ))
         )}
+
+        {/* Mobile pagination */}
+        {(totalPages > 1 || loading) && (
+          <div className={`flex justify-center pt-2 ${loading ? "opacity-60 pointer-events-none" : ""}`}>
+            {loading && totalItems === 0 ? (
+              <div className="flex h-8 items-center gap-1">
+                <div className="h-8 w-8 rounded border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800 animate-pulse" />
+                <div className="h-8 w-8 rounded border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800 animate-pulse" />
+                <div className="h-8 w-8 rounded border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800 animate-pulse" />
+                <div className="h-8 w-8 rounded border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800 animate-pulse" />
+              </div>
+            ) : (
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={(page) => !loading && handlePageChange(page)}
+              />
+            )}
+          </div>
+        )}
       </div>
 
       <div className="hidden md:block">
-        <Table data={filteredPatients} columns={columns} onRowClick={clickedRow} itemsPerPage={20} />
+        <Table
+          data={filteredPatients}
+          columns={columns}
+          onRowClick={clickedRow}
+          paginated={false}
+          loading={loading}
+          loadingRows={ITEMS_PER_PAGE}
+        />
+
+        {/* Server-side pagination */}
+        {(totalPages > 1 || loading) && (
+          <div className={`mt-4 flex flex-col items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:flex-row ${loading ? "opacity-60 pointer-events-none" : ""}`}>
+            {loading && totalItems === 0 ? (
+              <>
+                <div className="h-4 w-40 rounded bg-slate-100 dark:bg-slate-800 animate-pulse" />
+                <div className="flex h-8 items-center gap-1">
+                  <div className="h-8 w-8 rounded border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800 animate-pulse" />
+                  <div className="h-8 w-8 rounded border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800 animate-pulse" />
+                  <div className="h-8 w-8 rounded border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800 animate-pulse" />
+                  <div className="h-8 w-8 rounded border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800 animate-pulse" />
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  {t("common.showing")}{" "}
+                  <span className="font-medium text-slate-700 dark:text-slate-200">
+                    {(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, totalItems)}
+                  </span>{" "}
+                  {t("common.of")}{" "}
+                  <span className="font-medium text-slate-700 dark:text-slate-200">
+                    {totalItems}
+                  </span>
+                </p>
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={(page) => !loading && handlePageChange(page)}
+                />
+              </>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

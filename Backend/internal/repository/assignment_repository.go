@@ -20,6 +20,8 @@ type AssignmentRepository interface {
 	FindByDoctorID(ctx context.Context, doctorID primitive.ObjectID) ([]*domain.Assignment, error)
 	FindByDoctorIDWithNames(ctx context.Context, doctorID primitive.ObjectID) ([]*domain.Assignment, map[primitive.ObjectID]UserDisplayInfo, error)
 	FindByNurseIDWithNames(ctx context.Context, nurseID primitive.ObjectID) ([]*domain.Assignment, map[primitive.ObjectID]UserDisplayInfo, error)
+	FindByDoctorIDWithNamesPaginated(ctx context.Context, doctorID primitive.ObjectID, offset, limit int) ([]*domain.Assignment, map[primitive.ObjectID]UserDisplayInfo, int64, error)
+	FindByNurseIDWithNamesPaginated(ctx context.Context, nurseID primitive.ObjectID, offset, limit int) ([]*domain.Assignment, map[primitive.ObjectID]UserDisplayInfo, int64, error)
 	DeleteByID(ctx context.Context, assignmentID primitive.ObjectID) error
 }
 
@@ -164,6 +166,91 @@ func (r *assignmentRepository) FindByDoctorIDWithNames(ctx context.Context, doct
 
 func (r *assignmentRepository) FindByNurseIDWithNames(ctx context.Context, nurseID primitive.ObjectID) ([]*domain.Assignment, map[primitive.ObjectID]UserDisplayInfo, error) {
 	return r.findByAssigneeWithNames(ctx, "nurseId", nurseID)
+}
+
+func (r *assignmentRepository) FindByDoctorIDWithNamesPaginated(ctx context.Context, doctorID primitive.ObjectID, offset, limit int) ([]*domain.Assignment, map[primitive.ObjectID]UserDisplayInfo, int64, error) {
+	return r.findByAssigneeWithNamesPaginated(ctx, "doctorId", doctorID, offset, limit)
+}
+
+func (r *assignmentRepository) FindByNurseIDWithNamesPaginated(ctx context.Context, nurseID primitive.ObjectID, offset, limit int) ([]*domain.Assignment, map[primitive.ObjectID]UserDisplayInfo, int64, error) {
+	return r.findByAssigneeWithNamesPaginated(ctx, "nurseId", nurseID, offset, limit)
+}
+
+func (r *assignmentRepository) findByAssigneeWithNamesPaginated(ctx context.Context, matchField string, assigneeID primitive.ObjectID, offset, limit int) ([]*domain.Assignment, map[primitive.ObjectID]UserDisplayInfo, int64, error) {
+	pipeline := mongo.Pipeline{
+		{{Key: "$match", Value: bson.M{matchField: assigneeID}}},
+		{{Key: "$facet", Value: bson.M{
+			"assignments": bson.A{
+				bson.M{"$sort": bson.M{"createdAt": -1}},
+				bson.M{"$skip": offset},
+				bson.M{"$limit": limit},
+				bson.M{"$project": bson.M{
+					"_id":        1,
+					"patientId":  1,
+					"doctorId":   1,
+					"nurseId":    1,
+					"assignedBy": 1,
+					"createdAt":  1,
+					"updatedAt":  1,
+				}},
+			},
+			"count": bson.A{
+				bson.M{"$count": "total"},
+			},
+			"names": bson.A{
+				bson.M{"$project": bson.M{"ids": bson.A{"$patientId", "$doctorId", "$nurseId", "$assignedBy"}}},
+				bson.M{"$unwind": "$ids"},
+				bson.M{"$match": bson.M{"ids": bson.M{"$ne": primitive.NilObjectID}}},
+				bson.M{"$group": bson.M{"_id": "$ids"}},
+				bson.M{"$lookup": bson.M{
+					"from":         "users",
+					"localField":   "_id",
+					"foreignField": "_id",
+					"as":           "user",
+				}},
+				bson.M{"$unwind": bson.M{"path": "$user", "preserveNullAndEmptyArrays": false}},
+				bson.M{"$project": bson.M{"_id": 1, "name": "$user.name", "publicId": "$user.userPublicId", "diseaseTypes": "$user.diseaseTypes"}},
+			},
+		}}},
+	}
+
+	cursor, err := r.collection.Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+	defer cursor.Close(ctx)
+
+	var facetResults []struct {
+		Assignments []*domain.Assignment `bson:"assignments"`
+		Count       []struct {
+			Total int64 `bson:"total"`
+		} `bson:"count"`
+		Names []struct {
+			ID           primitive.ObjectID      `bson:"_id"`
+			Name         string                  `bson:"name"`
+			PublicID     string                  `bson:"publicId"`
+			DiseaseTypes userDomain.DiseaseTypes `bson:"diseaseTypes"`
+		} `bson:"names"`
+	}
+	if err := cursor.All(ctx, &facetResults); err != nil {
+		return nil, nil, 0, err
+	}
+
+	if len(facetResults) == 0 {
+		return []*domain.Assignment{}, map[primitive.ObjectID]UserDisplayInfo{}, 0, nil
+	}
+
+	var total int64
+	if len(facetResults[0].Count) > 0 {
+		total = facetResults[0].Count[0].Total
+	}
+
+	nameMap := make(map[primitive.ObjectID]UserDisplayInfo)
+	for _, u := range facetResults[0].Names {
+		nameMap[u.ID] = UserDisplayInfo{Name: u.Name, PublicID: u.PublicID, DiseaseTypes: u.DiseaseTypes}
+	}
+
+	return facetResults[0].Assignments, nameMap, total, nil
 }
 
 func (r *assignmentRepository) findByAssigneeWithNames(ctx context.Context, matchField string, assigneeID primitive.ObjectID) ([]*domain.Assignment, map[primitive.ObjectID]UserDisplayInfo, error) {

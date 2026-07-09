@@ -77,14 +77,32 @@ const Table = <T,>({
 
             <tbody className="divide-y divide-gray-200 bg-white dark:divide-slate-800 dark:bg-slate-900">
               {loading ? (
-                /* Skeleton rows */
+                /* Skeleton rows with identical column widths/paddings */
                 Array.from({ length: loadingRows }).map((_, rowIndex) => (
                   <tr key={`skeleton-${rowIndex}`}>
-                    {columns.map((_, colIndex) => (
-                      <td key={colIndex} className="px-3 py-3">
-                        <div className="h-4 animate-pulse rounded bg-slate-100 dark:bg-slate-800" />
-                      </td>
-                    ))}
+                    {columns.map((col, colIndex) => {
+                      // Mimic standard element heights and shapes for high-fidelity row matching
+                      let elementClass = "h-5 w-3/4 rounded bg-slate-100 dark:bg-slate-800";
+                      
+                      if (col.className?.includes("w-10") || colIndex === 0) {
+                        elementClass = "h-5 w-4 mx-auto rounded bg-slate-100 dark:bg-slate-800";
+                      } else if (colIndex === columns.length - 2) {
+                        // Status badge skeleton (matches badge padding and height)
+                        elementClass = "h-6 w-16 rounded-full bg-slate-100 dark:bg-slate-800";
+                      } else if (colIndex === columns.length - 1) {
+                        // Action buttons skeleton (matches icon buttons padding and height)
+                        elementClass = "h-8 w-16 rounded-lg bg-slate-100 dark:bg-slate-800";
+                      }
+                      
+                      return (
+                        <td
+                          key={colIndex}
+                          className={`py-3 ${col.className ?? "px-3"} ${col.cellClassName ?? ""}`}
+                        >
+                          <div className={`animate-pulse ${elementClass}`} />
+                        </td>
+                      );
+                    })}
                   </tr>
                 ))
               ) : currentData.length > 0 ? (

@@ -25,7 +25,6 @@ import { useAuth } from "../context/AuthContext";
 import { useRealtimeNotification } from "../context/RealtimeNotificationContext";
 import VideoCallModal from "../components/video/VideoCallModal";
 import {
-  getAlerts,
   getAlertById,
   getPatientById,
   type PatientDetailResponse,
@@ -642,19 +641,19 @@ const ChatPage = ({
       setAlertContextError(null);
 
       try {
-        const alertList = await getAlerts({ patientId });
+        const matchedAlert = await getAlertById(activeAlertId);
         if (cancelled) {
           return;
         }
 
-        const matchedAlert =
-          alertList.find((item) => item.id === activeAlertId) ||
+        const finalAlert =
+          matchedAlert ||
           (initialAlertSnapshotRef.current?.id === activeAlertId
             ? initialAlertSnapshotRef.current
             : null);
 
-        setAlertContext(matchedAlert || null);
-        if (!matchedAlert) {
+        setAlertContext(finalAlert);
+        if (!finalAlert) {
           setAlertContextError(
             t("patientDetail.thresholdError"),
           );

@@ -782,11 +782,10 @@ const DashBoard = () => {
 
     try {
       const selectedAssignments = assignments.filter(a => selectedPatients.has(a.patientId));
-      const reportData: PatientReportData[] = [];
       let current = 0;
 
-      // Fetch data for each selected patient
-      for (const assignment of selectedAssignments) {
+      // Fetch data for each selected patient in parallel
+      const reportPromises = selectedAssignments.map(async (assignment) => {
         try {
           const [measurements, thresholds] = await Promise.all([
             getMeasurements({
@@ -809,19 +808,25 @@ const DashBoard = () => {
           // Calculate statistics
           const stats = calculateHealthStatistics(filteredMeasurements, threshold);
 
-          reportData.push({
+          current++;
+          setReportProgress({ current, total: selectedPatients.size });
+
+          return {
             assignment,
             measurements: filteredMeasurements,
             threshold,
             stats,
-          });
-
-          current++;
-          setReportProgress({ current, total: selectedPatients.size });
+          };
         } catch (error) {
           console.error(`Error fetching data for patient ${assignment.patientId}:`, error);
+          current++;
+          setReportProgress({ current, total: selectedPatients.size });
+          return null;
         }
-      }
+      });
+
+      const results = await Promise.all(reportPromises);
+      const reportData = results.filter((item): item is PatientReportData => item !== null);
 
       // Generate Excel file
       exportHealthReportToExcel(reportData, reportStartDate, reportEndDate);
@@ -899,25 +904,29 @@ const DashBoard = () => {
           daysCount: complianceDays,
         });
       } else {
-        // Multiple patients → fetch all adherence data then export combined
-        const patientsData: MultiCompliancePatientData[] = [];
+        // Multiple patients → fetch all adherence data in parallel then export combined
         let current = 0;
-
-        for (const patient of selectedAssignments) {
+        const compliancePromises = selectedAssignments.map(async (patient) => {
           try {
             const adherence = await getAdherence({ patientId: patient.patientId, days: complianceDays });
-            patientsData.push({
+            current++;
+            setComplianceProgress({ current, total: selectedAssignments.length });
+            return {
               adherence,
               patientName: patient.patientName || "Bệnh nhân",
               patientCode: patient.patientCode || patient.patientPublicId || "-",
               daysCount: complianceDays,
-            });
+            };
           } catch (err) {
             console.error(`Compliance fetch failed for ${patient.patientId}`, err);
+            current++;
+            setComplianceProgress({ current, total: selectedAssignments.length });
+            return null;
           }
-          current++;
-          setComplianceProgress({ current, total: selectedAssignments.length });
-        }
+        });
+
+        const results = await Promise.all(compliancePromises);
+        const patientsData = results.filter((item): item is MultiCompliancePatientData => item !== null);
 
         if (patientsData.length > 0) {
           await exportMultiComplianceToExcel({ patients: patientsData });
