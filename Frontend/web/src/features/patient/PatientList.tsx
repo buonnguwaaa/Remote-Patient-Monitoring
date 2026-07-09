@@ -27,10 +27,11 @@ const PatientList = () => {
       // Simulate 200ms network delay for testing skeleton loader
       await new Promise((resolve) => setTimeout(resolve, 200));
 
-      const [assignmentsResult, alerts] = await Promise.all([
+      const [assignmentsResult, alertsResult] = await Promise.all([
         getMyPatientsPaginated(currentPage, ITEMS_PER_PAGE),
         getAlerts({ limit: 1000, page: 1, sortOrder: "desc" })
       ]);
+      const alerts = alertsResult.alerts;
 
       const patientSeverity = new Map<string, string>();
 

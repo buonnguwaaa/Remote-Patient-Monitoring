@@ -84,7 +84,8 @@ export const getMyPatientsPaginated = async (
 export const getLatestAlertForPatient = async (
   patientId: string
 ): Promise<AlertResponse | null> => {
-  const alerts = await getAlerts();
+  const alertsResult = await getAlerts();
+  const alerts = alertsResult.alerts;
   const latestAlert = [...alerts]
     .filter((alert) => alert.patientId === patientId)
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
@@ -100,8 +101,8 @@ export const getAlerts = async (params?: {
   limit?: number;
   page?: number;
   sortOrder?: "asc" | "desc";
-}): Promise<AlertResponse[]> => {
-  const response = await api.get<{ data: AlertResponse[] | null }>("/alerts/doctors/me", {
+}): Promise<{ alerts: AlertResponse[]; total: number }> => {
+  const response = await api.get<{ data: AlertResponse[] | null; total?: number }>("/alerts/doctors/me", {
     params: {
       patientId: params?.patientId,
       status: params?.status,
@@ -113,7 +114,10 @@ export const getAlerts = async (params?: {
     },
   });
 
-  return response.data.data || [];
+  return {
+    alerts: response.data.data || [],
+    total: response.data.total || 0,
+  };
 };
 
 

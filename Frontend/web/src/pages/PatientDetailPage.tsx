@@ -388,7 +388,7 @@ const PatientDetailPage = () => {
       getAlerts({ patientId, status: "open" })
         .then((data) => {
           if (!cancelled) {
-            setOpenAlerts(data.filter((a) => a.patientId === patientId));
+            setOpenAlerts(data.alerts.filter((a) => a.patientId === patientId));
           }
         })
         .catch(() => { if (!cancelled) setOpenAlerts([]); })

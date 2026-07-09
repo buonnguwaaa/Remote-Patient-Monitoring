@@ -16,6 +16,7 @@ import {
 import Toast from "../components/ui/Toast";
 import Table from "../components/ui/Table";
 import type { Column } from "../components/ui/Table";
+import Pagination from "../components/ui/Pagination";
 import { useToast } from "../hooks/useToast";
 import {
   acknowledgeAlert,
@@ -101,14 +102,18 @@ const ThresholdAlert = () => {
   const activeStatus = activeTab === "PENDING" ? "open" : activeTab === "RESOLVED" ? "ack" : "";
 
   // Query 1: Fetch all open alerts (lightweight) to compute statistics
-  const { data: openAlertsData = [] } = useQuery({
+  const { data: openAlertsResult } = useQuery({
     queryKey: ["alerts", "open"],
-    queryFn: () => getAlerts({ status: "open", limit: 1000 }),
+    queryFn: async () => {
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      return getAlerts({ status: "open", limit: 1000 });
+    },
     staleTime: 5 * 60 * 1000,
   });
+  const openAlertsData = openAlertsResult?.alerts || [];
 
   // Query 2: Fetch paginated alerts
-  const { data: alertsData = [], isLoading: loading, isFetching: refreshing, refetch, dataUpdatedAt } = useQuery({
+  const { data: alertsResult, isLoading: loading, isFetching: refreshing, refetch, dataUpdatedAt } = useQuery({
     queryKey: ["alerts", { 
       page: currentPage, 
       limit: 10, 
@@ -116,16 +121,23 @@ const ThresholdAlert = () => {
       severity: severityFilter === "ALL" ? "" : severityFilter.toLowerCase(),
       patientId: filterPatientId || ""
     }],
-    queryFn: () => getAlerts({ 
-      page: currentPage, 
-      limit: 10, 
-      status: activeStatus || undefined,
-      severity: severityFilter === "ALL" ? undefined : severityFilter.toLowerCase() as any,
-      patientId: filterPatientId || undefined,
-      sortOrder: "desc"
-    }),
+    queryFn: async () => {
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      return getAlerts({ 
+        page: currentPage, 
+        limit: 10, 
+        status: activeStatus || undefined,
+        severity: severityFilter === "ALL" ? undefined : severityFilter.toLowerCase() as any,
+        patientId: filterPatientId || undefined,
+        sortOrder: "desc"
+      });
+    },
     staleTime: 5 * 60 * 1000,
   });
+
+  const alertsData = alertsResult?.alerts || [];
+  const totalItems = alertsResult?.total || 0;
+  const totalPages = Math.ceil(totalItems / 10);
 
   const alerts = useMemo(() => {
     return alertsData;
@@ -303,28 +315,40 @@ const ThresholdAlert = () => {
   // const totalPages = Math.ceil(filteredAlerts.length / itemsPerPage);
   // const paginatedAlerts = filteredAlerts.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-  const renderStats = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-      <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Chờ xử lý</p>
-          <p className="text-3xl font-bold text-slate-900 dark:text-white mt-1">{stats.pendingTotal}</p>
+  const renderStats = () => {
+    const isStatsLoading = loading && openAlertsData.length === 0;
+
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Chờ xử lý</p>
+            {isStatsLoading ? (
+              <div className="h-9 w-16 rounded bg-slate-200 dark:bg-slate-700 animate-pulse mt-1" />
+            ) : (
+              <p className="text-3xl font-bold text-slate-900 dark:text-white mt-1">{stats.pendingTotal}</p>
+            )}
+          </div>
+          <div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center">
+            <FaRegClock className="text-xl text-blue-600 dark:text-blue-400" />
+          </div>
         </div>
-        <div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center">
-          <FaRegClock className="text-xl text-blue-600 dark:text-blue-400" />
+        <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-red-200 dark:border-red-900/50 flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-red-600 dark:text-red-400">Nghiêm trọng (Chờ xử lý)</p>
+            {isStatsLoading ? (
+              <div className="h-9 w-16 rounded bg-slate-200 dark:bg-slate-700 animate-pulse mt-1" />
+            ) : (
+              <p className="text-3xl font-bold text-red-700 dark:text-red-300 mt-1">{stats.pendingHigh}</p>
+            )}
+          </div>
+          <div className="h-12 w-12 rounded-full bg-red-100 dark:bg-red-500/20 flex items-center justify-center">
+            <FaExclamationTriangle className="text-xl text-red-600 dark:text-red-400" />
+          </div>
         </div>
       </div>
-      <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-red-200 dark:border-red-900/50 flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium text-red-600 dark:text-red-400">Nghiêm trọng (Chờ xử lý)</p>
-          <p className="text-3xl font-bold text-red-700 dark:text-red-300 mt-1">{stats.pendingHigh}</p>
-        </div>
-        <div className="h-12 w-12 rounded-full bg-red-100 dark:bg-red-500/20 flex items-center justify-center">
-          <FaExclamationTriangle className="text-xl text-red-600 dark:text-red-400" />
-        </div>
-      </div>
-    </div>
-  );
+    );
+  };
 
   const renderFilters = () => (
     <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 mb-6">
@@ -378,7 +402,37 @@ const ThresholdAlert = () => {
     </div>
   );
 
+  const renderPendingSkeleton = () => (
+    <div className="space-y-4">
+      {Array.from({ length: 3 }).map((_, idx) => (
+        <div
+          key={idx}
+          className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 animate-pulse"
+        >
+          <div className="flex items-start gap-4 w-full md:w-auto">
+            <div className="h-10 w-10 rounded-full bg-slate-200 dark:bg-slate-700 flex-shrink-0" />
+            <div className="space-y-2 flex-1 md:w-64">
+              <div className="h-5 w-48 rounded bg-slate-200 dark:bg-slate-700" />
+              <div className="flex flex-wrap gap-2 mt-1">
+                <div className="h-4 w-28 rounded bg-slate-200 dark:bg-slate-700" />
+                <div className="h-4 w-20 rounded bg-slate-200 dark:bg-slate-700" />
+              </div>
+              <div className="h-3 w-32 rounded bg-slate-200 dark:bg-slate-700" />
+            </div>
+          </div>
+          <div className="flex items-center gap-2 self-end md:self-auto">
+            <div className="h-9 w-24 rounded-lg bg-slate-200 dark:bg-slate-700" />
+            <div className="h-9 w-9 rounded-lg bg-slate-200 dark:bg-slate-700" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
   const renderPendingTab = () => {
+    if (loading && groupedPendingAlerts.length === 0) {
+      return renderPendingSkeleton();
+    }
     if (groupedPendingAlerts.length === 0) {
       return (
         <div className="text-center py-12 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
@@ -591,7 +645,12 @@ const ThresholdAlert = () => {
 
     return (
       <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-        <Table columns={columns} data={filteredAlerts} />
+        <Table 
+          columns={columns} 
+          data={filteredAlerts} 
+          loading={loading}
+          loadingRows={10}
+        />
       </div>
     );
   };
@@ -629,27 +688,38 @@ const ThresholdAlert = () => {
       {activeTab === "PENDING" ? renderPendingTab() : renderTableTab()}
 
       {/* Pagination */}
-      <div className="mt-4 flex items-center justify-between border-t border-slate-200 dark:border-slate-700 pt-4 px-4 pb-2">
-        <div className="text-xs text-slate-500 dark:text-slate-400">
-          Trang {currentPage}
+      {(totalPages > 1 || loading) && (
+        <div className={`mt-4 flex flex-col items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:flex-row ${loading ? "opacity-60 pointer-events-none" : ""}`}>
+          {loading && totalItems === 0 ? (
+            <>
+              <div className="h-4 w-40 rounded bg-slate-100 dark:bg-slate-800 animate-pulse" />
+              <div className="flex h-8 items-center gap-1">
+                <div className="h-8 w-8 rounded border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800 animate-pulse" />
+                <div className="h-8 w-8 rounded border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800 animate-pulse" />
+                <div className="h-8 w-8 rounded border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800 animate-pulse" />
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                {t("common.showing")}{" "}
+                <span className="font-medium text-slate-700 dark:text-slate-200">
+                  {(currentPage - 1) * 10 + 1}–{Math.min(currentPage * 10, totalItems)}
+                </span>{" "}
+                {t("common.of")}{" "}
+                <span className="font-medium text-slate-700 dark:text-slate-200">
+                  {totalItems}
+                </span>
+              </p>
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={(page) => !loading && setCurrentPage(page)}
+              />
+            </>
+          )}
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-            disabled={currentPage === 1 || loading}
-            className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
-          >
-            Trang trước
-          </button>
-          <button
-            onClick={() => setCurrentPage(prev => prev + 1)}
-            disabled={alertsData.length < 10 || loading}
-            className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
-          >
-            Trang sau
-          </button>
-        </div>
-      </div>
+      )}
 
       {/* Resolve Modal */}
       {showResolveModal && (

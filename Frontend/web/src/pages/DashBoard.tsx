@@ -511,17 +511,19 @@ const DashBoard = () => {
 
   const [assignments, setAssignments] = useState<AssignmentResponse[]>([]);
   const [alerts, setAlerts] = useState<AlertResponse[]>([]);
-  const { data: openAlerts = [] } = useQuery({
+  const { data: openAlertsResult } = useQuery({
     queryKey: ["alerts", "open"],
     queryFn: () => getAlerts({ status: "open", limit: 1000 }),
     staleTime: 5 * 60 * 1000,
   });
+  const openAlerts = openAlertsResult?.alerts || [];
 
-  const { data: recentAlertsData = [] } = useQuery({
+  const { data: recentAlertsResult } = useQuery({
     queryKey: ["alerts", { page: 1, limit: 10, status: "", severity: "", patientId: "" }],
     queryFn: () => getAlerts({ page: 1, limit: 10, sortOrder: "desc" }),
     staleTime: 5 * 60 * 1000,
   });
+  const recentAlertsData = recentAlertsResult?.alerts || [];
 
   useEffect(() => {
     if (openAlerts) {

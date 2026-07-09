@@ -23,9 +23,9 @@ var ErrAlertNotFound = errors.New("Không tìm thấy cảnh báo")
 
 // Tôi cần thêm các api cho alert như sau 1 api để doctor lấy danh sách các alert của patients mình quản lý, 1 api để patient lấy danh sách các alert của mình, 1 api để get alert by id
 type AlertService interface {
-	GetDoctorAlerts(ctx context.Context, input *usecase.GetAlertsInput) ([]dto.AlertResponse, error)
-	GetNurseAlerts(ctx context.Context, input *usecase.GetAlertsInput) ([]dto.AlertResponse, error)
-	GetPatientAlerts(ctx context.Context, input *usecase.GetAlertsInput) ([]dto.AlertResponse, error)
+	GetDoctorAlerts(ctx context.Context, input *usecase.GetAlertsInput) ([]dto.AlertResponse, int64, error)
+	GetNurseAlerts(ctx context.Context, input *usecase.GetAlertsInput) ([]dto.AlertResponse, int64, error)
+	GetPatientAlerts(ctx context.Context, input *usecase.GetAlertsInput) ([]dto.AlertResponse, int64, error)
 	GetAlertByID(ctx context.Context, input *usecase.GetAlertByIDInput) (*dto.AlertResponse, error)
 	UpdateAlertAcknowledgementByID(ctx context.Context, input *usecase.UpdateAlertAcknowledgementByIDInput) (*dto.AlertResponse, error)
 }
@@ -38,7 +38,7 @@ func NewAlertService(
 	}
 }
 
-func (s *alertService) GetDoctorAlerts(ctx context.Context, input *usecase.GetAlertsInput) ([]dto.AlertResponse, error) {
+func (s *alertService) GetDoctorAlerts(ctx context.Context, input *usecase.GetAlertsInput) ([]dto.AlertResponse, int64, error) {
 	filter := repository.AlertFilter{
 		PatientID: input.PatientID,
 		DoctorID:  input.DoctorID,
@@ -53,7 +53,12 @@ func (s *alertService) GetDoctorAlerts(ctx context.Context, input *usecase.GetAl
 
 	alerts, userDataMap, err := s.alertRepo.FindWithFilter(ctx, filter)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
+	}
+
+	total, err := s.alertRepo.CountWithFilter(ctx, filter)
+	if err != nil {
+		return nil, 0, err
 	}
 
 	responses := make([]dto.AlertResponse, 0, len(alerts))
@@ -86,10 +91,10 @@ func (s *alertService) GetDoctorAlerts(ctx context.Context, input *usecase.GetAl
 		})
 	}
 
-	return responses, nil
+	return responses, total, nil
 }
 
-func (s *alertService) GetNurseAlerts(ctx context.Context, input *usecase.GetAlertsInput) ([]dto.AlertResponse, error) {
+func (s *alertService) GetNurseAlerts(ctx context.Context, input *usecase.GetAlertsInput) ([]dto.AlertResponse, int64, error) {
 	filter := repository.AlertFilter{
 		PatientID: input.PatientID,
 		NurseID:   input.NurseID,
@@ -104,7 +109,12 @@ func (s *alertService) GetNurseAlerts(ctx context.Context, input *usecase.GetAle
 
 	alerts, userDataMap, err := s.alertRepo.FindWithFilter(ctx, filter)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
+	}
+
+	total, err := s.alertRepo.CountWithFilter(ctx, filter)
+	if err != nil {
+		return nil, 0, err
 	}
 
 	responses := make([]dto.AlertResponse, 0, len(alerts))
@@ -137,10 +147,10 @@ func (s *alertService) GetNurseAlerts(ctx context.Context, input *usecase.GetAle
 		})
 	}
 
-	return responses, nil
+	return responses, total, nil
 }
 
-func (s *alertService) GetPatientAlerts(ctx context.Context, input *usecase.GetAlertsInput) ([]dto.AlertResponse, error) {
+func (s *alertService) GetPatientAlerts(ctx context.Context, input *usecase.GetAlertsInput) ([]dto.AlertResponse, int64, error) {
 	filter := repository.AlertFilter{
 		PatientID: input.PatientID,
 		Status:    domain.Status(input.Status),
@@ -154,7 +164,12 @@ func (s *alertService) GetPatientAlerts(ctx context.Context, input *usecase.GetA
 
 	alerts, userDataMap, err := s.alertRepo.FindWithFilter(ctx, filter)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
+	}
+
+	total, err := s.alertRepo.CountWithFilter(ctx, filter)
+	if err != nil {
+		return nil, 0, err
 	}
 
 	responses := make([]dto.AlertResponse, 0, len(alerts))
@@ -187,7 +202,7 @@ func (s *alertService) GetPatientAlerts(ctx context.Context, input *usecase.GetA
 		})
 	}
 
-	return responses, nil
+	return responses, total, nil
 }
 
 func (s *alertService) GetAlertByID(ctx context.Context, input *usecase.GetAlertByIDInput) (*dto.AlertResponse, error) {
