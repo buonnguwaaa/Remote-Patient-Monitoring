@@ -11,6 +11,7 @@ export interface FollowUpAppointment {
   location: string;
   notes: string;
   status: AppointmentStatus;
+  durationMinutes?: number;
   createdBy: string;
   createdAt: string;
   updatedAt: string;

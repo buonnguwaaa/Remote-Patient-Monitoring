@@ -81,6 +81,11 @@ const toLocalTimeString = (iso: string) => {
   });
 };
 
+const toMins = (t: string) => {
+  const [h, m] = t.split(":").map(Number);
+  return h * 60 + (m || 0);
+};
+
 const toISOFromLocalInputs = (date: string, time: string): string => {
   return new Date(`${date}T${time}:00`).toISOString();
 };
@@ -161,7 +166,7 @@ interface DayScheduleChartProps {
   date: string;
   time: string;
   onTimeChange: (t: string) => void;
-  existingItems: { id: string; time: string; name: string }[];
+  existingItems: { id: string; time: string; name: string; duration?: number }[];
 }
 
 function DayScheduleChart({
@@ -177,10 +182,6 @@ function DayScheduleChart({
   const WIN_HALF = 90;
   const RANGE = 180;
 
-  const toMins = (t: string) => {
-    const [h, m] = t.split(":").map(Number);
-    return h * 60 + (m || 0);
-  };
   const minsToTime = (mins: number) => {
     const snapped = Math.round(mins / 2) * 2;
     const clamped = Math.max(0, Math.min(23 * 60 + 45, snapped));
@@ -198,7 +199,14 @@ function DayScheduleChart({
   for (let m = Math.ceil(winStart / 30) * 30; m <= winStart + RANGE; m += 30)
     ticks.push(m);
 
-  const conflict = existingItems.some((e) => e.time === time);
+  const newStartMins = time ? toMins(time) : 9 * 60;
+  const newEndMins = newStartMins + 30;
+
+  const conflict = existingItems.some((e) => {
+    const start = toMins(e.time);
+    const end = start + (e.duration || 30);
+    return start < newEndMins && newStartMins < end;
+  });
 
   const calcMins = (clientX: number, ws: number) => {
     if (!barRef.current) return null;
@@ -266,22 +274,41 @@ function DayScheduleChart({
               />
             ))}
 
-            {/* Existing appointments — tiny dots */}
-            {existingItems.map((item) => (
-              <div
-                key={item.id}
-                title={`${item.time} · ${item.name}`}
-                className="pointer-events-none absolute top-1/2 z-10 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-slate-400"
-                style={{ left: pct(toMins(item.time)) }}
-              />
-            ))}
+            {/* Existing appointments — shaded intervals */}
+            {existingItems.map((item) => {
+              const start = toMins(item.time);
+              const duration = item.duration || 30;
+              const end = start + duration;
+
+              // Calculate width in percentage
+              const leftPct = pct(start);
+
+              // We calculate width relative to the visible timeline range
+              const visibleStart = Math.max(winStart, start);
+              const visibleEnd = Math.min(winStart + RANGE, end);
+              const widthPct = visibleEnd > visibleStart 
+                ? `${(((visibleEnd - visibleStart) / RANGE) * 100).toFixed(2)}%`
+                : "0%";
+
+              return (
+                <div
+                  key={item.id}
+                  title={`${item.time} - ${minsToTime(end)} · ${item.name}`}
+                  className="pointer-events-none absolute top-0 bottom-0 z-10 bg-rose-200/40 dark:bg-rose-900/30 border-l border-r border-rose-400/50"
+                  style={{
+                    left: leftPct,
+                    width: widthPct,
+                  }}
+                />
+              );
+            })}
 
             {/* New appointment dot — draggable */}
             {time && (
               <div
                 onMouseDown={handleDotMouseDown}
                 className={`absolute top-1/2 z-20 h-3 w-3 -translate-x-1/2 -translate-y-1/2 cursor-grab rounded-full border border-white shadow active:cursor-grabbing dark:border-slate-900 ${
-                  conflict ? "bg-rose-500" : "bg-indigo-500"
+                  conflict ? "bg-rose-500 animate-pulse" : "bg-indigo-500"
                 }`}
                 style={{ left: pct(toMins(time)) }}
               />
@@ -1302,6 +1329,20 @@ export default function AppointmentPage() {
       );
   }, [allScheduled, form.date, editingId]);
 
+  // Check if chosen slot conflicts with existing appointments using overlap math
+  const isConflict = useMemo(() => {
+    if (!form.time) return false;
+    const newStartMins = toMins(form.time);
+    const newEndMins = newStartMins + 30; // standard 30-min duration
+
+    return appointmentsOnFormDate.some((a) => {
+      const startMins = toMins(toLocalTimeString(a.scheduledAt));
+      const duration = a.durationMinutes || 30;
+      const endMins = startMins + duration;
+      return startMins < newEndMins && newStartMins < endMins;
+    });
+  }, [appointmentsOnFormDate, form.time]);
+
   const totalPages = Math.ceil(filteredAppointments.length / ITEMS_PER_PAGE);
   const pagedAppointments = filteredAppointments.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
@@ -1400,9 +1441,6 @@ export default function AppointmentPage() {
       return;
     }
 
-    const isConflict = appointmentsOnFormDate.some(
-      (a) => toLocalTimeString(a.scheduledAt) === form.time
-    );
     if (isConflict) {
       showToast("Giờ này đã có lịch, vui lòng chọn giờ khác.", "error");
       return;
@@ -1480,9 +1518,7 @@ export default function AppointmentPage() {
         <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <h1 className="flex items-center gap-3 text-3xl font-bold text-gray-800 dark:text-slate-100">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400">
-              <FaCalendarAlt size={20} />
-            </div>
+           
             Lịch tái khám
           </h1>
           <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
@@ -1885,6 +1921,7 @@ export default function AppointmentPage() {
                     time: toLocalTimeString(a.scheduledAt),
                     name:
                       patientMap.get(a.patientId)?.patientName || "Bệnh nhân",
+                    duration: a.durationMinutes,
                   }))}
                 />
               )}
@@ -1934,8 +1971,8 @@ export default function AppointmentPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={saving}
-                  className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
+                  disabled={saving || isConflict}
+                  className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {saving ? "Đang lưu..." : editingId ? "Cập nhật" : "Đặt lịch"}
                 </button>
