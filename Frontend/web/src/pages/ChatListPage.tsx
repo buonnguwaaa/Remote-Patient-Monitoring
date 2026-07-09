@@ -7,7 +7,6 @@ import ChatPage from "./ChatPage";
 import { useAuth } from "../context/AuthContext";
 import { useRealtimeNotification } from "../context/RealtimeNotificationContext";
 import {
-  getConversationMessages,
   getUserConversations,
   type MessageResponse,
 } from "../services/chatService";
@@ -106,8 +105,11 @@ const ChatListPage = () => {
         assignmentList.map((assignment) => [assignment.patientId, assignment]),
       );
 
-      const previews = await Promise.all(
-        conversationPayload.conversations.map(async (conversation) => {
+      // lastMessage is already embedded by the backend on each conversation
+      // (see GetUserConversations), so no per-conversation message fetch is
+      // needed here anymore.
+      const previews = conversationPayload.conversations.map(
+        (conversation) => {
           const otherParticipant =
             conversation.participants.find((p) => p.userId !== user.id)
               ?.userId ||
@@ -118,13 +120,8 @@ const ChatListPage = () => {
             ? assignmentMap.get(otherParticipant)
             : undefined;
 
-          let lastMessage: MessageResponse | null = null;
-          try {
-            const messages = await getConversationMessages(conversation.id, 1);
-            lastMessage = messages[0] || null;
-          } catch {
-            lastMessage = null;
-          }
+          const lastMessage: MessageResponse | null =
+            conversation.lastMessage || null;
 
           return {
             conversationId: conversation.id,
@@ -133,7 +130,7 @@ const ChatListPage = () => {
             lastMessage,
             updatedAt: lastMessage?.createdAt || conversation.updatedAt,
           } as ConversationPreview;
-        }),
+        },
       );
 
       previews.sort(
