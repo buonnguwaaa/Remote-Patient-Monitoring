@@ -3,6 +3,12 @@ package seed
 const (
 	seedCount = 50
 
+	// adminCount is intentionally much smaller than seedCount: a handful of
+	// admin accounts is enough for demo/testing purposes, unlike
+	// doctors/nurses/patients which need one-per-index pairing throughout
+	// the rest of the seed data.
+	adminCount = 5
+
 	localProvider = "local"
 	seedTimezone  = "Asia/Ho_Chi_Minh"
 	seedDomain    = "rpm.local"
@@ -12,73 +18,111 @@ const (
 	patientEmail = "patient@gmail.com"
 	nurseEmail   = "nurse@gmail.com"
 
+	// The default demo accounts (index 0 of each role, e.g. admin@gmail.com)
+	// keep their original, distinct passwords.
 	adminPassword   = "Admin@123"
 	doctorPassword  = "Doctor12345@"
 	patientPassword = "Patient12345@"
 	nursePassword   = "Nurse@123"
+
+	// seedSharedPassword is used for every other generated seed user
+	// (index > 0), so those accounts all share one password.
+	seedSharedPassword = "Seed@12345"
 )
 
-var departmentNames = []string{
-	"Cardiology",
-	"Neurology",
-	"Orthopedics",
-	"Pediatrics",
-	"Oncology",
-	"Dermatology",
-	"Gastroenterology",
-	"Nephrology",
-	"Pulmonology",
-	"Endocrinology",
-	"Rheumatology",
-	"Hematology",
-	"Infectious Disease",
-	"Urology",
-	"Ophthalmology",
-	"ENT",
-	"Psychiatry",
-	"General Surgery",
-	"Plastic Surgery",
-	"Radiology",
-	"Anesthesiology",
-	"Emergency Medicine",
-	"Family Medicine",
-	"Internal Medicine",
-	"Obstetrics & Gynecology",
-	"Physical Therapy",
-	"Nutrition",
-	"Palliative Care",
-	"Immunology",
-	"Allergy",
-	"Pain Management",
-	"Sleep Medicine",
-	"Sports Medicine",
-	"Geriatrics",
-	"Vascular Surgery",
-	"Cardiothoracic Surgery",
-	"Neurosurgery",
-	"Neonatology",
-	"Genetics",
-	"Occupational Health",
-	"Rehabilitation",
-	"Wound Care",
-	"Diabetes Care",
-	"Hypertension Clinic",
-	"Telehealth Hub",
-	"Remote Monitoring",
-	"Chronic Care",
-	"Preventive Medicine",
-	"Community Health",
+// vietnameseSurnames covers the most common Vietnamese family names (họ).
+var vietnameseSurnames = []string{
+	"Nguyễn", "Trần", "Lê", "Phạm", "Hoàng",
+	"Huỳnh", "Phan", "Vũ", "Võ", "Đặng",
+	"Bùi", "Đỗ", "Hồ", "Ngô", "Dương",
+	"Lý", "Trương", "Đinh", "Tạ", "Lưu",
 }
 
+// Middle names (tên đệm), grouped by gender, as is conventional in
+// Vietnamese full names ("Họ" + "Tên đệm" + "Tên").
+var maleMiddleNames = []string{
+	"Văn", "Hữu", "Đức", "Quang", "Minh",
+	"Thành", "Công", "Trọng", "Xuân", "Đình",
+}
+
+var femaleMiddleNames = []string{
+	"Thị", "Ngọc", "Thanh", "Kim", "Diệu",
+	"Bích", "Hồng", "Thu", "Phương", "Tuyết",
+}
+
+var neutralMiddleNames = []string{
+	"Gia", "Nhật", "Anh", "Bảo", "Khánh", "Duy",
+}
+
+// Given names (tên), grouped by gender.
+var maleGivenNames = []string{
+	"An", "Bình", "Cường", "Dũng", "Giang",
+	"Hải", "Huy", "Khang", "Long", "Minh",
+	"Nam", "Phúc", "Quân", "Sơn", "Tâm",
+	"Thắng", "Tuấn", "Việt", "Vũ", "Đạt",
+}
+
+var femaleGivenNames = []string{
+	"Anh", "Bích", "Chi", "Diệp", "Hà",
+	"Hương", "Lan", "Linh", "Mai", "Ngân",
+	"Nhung", "Oanh", "Phương", "Quyên", "Thảo",
+	"Trang", "Tuyết", "Uyên", "Vy", "Yến",
+}
+
+var neutralGivenNames = []string{
+	"An", "Bình", "Chi", "Giang", "Hà",
+	"Khang", "Lam", "Minh", "Nam", "Phương",
+	"Quân", "Sương", "Tâm", "Uyên", "Vy",
+}
+
+// departmentNames lists the main clinical departments commonly found in
+// Vietnamese hospitals.
+var departmentNames = []string{
+	"Khoa Nội Tổng hợp",
+	"Khoa Ngoại Tổng hợp",
+	"Khoa Nhi",
+	"Khoa Sản Phụ khoa",
+	"Khoa Tim mạch",
+	"Khoa Thần kinh",
+	"Khoa Tiêu hóa",
+	"Khoa Hô hấp",
+	"Khoa Nội tiết",
+	"Khoa Thận - Tiết niệu",
+	"Khoa Cơ Xương Khớp",
+	"Khoa Da liễu",
+	"Khoa Mắt",
+	"Khoa Tai Mũi Họng",
+	"Khoa Ung thư",
+	"Khoa Huyết học",
+	"Khoa Truyền nhiễm",
+	"Khoa Tâm thần",
+	"Khoa Chấn thương Chỉnh hình",
+	"Khoa Cấp cứu",
+	"Khoa Hồi sức Cấp cứu",
+	"Khoa Chẩn đoán Hình ảnh",
+	"Khoa Phục hồi Chức năng",
+	"Khoa Dinh dưỡng",
+	"Khoa Lão khoa",
+	"Khoa Y học Gia đình",
+}
+
+// doctorSpecializations lists the main, common specializations for
+// doctors in Vietnam.
 var doctorSpecializations = []string{
-	"Cardiology",
-	"Internal Medicine",
-	"Endocrinology",
-	"Nephrology",
-	"Pulmonology",
-	"Neurology",
-	"General Practice",
-	"Family Medicine",
-	"Geriatrics",
-	"Diabetes Care",
+	"Nội Tổng hợp",
+	"Tim mạch",
+	"Nội tiết",
+	"Thận - Tiết niệu",
+	"Hô hấp",
+	"Tiêu hóa",
+	"Thần kinh",
+	"Cơ Xương Khớp",
+	"Da liễu",
+	"Nhi khoa",
+	"Sản Phụ khoa",
+	"Ung thư",
+	"Truyền nhiễm",
+	"Lão khoa",
+	"Y học Gia đình",
+	"Đa khoa",
 }

@@ -29,12 +29,9 @@ type Seeder struct {
 	reminderRepo            repository.ReminderRepository
 	medicationIntakeRepo    repository.MedicationIntakeRepository
 	followUpAppointmentRepo repository.FollowUpAppointmentRepository
-	videoSessionRepo        repository.VideoSessionRepository
 	activityLogRepo         *repository.ActivityLogRepository
 	conversationRepo        chatRepository.ConversationRepository
 	messageRepo             chatRepository.MessageRepository
-	notificationRepo        repository.UserNotificationRepository
-	notificationTokenRepo   repository.NotificationTokenRepository
 	usersCol                *mongo.Collection
 }
 
@@ -44,6 +41,7 @@ type seedData struct {
 	doctors       []*userDomain.Doctor
 	nurses        []*userDomain.Nurse
 	patients      []*userDomain.Patient
+	thresholds    []*domain.Threshold
 	measurements  []*domain.Measurement
 	prescriptions []*domain.Prescription
 	conversations []*chatDomain.Conversation
@@ -65,12 +63,9 @@ func NewSeeder(db *mongo.Database) *Seeder {
 		reminderRepo:            repository.NewReminderRepository(db),
 		medicationIntakeRepo:    repository.NewMedicationIntakeRepository(db),
 		followUpAppointmentRepo: repository.NewFollowUpAppointmentRepository(db),
-		videoSessionRepo:        repository.NewVideoSessionRepository(db),
 		activityLogRepo:         repository.NewActivityLogRepository(db),
 		conversationRepo:        chatRepository.NewConversationRepository(db),
 		messageRepo:             chatRepository.NewMessageRepository(db),
-		notificationRepo:        repository.NewUserNotificationRepository(db),
-		notificationTokenRepo:   repository.NewNotificationTokenRepository(db),
 		usersCol:                db.Collection("users"),
 	}
 }
@@ -108,7 +103,7 @@ func Run(ctx context.Context, db *mongo.Database) error {
 	if err := s.seedAssignments(ctx, data); err != nil {
 		return fmt.Errorf("seed assignments: %w", err)
 	}
-	if err := s.seedThresholds(ctx, data); err != nil {
+	if data.thresholds, err = s.seedThresholds(ctx, data); err != nil {
 		return fmt.Errorf("seed thresholds: %w", err)
 	}
 	if data.measurements, err = s.seedMeasurements(ctx, data); err != nil {
@@ -135,17 +130,8 @@ func Run(ctx context.Context, db *mongo.Database) error {
 	if err := s.seedMessages(ctx, data); err != nil {
 		return fmt.Errorf("seed messages: %w", err)
 	}
-	if err := s.seedVideoSessions(ctx, data); err != nil {
-		return fmt.Errorf("seed video sessions: %w", err)
-	}
 	if err := s.seedActivityLogs(ctx, data); err != nil {
 		return fmt.Errorf("seed activity logs: %w", err)
-	}
-	if err := s.seedUserNotifications(ctx, data); err != nil {
-		return fmt.Errorf("seed user notifications: %w", err)
-	}
-	if err := s.seedNotificationTokens(ctx, data); err != nil {
-		return fmt.Errorf("seed notification tokens: %w", err)
 	}
 
 	log.Printf("[seed] database seeding completed successfully (%d records per domain)", seedCount)
