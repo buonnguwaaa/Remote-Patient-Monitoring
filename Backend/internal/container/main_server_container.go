@@ -7,6 +7,7 @@ import (
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/config"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/fcm"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/cache"
 	domain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/handler"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/realtime"
@@ -93,19 +94,31 @@ func NewMainServerContainer() *MainServerContainer {
 	c.JWTManager = util.NewJWTManager(jwtSecret)
 
 	db := config.Mongo.Database
-	c.BaseUserRepo = userRepository.NewBaseUserRepository(db)
-	c.PatientRepo = userRepository.NewPatientRepository(db)
-	c.DoctorRepo = userRepository.NewStaffRepository[domain.Doctor](db)
-	c.NurseRepo = userRepository.NewStaffRepository[domain.Nurse](db)
+
+	// Cache-aside layer: reuses the same Redis client as pub/sub, namespaced
+	// separately so cached keys never collide with pub/sub channels. Only
+	// this HTTP server container reads through it - the Temporal worker
+	// container always talks to MongoDB directly (see temporal_worker_container.go).
+	cacheStore := cache.NewStore(config.Redis.Client, "cache")
+	if !config.CacheEnabled() {
+		cacheStore = cache.NewStore(nil, "cache")
+	}
+	cacheTTL := config.CacheDefaultTTL()
+
+	c.BaseUserRepo = userRepository.NewCachedBaseUserRepository(userRepository.NewBaseUserRepository(db), cacheStore, cacheTTL)
+	c.PatientRepo = userRepository.NewCachedPatientRepository(userRepository.NewPatientRepository(db), cacheStore, cacheTTL)
+	c.DoctorRepo = userRepository.NewCachedStaffRepository[domain.Doctor](userRepository.NewStaffRepository[domain.Doctor](db), cacheStore, cacheTTL)
+	c.NurseRepo = userRepository.NewCachedStaffRepository[domain.Nurse](userRepository.NewStaffRepository[domain.Nurse](db), cacheStore, cacheTTL)
 
 	c.TokenRepo = repository.NewTokenRepository(db)
 	c.NotificationTokenRepo = repository.NewNotificationTokenRepository(db)
 	c.NotificationRepo = repository.NewUserNotificationRepository(db)
-	c.MeasurementRepo = repository.NewMeasurementRepository(db)
-	c.ThresholdRepo = repository.NewThresholdRepository(db)
-	c.AlertRepo = repository.NewAlertRepository(db)
-	c.DepartmentRepo = repository.NewDepartmentRepository(db)
-	c.AssignmentRepo = repository.NewAssignmentRepository(db)
+	c.MeasurementRepo = repository.NewCachedMeasurementRepository(repository.NewMeasurementRepository(db), cacheStore, cacheTTL)
+
+	c.ThresholdRepo = repository.NewCachedThresholdRepository(repository.NewThresholdRepository(db), cacheStore, cacheTTL)
+	c.AlertRepo = repository.NewCachedAlertRepository(repository.NewAlertRepository(db), cacheStore, cacheTTL)
+	c.DepartmentRepo = repository.NewCachedDepartmentRepository(repository.NewDepartmentRepository(db), cacheStore, cacheTTL)
+	c.AssignmentRepo = repository.NewCachedAssignmentRepository(repository.NewAssignmentRepository(db), cacheStore, cacheTTL)
 	c.ReminderRepo = repository.NewReminderRepository(db)
 	c.PrescriptionRepo = repository.NewPrescriptionRepository(db)
 	c.MedicationIntakeRepo = repository.NewMedicationIntakeRepository(db)

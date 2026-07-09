@@ -191,6 +191,17 @@ Environment variables are loaded from `.env` at startup via [godotenv](https://g
 | `REDIS_PASSWORD` | Redis password       | —                 |
 | `REDIS_DB`       | Redis database index | `0`              |
 
+### Cache (cache-aside)
+
+Redis is also used as a read-through/cache-aside layer on top of MongoDB for a handful of hot, read-heavy repository methods that back GET APIs: active thresholds, latest measurements, alert-by-id, staff assignment lists, department list, and user/patient profile lookups. It reuses the same Redis connection as pub/sub but namespaces keys under `cache:` so they never collide. See `internal/cache` for the generic store and `internal/repository/cached_*_repository.go` / `internal/repository/user/cached_*_repository.go` for the decorators.
+
+This layer is only wired into the HTTP server container (`internal/container/main_server_container.go`) - the Temporal worker always reads/writes MongoDB directly and never sees cached data.
+
+| Variable                     | Description                                             | Default |
+| ----------------------------- | -------------------------------------------------------- | ------- |
+| `CACHE_ENABLED`             | Enable/disable the cache-aside layer (Redis pub/sub is unaffected) | `true`  |
+| `CACHE_DEFAULT_TTL_SECONDS` | TTL for cached entries, in seconds                        | `300`   |
+
 ### Frontend / CORS
 
 | Variable          | Description                     | Default                   |
@@ -371,6 +382,7 @@ Backend/
 │       ├── worker/      # Worker registration and startup
 │       └── workflow/    # Workflow definitions
 ├── internal/
+│   ├── cache/            # Redis-backed cache-aside store helper
 │   ├── container/       # Dependency injection wiring
 │   ├── domain/          # Domain models
 │   ├── dto/             # Request/response DTOs

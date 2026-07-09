@@ -28,6 +28,12 @@ func NewTemporalWorkerContainer(pushProvider service.PushProvider) *TemporalWork
 
 	db := config.Mongo.Database
 	c.MeasurementRepo = repository.NewMeasurementRepository(db)
+
+	// The worker deliberately does NOT read through the cache-aside layer
+	// (see internal/cache and internal/repository/cached_*_repository.go) -
+	// that's only wired into the HTTP server container for GET APIs. The
+	// worker always reads/writes MongoDB directly, so it never sees stale
+	// cached data and never needs to worry about invalidation.
 	c.ThresholdRepo = repository.NewThresholdRepository(db)
 	c.AlertRepo = repository.NewAlertRepository(db)
 	c.ReminderRepo = repository.NewReminderRepository(db)
