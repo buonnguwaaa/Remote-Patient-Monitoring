@@ -18,7 +18,7 @@ type cachedAlertEntry struct {
 }
 
 type cachedAlertListEntry struct {
-	Alerts   []*domain.Alert             `json:"alerts"`
+	Alerts   []*domain.Alert           `json:"alerts"`
 	UserData map[string]*AlertUserData `json:"userData"`
 }
 
