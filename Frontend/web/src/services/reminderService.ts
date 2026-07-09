@@ -3,6 +3,11 @@ import api from "./api";
 export type ReminderKind = "measure" | "medication";
 export type ReminderStatus = "active" | "paused" | "expired" | "canceled";
 
+export interface ReminderTimeInput {
+  hour: number;
+  minute: number;
+}
+
 export interface ReminderRecord {
   id: string;
   patientId: string;
@@ -10,6 +15,7 @@ export interface ReminderRecord {
   message: string;
   hour: number;
   minute: number;
+  times?: ReminderTimeInput[];
   daysOfWeek: number[];
   timezone: string;
   status: ReminderStatus;
@@ -28,8 +34,7 @@ export interface ReminderBasePayload {
   patientId: string;
   kind: ReminderKind;
   message: string;
-  hour: number;
-  minute: number;
+  times: ReminderTimeInput[];
   daysOfWeek: number[];
   timezone: string;
   startDate: string;
@@ -47,6 +52,7 @@ interface ReminderApiResponse {
   message: string;
   hour: number;
   minute: number;
+  times?: ReminderTimeInput[];
   daysOfWeek: number[];
   timezone: string;
   status: ReminderStatus;
@@ -68,6 +74,7 @@ const mapReminder = (item: ReminderApiResponse): ReminderRecord => ({
   message: item.message,
   hour: item.hour,
   minute: item.minute,
+  times: item.times ?? [],
   daysOfWeek: item.daysOfWeek ?? [],
   timezone: item.timezone,
   status: item.status,
@@ -93,6 +100,22 @@ export const getReminders = async (params?: {
       status: params?.status,
       kind: params?.kind,
       latest: params?.latest ? "true" : undefined,
+    },
+  });
+
+  return (response.data.data || []).map(mapReminder);
+};
+
+export const getMyReminders = async (params?: {
+  patientId?: string;
+  status?: ReminderStatus;
+  kind?: ReminderKind;
+}) => {
+  const response = await api.get<{ data: ReminderApiResponse[] | null }>("/reminders/me", {
+    params: {
+      patientId: params?.patientId,
+      status: params?.status,
+      kind: params?.kind,
     },
   });
 

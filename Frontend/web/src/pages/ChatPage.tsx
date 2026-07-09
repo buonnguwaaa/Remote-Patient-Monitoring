@@ -405,10 +405,15 @@ function getViolationLabel(type: string, t: (key: string) => string) {
   const labels: Record<string, string> = {
     temperature: t("patientDetail.temperature"),
     heart_rate: t("patientDetail.heartRate"),
+    heartRate: t("patientDetail.heartRate"),
     respiratory_rate: t("patientDetail.respiratoryRate"),
+    respiratoryRate: t("patientDetail.respiratoryRate"),
     spo2: "SpO2",
+    spO2: "SpO2",
     blood_pressure_systolic: t("patientDetail.systolic"),
+    bloodPressureSystolic: t("patientDetail.systolic"),
     blood_pressure_diastolic: t("patientDetail.diastolic"),
+    bloodPressureDiastolic: t("patientDetail.diastolic"),
     glucose: t("patientDetail.glucose"),
     sys: t("patientDetail.systolic"),
     bp_diastolic: t("patientDetail.diastolic")
@@ -1121,7 +1126,7 @@ const ChatPage = ({
                         <Info size={14} />
                       )}
                       {alertContext.severity === "high"
-                        ? t("chat.severe") : alertContext.severity === "medium" ? t("alerts.medium", "Cảnh báo") : t("alerts.low", "Nhẹ")}
+                        ? t("chat.severe") : alertContext.severity === "medium" ? t("alerts.medium", "Cảnh báo") : t("alerts.low", "Cần theo dõi")}
                     </span>
                     <span
                       className={`rounded-md px-3 py-1 text-xs font-medium ${alertContext.status === "ack"
@@ -1245,7 +1250,7 @@ const ChatPage = ({
                             : "bg-slate-100 text-slate-700 dark:bg-slate-500/20 dark:text-slate-300"
                             }`}>
                             <AlertTriangle size={9} />
-                            {isHighSeverity ? t("chat.severe") : isMediumSeverity ? t("patients.warning", "Cảnh báo") : t("alerts.low", "Nhẹ")}
+                            {isHighSeverity ? t("chat.severe") : isMediumSeverity ? t("patients.warning", "Cảnh báo") : t("alerts.low", "Cần theo dõi")}
                           </span>
                         )}
                       </div>

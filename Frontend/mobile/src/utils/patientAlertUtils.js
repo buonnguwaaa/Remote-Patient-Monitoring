@@ -26,17 +26,23 @@ function formatNumber(value) {
 }
 
 function getViolationUnit(type) {
-  switch (type) {
+  const clean = type?.replace(/_(max|min|high|low)$/, "");
+  switch (clean || type) {
     case "temperature":
       return "°C";
     case "heart_rate":
+    case "heartRate":
       return "bpm";
     case "respiratory_rate":
+    case "respiratoryRate":
       return "lần/phút";
     case "spo2":
+    case "spO2":
       return "%";
     case "blood_pressure_systolic":
+    case "bloodPressureSystolic":
     case "blood_pressure_diastolic":
+    case "bloodPressureDiastolic":
       return "mmHg";
     case "glucose":
       return "mg/dL";
@@ -51,10 +57,15 @@ export function getViolationLabel(type) {
   const labels = {
     temperature: "Nhiệt độ",
     heart_rate: "Nhịp tim",
+    heartRate: "Nhịp tim",
     respiratory_rate: "Nhịp thở",
+    respiratoryRate: "Nhịp thở",
     spo2: "SpO2",
+    spO2: "SpO2",
     blood_pressure_systolic: "Huyết áp tâm thu",
+    bloodPressureSystolic: "Huyết áp tâm thu",
     blood_pressure_diastolic: "Huyết áp tâm trương",
+    bloodPressureDiastolic: "Huyết áp tâm trương",
     glucose: "Đường huyết",
     sys: "Huyết áp tâm thu",
     bp_diastolic: "Huyết áp tâm trương"
@@ -142,7 +153,7 @@ export function buildAlertPreviewItems(alerts, limit = 3) {
         title: summary.title,
         iconName: summary.iconName,
         observedText: formatAlertObservedValue(primaryViolation),
-        severityText: isHigh ? "Nguy hiểm" : isMedium ? "Cảnh báo" : "Nhẹ",
+        severityText: isHigh ? "Nghiêm trọng" : isMedium ? "Cảnh báo" : "Cần theo dõi",
         statusText: alert?.status === "open" ? "Chờ xác nhận" : "Đã xác nhận",
         isAcknowledged: alert?.status === "ack",
         ruleText: primaryViolation?.rule || summary.summary,

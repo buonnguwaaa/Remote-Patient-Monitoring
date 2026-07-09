@@ -32,11 +32,11 @@ export const AlertSeverity = {
 export const getSeverityLabel = (level: string) => {
   switch (level) {
     case AlertSeverity.HIGH:
-      return "Nguy hiểm";
+      return "Nghiêm trọng";
     case AlertSeverity.MEDIUM:
       return "Cảnh báo";
     case AlertSeverity.LOW:
-      return "Nhẹ";
+      return "Cần theo dõi";
     default:
       return "Không rõ";
   }
@@ -171,11 +171,17 @@ const ThresholdAlert = () => {
     const viNames: Record<string, string> = {
       temperature: "Nhiệt độ",
       blood_pressure_systolic: "Huyết áp tâm thu",
+      bloodPressureSystolic: "Huyết áp tâm thu",
       blood_pressure_diastolic: "Huyết áp tâm trương",
+      bloodPressureDiastolic: "Huyết áp tâm trương",
       blood_pressure: "Huyết áp",
       heart_rate: "Nhịp tim",
+      heartRate: "Nhịp tim",
+      respiratory_rate: "Nhịp thở",
+      respiratoryRate: "Nhịp thở",
       glucose: "Đường huyết",
       spo2: "SpO2",
+      spO2: "SpO2",
       weight: "Cân nặng"
     };
 
@@ -186,12 +192,14 @@ const ThresholdAlert = () => {
       unit = "mg/dL";
     } else if (v.type === "temperature") {
       unit = "°C";
-    } else if (v.type === "blood_pressure") {
+    } else if (v.type === "blood_pressure" || v.type === "bloodPressureSystolic" || v.type === "bloodPressureDiastolic") {
       unit = "mmHg";
-    } else if (v.type === "spo2") {
+    } else if (v.type === "spo2" || v.type === "spO2") {
       unit = "%";
-    } else if (v.type === "heart_rate") {
+    } else if (v.type === "heart_rate" || v.type === "heartRate") {
       unit = "bpm";
+    } else if (v.type === "respiratory_rate" || v.type === "respiratoryRate") {
+      unit = "lần/phút";
     } else if (v.type === "weight") {
       unit = "kg";
     }
@@ -320,7 +328,7 @@ const ThresholdAlert = () => {
       </div>
       <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-red-200 dark:border-red-900/50 flex items-center justify-between">
         <div>
-          <p className="text-sm font-medium text-red-600 dark:text-red-400">Nguy hiểm (Chờ xử lý)</p>
+          <p className="text-sm font-medium text-red-600 dark:text-red-400">Nghiêm trọng (Chờ xử lý)</p>
           <p className="text-3xl font-bold text-red-700 dark:text-red-300 mt-1">{stats.pendingHigh}</p>
         </div>
         <div className="h-12 w-12 rounded-full bg-red-100 dark:bg-red-500/20 flex items-center justify-center">
@@ -373,9 +381,9 @@ const ThresholdAlert = () => {
             className="pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
           >
             <option value="ALL">Mức độ (Tất cả)</option>
-            <option value="HIGH">Nguy hiểm</option>
+            <option value="HIGH">Nghiêm trọng</option>
             <option value="MEDIUM">Cảnh báo</option>
-            <option value="LOW">Nhẹ</option>
+            <option value="LOW">Cần theo dõi</option>
           </select>
         </div>
       </div>
@@ -421,7 +429,7 @@ const ThresholdAlert = () => {
                       </span>
                       {group.highCount > 0 && (
                         <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-400">
-                          <FaExclamationTriangle /> {group.highCount} Nguy hiểm
+                          <FaExclamationTriangle /> {group.highCount} Nghiêm trọng
                         </span>
                       )}
                       {group.mediumCount > 0 && (
@@ -431,7 +439,7 @@ const ThresholdAlert = () => {
                       )}
                       {group.lowCount > 0 && (
                         <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-400">
-                          <FaInfoCircle /> {group.lowCount} Nhẹ
+                          <FaInfoCircle /> {group.lowCount} Cần theo dõi
                         </span>
                       )}
                     </div>

@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors, radius, shadows } from "../theme/rpmTheme";
 
-export default function PatientCard({ item, onChat, onDetail }) {
+function PatientCard({ item, onChat, onDetail }) {
   return (
     <View style={styles.card}>
       <View style={styles.cardMain}>
@@ -25,11 +25,11 @@ export default function PatientCard({ item, onChat, onDetail }) {
       </View>
       <View style={styles.cardDivider} />
       <View style={styles.cardActions}>
-        <TouchableOpacity style={styles.chatButton} onPress={onChat} activeOpacity={0.7}>
+        <TouchableOpacity style={styles.chatButton} onPress={() => onChat && onChat(item)} activeOpacity={0.7}>
           <Ionicons name="chatbubble-ellipses-outline" size={16} color="#7C3AED" />
           <Text style={styles.chatButtonText}>Nhắn tin</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.detailButton} onPress={onDetail} activeOpacity={0.7}>
+        <TouchableOpacity style={styles.detailButton} onPress={() => onDetail && onDetail(item)} activeOpacity={0.7}>
           <Text style={styles.detailButtonText}>Xem chi tiết</Text>
           <Ionicons name="chevron-forward" size={14} color={colors.surface} />
         </TouchableOpacity>
@@ -37,6 +37,8 @@ export default function PatientCard({ item, onChat, onDetail }) {
     </View>
   );
 }
+
+export default React.memo(PatientCard);
 
 const styles = StyleSheet.create({
   card: { backgroundColor: colors.surface, borderRadius: radius["2xl"], marginHorizontal: 16, marginVertical: 6, padding: 14, borderWidth: 1, borderColor: colors.borderSoft, ...shadows.card },

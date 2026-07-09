@@ -1,0 +1,157 @@
+name: Mobile Android Build (EAS)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# HƯỚNG DẪN TRƯỚC KHI SỬ DỤNG:
+#
+# 1. Tạo tài khoản Expo tại https://expo.dev và đăng nhập bằng lệnh: npx eas login
+#
+# 2. Lấy EXPO_TOKEN:
+#    - Vào https://expo.dev/accounts/[username]/settings/access-tokens
+#    - Tạo một Access Token mới
+#
+# 3. Lưu token vào GitHub Secrets:
+#    - Vào GitHub repo → Settings → Secrets and variables → Actions
+#    - Thêm secret tên: EXPO_TOKEN
+#
+# 4. Cấu hình EAS cho từng app (chạy 1 lần ở máy local):
+#    - cd Frontend/mobile && npx eas build:configure
+#    - cd Frontend/doctor-app && npx eas build:configure
+#    Lệnh này sẽ cập nhật projectId trong app.json của từng app.
+#
+# 5. Sau khi build xong, link tải APK sẽ hiển thị trong log của GitHub Actions.
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  # Ưu tiên chạy thủ công để tránh tốn quota EAS
+  workflow_dispatch:
+    inputs:
+      app:
+        description: 'App cần build'
+        required: true
+        default: 'both'
+        type: choice
+        options:
+          - both
+          - patient-app
+          - doctor-app
+
+  # Tự động build khi push vào master (có thể comment lại nếu muốn tiết kiệm quota)
+  # push:
+  #   branches:
+  #     - master
+  #   paths:
+  #     - 'Frontend/mobile/**'
+  #     - 'Frontend/doctor-app/**'
+
+jobs:
+  # ─────────────────────────────────────────────
+  # Job 1: Build APK Patient App
+  # ─────────────────────────────────────────────
+  build-patient-app:
+    name: EAS Build – Patient App (Android APK)
+    runs-on: ubuntu-latest
+    # Chạy nếu chọn 'both' hoặc 'patient-app', hoặc khi push
+    if: |
+      github.event_name == 'push' ||
+      github.event.inputs.app == 'both' ||
+      github.event.inputs.app == 'patient-app'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: Frontend/mobile/package-lock.json
+
+      # Setup Expo và xác thực bằng EXPO_TOKEN
+      - name: Setup Expo and EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        working-directory: Frontend/mobile
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+
+      # Build APK Android profile preview (internal distribution)
+      - name: EAS Build Android APK (preview)
+        working-directory: Frontend/mobile
+        env:
+          EXPO_PUBLIC_BASE_URL: ${{ secrets.EXPO_PUBLIC_BASE_URL || 'http://localhost:8080' }}
+          BASE_URL: ${{ secrets.BASE_URL || 'http://localhost:8080' }}
+        run: |
+          eas build \
+            --platform android \
+            --profile preview \
+            --non-interactive \
+            --no-wait
+
+          echo "✅ Build đã được gửi lên EAS."
+          echo "📱 Vào https://expo.dev để theo dõi tiến trình và tải APK khi xong."
+
+  # ─────────────────────────────────────────────
+  # Job 2: Build APK Doctor/Staff App
+  # ─────────────────────────────────────────────
+  build-doctor-app:
+    name: EAS Build – Doctor/Staff App (Android APK)
+    runs-on: ubuntu-latest
+    # Chạy nếu chọn 'both' hoặc 'doctor-app', hoặc khi push
+    if: |
+      github.event_name == 'push' ||
+      github.event.inputs.app == 'both' ||
+      github.event.inputs.app == 'doctor-app'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: Frontend/doctor-app/package-lock.json
+
+      # Setup Expo và xác thực bằng EXPO_TOKEN
+      - name: Setup Expo and EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        working-directory: Frontend/doctor-app
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+
+      # Build APK Android profile preview (internal distribution)
+      # LƯU Ý: Nếu doctor-app chưa được cấu hình EAS (projectId rỗng trong app.json),
+      # hãy chạy lệnh này ở máy local trước: cd Frontend/doctor-app && npx eas build:configure
+      - name: EAS Build Android APK (preview)
+        working-directory: Frontend/doctor-app
+        env:
+          EXPO_PUBLIC_BASE_URL: ${{ secrets.EXPO_PUBLIC_BASE_URL || 'http://localhost:8080' }}
+          BASE_URL: ${{ secrets.BASE_URL || 'http://localhost:8080' }}
+        run: |
+          eas build \
+            --platform android \
+            --profile preview \
+            --non-interactive \
+            --no-wait
+
+          echo "✅ Build đã được gửi lên EAS."
+          echo "📱 Vào https://expo.dev để theo dõi tiến trình và tải APK khi xong."

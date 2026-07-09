@@ -238,7 +238,7 @@ function RootNavigator() {
   // Nurse navigator
   if (isNurse) {
     return (
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Navigator screenOptions={{ headerShown: false, headerBackTitleVisible: false }}>
         <Stack.Screen name="NurseMainTabs" component={NurseMainTabs} />
         <Stack.Screen name="NursePatientDetail" component={PatientDetailScreen} />
         <Stack.Screen name="NursePrescriptionDetail" component={NursePrescriptionScreen} />
@@ -248,8 +248,8 @@ function RootNavigator() {
 
   // Doctor navigator (default)
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="MainTabs" component={DoctorMainTabs} options={{ headerBackTitle: " " }} />
+    <Stack.Navigator screenOptions={{ headerShown: false, headerBackTitleVisible: false }}>
+      <Stack.Screen name="MainTabs" component={DoctorMainTabs} />
       <Stack.Screen name="VideoCall" component={VideoCallScreen} />
       <Stack.Screen name="Profile" component={ProfileScreen} options={themeRootHeaderOptions("Hồ sơ bác sĩ")} />
       <Stack.Screen name="Thresholds" component={ThresholdsScreen} options={themeRootHeaderOptions("Cấu hình ngưỡng")} />

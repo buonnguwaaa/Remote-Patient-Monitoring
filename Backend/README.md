@@ -20,7 +20,7 @@ Built with **Go**, **MongoDB**, **Redis**, and **Temporal** for durable backgrou
 - [Temporal workflows](#temporal-workflows)
 - [Project structure](#project-structure)
 - [Development](#development)
-- [Docker & production](#docker--production)
+- [Docker &amp; production](#docker--production)
 - [Troubleshooting](#troubleshooting)
 - [Additional resources](#additional-resources)
 
@@ -28,21 +28,21 @@ Built with **Go**, **MongoDB**, **Redis**, and **Temporal** for durable backgrou
 
 ## Features
 
-| Domain | What it covers |
-|--------|----------------|
-| **Authentication** | JWT-based auth, Google OAuth2, role-based access (admin, doctor, nurse, patient) |
-| **Users & departments** | Staff and patient profiles, department management |
-| **Care assignments** | Link patients to doctors and nurses |
-| **Measurements** | Vital sign ingestion with configurable thresholds |
-| **Alerts** | Automated threshold evaluation, push notifications, and in-app chat messages |
-| **Prescriptions & reminders** | Medication schedules with Temporal-backed reminder delivery |
-| **Medication intake** | Track whether patients took prescribed doses |
-| **Follow-up appointments** | Scheduling with automated appointment reminders |
-| **Chat** | Conversations between care team and patients |
-| **Notifications** | In-app notifications and Firebase Cloud Messaging (FCM) push |
-| **Realtime** | WebSocket hub backed by Redis pub/sub for live updates |
-| **Video sessions** | Jitsi-based telehealth room provisioning |
-| **Activity logs** | Audit trail for admin actions |
+| Domain                              | What it covers                                                                   |
+| ----------------------------------- | -------------------------------------------------------------------------------- |
+| **Authentication**            | JWT-based auth, Google OAuth2, role-based access (admin, doctor, nurse, patient) |
+| **Users & departments**       | Staff and patient profiles, department management                                |
+| **Care assignments**          | Link patients to doctors and nurses                                              |
+| **Measurements**              | Vital sign ingestion with configurable thresholds                                |
+| **Alerts**                    | Automated threshold evaluation, push notifications, and in-app chat messages     |
+| **Prescriptions & reminders** | Medication schedules with Temporal-backed reminder delivery                      |
+| **Medication intake**         | Track whether patients took prescribed doses                                     |
+| **Follow-up appointments**    | Scheduling with automated appointment reminders                                  |
+| **Chat**                      | Conversations between care team and patients                                     |
+| **Notifications**             | In-app notifications and Firebase Cloud Messaging (FCM) push                     |
+| **Realtime**                  | WebSocket hub backed by Redis pub/sub for live updates                           |
+| **Video sessions**            | Jitsi-based telehealth room provisioning                                         |
+| **Activity logs**             | Audit trail for admin actions                                                    |
 
 ---
 
@@ -79,19 +79,19 @@ The backend runs as two processes in development (and production):
 
 ## Tech stack
 
-| Layer | Technology |
-|-------|------------|
-| Language | Go 1.24 |
-| HTTP framework | [Gin](https://github.com/gin-gonic/gin) |
-| Database | MongoDB |
-| Cache / pub-sub | Redis |
-| Workflows | [Temporal](https://temporal.io/) |
-| Auth | JWT, Google OAuth2 |
-| Push notifications | Firebase Cloud Messaging |
-| Media uploads | Cloudinary |
-| Email | SMTP |
-| Video | Jitsi |
-| API docs | Swagger (swaggo) |
+| Layer              | Technology                             |
+| ------------------ | -------------------------------------- |
+| Language           | Go 1.24                                |
+| HTTP framework     | [Gin](https://github.com/gin-gonic/gin) |
+| Database           | MongoDB                                |
+| Cache / pub-sub    | Redis                                  |
+| Workflows          | [Temporal](https://temporal.io/)        |
+| Auth               | JWT, Google OAuth2                     |
+| Push notifications | Firebase Cloud Messaging               |
+| Media uploads      | Cloudinary                             |
+| Email              | SMTP                                   |
+| Video              | Jitsi                                  |
+| API docs           | Swagger (swaggo)                       |
 
 ---
 
@@ -136,11 +136,11 @@ make up-dev
 # equivalent to: docker compose up -d
 ```
 
-| Service | Port | Purpose |
-|---------|------|---------|
-| Temporal gRPC | `7233` | Workflow engine |
+| Service         | Port     | Purpose                           |
+| --------------- | -------- | --------------------------------- |
+| Temporal gRPC   | `7233` | Workflow engine                   |
 | Temporal Web UI | `8233` | Inspect workflows and task queues |
-| Redis | `6379` | Cache and realtime event bus |
+| Redis           | `6379` | Cache and realtime event bus      |
 
 ### 4. Seed the database (optional)
 
@@ -174,74 +174,85 @@ Environment variables are loaded from `.env` at startup via [godotenv](https://g
 
 ### Core
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `GIN_MODE` | Gin mode: `debug` or `release` | `debug` |
-| `PORT` | HTTP server port | `8080` |
-| `JWT_SECRET` | Secretly signing secret | — (required) |
-| `MONGO_URI` | MongoDB connection string | — (required) |
-| `MONGO_DB_NAME` | MongoDB database name | — (required) |
-| `TEMPORAL_HOST` | Temporal frontend address | `localhost:7233` |
+| Variable          | Description                       | Default            |
+| ----------------- | --------------------------------- | ------------------ |
+| `GIN_MODE`      | Gin mode:`debug` or `release` | `debug`          |
+| `PORT`          | HTTP server port                  | `8080`           |
+| `JWT_SECRET`    | Secretly signing secret           | — (required)      |
+| `MONGO_URI`     | MongoDB connection string         | — (required)      |
+| `MONGO_DB_NAME` | MongoDB database name             | — (required)      |
+| `TEMPORAL_HOST` | Temporal frontend address         | `localhost:7233` |
 
 ### Redis
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `REDIS_ADDR` | Redis host and port | `localhost:6379` |
-| `REDIS_PASSWORD` | Redis password | — |
-| `REDIS_DB` | Redis database index | `0` |
+| Variable           | Description          | Default            |
+| ------------------ | -------------------- | ------------------ |
+| `REDIS_ADDR`     | Redis host and port  | `localhost:6379` |
+| `REDIS_PASSWORD` | Redis password       | —                 |
+| `REDIS_DB`       | Redis database index | `0`              |
+
+### Cache (cache-aside)
+
+Redis is also used as a read-through/cache-aside layer on top of MongoDB for a handful of hot, read-heavy repository methods that back GET APIs: active thresholds, latest measurements, alert-by-id, staff assignment lists, department list, and user/patient profile lookups. It reuses the same Redis connection as pub/sub but namespaces keys under `cache:` so they never collide. See `internal/cache` for the generic store and `internal/repository/cached_*_repository.go` / `internal/repository/user/cached_*_repository.go` for the decorators.
+
+This layer is only wired into the HTTP server container (`internal/container/main_server_container.go`) - the Temporal worker always reads/writes MongoDB directly and never sees cached data.
+
+| Variable                     | Description                                             | Default |
+| ----------------------------- | -------------------------------------------------------- | ------- |
+| `CACHE_ENABLED`             | Enable/disable the cache-aside layer (Redis pub/sub is unaffected) | `true`  |
+| `CACHE_DEFAULT_TTL_SECONDS` | TTL for cached entries, in seconds                        | `300`   |
 
 ### Frontend / CORS
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `FE_WEB_URL` | Patient web app origin | `http://localhost:3000` |
-| `FE_ADMIN_URL` | Admin web app origin | `http://localhost:3001` |
-| `FE_MOBILE_URI` | Mobile app redirect URI (OAuth) | — |
+| Variable          | Description                     | Default                   |
+| ----------------- | ------------------------------- | ------------------------- |
+| `FE_WEB_URL`    | Patient web app origin          | `http://localhost:3000` |
+| `FE_ADMIN_URL`  | Admin web app origin            | `http://localhost:3001` |
+| `FE_MOBILE_URI` | Mobile app redirect URI (OAuth) | —                        |
 
 ### Authentication
 
-| Variable | Description |
-|----------|-------------|
-| `GOOGLE_CLIENT_ID` | Google OAuth2 client ID |
-| `GOOGLE_CLIENT_SECRET` | Google OAuth2 client secret |
-| `GOOGLE_REDIRECT_URL` | OAuth callback URL |
-| `COOKIE_DOMAIN` | Cookie domain for auth tokens |
-| `COOKIE_CROSS_SITE` | Set to `true` for cross-site cookies in production |
-| `FORCE_SAMESITE_NONE` | Force `SameSite=None` on cookies |
+| Variable                 | Description                                         |
+| ------------------------ | --------------------------------------------------- |
+| `GOOGLE_CLIENT_ID`     | Google OAuth2 client ID                             |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth2 client secret                         |
+| `GOOGLE_REDIRECT_URL`  | OAuth callback URL                                  |
+| `COOKIE_DOMAIN`        | Cookie domain for auth tokens                       |
+| `COOKIE_CROSS_SITE`    | Set to`true` for cross-site cookies in production |
+| `FORCE_SAMESITE_NONE`  | Force`SameSite=None` on cookies                   |
 
 ### Email (SMTP)
 
-| Variable | Description |
-|----------|-------------|
-| `SMTP_HOST` | SMTP server host |
-| `SMTP_PORT` | SMTP port |
-| `SMTP_EMAIL` | Sender email address |
+| Variable          | Description                   |
+| ----------------- | ----------------------------- |
+| `SMTP_HOST`     | SMTP server host              |
+| `SMTP_PORT`     | SMTP port                     |
+| `SMTP_EMAIL`    | Sender email address          |
 | `SMTP_PASSWORD` | SMTP password or app password |
 
 ### Push notifications (Firebase)
 
-| Variable | Description |
-|----------|-------------|
+| Variable                        | Description                         |
+| ------------------------------- | ----------------------------------- |
 | `FIREBASE_CREDENTIALS_BASE64` | Base64-encoded service account JSON |
-| `FIREBASE_CREDENTIALS_FILE` | Path to service account JSON file |
+| `FIREBASE_CREDENTIALS_FILE`   | Path to service account JSON file   |
 
 Provide one of the two Firebase credential options. Push delivery is disabled gracefully if neither is configured (worker logs a warning).
 
 ### Media (Cloudinary)
 
-| Variable | Description |
-|----------|-------------|
+| Variable                  | Description           |
+| ------------------------- | --------------------- |
 | `CLOUDINARY_CLOUD_NAME` | Cloudinary cloud name |
-| `CLOUDINARY_API_KEY` | API key |
-| `CLOUDINARY_API_SECRET` | API secret |
+| `CLOUDINARY_API_KEY`    | API key               |
+| `CLOUDINARY_API_SECRET` | API secret            |
 
 ### Video sessions (Jitsi)
 
-| Variable | Description |
-|----------|-------------|
-| `JITSI_DOMAIN` | Jitsi Meet domain |
-| `JITSI_ROOM_PREFIX` | Room name prefix |
+| Variable                      | Description               |
+| ----------------------------- | ------------------------- |
+| `JITSI_DOMAIN`              | Jitsi Meet domain         |
+| `JITSI_ROOM_PREFIX`         | Room name prefix          |
 | `VIDEO_SESSION_TTL_MINUTES` | Session expiry in minutes |
 
 ---
@@ -301,14 +312,16 @@ make seed
 
 ### Demo accounts (after seeding)
 
-These credentials exist only in seeded development databases. **Do not use in production.**
+These credentials exist only in seeded development databases.
 
-| Role | Email | Password |
-|------|-------|----------|
-| Admin | `admin@gmail.com` | `Admin@123` |
-| Doctor | `doctor@gmail.com` | `Doctor12345@` |
-| Nurse | `nurse@gmail.com` | `Nurse@123` |
+| Role    | Email                 | Password          |
+| ------- | --------------------- | ----------------- |
+| Admin   | `admin@gmail.com`   | `Admin@123`     |
+| Doctor  | `doctor@gmail.com`  | `Doctor12345@`  |
+| Nurse   | `nurse@gmail.com`   | `Nurse@123`     |
 | Patient | `patient@gmail.com` | `Patient12345@` |
+
+All other generated seed users share one common password: `Seed@12345`.
 
 ---
 
@@ -332,10 +345,10 @@ This installs [swag](https://github.com/swaggo/swag) if needed and writes output
 
 The worker registers two task queues:
 
-| Task queue | Workflows | Purpose |
-|------------|-----------|---------|
-| `ALERT-TASK-QUEUE` | `AlertWorkflow` | Evaluate measurements against thresholds, create alerts, send push and chat notifications |
-| `REMINDER-TASK-QUEUE` | `ReminderWorkflow`, `AppointmentReminderWorkflow` | Deliver medication and appointment reminders |
+| Task queue              | Workflows                                             | Purpose                                                                                   |
+| ----------------------- | ----------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `ALERT-TASK-QUEUE`    | `AlertWorkflow`                                     | Evaluate measurements against thresholds, create alerts, send push and chat notifications |
+| `REMINDER-TASK-QUEUE` | `ReminderWorkflow`, `AppointmentReminderWorkflow` | Deliver medication and appointment reminders                                              |
 
 ### Temporal Web UI
 
@@ -369,6 +382,7 @@ Backend/
 │       ├── worker/      # Worker registration and startup
 │       └── workflow/    # Workflow definitions
 ├── internal/
+│   ├── cache/            # Redis-backed cache-aside store helper
 │   ├── container/       # Dependency injection wiring
 │   ├── domain/          # Domain models
 │   ├── dto/             # Request/response DTOs

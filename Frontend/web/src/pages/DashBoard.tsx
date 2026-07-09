@@ -25,7 +25,8 @@ import {
   calculateHealthStatistics,
   type PatientReportData,
 } from "../utils/export/healthReportExporter";
-import { exportComplianceToExcel } from "../utils/export/complianceExporter";
+import { exportComplianceToExcel, exportMultiComplianceToExcel } from "../utils/export/complianceExporter";
+import type { MultiCompliancePatientData } from "../utils/export/complianceExporter";
 import { getAdherence } from "../services/patientService";
 import { useTranslation } from "react-i18next";
 
@@ -308,7 +309,7 @@ const TodoList: React.FC<{
                     <div key={alert.id} className="flex items-center justify-between rounded-lg bg-red-50 p-3 dark:bg-red-900/10">
                       <div>
                         <p className="text-xs font-semibold text-gray-800 dark:text-slate-200">{alert.patientName || "Chưa rõ"}</p>
-                        <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-0.5">Mức độ: {alert.severity === 'high' ? 'Nguy hiểm' : alert.severity === 'medium' ? 'Cảnh báo' : 'Thấp'}</p>
+                        <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-0.5">Mức độ: {alert.severity === 'high' ? 'Nghiêm trọng' : alert.severity === 'medium' ? 'Cảnh báo' : 'Thấp'}</p>
                       </div>
                       <button onClick={() => navigate("/threshold-alerts")} className="rounded bg-red-100 px-2 py-1 text-[10px] font-medium text-red-600 hover:bg-red-200 dark:bg-red-500/20 dark:text-red-400 dark:hover:bg-red-500/30">
                         Xử lý
@@ -363,11 +364,15 @@ const RecentAlerts: React.FC<{
     glucose: t("patientDetail.glucose"),
     temperature: t("patientDetail.temperature"),
     spo2: "SpO2",
+    spO2: "SpO2",
     respiratoryRate: t("patientDetail.respiratoryRate"),
     heart_rate: t("patientDetail.heartRate"),
+    heartRate: t("patientDetail.heartRate"),
     respiratory_rate: t("patientDetail.respiratoryRate"),
     blood_pressure_systolic: t("patientDetail.systolic"),
+    bloodPressureSystolic: t("patientDetail.systolic"),
     blood_pressure_diastolic: t("patientDetail.diastolic"),
+    bloodPressureDiastolic: t("patientDetail.diastolic"),
   };
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white dark:border-slate-700/60 dark:bg-slate-800">
@@ -495,9 +500,11 @@ const DashBoard = () => {
 
   // Compliance report modal state
   const [showComplianceModal, setShowComplianceModal] = useState(false);
-  const [compliancePatientId, setCompliancePatientId] = useState<string>("");
+  const [complianceSelectedPatients, setComplianceSelectedPatients] = useState<Set<string>>(new Set());
   const [complianceDays, setComplianceDays] = useState<number>(30);
   const [isGeneratingCompliance, setIsGeneratingCompliance] = useState(false);
+  const [complianceProgress, setComplianceProgress] = useState({ current: 0, total: 0 });
+  const [complianceSearch, setComplianceSearch] = useState("");
 
   const dateRange = `${new Date(startDate).toLocaleDateString("vi-VN", {
     day: "2-digit",
@@ -837,24 +844,86 @@ const DashBoard = () => {
   // Open compliance report modal
   const handleOpenComplianceModal = () => {
     setShowExportMenu(false);
-    setCompliancePatientId(assignments.length > 0 ? assignments[0].patientId : "");
+    setComplianceSelectedPatients(new Set());
     setComplianceDays(30);
+    setComplianceSearch("");
     setShowComplianceModal(true);
   };
 
-  // Generate compliance report for a single patient
+  // Toggle compliance patient selection
+  const handleToggleCompliancePatient = (patientId: string) => {
+    const next = new Set(complianceSelectedPatients);
+    if (next.has(patientId)) next.delete(patientId);
+    else next.add(patientId);
+    setComplianceSelectedPatients(next);
+  };
+
+  // Select all / deselect all for compliance
+  const handleSelectAllCompliancePatients = () => {
+    if (complianceSelectedPatients.size === assignments.length) {
+      setComplianceSelectedPatients(new Set());
+    } else {
+      setComplianceSelectedPatients(new Set(assignments.map(a => a.patientId)));
+    }
+  };
+
+  // Filtered assignments for compliance search
+  const complianceFilteredAssignments = useMemo(() => {
+    if (!complianceSearch.trim()) return assignments;
+    const q = complianceSearch.toLowerCase();
+    return assignments.filter(a =>
+      (a.patientName || '').toLowerCase().includes(q) ||
+      (a.patientCode || a.patientPublicId || '').toLowerCase().includes(q)
+    );
+  }, [assignments, complianceSearch]);
+
+  // Generate compliance report for selected patients
   const handleGenerateComplianceReport = async () => {
-    if (!compliancePatientId) return;
-    const patient = assignments.find(a => a.patientId === compliancePatientId);
+    if (complianceSelectedPatients.size === 0) return;
+
     setIsGeneratingCompliance(true);
+    setComplianceProgress({ current: 0, total: complianceSelectedPatients.size });
+
     try {
-      const adherence = await getAdherence({ patientId: compliancePatientId, days: complianceDays });
-      await exportComplianceToExcel({
-        adherence,
-        patientName: patient?.patientName || "Bệnh nhân",
-        patientCode: patient?.patientCode || patient?.patientPublicId || "-",
-        daysCount: complianceDays,
-      });
+      const selectedAssignments = assignments.filter(a => complianceSelectedPatients.has(a.patientId));
+
+      // Single patient → use original single-file export
+      if (selectedAssignments.length === 1) {
+        const patient = selectedAssignments[0];
+        const adherence = await getAdherence({ patientId: patient.patientId, days: complianceDays });
+        setComplianceProgress({ current: 1, total: 1 });
+        await exportComplianceToExcel({
+          adherence,
+          patientName: patient.patientName || "Bệnh nhân",
+          patientCode: patient.patientCode || patient.patientPublicId || "-",
+          daysCount: complianceDays,
+        });
+      } else {
+        // Multiple patients → fetch all adherence data then export combined
+        const patientsData: MultiCompliancePatientData[] = [];
+        let current = 0;
+
+        for (const patient of selectedAssignments) {
+          try {
+            const adherence = await getAdherence({ patientId: patient.patientId, days: complianceDays });
+            patientsData.push({
+              adherence,
+              patientName: patient.patientName || "Bệnh nhân",
+              patientCode: patient.patientCode || patient.patientPublicId || "-",
+              daysCount: complianceDays,
+            });
+          } catch (err) {
+            console.error(`Compliance fetch failed for ${patient.patientId}`, err);
+          }
+          current++;
+          setComplianceProgress({ current, total: selectedAssignments.length });
+        }
+
+        if (patientsData.length > 0) {
+          await exportMultiComplianceToExcel({ patients: patientsData });
+        }
+      }
+
       setShowComplianceModal(false);
     } catch (err) {
       console.error("Compliance export failed", err);
@@ -1204,15 +1273,15 @@ const DashBoard = () => {
       {/* Compliance Report Modal */}
       {showComplianceModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-800 shadow-xl overflow-hidden">
+          <div className="w-full max-w-2xl max-h-[90vh] overflow-hidden rounded-2xl bg-white dark:bg-slate-800 shadow-xl">
             {/* Header */}
             <div className="flex items-center justify-between border-b border-gray-200 dark:border-slate-700 px-6 py-4">
               <div>
-                <h2 className="text-base font-bold text-gray-900 dark:text-white">
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white">
                   {t("dashboard.exportComplianceReport")}
                 </h2>
                 <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
-                  Xuất file xlsx báo cáo chi tiết tuân thủ dùng thuốc
+                  Chọn một hoặc nhiều bệnh nhân để xuất báo cáo tuân thủ dùng thuốc
                 </p>
               </div>
               <button
@@ -1225,30 +1294,7 @@ const DashBoard = () => {
             </div>
 
             {/* Body */}
-            <div className="px-6 py-5 space-y-5">
-              {/* Patient selector */}
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-gray-900 dark:text-white">
-                  Chọn bệnh nhân
-                </label>
-                <select
-                  value={compliancePatientId}
-                  onChange={e => setCompliancePatientId(e.target.value)}
-                  disabled={isGeneratingCompliance}
-                  className="w-full rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50"
-                >
-                  {assignments.length === 0 ? (
-                    <option value="">Không có bệnh nhân</option>
-                  ) : (
-                    assignments.map(a => (
-                      <option key={a.patientId} value={a.patientId}>
-                        {a.patientName || "Không rõ"} {a.patientCode ? `— ${a.patientCode}` : ""}
-                      </option>
-                    ))
-                  )}
-                </select>
-              </div>
-
+            <div className="overflow-y-auto p-6 space-y-5" style={{ maxHeight: 'calc(90vh - 140px)' }}>
               {/* Days range */}
               <div>
                 <label className="mb-2 block text-sm font-semibold text-gray-900 dark:text-white">
@@ -1272,25 +1318,109 @@ const DashBoard = () => {
                 </div>
               </div>
 
+              {/* Patient Selection */}
+              <div>
+                <div className="mb-3 flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+                    Chọn bệnh nhân ({complianceSelectedPatients.size}/{assignments.length})
+                  </h3>
+                  <button
+                    onClick={handleSelectAllCompliancePatients}
+                    disabled={isGeneratingCompliance}
+                    className="text-xs font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 disabled:opacity-50"
+                  >
+                    {complianceSelectedPatients.size === assignments.length ? "Bỏ chọn tất cả" : "Chọn tất cả"}
+                  </button>
+                </div>
+
+                {/* Search */}
+                <div className="mb-2">
+                  <input
+                    type="text"
+                    placeholder="Tìm bệnh nhân..."
+                    value={complianceSearch}
+                    onChange={e => setComplianceSearch(e.target.value)}
+                    disabled={isGeneratingCompliance}
+                    className="w-full rounded-lg border border-gray-200 dark:border-slate-600 bg-gray-50 dark:bg-slate-900 px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 disabled:opacity-50"
+                  />
+                </div>
+
+                <div className="space-y-1 rounded-lg border border-gray-200 dark:border-slate-700 p-3 max-h-64 overflow-y-auto">
+                  {complianceFilteredAssignments.length === 0 ? (
+                    <p className="text-center text-sm text-gray-400 py-4">
+                      {assignments.length === 0 ? "Không có bệnh nhân" : "Không tìm thấy bệnh nhân"}
+                    </p>
+                  ) : (
+                    complianceFilteredAssignments.map(a => (
+                      <label
+                        key={a.patientId}
+                        className="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 hover:bg-gray-50 dark:hover:bg-slate-700"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={complianceSelectedPatients.has(a.patientId)}
+                          onChange={() => handleToggleCompliancePatient(a.patientId)}
+                          disabled={isGeneratingCompliance}
+                          className="h-4 w-4 rounded border-gray-300 text-emerald-500 focus:ring-emerald-500 disabled:opacity-50"
+                        />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                            {a.patientName || 'Không rõ'}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-slate-400">
+                            {a.patientCode || a.patientPublicId || 'Không có mã'}
+                          </p>
+                        </div>
+                      </label>
+                    ))
+                  )}
+                </div>
+              </div>
+
               {/* Info box */}
               <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/40 p-3">
                 <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">
-                  File xlsx gồm 4 sheet:
+                  {complianceSelectedPatients.size <= 1
+                    ? "File xlsx gồm 3 sheet:"
+                    : `File xlsx gồm 1 sheet tổng hợp + ${complianceSelectedPatients.size} sheet chi tiết:`}
                 </p>
                 <ul className="mt-1 text-xs text-emerald-600 dark:text-emerald-500 space-y-0.5 list-disc list-inside">
-                  <li>Tổng quan — tỷ lệ tuân thủ từng ngày</li>
-                  <li>Chi tiết — từng liều thuốc đã uống/bỏ lỡ</li>
-                  <li>Thống kê theo thuốc — tổng hợp từng loại</li>
-                  <li>Thông tin báo cáo</li>
+                  {complianceSelectedPatients.size <= 1 ? (
+                    <>
+                      <li>Tổng quan — tỷ lệ tuân thủ từng ngày + thông tin báo cáo</li>
+                      <li>Chi tiết — từng liều thuốc đã uống/bỏ lỡ</li>
+                      <li>Thống kê theo thuốc — tổng hợp từng loại</li>
+                    </>
+                  ) : (
+                    <>
+                      <li>Tổng hợp — so sánh tỷ lệ tuân thủ tất cả BN</li>
+                      <li>Mỗi BN một sheet chi tiết từng liều thuốc</li>
+                    </>
+                  )}
                 </ul>
               </div>
 
               {/* Progress */}
               {isGeneratingCompliance && (
-                <div className="rounded-lg border border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-900/30 p-3 flex items-center gap-3">
-                  <div className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-emerald-500 border-r-transparent" />
-                  <p className="text-sm text-emerald-700 dark:text-emerald-300">
-                    Đang tạo báo cáo, vui lòng đợi...
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-900/30 p-4">
+                  <div className="mb-2 flex items-center justify-between text-sm">
+                    <span className="font-medium text-emerald-700 dark:text-emerald-300">
+                      Đang tạo báo cáo...
+                    </span>
+                    <span className="text-emerald-600 dark:text-emerald-400">
+                      {complianceProgress.current}/{complianceProgress.total}
+                    </span>
+                  </div>
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-emerald-200 dark:bg-emerald-800">
+                    <div
+                      className="h-full bg-emerald-500 transition-all duration-300"
+                      style={{
+                        width: `${complianceProgress.total > 0 ? (complianceProgress.current / complianceProgress.total) * 100 : 0}%`,
+                      }}
+                    />
+                  </div>
+                  <p className="mt-2 text-xs text-emerald-600 dark:text-emerald-400">
+                    Vui lòng chờ trong giây lát...
                   </p>
                 </div>
               )}
@@ -1307,10 +1437,14 @@ const DashBoard = () => {
               </button>
               <button
                 onClick={handleGenerateComplianceReport}
-                disabled={isGeneratingCompliance || !compliancePatientId}
+                disabled={isGeneratingCompliance || complianceSelectedPatients.size === 0}
                 className="rounded-lg bg-emerald-600 hover:bg-emerald-700 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {isGeneratingCompliance ? "Đang xuất..." : "Xuất báo cáo"}
+                {isGeneratingCompliance
+                  ? "Đang xuất..."
+                  : complianceSelectedPatients.size === 0
+                    ? "Chọn bệnh nhân"
+                    : `Xuất báo cáo (${complianceSelectedPatients.size} BN)`}
               </button>
             </div>
           </div>

@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import {
   Check,
-  Globe,
   MoonStar,
   Palette,
   RefreshCcw,
@@ -21,19 +20,6 @@ import { useLanguage } from "../context/LanguageContext";
 import { useTranslation } from "react-i18next";
 import Toast from "../components/ui/Toast";
 import { useToast } from "../hooks/useToast";
-
-const LANGUAGE_OPTIONS = [
-  {
-    value: "vi",
-    label: "Tiếng Việt",
-    flag: "🇻🇳",
-  },
-  {
-    value: "en",
-    label: "English",
-    flag: "🇬🇧",
-  },
-];
 
 const SettingPage = () => {
   const { t } = useTranslation();
@@ -175,8 +161,9 @@ const SettingPage = () => {
             </div>
           </section>
 
-          <div className="grid gap-6 lg:grid-cols-3">
-            {/* Language Selector */}
+          <div className="grid gap-6 lg:grid-cols-2">
+            {/* Language Selector - Hidden as requested by user, can be restored later */}
+            {/* 
             <section className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800 transition-colors duration-300">
               <div className="mb-3 flex items-center gap-2 text-gray-800 dark:text-slate-100">
                 <Globe size={18} />
@@ -208,6 +195,7 @@ const SettingPage = () => {
                 })}
               </div>
             </section>
+            */}
 
             {/* Theme Selector */}
             <section className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800 transition-colors duration-300">
@@ -288,7 +276,7 @@ const SettingPage = () => {
             </section>
 
             {/* Font Size Selector */}
-            <section className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800 lg:col-span-3 transition-colors duration-300">
+            <section className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800 lg:col-span-2 transition-colors duration-300">
               <div className="mb-4 flex items-center gap-2 text-gray-800 dark:text-slate-100">
                 <ZoomIn size={18} />
                 <h2 className="text-lg font-semibold">{t("settings.fontSize")}</h2>

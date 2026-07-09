@@ -25,7 +25,7 @@ import { useToast } from "../hooks/useToast";
 import { getMyPatients } from "../services/patientService";
 import {
   createReminder,
-  getReminders,
+  getMyReminders,
   updateReminder,
   updateReminderStatus,
   type ReminderBasePayload,
@@ -119,15 +119,39 @@ const ReminderPage = () => {
   const toStartOfDayIso = (value: string) => new Date(`${value}T00:00:00`).toISOString();
   const toEndOfDayIso = (value: string) => new Date(`${value}T23:59:59`).toISOString();
 
-  // const formatDate = (value: string) =>
-  //   new Date(value).toLocaleDateString("vi-VN", {
-  //     day: "2-digit",
-  //     month: "2-digit",
-  //     year: "numeric",
-  //   });
+  const formatDate = (value: string) => {
+    if (!value) return "";
+    return new Date(value).toLocaleDateString("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  };
+
 
   const formatTime = (hour: number, minute: number) =>
     `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+
+  const parseTimesString = (timeStr: string) => {
+    if (!timeStr) return [];
+    return timeStr
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean)
+      .map((t) => {
+        const [hText, mText] = t.split(":");
+        const hour = Number.parseInt(hText || "", 10);
+        const minute = Number.parseInt(mText || "", 10);
+        return { hour, minute };
+      });
+  };
+
+  const getReminderFirstTime = (r: any) => {
+    if (r.times && r.times.length > 0) {
+      return r.times[0];
+    }
+    return { hour: r.hour || 0, minute: r.minute || 0 };
+  };
 
   const getStatusLabel = (status: ReminderStatus) => {
     switch (status) {
@@ -165,6 +189,7 @@ const ReminderPage = () => {
   const [statusFilter, setStatusFilter] = useState<ReminderStatusFilter>("all");
   const [kindFilter, setKindFilter] = useState<ReminderKindFilter>("all");
   const [searchTerm, setSearchTerm] = useState("");
+  const [hideInactive, setHideInactive] = useState(true);
   
   const [formData, setFormData] = useState<ReminderFormData>(createDefaultFormData(initialPatientId));
   const [reminders, setReminders] = useState<ReminderRecord[]>([]);
@@ -206,6 +231,7 @@ const ReminderPage = () => {
     const filteredList = reminders.filter(r => {
       if (statusFilter !== "all" && r.status !== statusFilter) return false;
       if (kindFilter !== "all" && r.kind !== kindFilter) return false;
+      if (hideInactive && statusFilter === "all" && (r.status === "expired" || r.status === "canceled")) return false;
       
       if (searchTerm) {
         const pt = patientDisplayMap.get(r.patientId);
@@ -255,8 +281,10 @@ const ReminderPage = () => {
       
       // Sort reminders within group by time
       g.reminders.sort((a, b) => {
-        if (a.hour !== b.hour) return a.hour - b.hour;
-        return a.minute - b.minute;
+        const timeA = getReminderFirstTime(a);
+        const timeB = getReminderFirstTime(b);
+        if (timeA.hour !== timeB.hour) return timeA.hour - timeB.hour;
+        return timeA.minute - timeB.minute;
       });
     });
 
@@ -272,7 +300,7 @@ const ReminderPage = () => {
     });
 
     return allItems;
-  }, [reminders, statusFilter, kindFilter, searchTerm, patientDisplayMap]);
+  }, [reminders, statusFilter, kindFilter, searchTerm, patientDisplayMap, hideInactive]);
 
   // Pagination calculations
   const totalPages = Math.max(1, Math.ceil(aggregatedItems.length / itemsPerPage));
@@ -282,14 +310,21 @@ const ReminderPage = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedPatientId, statusFilter, kindFilter, searchTerm]);
+  }, [selectedPatientId, statusFilter, kindFilter, searchTerm, hideInactive]);
 
   const applyReminderToForm = (reminder: ReminderRecord) => {
+    let timeStr = "";
+    if (reminder.times && reminder.times.length > 0) {
+      timeStr = reminder.times.map((t) => formatTime(t.hour, t.minute)).join(", ");
+    } else {
+      timeStr = formatTime(reminder.hour, reminder.minute);
+    }
+
     setFormData({
       patientId: reminder.patientId,
       kind: reminder.kind,
       message: reminder.message,
-      time: formatTime(reminder.hour, reminder.minute),
+      time: timeStr,
       daysOfWeek: reminder.daysOfWeek,
       timezone: reminder.timezone,
       startDate: toDateInputValue(reminder.startDate),
@@ -331,13 +366,17 @@ const ReminderPage = () => {
       return null;
     }
 
-    const [hourText, minuteText] = formData.time.split(":");
-    const hour = Number.parseInt(hourText || "", 10);
-    const minute = Number.parseInt(minuteText || "", 10);
-
-    if (Number.isNaN(hour) || Number.isNaN(minute)) {
+    const times = parseTimesString(formData.time);
+    if (times.length === 0) {
       showToast(t("reminders.invalidTime", "Giờ không hợp lệ"), "error");
       return null;
+    }
+
+    for (const tVal of times) {
+      if (Number.isNaN(tVal.hour) || Number.isNaN(tVal.minute) || tVal.hour < 0 || tVal.hour > 23 || tVal.minute < 0 || tVal.minute > 59) {
+        showToast(t("reminders.invalidTime", "Giờ không hợp lệ (định dạng HH:mm, ví dụ: 08:00, 12:00)"), "error");
+        return null;
+      }
     }
 
     const startDate = new Date(`${formData.startDate}T00:00:00`);
@@ -352,8 +391,7 @@ const ReminderPage = () => {
       patientId: formData.patientId,
       kind: formData.kind,
       message: formData.message.trim(),
-      hour,
-      minute,
+      times,
       daysOfWeek: [...formData.daysOfWeek].sort((left, right) => left - right),
       timezone: formData.timezone,
       startDate: toStartOfDayIso(formData.startDate),
@@ -361,7 +399,7 @@ const ReminderPage = () => {
     };
 
     if (!editingReminderId) return basePayload;
-    return { ...basePayload, status: formData.status };
+    return { ...basePayload, status: formData.status } as UpdateReminderPayload;
   };
 
   const loadPatients = async () => {
@@ -384,16 +422,15 @@ const ReminderPage = () => {
   const loadReminders = async () => {
     try {
       setLoadingReminders(true);
-      const targetPatientIds = selectedPatientId ? [selectedPatientId] : patientOptions.map((item) => item.patientId);
-      if (targetPatientIds.length === 0) {
+      if (!selectedPatientId && patientOptions.length === 0) {
         setReminders([]);
         return;
       }
-      const reminderGroups = await Promise.all(
-        targetPatientIds.map((patientId) => getReminders({ patientId }))
+
+      const reminders = await getMyReminders(
+        selectedPatientId ? { patientId: selectedPatientId } : undefined
       );
-      const merged = reminderGroups.flat();
-      const uniqueReminders = Array.from(new Map(merged.map((item) => [item.id, item])).values());
+      const uniqueReminders = Array.from(new Map(reminders.map((item) => [item.id, item])).values());
       setReminders(uniqueReminders);
       
       // Update viewing group if modal is open
@@ -566,6 +603,19 @@ const ReminderPage = () => {
             </select>
           </div>
         </div>
+        
+        <div className="mt-4 flex items-center">
+          <input
+            id="hide-inactive-checkbox"
+            type="checkbox"
+            checked={hideInactive}
+            onChange={(e) => setHideInactive(e.target.checked)}
+            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+          />
+          <label htmlFor="hide-inactive-checkbox" className="ml-2 text-sm text-gray-600 dark:text-slate-400 cursor-pointer select-none">
+            Ẩn nhắc nhở hết hạn và đã hủy
+          </label>
+        </div>
       </div>
 
       <div className="flex items-center justify-between mb-4">
@@ -583,51 +633,70 @@ const ReminderPage = () => {
               // Medication Group Card
               return (
                 <div key={item.id} className="flex flex-col h-full rounded-xl border border-indigo-200 dark:border-indigo-900/50 bg-white dark:bg-slate-800 shadow-sm overflow-hidden">
-                  <div className="bg-indigo-50 dark:bg-indigo-900/30 px-5 py-4 flex justify-between items-start border-b border-indigo-100 dark:border-indigo-900/50">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <FaNotesMedical className="text-indigo-600 dark:text-indigo-400" />
-                        <span className="font-semibold text-indigo-900 dark:text-indigo-200">Uống thuốc theo Đơn</span>
+                  <div className="flex-1 flex flex-col">
+                    <div className="bg-indigo-50 dark:bg-indigo-900/30 px-5 py-4 flex justify-between items-start border-b border-indigo-100 dark:border-indigo-900/50">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <FaNotesMedical className="text-indigo-600 dark:text-indigo-400" />
+                          <span className="font-semibold text-indigo-900 dark:text-indigo-200">Uống thuốc theo Đơn</span>
+                        </div>
+                        <h3 className="font-bold text-slate-900 dark:text-slate-100">{item.patientName}</h3>
+                        <p className="text-xs text-slate-500">Mã BN: {item.patientCode || "N/A"}</p>
                       </div>
-                      <h3 className="font-bold text-slate-900 dark:text-slate-100">{item.patientName}</h3>
-                      <p className="text-xs text-slate-500">Mã BN: {item.patientCode || "N/A"}</p>
+                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${getStatusClasses(item.status)}`}>
+                        {getStatusLabel(item.status)}
+                      </span>
                     </div>
-                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${getStatusClasses(item.status)}`}>
-                      {getStatusLabel(item.status)}
-                    </span>
+                    <div className="p-5 flex-1 flex flex-col justify-between">
+                      <div>
+                        {item.reminders.length > 0 && (
+                          <div className="mb-3 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                            <span className="font-semibold">Hiệu lực:</span>
+                            <span>{formatDate(item.reminders[0].startDate)}</span>
+                            <span>→</span>
+                            <span>{formatDate(item.reminders[0].endDate)}</span>
+                          </div>
+                        )}
+                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                          Gồm <strong className="text-slate-800 dark:text-slate-200">{item.reminders.length}</strong> nhắc nhở thuốc.
+                        </p>
+                        <div className="flex flex-wrap gap-2 mb-4">
+                          {(() => {
+                            const timeGroups = new Map<string, number>();
+                            item.reminders.forEach(r => {
+                              if (r.times && r.times.length > 0) {
+                                r.times.forEach(tObj => {
+                                  const t = formatTime(tObj.hour, tObj.minute);
+                                  timeGroups.set(t, (timeGroups.get(t) || 0) + 1);
+                                });
+                              } else {
+                                const t = formatTime(r.hour, r.minute);
+                                timeGroups.set(t, (timeGroups.get(t) || 0) + 1);
+                              }
+                            });
+                            const timeSlots = Array.from(timeGroups.entries()).map(([t, count]) => ({ time: t, count }));
+                            
+                            return (
+                              <>
+                                {timeSlots.slice(0, 4).map((slot, i) => (
+                                  <span key={i} className="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs px-2 py-1 rounded-md font-medium border border-slate-200 dark:border-slate-600">
+                                    {slot.time} • {slot.count} thuốc
+                                  </span>
+                                ))}
+                                {timeSlots.length > 4 && (
+                                  <span className="bg-slate-100 dark:bg-slate-700 text-slate-500 text-xs px-2 py-1 rounded-md font-medium">
+                                    +{timeSlots.length - 4} khung giờ nữa
+                                  </span>
+                                )}
+                              </>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="p-5 flex-1 flex flex-col justify-between">
-                    <div>
-                      <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-                        Gồm <strong className="text-slate-800 dark:text-slate-200">{item.reminders.length}</strong> nhắc nhở thuốc.
-                      </p>
-                      <div className="flex flex-wrap gap-2 mb-4">
-                        {(() => {
-                          const timeGroups = new Map<string, number>();
-                          item.reminders.forEach(r => {
-                            const t = formatTime(r.hour, r.minute);
-                            timeGroups.set(t, (timeGroups.get(t) || 0) + 1);
-                          });
-                          const timeSlots = Array.from(timeGroups.entries()).map(([t, count]) => ({ time: t, count }));
-                          
-                          return (
-                            <>
-                              {timeSlots.slice(0, 4).map((slot, i) => (
-                                <span key={i} className="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs px-2 py-1 rounded-md font-medium border border-slate-200 dark:border-slate-600">
-                                  {slot.time} • {slot.count} thuốc
-                                </span>
-                              ))}
-                              {timeSlots.length > 4 && (
-                                <span className="bg-slate-100 dark:bg-slate-700 text-slate-500 text-xs px-2 py-1 rounded-md font-medium">
-                                  +{timeSlots.length - 4} khung giờ nữa
-                                </span>
-                              )}
-                            </>
-                          );
-                        })()}
-                      </div>
-                    </div>
-                    <div className="flex gap-2 mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
+                  <div className="p-5 pt-0">
+                    <div className="flex gap-2 mt-2 pt-4 border-t border-slate-100 dark:border-slate-700">
                       <button 
                         onClick={() => setViewingGroup(item)}
                         className="flex-1 flex items-center justify-center gap-2 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 dark:bg-indigo-900/50 dark:hover:bg-indigo-800/50 dark:text-indigo-300 py-2 rounded-lg text-sm font-medium transition"
@@ -652,38 +721,54 @@ const ReminderPage = () => {
               
               return (
                 <div key={r.id} className="flex flex-col h-full rounded-xl border border-sky-200 dark:border-sky-900/50 bg-white dark:bg-slate-800 shadow-sm overflow-hidden">
-                  <div className="bg-sky-50 dark:bg-sky-900/20 px-5 py-4 flex justify-between items-start border-b border-sky-100 dark:border-sky-900/50">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-sky-600 dark:text-sky-400 font-semibold text-sm">
-                           Nhắc {r.kind === "measure" ? "Đo chỉ số" : "Uống thuốc"}
-                        </span>
-                      </div>
-                      <h3 className="font-bold text-slate-900 dark:text-slate-100">{ptInfo?.name || r.patientId}</h3>
-                      <p className="text-xs text-slate-500">Mã BN: {ptInfo?.code || "N/A"}</p>
-                    </div>
-                    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${getStatusClasses(r.status)}`}>
-                      {getStatusLabel(r.status)}
-                    </span>
-                  </div>
-                  
-                  <div className="p-5 flex-1 flex flex-col justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-slate-800 dark:text-slate-200 mb-3">{r.message}</p>
-                      
-                      <div className="grid grid-cols-2 gap-3 mb-4">
-                        <div className="bg-slate-50 dark:bg-slate-700/50 p-2.5 rounded-lg border border-slate-100 dark:border-slate-700">
-                          <p className="text-[10px] uppercase text-slate-500 mb-1">Giờ nhắc</p>
-                          <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center"><FaRegClock className="mr-1.5 opacity-70"/> {formatTime(r.hour, r.minute)}</p>
+                  <div className="flex-1 flex flex-col">
+                    <div className="bg-sky-50 dark:bg-sky-900/20 px-5 py-4 flex justify-between items-start border-b border-sky-100 dark:border-sky-900/50">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-sky-600 dark:text-sky-400 font-semibold text-sm">
+                             Nhắc {r.kind === "measure" ? "Đo chỉ số" : "Uống thuốc"}
+                          </span>
                         </div>
-                        <div className="bg-slate-50 dark:bg-slate-700/50 p-2.5 rounded-lg border border-slate-100 dark:border-slate-700">
-                          <p className="text-[10px] uppercase text-slate-500 mb-1">Lặp lại</p>
-                          <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate" title={buildWeekdaySummary(r.daysOfWeek)}>{buildWeekdaySummary(r.daysOfWeek)}</p>
-                        </div>
+                        <h3 className="font-bold text-slate-900 dark:text-slate-100">{ptInfo?.name || r.patientId}</h3>
+                        <p className="text-xs text-slate-500">Mã BN: {ptInfo?.code || "N/A"}</p>
                       </div>
+                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${getStatusClasses(r.status)}`}>
+                        {getStatusLabel(r.status)}
+                      </span>
                     </div>
                     
-                    <div className="flex flex-wrap gap-2 mt-2">
+                    <div className="p-5 flex-1 flex flex-col justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-slate-800 dark:text-slate-200 mb-3">{r.message}</p>
+                        
+                        <div className="grid grid-cols-2 gap-3 mb-4">
+                          <div className="bg-slate-50 dark:bg-slate-700/50 p-2.5 rounded-lg border border-slate-100 dark:border-slate-700">
+                            <p className="text-[10px] uppercase text-slate-500 mb-1">Giờ nhắc</p>
+                            <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center">
+                              <FaRegClock className="mr-1.5 opacity-70"/>
+                              {r.times && r.times.length > 0
+                                ? r.times.map((t) => formatTime(t.hour, t.minute)).join(", ")
+                                : formatTime(r.hour, r.minute)}
+                            </p>
+                          </div>
+                          <div className="bg-slate-50 dark:bg-slate-700/50 p-2.5 rounded-lg border border-slate-100 dark:border-slate-700">
+                            <p className="text-[10px] uppercase text-slate-500 mb-1">Lặp lại</p>
+                            <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate" title={buildWeekdaySummary(r.daysOfWeek)}>{buildWeekdaySummary(r.daysOfWeek)}</p>
+                          </div>
+                        </div>
+
+                        <div className="mb-1 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                          <span className="font-semibold">Hiệu lực:</span>
+                          <span>{formatDate(r.startDate)}</span>
+                          <span>→</span>
+                          <span>{formatDate(r.endDate)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="p-5 pt-0">
+                    <div className="flex flex-wrap gap-2 mt-2 pt-4 border-t border-slate-100 dark:border-slate-700">
                       <button onClick={() => applyReminderToForm(r)} disabled={!canToggle || saving} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-200 py-1.5 rounded-lg text-sm font-medium transition disabled:opacity-50">
                         Sửa
                       </button>
@@ -767,7 +852,11 @@ const ReminderPage = () => {
                   <div key={r.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-1">
-                        <span className="text-base font-bold text-slate-800 dark:text-slate-200">{formatTime(r.hour, r.minute)}</span>
+                        <span className="text-base font-bold text-slate-800 dark:text-slate-200">
+                          {r.times && r.times.length > 0
+                            ? r.times.map((t) => formatTime(t.hour, t.minute)).join(", ")
+                            : formatTime(r.hour, r.minute)}
+                        </span>
                         <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${getStatusClasses(r.status)}`}>
                           {getStatusLabel(r.status)}
                         </span>
@@ -783,6 +872,36 @@ const ReminderPage = () => {
                         )}
                       </div>
                       <p className="text-sm text-slate-700 dark:text-slate-300">{r.message}</p>
+                    </div>
+                    
+                    <div className="flex gap-2">
+                      {r.status === "active" && (
+                        <button
+                          onClick={() => void handleQuickStatusUpdate(r, "paused")}
+                          disabled={saving}
+                          className="bg-amber-100 hover:bg-amber-200 text-amber-700 dark:bg-amber-900/40 dark:hover:bg-amber-800/60 dark:text-amber-400 px-3 py-1.5 rounded-lg text-xs font-semibold transition disabled:opacity-50"
+                        >
+                          Tạm dừng
+                        </button>
+                      )}
+                      {r.status === "paused" && (
+                        <button
+                          onClick={() => void handleQuickStatusUpdate(r, "active")}
+                          disabled={saving}
+                          className="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 dark:bg-emerald-900/40 dark:hover:bg-emerald-800/60 dark:text-emerald-400 px-3 py-1.5 rounded-lg text-xs font-semibold transition disabled:opacity-50"
+                        >
+                          Kích hoạt
+                        </button>
+                      )}
+                      {(r.status === "active" || r.status === "paused") && (
+                        <button
+                          onClick={() => void handleQuickStatusUpdate(r, "canceled")}
+                          disabled={saving}
+                          className="bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-900/20 dark:hover:bg-rose-900/40 dark:text-rose-400 px-3 py-1.5 rounded-lg text-xs font-semibold transition disabled:opacity-50"
+                        >
+                          Hủy
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}

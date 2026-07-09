@@ -203,7 +203,7 @@ export default function HistoryScreen({ route, isEmbedded }) {
     recentMeasurements.map((m) => ({
       value: cfg.getValue(m),
       label: isSameDay ? formatTime(m.createdAt) : formatShortLabel(m.createdAt),
-      labelTextStyle: { color: "#9CA3AF", fontSize: 10 },
+      labelTextStyle: { color: "rgba(255,255,255,0.5)", fontSize: 10 },
       dataPointColor: cfg.color,
       dataPointRadius: pointR,
       // attach raw measurement for tooltip
@@ -297,28 +297,38 @@ export default function HistoryScreen({ route, isEmbedded }) {
       })),
     ];
 
+    // Tính width chính xác để biểu đồ nằm gọn trong container đen
+    // Inline card: screenWidth - container(40) - card(32) - clip(16) = screenWidth - 88
+    // Modal card: screenWidth - modal(40) - modalPad(40) - clip(16) = screenWidth - 96
+    const chartWidth = height > 250
+      ? screenWidth - 96 - 16   // modal
+      : screenWidth - 88 - 16;  // inline (trừ thêm cho yAxis labels)
+
     return (
       <LineChart
         dataSet={datasets}
         height={height}
-        width={screenWidth - (height > 250 ? 96 : 84)}
+        width={chartWidth}
         spacing={spacing}
         initialSpacing={initialSpacing}
         endSpacing={endSpacing}
         maxValue={chartMaxValue}
         noOfSections={5}
-        yAxisColor="#E5E7EB"
-        xAxisColor="#E5E7EB"
+        yAxisColor="rgba(255,255,255,0.15)"
+        xAxisColor="rgba(255,255,255,0.15)"
         yAxisThickness={1}
         xAxisThickness={1}
-        yAxisTextStyle={{ color: "#9CA3AF", fontSize: 10 }}
+        yAxisTextStyle={{ color: "rgba(255,255,255,0.5)", fontSize: 10 }}
+        xAxisLabelTextStyle={{ color: "rgba(255,255,255,0.5)", fontSize: 10 }}
         rulesType="dashed"
-        rulesColor="#F3F4F6"
+        rulesColor="rgba(255,255,255,0.08)"
+        backgroundColor="transparent"
         curved
         disableScroll={false}
         scrollToEnd={true}
+        hideYAxisText={false}
         pointerConfig={{
-          pointerStripColor: "#9CA3AF",
+          pointerStripColor: "rgba(255,255,255,0.3)",
           pointerStripWidth: 1,
           pointerColor: primary.color,
           radius: 5,
@@ -423,41 +433,53 @@ export default function HistoryScreen({ route, isEmbedded }) {
         </View>
 
         {/* TIME RANGE FILTER */}
-        <View style={{ marginBottom: 20 }}>
+        <View style={styles.dateRangeRow}>
           <TouchableOpacity
-            style={styles.filterDateBtn}
+            style={styles.dateRangeBtn}
             onPress={() => setShowPicker("start")}
           >
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-              <Ionicons name="calendar-outline" size={18} color="#6B7280" />
-              <Text style={{ fontSize: 14, color: "#4B5563", fontWeight: "500" }}>
-                {formatDate(startDate)} - {formatDate(endDate)}
-              </Text>
+            <Ionicons name="calendar-outline" size={16} color="#2563EB" />
+            <View>
+              <Text style={styles.dateRangeLabel}>Từ ngày</Text>
+              <Text style={styles.dateRangeValue}>{formatDate(startDate)}</Text>
             </View>
-            <Ionicons name="chevron-down" size={18} color="#6B7280" />
           </TouchableOpacity>
 
-          {showPicker && (
-            <DateTimePicker
-              value={showPicker === "start" ? startDate : endDate}
-              mode="date"
-              display="default"
-              onChange={(event, selectedDate) => {
-                const currentPicker = showPicker;
-                setShowPicker(null);
-                if (event.type === "dismissed") return;
-                if (selectedDate) {
-                  if (currentPicker === "start") {
-                    setStartDate(selectedDate);
-                    setTimeout(() => setShowPicker("end"), 500);
-                  } else {
-                    setEndDate(selectedDate);
-                  }
-                }
-              }}
-            />
-          )}
+          <View style={styles.dateRangeSeparator}>
+            <Ionicons name="arrow-forward" size={16} color="#9CA3AF" />
+          </View>
+
+          <TouchableOpacity
+            style={styles.dateRangeBtn}
+            onPress={() => setShowPicker("end")}
+          >
+            <Ionicons name="calendar-outline" size={16} color="#2563EB" />
+            <View>
+              <Text style={styles.dateRangeLabel}>Đến ngày</Text>
+              <Text style={styles.dateRangeValue}>{formatDate(endDate)}</Text>
+            </View>
+          </TouchableOpacity>
         </View>
+
+        {showPicker && (
+          <DateTimePicker
+            value={showPicker === "start" ? startDate : endDate}
+            mode="date"
+            display="default"
+            onChange={(event, selectedDate) => {
+              const currentPicker = showPicker;
+              setShowPicker(null);
+              if (event.type === "dismissed") return;
+              if (selectedDate) {
+                if (currentPicker === "start") {
+                  setStartDate(selectedDate);
+                } else {
+                  setEndDate(selectedDate);
+                }
+              }
+            }}
+          />
+        )}
 
         {/* TREND CARD */}
         <View style={styles.card}>
@@ -482,7 +504,9 @@ export default function HistoryScreen({ route, isEmbedded }) {
             </View>
           ) : (
             <View style={{ marginTop: 12 }}>
-              {renderChart(200)}
+              <View style={styles.chartClipContainer}>
+                {renderChart(200)}
+              </View>
               <ChartLegend />
             </View>
           )}
@@ -684,7 +708,9 @@ export default function HistoryScreen({ route, isEmbedded }) {
               </View>
             ) : (
               <View style={{ marginTop: 8 }}>
-                {renderChart(320)}
+                <View style={styles.chartClipContainer}>
+                  {renderChart(320)}
+                </View>
                 <ChartLegend />
               </View>
             )}
@@ -731,16 +757,45 @@ const styles = StyleSheet.create({
   tabText: { color: "#6B7280", fontWeight: "600", fontSize: 13 },
   tabTextActive: { color: "#2563EB" },
 
-  filterDateBtn: {
+  dateRangeRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    marginBottom: 20,
+    gap: 8,
+  },
+  dateRangeBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
     backgroundColor: "#FFFFFF",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: "#E5E7EB",
+  },
+  dateRangeLabel: {
+    fontSize: 11,
+    color: "#9CA3AF",
+    fontWeight: "500",
+  },
+  dateRangeValue: {
+    fontSize: 14,
+    color: "#111827",
+    fontWeight: "600",
+    marginTop: 1,
+  },
+  dateRangeSeparator: {
+    paddingHorizontal: 2,
+  },
+
+  chartClipContainer: {
+    backgroundColor: "#1A1A2E",
+    borderRadius: 14,
+    overflow: "hidden",
+    padding: 8,
+    paddingTop: 12,
   },
 
   card: {

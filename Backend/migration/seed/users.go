@@ -40,7 +40,7 @@ func (s *Seeder) seedDepartments(ctx context.Context) ([]*domain.Department, err
 		dept := &domain.Department{
 			ID:          primitive.NewObjectID(),
 			Name:        name,
-			Description: fmt.Sprintf("%s department for remote patient monitoring", name),
+			Description: fmt.Sprintf("%s trực thuộc hệ thống theo dõi bệnh nhân từ xa", name),
 			CreatedAt:   now,
 			UpdatedAt:   now,
 		}
@@ -58,16 +58,20 @@ func (s *Seeder) seedDepartments(ctx context.Context) ([]*domain.Department, err
 }
 
 func (s *Seeder) seedAdmins(ctx context.Context) ([]*userDomain.BaseUser, error) {
-	return s.seedBaseUsers(ctx, "admin", seedPassword("admin"), 1985, func(i int) string {
+	return s.seedBaseUsers(ctx, "admin", adminPassword, adminCount, 1985, func(i int) string {
 		if i == 0 {
-			return "System Admin"
+			return "Quản trị viên Hệ thống"
 		}
-		return fmt.Sprintf("Seed Admin %02d", i+1)
+		return seedPersonName(i, 0)
 	})
 }
 
 func (s *Seeder) seedDoctors(ctx context.Context, departments []*domain.Department) ([]*userDomain.Doctor, error) {
-	hashed, err := util.HashPassword(seedPassword("doctor"))
+	hashedDefault, err := util.HashPassword(doctorPassword)
+	if err != nil {
+		return nil, err
+	}
+	hashedShared, err := util.HashPassword(seedSharedPassword)
 	if err != nil {
 		return nil, err
 	}
@@ -85,9 +89,10 @@ func (s *Seeder) seedDoctors(ctx context.Context, departments []*domain.Departme
 		}
 
 		dept := departments[i%len(departments)]
-		name := "Dr. Alice Nguyen"
-		if i > 0 {
-			name = fmt.Sprintf("Dr. Seed Doctor %02d", i+1)
+		name := "Dr. " + seedPersonName(i, 7)
+		hashed := hashedShared
+		if i == 0 {
+			hashed = hashedDefault
 		}
 
 		doctor := &userDomain.Doctor{
@@ -104,7 +109,7 @@ func (s *Seeder) seedDoctors(ctx context.Context, departments []*domain.Departme
 					Status:   userDomain.StatusActive,
 				},
 				DepartmentID:      dept.ID,
-				Workplace:         "City General Hospital",
+				Workplace:         "Bệnh viện Đa khoa Thành phố",
 				LicenseNumber:     fmt.Sprintf("DOC-2024-%03d", i+1),
 				YearsOfExperience: 3 + (i % 20),
 			},
@@ -113,6 +118,13 @@ func (s *Seeder) seedDoctors(ctx context.Context, departments []*domain.Departme
 
 		createdDoctor, err := s.doctorRepo.Create(ctx, doctor)
 		if err != nil {
+			return nil, err
+		}
+		// staffRepo.Create hard-codes CreatedAt to time.Now(); an account
+		// created "just now" but already carrying months of prescriptions and
+		// measurements for its patients would be inconsistent, so push it
+		// safely before any of that other seeded history.
+		if err := s.backdateCreatedAt(ctx, "users", createdDoctor.ID, accountCreatedAt(i)); err != nil {
 			return nil, err
 		}
 		result = append(result, createdDoctor)
@@ -124,7 +136,11 @@ func (s *Seeder) seedDoctors(ctx context.Context, departments []*domain.Departme
 }
 
 func (s *Seeder) seedNurses(ctx context.Context, departments []*domain.Department) ([]*userDomain.Nurse, error) {
-	hashed, err := util.HashPassword(seedPassword("nurse"))
+	hashedDefault, err := util.HashPassword(nursePassword)
+	if err != nil {
+		return nil, err
+	}
+	hashedShared, err := util.HashPassword(seedSharedPassword)
 	if err != nil {
 		return nil, err
 	}
@@ -142,9 +158,10 @@ func (s *Seeder) seedNurses(ctx context.Context, departments []*domain.Departmen
 		}
 
 		dept := departments[i%len(departments)]
-		name := "Jane Tran"
-		if i > 0 {
-			name = fmt.Sprintf("Seed Nurse %02d", i+1)
+		name := seedPersonName(i, 13)
+		hashed := hashedShared
+		if i == 0 {
+			hashed = hashedDefault
 		}
 
 		nurse := &userDomain.Nurse{
@@ -161,7 +178,7 @@ func (s *Seeder) seedNurses(ctx context.Context, departments []*domain.Departmen
 					Status:   userDomain.StatusActive,
 				},
 				DepartmentID:      dept.ID,
-				Workplace:         "City General Hospital",
+				Workplace:         "Bệnh viện Đa khoa Thành phố",
 				LicenseNumber:     fmt.Sprintf("NUR-2024-%03d", i+1),
 				YearsOfExperience: 1 + (i % 15),
 			},
@@ -169,6 +186,10 @@ func (s *Seeder) seedNurses(ctx context.Context, departments []*domain.Departmen
 
 		createdNurse, err := s.nurseRepo.Create(ctx, nurse)
 		if err != nil {
+			return nil, err
+		}
+		// staffRepo.Create hard-codes CreatedAt to time.Now(); see seedDoctors.
+		if err := s.backdateCreatedAt(ctx, "users", createdNurse.ID, accountCreatedAt(i)); err != nil {
 			return nil, err
 		}
 		result = append(result, createdNurse)
@@ -180,7 +201,11 @@ func (s *Seeder) seedNurses(ctx context.Context, departments []*domain.Departmen
 }
 
 func (s *Seeder) seedPatients(ctx context.Context) ([]*userDomain.Patient, error) {
-	hashed, err := util.HashPassword(seedPassword("patient"))
+	hashedDefault, err := util.HashPassword(patientPassword)
+	if err != nil {
+		return nil, err
+	}
+	hashedShared, err := util.HashPassword(seedSharedPassword)
 	if err != nil {
 		return nil, err
 	}
@@ -197,9 +222,10 @@ func (s *Seeder) seedPatients(ctx context.Context) ([]*userDomain.Patient, error
 			return nil, err
 		}
 
-		name := "John Le"
-		if i > 0 {
-			name = fmt.Sprintf("Seed Patient %02d", i+1)
+		name := seedPersonName(i, 29)
+		hashed := hashedShared
+		if i == 0 {
+			hashed = hashedDefault
 		}
 
 		patient := &userDomain.Patient{
@@ -216,9 +242,9 @@ func (s *Seeder) seedPatients(ctx context.Context) ([]*userDomain.Patient, error
 			},
 			InsuranceNumber:       fmt.Sprintf("INS-2024-%04d", i+1),
 			CCCD:                  fmt.Sprintf("00107501%04d", i+1),
-			EmergencyContactName:  fmt.Sprintf("Emergency Contact %02d", i+1),
+			EmergencyContactName:  seedPersonName(i, 41),
 			EmergencyContactPhone: fmt.Sprintf("0909%06d", i+1),
-			MedicalHistory:        pick([]string{"Hypertension", "Type 2 diabetes", "Asthma", "Heart disease"}, i),
+			MedicalHistory:        pick([]string{"Tăng huyết áp", "Đái tháo đường type 2", "Hen suyễn", "Bệnh tim mạch"}, i),
 			DiseaseTypes: userDomain.DiseaseTypes{
 				BloodPressure: i%2 == 0,
 				Glucose:       i%3 != 0,
@@ -227,6 +253,10 @@ func (s *Seeder) seedPatients(ctx context.Context) ([]*userDomain.Patient, error
 
 		createdPatient, err := s.patientRepo.Create(ctx, patient)
 		if err != nil {
+			return nil, err
+		}
+		// patientRepo.Create hard-codes CreatedAt to time.Now(); see seedDoctors.
+		if err := s.backdateCreatedAt(ctx, "users", createdPatient.ID, accountCreatedAt(i)); err != nil {
 			return nil, err
 		}
 		result = append(result, createdPatient)
@@ -240,11 +270,16 @@ func (s *Seeder) seedPatients(ctx context.Context) ([]*userDomain.Patient, error
 func (s *Seeder) seedBaseUsers(
 	ctx context.Context,
 	role string,
-	password string,
+	defaultPassword string,
+	count int,
 	baseYear int,
 	nameFn func(int) string,
 ) ([]*userDomain.BaseUser, error) {
-	hashed, err := util.HashPassword(password)
+	hashedDefault, err := util.HashPassword(defaultPassword)
+	if err != nil {
+		return nil, err
+	}
+	hashedShared, err := util.HashPassword(seedSharedPassword)
 	if err != nil {
 		return nil, err
 	}
@@ -257,10 +292,10 @@ func (s *Seeder) seedBaseUsers(
 		return nil, fmt.Errorf("unsupported base user role: %s", role)
 	}
 
-	result := make([]*userDomain.BaseUser, 0, seedCount)
+	result := make([]*userDomain.BaseUser, 0, count)
 	created := 0
 
-	for i := 0; i < seedCount; i++ {
+	for i := 0; i < count; i++ {
 		email := seedEmail(role, i)
 		if existing, err := s.baseUserRepo.FindByEmail(ctx, email); err == nil {
 			result = append(result, existing)
@@ -269,7 +304,15 @@ func (s *Seeder) seedBaseUsers(
 			return nil, err
 		}
 
-		now := time.Now().UTC()
+		hashed := hashedShared
+		if i == 0 {
+			hashed = hashedDefault
+		}
+
+		// This is a raw InsertOne (no repository Create to fight with), so
+		// the account creation date can just be set directly to a properly
+		// historical value instead of "now", same as the other roles.
+		createdAt := accountCreatedAt(i)
 		id := primitive.NewObjectID()
 		user := userDomain.BaseUser{
 			ID:           id,
@@ -283,8 +326,8 @@ func (s *Seeder) seedBaseUsers(
 			Dob:          seedDob(i, baseYear),
 			Phone:        fmt.Sprintf("0901%06d", i+1),
 			Status:       userDomain.StatusActive,
-			CreatedAt:    now,
-			UpdatedAt:    now,
+			CreatedAt:    createdAt,
+			UpdatedAt:    createdAt,
 		}
 
 		if _, err := s.usersCol.InsertOne(ctx, user); err != nil {

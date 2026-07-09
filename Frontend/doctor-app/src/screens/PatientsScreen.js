@@ -15,6 +15,7 @@ import { useNavigation } from "@react-navigation/native";
 import { getMyPatients, getAlerts, getPatientById, getMeasurements, getThresholds } from "../api/patientApi";
 import PatientCard from "../components/PatientCard";
 import PatientDetailModal from "../components/PatientDetailModal";
+import { removeVietnameseTones } from "../utils/stringUtils";
 import { colors, radius, spacing, shadows, chip as chipTheme } from "../theme/rpmTheme";
 
 export default function PatientsScreen() {
@@ -68,7 +69,7 @@ export default function PatientsScreen() {
       const formatted = assignments.map((item) => {
         let isWarning = false;
         const latestAlert = latestAlertByPatient.get(item.patientId);
-        if (latestAlert && (latestAlert.severity === "high" || latestAlert.severity === "medium") && latestAlert.status === "open") {
+        if (latestAlert && latestAlert.status === "open") {
           isWarning = true;
         }
 
@@ -111,13 +112,17 @@ export default function PatientsScreen() {
 
     // Filter by query
     if (query.trim() !== "") {
-      const q = query.toLowerCase();
-      result = result.filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          p.patientCode.toLowerCase().includes(q) ||
-          p.phone.includes(q)
-      );
+      const q = removeVietnameseTones(query.toLowerCase());
+      result = result.filter((p) => {
+        const normalizedName = removeVietnameseTones(p.name?.toLowerCase() || "");
+        const normalizedCode = removeVietnameseTones(p.patientCode?.toLowerCase() || "");
+        const normalizedPhone = p.phone || "";
+        return (
+          normalizedName.includes(q) ||
+          normalizedCode.includes(q) ||
+          normalizedPhone.includes(q)
+        );
+      });
     }
 
     // Filter by status
@@ -140,7 +145,7 @@ export default function PatientsScreen() {
     applyFilters(patients, searchQuery, status);
   };
 
-  const handleOpenDetail = async (patient) => {
+  const handleOpenDetail = useCallback(async (patient) => {
     setSelectedPatient(patient);
     setDetailModalVisible(true);
     setDetailLoading(true);
@@ -174,10 +179,26 @@ export default function PatientsScreen() {
     } finally {
       setDetailLoading(false);
     }
-  };
+  }, []);
+
+  const handleChat = useCallback((patient) => {
+    navigation.navigate("ChatTab", { screen: "Chat", params: { patientId: patient.id } });
+  }, [navigation]);
+
+  const handleDetail = useCallback((patient) => {
+    handleOpenDetail(patient);
+  }, [handleOpenDetail]);
+
+  const renderPatientItem = useCallback(({ item }) => (
+    <PatientCard
+      item={item}
+      onChat={handleChat}
+      onDetail={handleDetail}
+    />
+  ), [handleChat, handleDetail]);
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
+    <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
       {/* Search Bar */}
       <View style={styles.searchContainer}>
         <View style={styles.searchBox}>
@@ -245,13 +266,7 @@ export default function PatientsScreen() {
         <FlatList
           data={filteredPatients}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <PatientCard
-              item={item}
-              onChat={() => navigation.navigate("ChatTab", { screen: "Chat", params: { patientId: item.id } })}
-              onDetail={() => handleOpenDetail(item)}
-            />
-          )}
+          renderItem={renderPatientItem}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           refreshControl={

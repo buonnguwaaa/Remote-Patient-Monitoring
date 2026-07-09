@@ -118,15 +118,20 @@ const mapViolationType = (type: string) => {
     systolic: "Huyết áp tâm thu",
     diastolic: "Huyết áp tâm trương",
     blood_pressure_systolic: "Huyết áp tâm thu",
+    bloodPressureSystolic: "Huyết áp tâm thu",
     blood_pressure_diastolic: "Huyết áp tâm trương",
+    bloodPressureDiastolic: "Huyết áp tâm trương",
     sys: "Huyết áp tâm thu",
     bp_diastolic: "Huyết áp tâm trương",
     bloodPressure: "Huyết áp",
     heart_rate: "Nhịp tim",
+    heartRate: "Nhịp tim",
     temperature: "Nhiệt độ",
     spo2: "SpO2",
+    spO2: "SpO2",
     glucose: "Đường huyết",
     respiratory_rate: "Nhịp thở",
+    respiratoryRate: "Nhịp thở",
   };
   return map[cleanType] || map[type] || type;
 };
@@ -885,7 +890,7 @@ const PatientDetailPage = () => {
                   </span>
                   {highCount > 0 && (
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400">
-                      {highCount} Nguy hiểm
+                      {highCount} Nghiêm trọng
                     </span>
                   )}
                   {medCount > 0 && (
@@ -895,7 +900,7 @@ const PatientDetailPage = () => {
                   )}
                   {lowCount > 0 && (
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400">
-                      {lowCount} Nhẹ
+                      {lowCount} Cần theo dõi
                     </span>
                   )}
                 </div>

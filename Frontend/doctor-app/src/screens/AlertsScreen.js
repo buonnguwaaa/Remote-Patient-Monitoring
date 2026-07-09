@@ -15,7 +15,8 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
-import { getAlerts, acknowledgeAlert, getMyPatients } from "../api/patientApi";
+import { getAlerts, acknowledgeAlert, getMyPatients, getPatientById, getMeasurements, getThresholds } from "../api/patientApi";
+import PatientDetailModal from "../components/PatientDetailModal";
 import { useToast } from "../context/ToastContext";
 import { colors, radius, spacing, typography, shadows } from "../theme/rpmTheme";
 
@@ -27,18 +28,23 @@ const TABS = [
 
 const SEVERITY_OPTIONS = [
   { key: "ALL", label: "Tất cả" },
-  { key: "high", label: "Nguy hiểm" },
+  { key: "high", label: "Nghiêm trọng" },
   { key: "medium", label: "Cảnh báo" },
-  { key: "low", label: "Nhẹ" },
+  { key: "low", label: "Cần theo dõi" },
 ];
 
 const VIOLATION_LABELS = {
   temperature: "Nhiệt độ",
   heart_rate: "Nhịp tim",
+  heartRate: "Nhịp tim",
   respiratory_rate: "Nhịp thở",
+  respiratoryRate: "Nhịp thở",
   spo2: "SpO2",
+  spO2: "SpO2",
   blood_pressure_systolic: "HA tâm thu",
+  bloodPressureSystolic: "HA tâm thu",
   blood_pressure_diastolic: "HA tâm trương",
+  bloodPressureDiastolic: "HA tâm trương",
   glucose: "Đường huyết",
   sys: "HA tâm thu",
   bp_diastolic: "HA tâm trương",
@@ -47,10 +53,15 @@ const VIOLATION_LABELS = {
 const UNITS = {
   temperature: "°C",
   heart_rate: "bpm",
+  heartRate: "bpm",
   respiratory_rate: "nhịp/phút",
+  respiratoryRate: "nhịp/phút",
   spo2: "%",
+  spO2: "%",
   blood_pressure_systolic: "mmHg",
+  bloodPressureSystolic: "mmHg",
   blood_pressure_diastolic: "mmHg",
+  bloodPressureDiastolic: "mmHg",
   glucose: "mmol/L",
 };
 
@@ -99,6 +110,52 @@ export default function AlertsScreen() {
   const [resolveModalVisible, setResolveModalVisible] = useState(false);
   const [alertsToResolve, setAlertsToResolve] = useState([]);
   const [submitting, setSubmitting] = useState(false);
+
+  // Patient Detail modal states
+  const [detailModalVisible, setDetailModalVisible] = useState(false);
+  const [selectedPatient, setSelectedPatient] = useState(null);
+  const [detailedInfo, setDetailedInfo] = useState(null);
+  const [measurements, setMeasurements] = useState([]);
+  const [threshold, setThreshold] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState(null);
+
+  const handleOpenDetail = useCallback(async (patientId, patientName) => {
+    const dummyPatient = { id: patientId, name: patientName };
+    setSelectedPatient(dummyPatient);
+    setDetailModalVisible(true);
+    setDetailLoading(true);
+    setDetailError(null);
+    setDetailedInfo(null);
+    setMeasurements([]);
+    setThreshold(null);
+
+    try {
+      const [detailRes, measurementsRes, thresholdsRes] = await Promise.all([
+        getPatientById(patientId),
+        getMeasurements({ patientId }),
+        getThresholds({ patientId, latest: true }),
+      ]);
+
+      if (detailRes.ok) {
+        setDetailedInfo(detailRes.body?.data);
+      } else {
+        setDetailedInfo(dummyPatient);
+      }
+
+      if (measurementsRes.ok) {
+        setMeasurements(measurementsRes.body?.data || []);
+      }
+
+      if (thresholdsRes.ok) {
+        setThreshold(thresholdsRes.body?.data?.[0] || null);
+      }
+    } catch (err) {
+      setDetailError("Không thể tải thông tin chi tiết");
+    } finally {
+      setDetailLoading(false);
+    }
+  }, []);
 
   const fetchAlerts = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -278,7 +335,7 @@ export default function AlertsScreen() {
           <Ionicons name="alert-circle" size={20} color={colors.danger} />
         </View>
         <View>
-          <Text style={[styles.statLabel, { color: colors.danger }]}>Nguy hiểm</Text>
+          <Text style={[styles.statLabel, { color: colors.danger }]}>Nghiêm trọng</Text>
           <Text style={[styles.statValue, { color: colors.dangerAccent }]}>{stats.pendingHigh}</Text>
         </View>
       </View>
@@ -366,7 +423,7 @@ export default function AlertsScreen() {
               {group.highCount > 0 && (
                 <View style={[styles.countBadge, { backgroundColor: colors.dangerSoftAlt }]}>
                   <Text style={[styles.countBadgeText, { color: colors.danger }]}>
-                    {group.highCount} Nguy hiểm
+                    {group.highCount} Nghiêm trọng
                   </Text>
                 </View>
               )}
@@ -380,7 +437,7 @@ export default function AlertsScreen() {
               {group.lowCount > 0 && (
                 <View style={[styles.countBadge, { backgroundColor: colors.primarySoftBg }]}>
                   <Text style={[styles.countBadgeText, { color: colors.primaryAccent }]}>
-                    {group.lowCount} Nhẹ
+                    {group.lowCount} Cần theo dõi
                   </Text>
                 </View>
               )}
@@ -412,6 +469,14 @@ export default function AlertsScreen() {
             <Ionicons name="chatbubble-ellipses-outline" size={14} color={colors.primary} />
             <Text style={styles.chatBtnText}>Nhắn tin</Text>
           </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.detailBtn}
+            onPress={() => handleOpenDetail(group.patientId, group.patientName)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="person-outline" size={14} color="#D97706" />
+            <Text style={styles.detailBtnText}>Hồ sơ</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Expanded Alerts */}
@@ -429,7 +494,7 @@ export default function AlertsScreen() {
                       styles.severityBadgeText,
                       { color: alert.severity === "high" ? colors.danger : alert.severity === "medium" ? colors.warningAccent : colors.primaryAccent },
                     ]}>
-                      {alert.severity === "high" ? "Nguy hiểm" : alert.severity === "medium" ? "Cảnh báo" : "Nhẹ"}
+                      {alert.severity === "high" ? "Nghiêm trọng" : alert.severity === "medium" ? "Cảnh báo" : "Cần theo dõi"}
                     </Text>
                   </View>
                   <Text style={styles.alertItemTime}>{formatDate(alert.createdAt)}</Text>
@@ -474,7 +539,7 @@ export default function AlertsScreen() {
             styles.severityBadgeText,
             { color: item.severity === "high" ? colors.danger : item.severity === "medium" ? colors.warningAccent : colors.primaryAccent },
           ]}>
-            {item.severity === "high" ? "Nguy hiểm" : item.severity === "medium" ? "Cảnh báo" : "Nhẹ"}
+            {item.severity === "high" ? "Nghiêm trọng" : item.severity === "medium" ? "Cảnh báo" : "Cần theo dõi"}
           </Text>
         </View>
       </View>
@@ -493,31 +558,41 @@ export default function AlertsScreen() {
           <Ionicons name="time-outline" size={12} color={colors.textSecondary} />
           <Text style={styles.flatTime}>{formatDate(item.createdAt)}</Text>
         </View>
-        {item.status === "ack" ? (
-          <View style={styles.resolvedBadge}>
-            <Ionicons name="checkmark-circle" size={14} color={colors.success} />
-            <Text style={styles.resolvedText}>
-              Đã xử lý{item.acknowledgedByName ? ` • ${item.acknowledgedByName}` : ""}
-            </Text>
-          </View>
-        ) : (
-          <View style={styles.flatActions}>
-            <TouchableOpacity
-              style={styles.chatBtn}
-              onPress={() => navigation.navigate("ChatTab", { screen: "Chat", params: { patientId: item.patientId } })}
-            >
-              <Ionicons name="chatbubble-ellipses-outline" size={13} color={colors.primary} />
-              <Text style={styles.chatBtnText}>Nhắn</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.resolveAllBtn}
-              onPress={() => openResolveModal(item)}
-            >
-              <Ionicons name="checkmark-circle-outline" size={13} color={colors.surface} />
-              <Text style={styles.resolveAllBtnText}>Xử lý</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <TouchableOpacity
+            style={styles.detailBtn}
+            onPress={() => handleOpenDetail(item.patientId, item.patientName)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="person-outline" size={12} color="#D97706" />
+            <Text style={styles.detailBtnText}>Hồ sơ</Text>
+          </TouchableOpacity>
+          {item.status === "ack" ? (
+            <View style={styles.resolvedBadge}>
+              <Ionicons name="checkmark-circle" size={14} color={colors.success} />
+              <Text style={styles.resolvedText}>
+                Đã xử lý{item.acknowledgedByName ? ` • ${item.acknowledgedByName}` : ""}
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.flatActions}>
+              <TouchableOpacity
+                style={styles.chatBtn}
+                onPress={() => navigation.navigate("ChatTab", { screen: "Chat", params: { patientId: item.patientId } })}
+              >
+                <Ionicons name="chatbubble-ellipses-outline" size={13} color={colors.primary} />
+                <Text style={styles.chatBtnText}>Nhắn</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.resolveAllBtn}
+                onPress={() => openResolveModal(item)}
+              >
+                <Ionicons name="checkmark-circle-outline" size={13} color={colors.surface} />
+                <Text style={styles.resolveAllBtnText}>Xử lý</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
       </View>
     </View>
   );
@@ -641,6 +716,21 @@ export default function AlertsScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Detail Modal Sheet Component */}
+      <PatientDetailModal
+        visible={detailModalVisible}
+        onClose={() => setDetailModalVisible(false)}
+        patient={selectedPatient}
+        detailedInfo={detailedInfo}
+        measurements={measurements}
+        threshold={threshold}
+        detailLoading={detailLoading}
+        detailError={detailError}
+        onActionChat={(patientId) => navigation.navigate("ChatTab", { screen: "Chat", params: { patientId } })}
+        onActionReminder={(patientId) => navigation.navigate("Reminders", { patientId })}
+        onActionPrescription={(patientId) => navigation.navigate("Prescriptions", { patientId })}
+      />
     </View>
   );
 }
@@ -780,6 +870,18 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   chatBtnText: { fontSize: 12, fontWeight: "600", color: colors.primary },
+  detailBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FEF3C7",
+    borderWidth: 1,
+    borderColor: "#FDE68A",
+    paddingHorizontal: 12,
+    height: 32,
+    borderRadius: radius.sm,
+    gap: 4,
+  },
+  detailBtnText: { fontSize: 12, fontWeight: "600", color: "#D97706" },
 
   // Expanded alerts
   expandedContainer: {
@@ -800,14 +902,16 @@ const styles = StyleSheet.create({
   alertItemTime: { fontSize: 11, color: colors.textSecondary },
   resolveOneBtn: {
     alignSelf: "flex-end",
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.primary,
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    height: 32,
     borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: colors.borderSoft,
+    gap: 4,
     marginTop: 8,
   },
-  resolveOneBtnText: { fontSize: 12, fontWeight: "600", color: colors.textHint },
+  resolveOneBtnText: { fontSize: 12, fontWeight: "600", color: colors.surface },
 
   // Severity badges
   severityBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.xs },
