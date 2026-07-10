@@ -58,13 +58,13 @@ func (h *AlertHandler) GetDoctorAlerts(c *gin.Context) {
 		Offset:    offset,
 		SortOrder: sortOrder,
 	}
-	alerts, err := h.alertService.GetDoctorAlerts(c.Request.Context(), input)
+	alerts, total, err := h.alertService.GetDoctorAlerts(c.Request.Context(), input)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": alerts, "message": "Lấy danh sách cảnh báo thành công"})
+	c.JSON(http.StatusOK, gin.H{"data": alerts, "total": total, "message": "Lấy danh sách cảnh báo thành công"})
 }
 
 // GetNurseAlerts handles retrieving all alerts for patients managed by the authenticated nurse
@@ -105,13 +105,13 @@ func (h *AlertHandler) GetNurseAlerts(c *gin.Context) {
 		Offset:    offset,
 		SortOrder: sortOrder,
 	}
-	alerts, err := h.alertService.GetNurseAlerts(c.Request.Context(), input)
+	alerts, total, err := h.alertService.GetNurseAlerts(c.Request.Context(), input)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": alerts, "message": "Lấy danh sách cảnh báo thành công"})
+	c.JSON(http.StatusOK, gin.H{"data": alerts, "total": total, "message": "Lấy danh sách cảnh báo thành công"})
 }
 
 // GetPatientAlerts handles retrieving all alerts for the authenticated patient
@@ -152,13 +152,13 @@ func (h *AlertHandler) GetPatientAlerts(c *gin.Context) {
 		Offset:    offset,
 		SortOrder: sortOrder,
 	}
-	alerts, err := h.alertService.GetPatientAlerts(c.Request.Context(), input)
+	alerts, total, err := h.alertService.GetPatientAlerts(c.Request.Context(), input)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"data": alerts, "message": "Lấy danh sách cảnh báo thành công"})
+	c.JSON(http.StatusOK, gin.H{"data": alerts, "total": total, "message": "Lấy danh sách cảnh báo thành công"})
 }
 
 // GetAlertByID handles retrieving an alert by its ID

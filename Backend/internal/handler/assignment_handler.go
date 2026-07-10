@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/constant"
@@ -69,6 +70,8 @@ func (h *AssignmentHandler) AssignPatient(c *gin.Context) {
 // @Summary Get assignments for the current doctor/nurse
 // @Tags assignments
 // @Produce json
+// @Param page query int false "Page number (1-based). Omit for all results."
+// @Param limit query int false "Items per page, default 10"
 // @Success 200 {object} map[string]interface{}
 // @Failure 400 {object} map[string]string "Bad request"
 // @Failure 401 {object} map[string]string "Unauthorized"
@@ -93,11 +96,34 @@ func (h *AssignmentHandler) GetMyAssignments(c *gin.Context) {
 		return
 	}
 
+	// Read optional pagination params
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "0"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	if limit < 1 {
+		limit = 10
+	}
+
 	input := &usecase.GetAssignmentsByRoleInput{
 		UserID: userID.(string),
 		Role:   roleVal,
+		Page:   page,
+		Limit:  limit,
+		Offset: 0,
 	}
 
+	// If page >= 1, use server-side pagination
+	if page >= 1 {
+		input.Offset = (page - 1) * limit
+		res, total, err := h.service.GetAssignmentsByRolePaginated(ctx, input)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"data": res, "total": total})
+		return
+	}
+
+	// No pagination — return all (backward compatible)
 	res, err := h.service.GetAssignmentsByRole(ctx, input)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})

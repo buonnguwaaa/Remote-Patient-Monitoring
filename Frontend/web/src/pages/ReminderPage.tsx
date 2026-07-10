@@ -523,14 +523,15 @@ const ReminderPage = () => {
   };
 
   return (
-    <div className="w-full px-4 py-8 pb-24 sm:px-6 lg:px-8">
-      {toast && <Toast toast={toast} onClose={hideToast} />}
+    <div className="min-h-screen bg-[#f5f6fa] font-sans dark:bg-slate-900">
+      <div className="w-full space-y-4 px-4 py-8 pb-24 sm:px-6 lg:px-8">
+        {toast && <Toast toast={toast} onClose={hideToast} />}
 
-      <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800 dark:text-slate-100">{t("reminders.title", "Quản lý Nhắc nhở")}</h1>
-          <p className="mt-2 text-gray-600 dark:text-slate-400">Thiết lập và theo dõi lịch nhắc nhở đo chỉ số, uống thuốc của bệnh nhân.</p>
-        </div>
+        <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-800 dark:text-slate-100">{t("reminders.title", "Quản lý Nhắc nhở")}</h1>
+            <p className="mt-2 text-gray-600 dark:text-slate-400">Thiết lập và theo dõi lịch nhắc nhở đo chỉ số, uống thuốc của bệnh nhân.</p>
+          </div>
 
         <div className="flex flex-wrap gap-3">
           <button
@@ -1083,6 +1084,7 @@ const ReminderPage = () => {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 };

@@ -149,8 +149,8 @@ const DoctorProfile = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 p-6">
-      <div className="mx-auto">
+    <div className="min-h-screen bg-[#f5f6fa] font-sans dark:bg-slate-900">
+      <div className="w-full space-y-4 px-4 py-8 pb-24 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 p-8 mb-6">
           <div className="flex items-center gap-6">
@@ -168,7 +168,7 @@ const DoctorProfile = () => {
               )}
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">
+              <h1 className="text-3xl font-bold text-gray-800 dark:text-slate-100">
                 {doctor.name}
               </h1>
               {doctor.specialization && (

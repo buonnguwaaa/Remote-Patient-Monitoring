@@ -17,6 +17,9 @@ type AssignPatientInput struct {
 type GetAssignmentsByRoleInput struct {
 	UserID string
 	Role   userDomain.Role
+	Page   int
+	Limit  int
+	Offset int
 }
 
 type DeleteAssignmentInput struct {

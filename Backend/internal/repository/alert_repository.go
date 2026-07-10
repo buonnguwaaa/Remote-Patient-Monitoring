@@ -26,6 +26,7 @@ type AlertUserData struct {
 type AlertRepository interface {
 	Create(ctx context.Context, a *domain.Alert) (*domain.Alert, error)
 	FindWithFilter(ctx context.Context, filter AlertFilter) ([]*domain.Alert, map[primitive.ObjectID]*AlertUserData, error)
+	CountWithFilter(ctx context.Context, filter AlertFilter) (int64, error)
 	FindAlertByID(ctx context.Context, id primitive.ObjectID) (*domain.Alert, *AlertUserData, error)
 	FindByMeasurementID(ctx context.Context, measurementID primitive.ObjectID) (*domain.Alert, error)
 	UpdateAcknowledgementByID(ctx context.Context, id primitive.ObjectID, acknowledgedBy primitive.ObjectID) (*domain.Alert, *AlertUserData, error)
@@ -128,6 +129,69 @@ func (r *alertRepository) FindWithFilter(ctx context.Context, filter AlertFilter
 	}
 
 	return r.findByFilterWithJoin(ctx, bsonFilter, queryOpts)
+}
+
+func (r *alertRepository) CountWithFilter(ctx context.Context, filter AlertFilter) (int64, error) {
+	bsonFilter, queryOpts, err := buildAlertBsonFilterAndOptions(filter)
+	if err != nil {
+		return 0, err
+	}
+
+	pipeline := mongo.Pipeline{
+		{{Key: "$match", Value: bsonFilter}},
+	}
+
+	if queryOpts.DoctorID != nil {
+		pipeline = append(pipeline,
+			bson.D{{Key: "$lookup", Value: bson.M{
+				"from":         "assignments",
+				"localField":   "patientId",
+				"foreignField": "patientId",
+				"as":           "assignment",
+			}}},
+			bson.D{{Key: "$match", Value: bson.M{
+				"assignment": bson.M{
+					"$elemMatch": bson.M{"doctorId": *queryOpts.DoctorID},
+				},
+			}}},
+		)
+	}
+
+	if queryOpts.NurseID != nil {
+		pipeline = append(pipeline,
+			bson.D{{Key: "$lookup", Value: bson.M{
+				"from":         "assignments",
+				"localField":   "patientId",
+				"foreignField": "patientId",
+				"as":           "assignment",
+			}}},
+			bson.D{{Key: "$match", Value: bson.M{
+				"assignment": bson.M{
+					"$elemMatch": bson.M{"nurseId": *queryOpts.NurseID},
+				},
+			}}},
+		)
+	}
+
+	pipeline = append(pipeline, bson.D{{Key: "$count", Value: "total"}})
+
+	cursor, err := r.col.Aggregate(ctx, pipeline)
+	if err != nil {
+		return 0, err
+	}
+	defer cursor.Close(ctx)
+
+	var results []struct {
+		Total int64 `bson:"total"`
+	}
+	if err := cursor.All(ctx, &results); err != nil {
+		return 0, err
+	}
+
+	if len(results) == 0 {
+		return 0, nil
+	}
+	return results[0].Total, nil
 }
 
 func (r *alertRepository) FindAlertByID(ctx context.Context, id primitive.ObjectID) (*domain.Alert, *AlertUserData, error) {
