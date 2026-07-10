@@ -141,11 +141,11 @@ export const RealtimeNotificationProvider = ({
       if (seenEventIdsRef.current.has(event.eventId)) return;
       seenEventIdsRef.current.add(event.eventId);
 
-      // If we're the sender, skip
-      if (event.data.senderId && event.data.senderId === currentUserId) return;
-
-      // Always update lastChatEvent for list/preview updates
+      // Always update lastChatEvent for list/preview updates — even when we are the sender
       setLastChatEvent(event);
+
+      // If we're the sender, skip toast/badge/browser notification
+      if (event.data.senderId && event.data.senderId === currentUserId) return;
 
       const convId = event.data.conversationId;
       const isViewingConversation =

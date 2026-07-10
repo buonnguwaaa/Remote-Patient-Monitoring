@@ -481,7 +481,7 @@ export default function MeasurementInputScreen() {
             </View>
             <View style={styles.nurseTag}>
               <View style={styles.nurseDot} />
-              <Text style={styles.nurseTagText}>Nhập liệu thật</Text>
+              <Text style={styles.nurseTagText}>Nhập thủ công</Text>
             </View>
           </View>
 

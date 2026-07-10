@@ -269,8 +269,10 @@ export default function PrescriptionDetailPage() {
         </div>
         
         <div>
+           <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2 mb-4">
+             <FaClock className="text-blue-500"/> Lịch nhắc đã tạo
+           </h2>
            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-5 sticky top-6">
-             <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-4 border-b border-slate-100 dark:border-slate-700 pb-3">Lịch nhắc đã tạo</h2>
              {reminders.length === 0 ? (
                <p className="text-sm text-slate-500 text-center py-4">Đơn thuốc chưa sinh nhắc nhở nào.</p>
              ) : (
@@ -278,7 +280,11 @@ export default function PrescriptionDetailPage() {
                  {reminders.map(r => (
                    <div key={r.id} className="flex justify-between items-center p-3 rounded-lg bg-slate-50 dark:bg-slate-700/50 border border-slate-100 dark:border-slate-600">
                      <div>
-                       <div className="font-bold text-slate-800 dark:text-slate-200">{String(r.hour).padStart(2,'0')}:{String(r.minute).padStart(2,'0')}</div>
+                       <div className="font-bold text-slate-800 dark:text-slate-200">
+                         {r.times && r.times.length > 0
+                            ? r.times.map(t => `${String(t.hour).padStart(2, '0')}:${String(t.minute).padStart(2, '0')}`).join(", ")
+                            : `${String(r.hour || 0).padStart(2, '0')}:${String(r.minute || 0).padStart(2, '0')}`}
+                       </div>
                        <div className="text-xs text-slate-500 truncate max-w-[150px]">{r.message}</div>
                      </div>
                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${

@@ -244,8 +244,7 @@ export default function PrescriptionsScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.topBar}>
-        <Text style={styles.topTitle}>Đơn thuốc</Text>
+      <View style={[styles.topBar, { justifyContent: "flex-end" }]}>
         <TouchableOpacity style={styles.createBtn} onPress={() => { setFormData(createDefaultForm(selectedPatientId)); setFormVisible(true); }}>
           <Ionicons name="add" size={18} color="#FFFFFF" />
           <Text style={styles.createBtnText}>Kê đơn mới</Text>

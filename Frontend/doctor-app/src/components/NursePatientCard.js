@@ -28,11 +28,15 @@ function getInitials(name) {
 
 function MetricPill({ icon, label, value, unit, color = "#4B5563", isWarning = false }) {
   if (value == null || value === "") return null;
+  let displayValue = value;
+  if (typeof value === "number") {
+    displayValue = Math.round(value * 10) / 10;
+  }
   return (
     <View style={[styles.metricPill, isWarning && styles.metricPillWarning]}>
       <Ionicons name={icon} size={14} color={isWarning ? "#DC2626" : color} />
       <Text style={[styles.metricLabel, isWarning && styles.metricLabelWarning]}>{label}</Text>
-      <Text style={[styles.metricValue, isWarning && styles.metricValueWarning]}>{value}</Text>
+      <Text style={[styles.metricValue, isWarning && styles.metricValueWarning]}>{displayValue}</Text>
       {unit && <Text style={[styles.metricUnit, isWarning && styles.metricUnitWarning]}>{unit}</Text>}
     </View>
   );
@@ -165,7 +169,7 @@ const NursePatientCard = memo(({ patient, onPress }) => {
           {hasAlert && (
             <View style={styles.alertCount}>
               <Ionicons name="notifications" size={14} color="#DC2626" />
-              <Text style={styles.alertCountText}>{totalAlerts} mở</Text>
+              <Text style={styles.alertCountText}>{totalAlerts} cảnh báo</Text>
             </View>
           )}
           <View style={styles.chevronBtn}>

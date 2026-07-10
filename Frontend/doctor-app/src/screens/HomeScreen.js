@@ -198,17 +198,30 @@ export default function HomeScreen({ onNavigate }) {
               description="Tất cả bệnh nhân đều đang ổn định"
             />
           ) : (
-            recentAlerts.map((alert) => (
-              <StaffAlertItem
-                key={alert.id}
-                alert={{
-                  ...alert,
-                  timeAgo: timeAgo(alert.createdAt),
-                  detailText: alert.violations?.map((v) => `${VIOLATION_LABEL[v.type] ?? v.type}: ${v.observed}`).join(" · "),
-                }}
-                onPress={() => handleNavigate("Alerts")}
-              />
-            ))
+            <>
+              {recentAlerts.slice(0, 3).map((alert) => (
+                <StaffAlertItem
+                  key={alert.id}
+                  alert={{
+                    ...alert,
+                    timeAgo: timeAgo(alert.createdAt),
+                    detailText: alert.violations?.map((v) => {
+                      const roundedObserved = typeof v.observed === "number" ? Math.round(v.observed * 10) / 10 : v.observed;
+                      return `${VIOLATION_LABEL[v.type] ?? v.type}: ${roundedObserved}`;
+                    }).join(" · "),
+                  }}
+                  onPress={() => handleNavigate("Alerts")}
+                />
+              ))}
+              {recentAlerts.length > 3 && (
+                <TouchableOpacity
+                  style={{ alignItems: "center", paddingVertical: 12, marginTop: 8 }}
+                  onPress={() => handleNavigate("Alerts")}
+                >
+                  <Text style={{ color: "#2563EB", fontSize: 14, fontWeight: "600" }}>Xem tất cả cảnh báo</Text>
+                </TouchableOpacity>
+              )}
+            </>
           )}
         </View>
         
