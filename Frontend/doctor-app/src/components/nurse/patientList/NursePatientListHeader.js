@@ -17,9 +17,8 @@ export const NursePatientListHeader = React.memo(({ nurseName, totalPatients, pa
             <Text style={styles.name}>{nurseName || "---"}</Text>
           </View>
         </View>
-        <Text style={styles.title}>Bệnh nhân theo dõi</Text>
+        <Text style={styles.title}>Danh sách bệnh nhân</Text>
       </View>
-
 
       <View style={styles.searchBox}>
         <Ionicons name="search" size={18} color="#9CA3AF" />

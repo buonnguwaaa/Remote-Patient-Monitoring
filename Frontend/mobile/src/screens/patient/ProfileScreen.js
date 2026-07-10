@@ -893,41 +893,6 @@ export default function ProfileScreen() {
 
           <Text style={styles.sectionTitle}>Tài khoản & cài đặt</Text>
           <View style={styles.settingsCard}>
-            <View style={styles.settingInfoRow}>
-              <Ionicons name="mail-unread-outline" size={18} color="#2563EB" />
-              <View style={styles.settingContent}>
-                <Text style={styles.settingLabel}>Email đăng nhập được bảo vệ</Text>
-                <Text style={styles.settingSub}>
-              
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.infoDivider} />
-
-            <View style={styles.settingInfoRow}>
-              <Ionicons name="notifications-outline" size={18} color="#2563EB" />
-              <View style={styles.settingContent}>
-                <Text style={styles.settingLabel}>Thông báo đang dùng cấu hình mặc định</Text>
-                <Text style={styles.settingSub}>
-                  
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.infoDivider} />
-
-            <View style={styles.settingInfoRow}>
-              <Ionicons name="lock-closed-outline" size={18} color="#2563EB" />
-              <View style={styles.settingContent}>
-                <Text style={styles.settingLabel}>Bảo mật tài khoản</Text>
-                <Text style={styles.settingSub}>
-                  
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.infoDivider} />
 
             <View style={[styles.settingInfoRow, { alignItems: 'center' }]}>
               <Ionicons name="finger-print-outline" size={18} color="#2563EB" />

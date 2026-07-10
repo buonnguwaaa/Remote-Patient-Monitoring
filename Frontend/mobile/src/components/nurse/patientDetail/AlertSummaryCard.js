@@ -7,7 +7,7 @@ export function AlertSummaryCard({ alerts }) {
     return (
       <View style={styles.empty}>
         <Ionicons name="checkmark-circle" size={40} color="#16A34A" />
-        <Text style={styles.emptyText}>Bệnh nhân không có cảnh báo mở.</Text>
+        <Text style={styles.emptyText}>Bệnh nhân không có cảnh báo nào.</Text>
       </View>
     );
   }
@@ -27,7 +27,7 @@ export function AlertSummaryCard({ alerts }) {
         <View style={styles.body}>
           {a.violations?.map((v, i) => (
             <Text key={i} style={styles.text}>
-              • {v.metric}: Đo {v.observed} (Ngưỡng: {v.threshold})
+              • {v.metric}: Đo {typeof v.observed === "number" ? Math.round(v.observed * 10) / 10 : v.observed} (Ngưỡng: {typeof v.threshold === "number" ? Math.round(v.threshold * 10) / 10 : v.threshold})
             </Text>
           ))}
         </View>

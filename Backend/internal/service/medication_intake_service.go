@@ -431,7 +431,7 @@ func adherenceSlotStatusWithoutIntake(
 		return dto.AdherenceSlotMissed
 	}
 	if scheduledDate.After(todayStart) {
-		return dto.AdherenceSlotMissed
+		return dto.AdherenceSlotPending
 	}
 
 	hour, minute := domain.DoseClock(dose)

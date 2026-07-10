@@ -15,7 +15,6 @@ function PatientCard({ item, onChat, onDetail }) {
         <View style={styles.cardInfo}>
           <Text style={styles.patientName} numberOfLines={1}>{item.name}</Text>
           <Text style={styles.patientCode} numberOfLines={1}>Mã: {item.patientCode}</Text>
-          <Text style={styles.patientMeta}>Cập nhật: {item.updatedAt}</Text>
         </View>
         <View style={[styles.statusBadge, item.isWarning ? styles.badgeWarning : styles.badgeNormal]}>
           <Text style={[styles.statusBadgeText, item.isWarning ? styles.badgeTextWarning : styles.badgeTextNormal]}>
@@ -52,7 +51,6 @@ const styles = StyleSheet.create({
   cardInfo: { flex: 1 },
   patientName: { fontSize: 14, fontWeight: "700", color: colors.text },
   patientCode: { fontSize: 12, color: colors.textHint, marginTop: 2 },
-  patientMeta: { fontSize: 11, color: colors.textMuted, marginTop: 2 },
   statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: radius.sm },
   badgeNormal: { backgroundColor: colors.successBg },
   badgeWarning: { backgroundColor: colors.dangerSoftAlt },
