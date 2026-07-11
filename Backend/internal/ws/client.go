@@ -15,7 +15,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-
 const (
 	writeWait      = 10 * time.Second
 	pongWait       = 60 * time.Second
@@ -175,7 +174,6 @@ func (c *Client) publishUserEventForNewMessage(saved *dto.MessageResponse) {
 		}
 	}
 }
-
 
 // sendPushNotificationForNewMessage sends FCM push notification to recipients
 func (c *Client) sendPushNotificationForNewMessage(saved interface{}) {
