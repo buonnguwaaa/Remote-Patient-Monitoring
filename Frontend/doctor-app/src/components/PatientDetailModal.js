@@ -447,7 +447,7 @@ export default function PatientDetailModal({
               <View style={styles.infoGrid}>
                 <View style={styles.infoCol}>
                   <Text style={styles.infoLabel}>Mã bệnh nhân</Text>
-                  <Text style={styles.infoValue}>{detailedInfo?.patientCode || patient?.patientCode}</Text>
+                  <Text style={styles.infoValue}>{detailedInfo?.userPublicId || detailedInfo?.patientCode || patient?.patientCode || patient?.userPublicId || "Không có dữ liệu"}</Text>
                 </View>
                 <View style={styles.infoCol}>
                   <Text style={styles.infoLabel}>Ngày sinh</Text>

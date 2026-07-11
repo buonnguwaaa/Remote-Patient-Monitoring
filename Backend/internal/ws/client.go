@@ -7,6 +7,7 @@ import (
 	"time"
 
 	domain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/chat"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/realtime"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/service"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecase"
@@ -150,8 +151,9 @@ func (c *Client) handleSendMessage(data json.RawMessage) {
 }
 
 // publishUserEventForNewMessage publishes a user-level notification event
-// for all participants of the conversation except the sender.
-func (c *Client) publishUserEventForNewMessage(saved interface{}) {
+// for all participants of the conversation (including the sender so the
+// sender's sidebar also updates in real time).
+func (c *Client) publishUserEventForNewMessage(saved *dto.MessageResponse) {
 	if c.RealtimePublisher == nil {
 		return
 	}
@@ -163,45 +165,9 @@ func (c *Client) publishUserEventForNewMessage(saved interface{}) {
 		return
 	}
 
-	// Re-marshal and re-unmarshal to extract fields portably.
-	// saved is *dto.MessageResponse from ChatService.SendMessage.
-	msgBytes, err := json.Marshal(saved)
-	if err != nil {
-		log.Printf("warn: failed to marshal saved message for user event: %v", err)
-		return
-	}
-
-	var msgFields struct {
-		ID             string  `json:"id"`
-		ConversationID string  `json:"conversationId"`
-		MessageSource  string  `json:"messageSource"`
-		SenderID       *string `json:"senderId"`
-		Content        string  `json:"content"`
-		CreatedAt      string  `json:"createdAt"`
-	}
-	if err := json.Unmarshal(msgBytes, &msgFields); err != nil {
-		log.Printf("warn: failed to unmarshal saved message fields for user event: %v", err)
-		return
-	}
-
 	for _, p := range conv.Participants {
-		if p.UserID.Hex() == c.UserID.Hex() {
-			continue // skip sender
-		}
-
 		recipientID := p.UserID.Hex()
-		event := realtime.RealtimeEvent{
-			Type:      realtime.EventTypeChatNewMessage,
-			EventID:   realtime.NewChatMessageEventID(msgFields.ID, recipientID),
-			CreatedAt: msgFields.CreatedAt,
-			Data: realtime.RealtimeEventData{
-				ConversationID: msgFields.ConversationID,
-				MessageID:      msgFields.ID,
-				SenderID:       msgFields.SenderID,
-				MessageSource:  msgFields.MessageSource,
-				Preview:        realtime.SanitizePreview(msgFields.Content),
-			},
-		}
+		event := realtime.BuildChatNewMessageEvent(saved, recipientID)
 
 		if err := c.RealtimePublisher.Publish(context.Background(), recipientID, event); err != nil {
 			log.Printf("warn: failed to publish user event for recipient=%s: %v", recipientID, err)

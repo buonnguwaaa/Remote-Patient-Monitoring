@@ -291,19 +291,29 @@ func (s *prescriptionService) createMedicationReminders(
 	}
 
 	// A single medication reminder covers the whole prescription and fires at
-	// every distinct dose time. The exact doses, meal timing, and skip decision
-	// for each fire are resolved from the prescription at reminder time.
+	// every distinct dose time. The exact doses and skip decision for each fire
+	// are resolved from the prescription at reminder time (like Temporal does).
 	times := make([]domain.ReminderTime, 0, len(slots))
-	messages := make([]string, 0, len(slots))
+	allMessages := make([]string, 0)
 	for _, slot := range slots {
 		times = append(times, domain.ReminderTime{Hour: slot.hour, Minute: slot.minute})
-		messages = append(messages, slot.messages...)
+		allMessages = append(allMessages, slot.messages...)
+	}
+
+	// Deduplicate messages
+	seen := make(map[string]struct{})
+	uniqueMessages := make([]string, 0, len(allMessages))
+	for _, msg := range allMessages {
+		if _, ok := seen[msg]; !ok {
+			seen[msg] = struct{}{}
+			uniqueMessages = append(uniqueMessages, msg)
+		}
 	}
 
 	reminder, err := s.reminderService.CreateReminder(ctx, &usecase.CreateReminderInput{
 		PatientID:      prescription.PatientID.Hex(),
 		Kind:           domain.KindMedication,
-		Message:        strings.Join(messages, "; "),
+		Message:        strings.Join(uniqueMessages, "; "),
 		Times:          times,
 		DaysOfWeek:     prescription.DaysOfWeek,
 		Timezone:       prescription.Timezone,

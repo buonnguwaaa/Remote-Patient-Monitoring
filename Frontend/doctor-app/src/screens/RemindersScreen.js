@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from "react";
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
+  SectionList,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -130,6 +130,12 @@ export default function RemindersScreen() {
   const [reminders, setReminders] = useState([]);
   const [loadingReminders, setLoadingReminders] = useState(false);
 
+  const [expandedSections, setExpandedSections] = useState({});
+
+  const toggleSection = (id) => {
+    setExpandedSections((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
   // Form states
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -240,7 +246,6 @@ export default function RemindersScreen() {
     const filteredList = reminders.filter((r) => {
       if (statusFilter !== "all" && r.status !== statusFilter) return false;
       if (kindFilter !== "all" && r.kind !== kindFilter) return false;
-      if (hideInactive && statusFilter === "all" && (r.status === "expired" || r.status === "canceled")) return false;
 
       if (searchTerm.trim()) {
         const pt = patientDisplayMap.get(r.patientId);
@@ -314,6 +319,61 @@ export default function RemindersScreen() {
 
     return allItems;
   }, [reminders, statusFilter, kindFilter, searchTerm, patientDisplayMap, patients, hideInactive]);
+
+  const sectionedItems = useMemo(() => {
+    const map = new Map();
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMin = now.getMinutes();
+
+    aggregatedItems.forEach((item) => {
+      let ptId = null;
+      let ptName = "Chưa rõ";
+      let ptCode = "";
+      let times = [];
+
+      if (item.type === "group") {
+        ptId = item.patientId;
+        ptName = item.patientName;
+        ptCode = item.patientCode;
+        item.reminders.forEach(r => {
+          if (r.status === 'active' && r.times) times.push(...r.times);
+        });
+      } else {
+        ptId = item.reminder.patientId;
+        const info = patientDisplayMap.get(ptId);
+        ptName = info?.name || "Bệnh nhân";
+        ptCode = info?.code || "";
+        if (item.reminder.status === 'active' && item.reminder.times) times.push(...item.reminder.times);
+      }
+      
+      if (!map.has(ptId)) {
+        map.set(ptId, {
+          id: ptId,
+          title: ptName,
+          patientCode: ptCode !== "N/A" ? ptCode : null,
+          nextTimeStr: null,
+          minDiff: Infinity,
+          data: []
+        });
+      }
+
+      const section = map.get(ptId);
+      times.forEach(t => {
+        let diff = (t.hour * 60 + t.minute) - (currentHour * 60 + currentMin);
+        if (diff < 0) diff += 24 * 60; // Next day
+        if (diff < section.minDiff) {
+          section.minDiff = diff;
+          let h = t.hour.toString().padStart(2, '0');
+          let m = t.minute.toString().padStart(2, '0');
+          section.nextTimeStr = `${h}:${m}`;
+        }
+      });
+
+      section.data.push(item);
+    });
+    return Array.from(map.values());
+  }, [aggregatedItems, patientDisplayMap]);
 
   const selectedPatientName = useMemo(() => {
     const found = patients.find((p) => p.patientId === selectedPatientId);
@@ -616,27 +676,33 @@ export default function RemindersScreen() {
         </ScrollView>
       </View>
 
-      <View style={styles.hideInactiveRow}>
-        <TouchableOpacity
-          style={styles.checkboxContainer}
-          onPress={() => setHideInactive(!hideInactive)}
-          activeOpacity={0.8}
-        >
-          <Ionicons
-            name={hideInactive ? "checkbox" : "square-outline"}
-            size={18}
-            color={hideInactive ? "#2563EB" : "#9CA3AF"}
-          />
-          <Text style={styles.checkboxLabel}>Ẩn nhắc nhở hết hạn và đã hủy</Text>
-        </TouchableOpacity>
-      </View>
-
-      <FlatList
+      <SectionList
         style={styles.body}
         contentContainerStyle={styles.listContent}
-        data={aggregatedItems}
+        sections={sectionedItems.map(sec => ({
+          ...sec,
+          originalDataLength: sec.data.length,
+          data: expandedSections[sec.id] ? sec.data : []
+        }))}
         keyExtractor={(item, index) => item.id || `reminder-item-${index}`}
         showsVerticalScrollIndicator={false}
+        stickySectionHeadersEnabled={false}
+        renderSectionHeader={({ section }) => (
+          <TouchableOpacity 
+            activeOpacity={0.8}
+            onPress={() => toggleSection(section.id)}
+            style={{ backgroundColor: "#F8FAFC", paddingVertical: 12, paddingHorizontal: 16, borderRadius: 8, marginBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderColor: "#E2E8F0" }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Ionicons name={expandedSections[section.id] ? "chevron-down" : "chevron-forward"} size={18} color="#475569" />
+              <Text style={{ fontSize: 16, fontWeight: "700", color: "#0F172A" }}>{section.title}</Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={{ fontSize: 13, color: "#64748B", fontWeight: "600" }}>{section.originalDataLength} nhắc nhở</Text>
+              {section.nextTimeStr ? <Text style={{ fontSize: 13, color: "#059669", fontWeight: "600" }}>• Sắp tới: {section.nextTimeStr}</Text> : null}
+            </View>
+          </TouchableOpacity>
+        )}
         ListHeaderComponent={
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>
@@ -653,7 +719,7 @@ export default function RemindersScreen() {
               }}
             >
               <Ionicons name="add" size={16} color="#FFF" />
-              <Text style={styles.addBtnText}>Tạo nhắc nhở đo chỉ số</Text>
+              <Text style={styles.addBtnText}>Tạo nhắc nhở mới</Text>
             </TouchableOpacity>
           </View>
         }
@@ -718,7 +784,6 @@ export default function RemindersScreen() {
                 </View>
 
                 <View style={styles.reminderCardBody}>
-                  <Text style={styles.patientSub}>{item.patientName}</Text>
                   {item.reminders.length > 0 ? (
                     <Text style={[styles.infoText, { marginBottom: 4 }]}>
                       <Ionicons name="time-outline" size={12} color="#6B7280" /> Hiệu lực:{" "}
@@ -818,7 +883,6 @@ export default function RemindersScreen() {
                 </View>
 
                 <View style={styles.reminderCardBody}>
-                  <Text style={styles.patientSub}>{patName}</Text>
                   <Text style={styles.messageText}>{r.message}</Text>
 
                   <Text style={styles.infoText}>

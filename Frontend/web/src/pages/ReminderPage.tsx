@@ -23,6 +23,7 @@ import {
 import Toast from "../components/ui/Toast";
 import { useToast } from "../hooks/useToast";
 import { getMyPatients } from "../services/patientService";
+import { getPrescriptions } from "../services/prescriptionService";
 import {
   createReminder,
   getMyReminders,
@@ -34,6 +35,7 @@ import {
   type ReminderStatus,
   type UpdateReminderPayload,
 } from "../services/reminderService";
+import type { Prescription } from "../types/index";
 import type { AssignmentResponse } from "../types/patient";
 
 type ReminderStatusFilter = ReminderStatus | "all";
@@ -193,6 +195,7 @@ const ReminderPage = () => {
   
   const [formData, setFormData] = useState<ReminderFormData>(createDefaultFormData(initialPatientId));
   const [reminders, setReminders] = useState<ReminderRecord[]>([]);
+  const [prescriptionMap, setPrescriptionMap] = useState<Map<string, Prescription>>(new Map());
   const [loadingPatients, setLoadingPatients] = useState(true);
   const [loadingReminders, setLoadingReminders] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -432,6 +435,29 @@ const ReminderPage = () => {
       );
       const uniqueReminders = Array.from(new Map(reminders.map((item) => [item.id, item])).values());
       setReminders(uniqueReminders);
+
+      // Fetch prescriptions for all medication reminders to enable per-slot drug computation
+      const prescriptionIds = [...new Set(
+        uniqueReminders
+          .filter(r => r.kind === 'medication' && r.prescriptionId)
+          .map(r => r.prescriptionId!)
+      )];
+      if (prescriptionIds.length > 0) {
+        try {
+          // Fetch all prescriptions for the relevant patients
+          const patientIdsForRx = [...new Set(
+            uniqueReminders.filter(r => r.kind === 'medication' && r.prescriptionId).map(r => r.patientId)
+          )];
+          const rxGroups = await Promise.all(
+            patientIdsForRx.map(pid => getPrescriptions({ patientId: pid }))
+          );
+          const newMap = new Map<string, Prescription>();
+          rxGroups.flat().forEach(rx => { newMap.set(rx.id, rx); });
+          setPrescriptionMap(newMap);
+        } catch (e) {
+          console.error('Failed to load prescriptions for reminder page', e);
+        }
+      }
       
       // Update viewing group if modal is open
       setViewingGroup(prev => {
@@ -658,35 +684,60 @@ const ReminderPage = () => {
                             <span>{formatDate(item.reminders[0].endDate)}</span>
                           </div>
                         )}
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-                          Gồm <strong className="text-slate-800 dark:text-slate-200">{item.reminders.length}</strong> nhắc nhở thuốc.
-                        </p>
+                        {/* Drug names summary - computed from prescription data */}
+                        {(() => {
+                          const rx = item.prescriptionId ? prescriptionMap.get(item.prescriptionId) : undefined;
+                          if (!rx) return null;
+                          const drugNames = [...new Set(rx.medications.map(m => m.drugName))];
+                          if (drugNames.length === 0) return null;
+                          return (
+                            <ul className="mb-3 text-sm text-slate-700 dark:text-slate-300 space-y-0.5">
+                              {drugNames.slice(0, 3).map((d, i) => <li key={i} className="flex items-start gap-1.5"><span className="mt-1 text-indigo-400">•</span>{d}</li>)}
+                              {drugNames.length > 3 && <li className="text-slate-400 text-xs">+{drugNames.length - 3} thuốc nữa...</li>}
+                            </ul>
+                          );
+                        })()}
+                        {/* Time slots chips - computed per slot from prescription.medications */}
                         <div className="flex flex-wrap gap-2 mb-4">
                           {(() => {
-                            const timeGroups = new Map<string, number>();
+                            const rx = item.prescriptionId ? prescriptionMap.get(item.prescriptionId) : undefined;
+                            // Collect all unique times from the single reminder record
+                            const allTimes = new Map<string, number>(); // timeStr -> drugCount
                             item.reminders.forEach(r => {
-                              if (r.times && r.times.length > 0) {
-                                r.times.forEach(tObj => {
-                                  const t = formatTime(tObj.hour, tObj.minute);
-                                  timeGroups.set(t, (timeGroups.get(t) || 0) + 1);
-                                });
-                              } else {
-                                const t = formatTime(r.hour, r.minute);
-                                timeGroups.set(t, (timeGroups.get(t) || 0) + 1);
-                              }
+                              const slots = (r.times && r.times.length > 0) ? r.times : [{ hour: r.hour || 0, minute: r.minute || 0 }];
+                              slots.forEach(tObj => {
+                                const timeStr = formatTime(tObj.hour, tObj.minute);
+                                if (!allTimes.has(timeStr)) {
+                                  // Count drugs at this slot from prescription
+                                  let drugCount = 0;
+                                  if (rx) {
+                                    rx.medications.forEach(med => {
+                                      med.schedule.forEach(dose => {
+                                        const dh = (dose as any).hour ?? (dose.timeOfDay === 'morning' ? 8 : dose.timeOfDay === 'noon' ? 12 : 20);
+                                        const dm = (dose as any).minute ?? 0;
+                                        if (dh === tObj.hour && dm === tObj.minute) drugCount++;
+                                      });
+                                    });
+                                  } else {
+                                    // Fallback: count from message
+                                    const msgs = (r.message || '').split(/;|\n/).filter(s => s.trim());
+                                    drugCount = msgs.length || 1;
+                                  }
+                                  allTimes.set(timeStr, drugCount);
+                                }
+                              });
                             });
-                            const timeSlots = Array.from(timeGroups.entries()).map(([t, count]) => ({ time: t, count }));
-                            
+                            const sortedTimes = Array.from(allTimes.keys()).sort();
                             return (
                               <>
-                                {timeSlots.slice(0, 4).map((slot, i) => (
+                                {sortedTimes.slice(0, 4).map((t, i) => (
                                   <span key={i} className="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs px-2 py-1 rounded-md font-medium border border-slate-200 dark:border-slate-600">
-                                    {slot.time} • {slot.count} thuốc
+                                    {t} • {allTimes.get(t)} thuốc
                                   </span>
                                 ))}
-                                {timeSlots.length > 4 && (
+                                {sortedTimes.length > 4 && (
                                   <span className="bg-slate-100 dark:bg-slate-700 text-slate-500 text-xs px-2 py-1 rounded-md font-medium">
-                                    +{timeSlots.length - 4} khung giờ nữa
+                                    +{sortedTimes.length - 4} khung giờ nữa
                                   </span>
                                 )}
                               </>
@@ -848,65 +899,104 @@ const ReminderPage = () => {
                 </Link>
               </div>
               
-              <div className="space-y-3">
-                {viewingGroup.reminders.map(r => (
-                  <div key={r.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-1">
-                        <span className="text-base font-bold text-slate-800 dark:text-slate-200">
-                          {r.times && r.times.length > 0
-                            ? r.times.map((t) => formatTime(t.hour, t.minute)).join(", ")
-                            : formatTime(r.hour, r.minute)}
-                        </span>
-                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${getStatusClasses(r.status)}`}>
-                          {getStatusLabel(r.status)}
-                        </span>
-                        {r.timeOfDay && (
-                           <span className="text-xs bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded text-slate-600 dark:text-slate-300 font-medium capitalize">
-                             {r.timeOfDay === 'morning' ? 'Sáng' : r.timeOfDay === 'noon' ? 'Trưa' : 'Tối'}
-                           </span>
-                        )}
-                        {r.mealTiming && (
-                           <span className="text-xs bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded text-slate-600 dark:text-slate-300 font-medium">
-                             {r.mealTiming === 'pre_meal' ? 'Trước ăn' : 'Sau ăn'}
-                           </span>
-                        )}
-                      </div>
-                      <p className="text-sm text-slate-700 dark:text-slate-300">{r.message}</p>
-                    </div>
-                    
-                    <div className="flex gap-2">
-                      {r.status === "active" && (
-                        <button
-                          onClick={() => void handleQuickStatusUpdate(r, "paused")}
-                          disabled={saving}
-                          className="bg-amber-100 hover:bg-amber-200 text-amber-700 dark:bg-amber-900/40 dark:hover:bg-amber-800/60 dark:text-amber-400 px-3 py-1.5 rounded-lg text-xs font-semibold transition disabled:opacity-50"
-                        >
-                          Tạm dừng
-                        </button>
-                      )}
-                      {r.status === "paused" && (
-                        <button
-                          onClick={() => void handleQuickStatusUpdate(r, "active")}
-                          disabled={saving}
-                          className="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 dark:bg-emerald-900/40 dark:hover:bg-emerald-800/60 dark:text-emerald-400 px-3 py-1.5 rounded-lg text-xs font-semibold transition disabled:opacity-50"
-                        >
-                          Kích hoạt
-                        </button>
-                      )}
-                      {(r.status === "active" || r.status === "paused") && (
-                        <button
-                          onClick={() => void handleQuickStatusUpdate(r, "canceled")}
-                          disabled={saving}
-                          className="bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-900/20 dark:hover:bg-rose-900/40 dark:text-rose-400 px-3 py-1.5 rounded-lg text-xs font-semibold transition disabled:opacity-50"
-                        >
-                          Hủy
-                        </button>
-                      )}
-                    </div>
+              {/* Group reminders by TIME SLOT for clarity */}
+              {(() => {
+                const mealTimingMapModal: Record<string, string> = {
+                  "before meal": "trước ăn", "after meal": "sau ăn", "with meal": "trong bữa ăn",
+                  "pre_meal": "trước ăn", "post_meal": "sau ăn", "with_meal": "trong bữa ăn",
+                };
+                const translateMsg = (msg: string) => {
+                  let r = msg.trim();
+                  Object.entries(mealTimingMapModal).forEach(([en, vi]) => { r = r.replace(new RegExp(en, 'gi'), vi); });
+                  return r;
+                };
+
+                // Build map: timeKey -> { time, drugs: [{name, status, reminderId, rObj}] }
+                type TimeSlotEntry = { time: string; hour: number; minute: number; drugs: Array<{ text: string; status: string; reminderId: string; rObj: ReminderRecord }> };
+                const slotMap = new Map<string, TimeSlotEntry>();
+
+                viewingGroup.reminders.forEach(r => {
+                  const times = (r.times && r.times.length > 0)
+                    ? r.times.map(tObj => ({ hour: tObj.hour, minute: tObj.minute }))
+                    : [{ hour: r.hour, minute: r.minute }];
+
+                  const drugs = (r.message || '').split(/;|\n/)
+                    .map(s => translateMsg(s)).filter(Boolean);
+                  const uniqueDrugs = Array.from(new Set(drugs));
+
+                  times.forEach(({ hour, minute }) => {
+                    const key = formatTime(hour, minute);
+                    if (!slotMap.has(key)) slotMap.set(key, { time: key, hour, minute, drugs: [] });
+                    uniqueDrugs.forEach(drugText => {
+                      const existing = slotMap.get(key)!.drugs.find(d => d.text === drugText);
+                      if (!existing) {
+                        slotMap.get(key)!.drugs.push({ text: drugText, status: r.status, reminderId: r.id, rObj: r });
+                      }
+                    });
+                  });
+                });
+
+                const sortedSlots = Array.from(slotMap.values()).sort((a, b) => a.hour - b.hour || a.minute - b.minute);
+
+                // Compute per-reminder overall status for action buttons
+                const reminderById = new Map(viewingGroup.reminders.map(r => [r.id, r]));
+
+                return (
+                  <div className="space-y-3">
+                    {sortedSlots.map(slot => {
+                      // Determine dominant status for this slot
+                      const statuses = slot.drugs.map(d => d.status);
+                      const slotStatus: ReminderStatus = statuses.includes('active') ? 'active' : statuses.includes('paused') ? 'paused' : statuses.includes('canceled') ? 'canceled' : 'expired';
+                      // Collect unique reminders for action buttons
+                      const uniqueReminderIds = Array.from(new Set(slot.drugs.map(d => d.reminderId)));
+
+                      return (
+                        <div key={slot.time} className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
+                          <div className="flex items-center justify-between gap-3 mb-3">
+                            <div className="flex items-center gap-2">
+                              <span className="text-base font-bold text-slate-800 dark:text-slate-200">{slot.time}</span>
+                              <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${getStatusClasses(slotStatus)}`}>
+                                {getStatusLabel(slotStatus)}
+                              </span>
+                            </div>
+                            <div className="flex gap-2">
+                              {uniqueReminderIds.map(rid => {
+                                const rObj = reminderById.get(rid);
+                                if (!rObj) return null;
+                                return (
+                                  <div key={rid} className="flex gap-1.5">
+                                    {rObj.status === 'active' && (
+                                      <button onClick={() => void handleQuickStatusUpdate(rObj, 'paused')} disabled={saving}
+                                        className="bg-amber-100 hover:bg-amber-200 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 px-3 py-1.5 rounded-lg text-xs font-semibold transition disabled:opacity-50">Tạm dừng</button>
+                                    )}
+                                    {rObj.status === 'paused' && (
+                                      <button onClick={() => void handleQuickStatusUpdate(rObj, 'active')} disabled={saving}
+                                        className="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 px-3 py-1.5 rounded-lg text-xs font-semibold transition disabled:opacity-50">Kích hoạt</button>
+                                    )}
+                                    {(rObj.status === 'active' || rObj.status === 'paused') && (
+                                      <button onClick={() => void handleQuickStatusUpdate(rObj, 'canceled')} disabled={saving}
+                                        className="bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400 px-3 py-1.5 rounded-lg text-xs font-semibold transition disabled:opacity-50">Hủy</button>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                          {/* Drug list for this time slot */}
+                          <ul className="space-y-1.5">
+                            {slot.drugs.map((drug, i) => (
+                              <li key={i} className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-300">
+                                <span className="mt-1 text-indigo-500 shrink-0">💊</span>
+                                <span>{drug.text}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      );
+                    })}
                   </div>
-                ))}
-              </div>
+                );
+              })()}
             </div>
             <div className="border-t border-slate-200 dark:border-slate-700 px-6 py-4 flex justify-end">
               <button onClick={() => setViewingGroup(null)} className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 dark:text-slate-200 rounded-lg text-sm font-semibold transition">
