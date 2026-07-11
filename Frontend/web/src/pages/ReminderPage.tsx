@@ -23,6 +23,7 @@ import {
 import Toast from "../components/ui/Toast";
 import { useToast } from "../hooks/useToast";
 import { getMyPatients } from "../services/patientService";
+import { getPrescriptions } from "../services/prescriptionService";
 import {
   createReminder,
   getReminders,
@@ -34,6 +35,7 @@ import {
   type ReminderStatus,
   type UpdateReminderPayload,
 } from "../services/reminderService";
+import type { Prescription } from "../types/index";
 import type { AssignmentResponse } from "../types/patient";
 
 type ReminderStatusFilter = ReminderStatus | "all";
@@ -193,6 +195,7 @@ const ReminderPage = () => {
   
   const [formData, setFormData] = useState<ReminderFormData>(createDefaultFormData(initialPatientId));
   const [reminders, setReminders] = useState<ReminderRecord[]>([]);
+  const [prescriptionMap, setPrescriptionMap] = useState<Map<string, Prescription>>(new Map());
   const [loadingPatients, setLoadingPatients] = useState(true);
   const [loadingReminders, setLoadingReminders] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -433,6 +436,29 @@ const ReminderPage = () => {
       const merged = reminderGroups.flat();
       const uniqueReminders = Array.from(new Map(merged.map((item) => [item.id, item])).values());
       setReminders(uniqueReminders);
+
+      // Fetch prescriptions for all medication reminders to enable per-slot drug computation
+      const prescriptionIds = [...new Set(
+        uniqueReminders
+          .filter(r => r.kind === 'medication' && r.prescriptionId)
+          .map(r => r.prescriptionId!)
+      )];
+      if (prescriptionIds.length > 0) {
+        try {
+          // Fetch all prescriptions for the relevant patients
+          const patientIdsForRx = [...new Set(
+            uniqueReminders.filter(r => r.kind === 'medication' && r.prescriptionId).map(r => r.patientId)
+          )];
+          const rxGroups = await Promise.all(
+            patientIdsForRx.map(pid => getPrescriptions({ patientId: pid }))
+          );
+          const newMap = new Map<string, Prescription>();
+          rxGroups.flat().forEach(rx => { newMap.set(rx.id, rx); });
+          setPrescriptionMap(newMap);
+        } catch (e) {
+          console.error('Failed to load prescriptions for reminder page', e);
+        }
+      }
       
       // Update viewing group if modal is open
       setViewingGroup(prev => {
@@ -658,73 +684,57 @@ const ReminderPage = () => {
                             <span>{formatDate(item.reminders[0].endDate)}</span>
                           </div>
                         )}
-                        {/* Drug names summary */}
+                        {/* Drug names summary - computed from prescription data */}
                         {(() => {
-                          const mealTimingMapCard: Record<string, string> = {
-                            "before meal": "trước ăn", "after meal": "sau ăn", "with meal": "trong bữa ăn",
-                            "pre_meal": "trước ăn", "post_meal": "sau ăn", "with_meal": "trong bữa ăn",
-                          };
-                          const drugSet = new Set<string>();
-                          item.reminders.forEach(r => {
-                            if (!r.message) return;
-                            r.message.split(/;|\n/).forEach(s => {
-                              let clean = s.trim();
-                              if (!clean) return;
-                              Object.entries(mealTimingMapCard).forEach(([en, vi]) => {
-                                clean = clean.replace(new RegExp(en, 'gi'), vi);
-                              });
-                              drugSet.add(clean);
-                            });
-                          });
-                          const drugs = Array.from(drugSet);
-                          if (drugs.length === 0) return null;
+                          const rx = item.prescriptionId ? prescriptionMap.get(item.prescriptionId) : undefined;
+                          if (!rx) return null;
+                          const drugNames = [...new Set(rx.medications.map(m => m.drugName))];
+                          if (drugNames.length === 0) return null;
                           return (
                             <ul className="mb-3 text-sm text-slate-700 dark:text-slate-300 space-y-0.5">
-                              {drugs.slice(0, 3).map((d, i) => <li key={i} className="flex items-start gap-1.5"><span className="mt-1 text-indigo-400">•</span>{d}</li>)}
-                              {drugs.length > 3 && <li className="text-slate-400 text-xs">+{drugs.length - 3} thuốc nữa...</li>}
+                              {drugNames.slice(0, 3).map((d, i) => <li key={i} className="flex items-start gap-1.5"><span className="mt-1 text-indigo-400">•</span>{d}</li>)}
+                              {drugNames.length > 3 && <li className="text-slate-400 text-xs">+{drugNames.length - 3} thuốc nữa...</li>}
                             </ul>
                           );
                         })()}
-                        {/* Time slots chips */}
+                        {/* Time slots chips - computed per slot from prescription.medications */}
                         <div className="flex flex-wrap gap-2 mb-4">
                           {(() => {
-                            // Build per-time map: time -> [drugShortNames]
-                            const timeToReminders = new Map<string, string[]>();
-                            const mealTimingMapChip: Record<string, string> = {
-                              "before meal": "trước ăn", "after meal": "sau ăn", "with meal": "trong bữa ăn",
-                              "pre_meal": "trước ăn", "post_meal": "sau ăn", "with_meal": "trong bữa ăn",
-                            };
+                            const rx = item.prescriptionId ? prescriptionMap.get(item.prescriptionId) : undefined;
+                            // Collect all unique times from the single reminder record
+                            const allTimes = new Map<string, number>(); // timeStr -> drugCount
                             item.reminders.forEach(r => {
-                              const times = (r.times && r.times.length > 0)
-                                ? r.times.map(tObj => formatTime(tObj.hour, tObj.minute))
-                                : [formatTime(r.hour, r.minute)];
-                              // Extract short drug name from message
-                              const parts = (r.message || '').split(/;|\n/).map(s => {
-                                let clean = s.trim();
-                                Object.entries(mealTimingMapChip).forEach(([en, vi]) => {
-                                  clean = clean.replace(new RegExp(en, 'gi'), vi);
-                                });
-                                return clean;
-                              }).filter(Boolean);
-                              const uniqueParts = Array.from(new Set(parts));
-                              times.forEach(t => {
-                                if (!timeToReminders.has(t)) timeToReminders.set(t, []);
-                                uniqueParts.forEach(p => {
-                                  if (!timeToReminders.get(t)!.includes(p)) timeToReminders.get(t)!.push(p);
-                                });
+                              const slots = (r.times && r.times.length > 0) ? r.times : [{ hour: r.hour || 0, minute: r.minute || 0 }];
+                              slots.forEach(tObj => {
+                                const timeStr = formatTime(tObj.hour, tObj.minute);
+                                if (!allTimes.has(timeStr)) {
+                                  // Count drugs at this slot from prescription
+                                  let drugCount = 0;
+                                  if (rx) {
+                                    rx.medications.forEach(med => {
+                                      med.schedule.forEach(dose => {
+                                        const dh = (dose as any).hour ?? (dose.timeOfDay === 'morning' ? 8 : dose.timeOfDay === 'noon' ? 12 : 20);
+                                        const dm = (dose as any).minute ?? 0;
+                                        if (dh === tObj.hour && dm === tObj.minute) drugCount++;
+                                      });
+                                    });
+                                  } else {
+                                    // Fallback: count from message
+                                    const msgs = (r.message || '').split(/;|\n/).filter(s => s.trim());
+                                    drugCount = msgs.length || 1;
+                                  }
+                                  allTimes.set(timeStr, drugCount);
+                                }
                               });
                             });
-                            const sortedTimes = Array.from(timeToReminders.keys()).sort();
+                            const sortedTimes = Array.from(allTimes.keys()).sort();
                             return (
                               <>
-                                {sortedTimes.slice(0, 4).map((t, i) => {
-                                  const drugs = timeToReminders.get(t)!;
-                                  return (
-                                    <span key={i} className="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs px-2 py-1 rounded-md font-medium border border-slate-200 dark:border-slate-600">
-                                      {t} • {drugs.length} thuốc
-                                    </span>
-                                  );
-                                })}
+                                {sortedTimes.slice(0, 4).map((t, i) => (
+                                  <span key={i} className="bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs px-2 py-1 rounded-md font-medium border border-slate-200 dark:border-slate-600">
+                                    {t} • {allTimes.get(t)} thuốc
+                                  </span>
+                                ))}
                                 {sortedTimes.length > 4 && (
                                   <span className="bg-slate-100 dark:bg-slate-700 text-slate-500 text-xs px-2 py-1 rounded-md font-medium">
                                     +{sortedTimes.length - 4} khung giờ nữa
