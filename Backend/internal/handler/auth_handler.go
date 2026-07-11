@@ -380,7 +380,7 @@ func (h *AuthHandler) setAccessTokenCookie(c *gin.Context, accessToken string) {
 	maxAge := int(util.AccessTokenTTL.Seconds())
 	isSecure := h.isSecure(c)
 	h.setSameSite(c, isSecure)
-	
+
 	domain := os.Getenv("COOKIE_DOMAIN")
 
 	c.SetCookie(
@@ -398,7 +398,7 @@ func (h *AuthHandler) setRefreshTokenCookie(c *gin.Context, refreshToken string)
 	maxAge := int(util.RefreshTokenTTL.Seconds())
 	isSecure := h.isSecure(c)
 	h.setSameSite(c, isSecure)
-	
+
 	domain := os.Getenv("COOKIE_DOMAIN")
 
 	c.SetCookie(
