@@ -290,33 +290,48 @@ func (s *prescriptionService) createMedicationReminders(
 		return nil, nil
 	}
 
-	var reminderIDs []primitive.ObjectID
-
+	// A single medication reminder covers the whole prescription and fires at
+	// every distinct dose time. The exact doses and skip decision for each fire
+	// are resolved from the prescription at reminder time (like Temporal does).
+	times := make([]domain.ReminderTime, 0, len(slots))
+	allMessages := make([]string, 0)
 	for _, slot := range slots {
-		reminder, err := s.reminderService.CreateReminder(ctx, &usecase.CreateReminderInput{
-			PatientID:      prescription.PatientID.Hex(),
-			Kind:           domain.KindMedication,
-			Message:        strings.Join(slot.messages, "; "),
-			Times:          []domain.ReminderTime{{Hour: slot.hour, Minute: slot.minute}},
-			DaysOfWeek:     prescription.DaysOfWeek,
-			Timezone:       prescription.Timezone,
-			StartDate:      prescription.StartDate,
-			EndDate:        endDate,
-			CreatedBy:      prescribedBy,
-			PrescriptionID: prescription.ID.Hex(),
-		})
-		if err != nil {
-			return nil, err
-		}
-
-		reminderID, err := primitive.ObjectIDFromHex(reminder.ID)
-		if err != nil {
-			return nil, err
-		}
-		reminderIDs = append(reminderIDs, reminderID)
+		times = append(times, domain.ReminderTime{Hour: slot.hour, Minute: slot.minute})
+		allMessages = append(allMessages, slot.messages...)
 	}
 
-	return reminderIDs, nil
+	// Deduplicate messages
+	seen := make(map[string]struct{})
+	uniqueMessages := make([]string, 0, len(allMessages))
+	for _, msg := range allMessages {
+		if _, ok := seen[msg]; !ok {
+			seen[msg] = struct{}{}
+			uniqueMessages = append(uniqueMessages, msg)
+		}
+	}
+
+	reminder, err := s.reminderService.CreateReminder(ctx, &usecase.CreateReminderInput{
+		PatientID:      prescription.PatientID.Hex(),
+		Kind:           domain.KindMedication,
+		Message:        strings.Join(uniqueMessages, "; "),
+		Times:          times,
+		DaysOfWeek:     prescription.DaysOfWeek,
+		Timezone:       prescription.Timezone,
+		StartDate:      prescription.StartDate,
+		EndDate:        endDate,
+		CreatedBy:      prescribedBy,
+		PrescriptionID: prescription.ID.Hex(),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	reminderID, err := primitive.ObjectIDFromHex(reminder.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	return []primitive.ObjectID{reminderID}, nil
 }
 
 func (s *prescriptionService) cancelReminders(ctx context.Context, reminderIDs []primitive.ObjectID) {

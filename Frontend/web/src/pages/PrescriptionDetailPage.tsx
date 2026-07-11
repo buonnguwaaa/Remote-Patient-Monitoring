@@ -276,24 +276,66 @@ export default function PrescriptionDetailPage() {
              {reminders.length === 0 ? (
                <p className="text-sm text-slate-500 text-center py-4">Đơn thuốc chưa sinh nhắc nhở nào.</p>
              ) : (
-               <div className="space-y-3">
-                 {reminders.map(r => (
-                   <div key={r.id} className="flex justify-between items-center p-3 rounded-lg bg-slate-50 dark:bg-slate-700/50 border border-slate-100 dark:border-slate-600">
-                     <div>
-                       <div className="font-bold text-slate-800 dark:text-slate-200">
-                         {r.times && r.times.length > 0
-                            ? r.times.map(t => `${String(t.hour).padStart(2, '0')}:${String(t.minute).padStart(2, '0')}`).join(", ")
-                            : `${String(r.hour || 0).padStart(2, '0')}:${String(r.minute || 0).padStart(2, '0')}`}
+               <div className="space-y-4">
+                 {reminders.map(r => {
+                   const times = (r.times && r.times.length > 0) ? r.times : [];
+                   const mealTimingLabel = (mt?: string) => {
+                     if (mt === 'pre_meal') return 'trước ăn';
+                     if (mt === 'post_meal' || mt === 'after meal' || mt === 'post meal') return 'sau ăn';
+                     return '';
+                   };
+
+                   // Compute drugs for each time slot from prescription.medications
+                   const slotDrugs = times.map(t => {
+                     const drugs: string[] = [];
+                     prescription.medications.forEach(med => {
+                       med.schedule.forEach(dose => {
+                         const dh = dose.hour ?? (dose.timeOfDay === 'morning' ? 8 : dose.timeOfDay === 'noon' ? 12 : 20);
+                         const dm = dose.minute ?? 0;
+                         if (dh === t.hour && dm === t.minute) {
+                           const meal = mealTimingLabel(dose.mealTiming);
+                           drugs.push(`${dose.pillCount} viên ${med.drugName}${meal ? ` (${meal})` : ''}`);
+                         }
+                       });
+                     });
+                     return { time: `${String(t.hour).padStart(2, '0')}:${String(t.minute).padStart(2, '0')}`, drugs };
+                   });
+
+                   return (
+                     <div key={r.id}>
+                       <div className="flex items-center justify-between mb-2">
+                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                            r.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'
+                         }`}>
+                           {r.status === 'active' ? 'Đang nhắc' : r.status}
+                         </span>
                        </div>
-                       <div className="text-xs text-slate-500 truncate max-w-[150px]">{r.message}</div>
+                       <div className="space-y-2">
+                         {slotDrugs.map((slot, i) => (
+                           <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-slate-50 dark:bg-slate-700/50 border border-slate-100 dark:border-slate-600">
+                             <div className="shrink-0 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-xs font-bold px-2 py-1 rounded-md min-w-[52px] text-center">
+                               {slot.time}
+                             </div>
+                             <div className="flex-1 min-w-0">
+                               {slot.drugs.length === 0 ? (
+                                 <span className="text-xs text-slate-400 italic">Không có thuốc nào trong giờ này</span>
+                               ) : (
+                                 <ul className="space-y-0.5">
+                                   {slot.drugs.map((drug, j) => (
+                                     <li key={j} className="flex items-start gap-1.5 text-xs text-slate-700 dark:text-slate-300">
+                                       <span className="text-blue-400 mt-0.5">•</span>
+                                       <span>{drug}</span>
+                                     </li>
+                                   ))}
+                                 </ul>
+                               )}
+                             </div>
+                           </div>
+                         ))}
+                       </div>
                      </div>
-                     <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                        r.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'
-                     }`}>
-                       {r.status === 'active' ? 'ON' : 'OFF'}
-                     </span>
-                   </div>
-                 ))}
+                   );
+                 })}
                </div>
              )}
            </div>
