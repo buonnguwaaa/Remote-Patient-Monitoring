@@ -146,10 +146,8 @@ func (a *ProcessingAlertActivity) SendAlertPushActivity(ctx context.Context, ale
 
 	body := fmt.Sprintf("Chỉ số %s vượt ngưỡng an toàn nghiêm trọng (%s). Vui lòng kiểm tra ngay.", violationType, strings.ToUpper(string(alert.Severity)))
 	switch alert.Severity {
-	case domain.SeverityLow:
-		body = fmt.Sprintf("Có chỉ số %s vượt ngưỡng nhẹ. Vui lòng theo dõi thêm.", violationType)
-	case domain.SeverityMedium:
-		body = fmt.Sprintf("Có chỉ số %s vượt ngưỡng ở mức trung bình. Vui lòng kiểm tra sớm.", violationType)
+	case domain.SeverityInfo:
+		body = fmt.Sprintf("Có chỉ số %s vượt ngưỡng cá nhân. Vui lòng theo dõi thêm.", violationType)
 	}
 
 	payload := map[string]string{
@@ -235,10 +233,8 @@ func (a *ProcessingAlertActivity) SendAlertMessageActivity(ctx context.Context, 
 	}
 
 	severityVN := "nghiêm trọng"
-	if alert.Severity == domain.SeverityMedium {
-		severityVN = "trung bình"
-	} else if alert.Severity == domain.SeverityLow {
-		severityVN = "nhẹ"
+	if alert.Severity == domain.SeverityInfo {
+		severityVN = "thông tin"
 	}
 	messageContent := fmt.Sprintf("Hệ thống vừa phát hiện một số chỉ số vượt ngưỡng ở mức %s. Vui lòng kiểm tra và có biện pháp xử lý phù hợp.", strings.ToUpper(severityVN))
 	message := &chatDomain.Message{

@@ -178,10 +178,8 @@ func buildAlertsSummaryMap(alerts []*domain.Alert) map[primitive.ObjectID]dto.Al
 		switch alert.Severity {
 		case domain.SeverityHigh:
 			summary.High++
-		case domain.SeverityMedium:
-			summary.Medium++
-		case domain.SeverityLow:
-			summary.Low++
+		case domain.SeverityInfo:
+			summary.Info++
 		}
 
 		createdAt := alert.CreatedAt
@@ -203,11 +201,8 @@ func sortPatientOverviews(rows []dto.PatientOverviewResponse) {
 		if a.High != b.High {
 			return a.High > b.High
 		}
-		if a.Medium != b.Medium {
-			return a.Medium > b.Medium
-		}
-		if a.Low != b.Low {
-			return a.Low > b.Low
+		if a.Info != b.Info {
+			return a.Info > b.Info
 		}
 		return strings.Compare(strings.ToLower(rows[i].Name), strings.ToLower(rows[j].Name)) < 0
 	})

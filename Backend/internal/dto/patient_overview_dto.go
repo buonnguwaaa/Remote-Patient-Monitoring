@@ -10,8 +10,7 @@ import (
 type AlertsSummary struct {
 	Total       int        `json:"total"`
 	High        int        `json:"high"`
-	Medium      int        `json:"medium"`
-	Low         int        `json:"low"`
+	Info        int        `json:"info"`
 	LastAlertAt *time.Time `json:"lastAlertAt,omitempty"`
 }
 

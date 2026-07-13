@@ -9,9 +9,8 @@ import (
 type Severity string
 
 const (
-	SeverityLow    Severity = "low"
-	SeverityMedium Severity = "medium"
-	SeverityHigh   Severity = "high"
+	SeverityInfo Severity = "info"
+	SeverityHigh Severity = "high"
 )
 
 type Status string
