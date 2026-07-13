@@ -983,6 +983,20 @@ const docTemplate = `{
                     "assignments"
                 ],
                 "summary": "Get assignments for the current doctor/nurse",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Page number (1-based). Omit for all results.",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Items per page, default 10",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -2324,6 +2338,54 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/patient-overview/me": {
+            "get": {
+                "description": "Returns, in a single call, the assigned patients together with their\nlatest measurement, active threshold and open-alert summary, plus totals.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "patient-overview"
+                ],
+                "summary": "Get aggregated patient overview for the current nurse/doctor",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -4829,6 +4891,7 @@ const docTemplate = `{
                 "message",
                 "patientId",
                 "startDate",
+                "times",
                 "timezone"
             ],
             "properties": {
@@ -4840,11 +4903,6 @@ const docTemplate = `{
                 },
                 "endDate": {
                     "type": "string"
-                },
-                "hour": {
-                    "type": "integer",
-                    "maximum": 23,
-                    "minimum": 0
                 },
                 "kind": {
                     "$ref": "#/definitions/domain.Kind"
@@ -4863,16 +4921,18 @@ const docTemplate = `{
                 "message": {
                     "type": "string"
                 },
-                "minute": {
-                    "type": "integer",
-                    "maximum": 59,
-                    "minimum": 0
-                },
                 "patientId": {
                     "type": "string"
                 },
                 "startDate": {
                     "type": "string"
+                },
+                "times": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/definitions/dto.ReminderTimeInput"
+                    }
                 },
                 "timezone": {
                     "type": "string"
@@ -5161,6 +5221,21 @@ const docTemplate = `{
                         }
                     ],
                     "example": "patient"
+                }
+            }
+        },
+        "dto.ReminderTimeInput": {
+            "type": "object",
+            "properties": {
+                "hour": {
+                    "type": "integer",
+                    "maximum": 23,
+                    "minimum": 0
+                },
+                "minute": {
+                    "type": "integer",
+                    "maximum": 59,
+                    "minimum": 0
                 }
             }
         },
@@ -5495,6 +5570,7 @@ const docTemplate = `{
                 "message",
                 "startDate",
                 "status",
+                "times",
                 "timezone"
             ],
             "properties": {
@@ -5507,24 +5583,21 @@ const docTemplate = `{
                 "endDate": {
                     "type": "string"
                 },
-                "hour": {
-                    "type": "integer",
-                    "maximum": 23,
-                    "minimum": 0
-                },
                 "message": {
                     "type": "string"
-                },
-                "minute": {
-                    "type": "integer",
-                    "maximum": 59,
-                    "minimum": 0
                 },
                 "startDate": {
                     "type": "string"
                 },
                 "status": {
                     "$ref": "#/definitions/domain.ReminderStatus"
+                },
+                "times": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/definitions/dto.ReminderTimeInput"
+                    }
                 },
                 "timezone": {
                     "type": "string"

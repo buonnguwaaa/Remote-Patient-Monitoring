@@ -6,6 +6,15 @@ import (
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
 )
 
+// EvaluateMeasurementAgainstThreshold compares a measurement to a personalized
+// Threshold. A value becomes a violation only when it crosses the personal
+// limit. Severity is max(deviationSeverity, clinicalSeverity): high if the
+// overshoot past personal is larger than the clinical-derived bar, or if the
+// absolute reading hits a guideline safety cutoff; otherwise info.
+//
+// Glucose hyperglycemia cutoffs follow QĐ 5481/QĐ-BYT (30/12/2020) by meal:
+//   pre_meal / nil (mặc định chưa ăn): ≥126 mg/dL
+//   post_meal:                         ≥200 mg/dL
 func EvaluateMeasurementAgainstThreshold(m *domain.Measurement, t *domain.Threshold) []domain.ThresholdViolation {
 	violations := []domain.ThresholdViolation{}
 
@@ -15,7 +24,7 @@ func EvaluateMeasurementAgainstThreshold(m *domain.Measurement, t *domain.Thresh
 			Rule:      rule,
 			Observed:  observed,
 			Threshold: threshold,
-			Severity:  calculateViolationSeverity(vitalType, observed, threshold),
+			Severity:  calculateViolationSeverity(vitalType, observed, threshold, m.MealTiming),
 		})
 	}
 
@@ -83,148 +92,181 @@ func EvaluateMeasurementAgainstThreshold(m *domain.Measurement, t *domain.Thresh
 	}
 
 	// Glucose
-	if t.GlucoseMax != nil && m.Glucose.BloodGlucose != nil && *m.Glucose.BloodGlucose > *t.GlucoseMax {
-		appendViolation("glucose", "glucose_max", *m.Glucose.BloodGlucose, *t.GlucoseMax)
-	}
-	if t.GlucoseMin != nil && m.Glucose.BloodGlucose != nil && *m.Glucose.BloodGlucose < *t.GlucoseMin {
-		appendViolation("glucose", "glucose_min", *m.Glucose.BloodGlucose, *t.GlucoseMin)
+	if m.Glucose.BloodGlucose != nil {
+		v := *m.Glucose.BloodGlucose
+		if t.GlucoseMax != nil && v > *t.GlucoseMax {
+			appendViolation("glucose", "glucose_max", v, *t.GlucoseMax)
+		}
+		if t.GlucoseMin != nil && v < *t.GlucoseMin {
+			appendViolation("glucose", "glucose_min", v, *t.GlucoseMin)
+		}
 	}
 
 	return violations
 }
 
-// severityBands defines absolute deviation from the personalized threshold that maps to
-// low / medium / high. Values are clinical step sizes, not percentages.
-type severityBands struct {
-	lowMax    float64
-	mediumMax float64
+// clinicalBounds holds the guideline cutoff on each side plus the normal→cutoff
+// span used when the personal threshold sits beyond that cutoff.
+//
+// Cutoffs / spans (same sources as absoluteClinicalSeverity):
+//   temperature:              NEWS2 ≤35.0 / ≥39.1; spans from score 0 edges 36.1 / 38.0
+//   heart_rate:               NEWS2 ≤40 / ≥131; spans from 51 / 90
+//   respiratory_rate:         NEWS2 ≤8 / ≥25; spans from 12 / 20
+//   spo2:                     NEWS2 Scale 1 ≤91; span from 96
+//   blood_pressure_systolic:  ≤90 / THA độ 2 ≥160; spans 111→90, 140→160
+//   blood_pressure_diastolic: THA độ 2 ≥100; span 90→100
+//   glucose:                  see glucoseClinicalBounds (QĐ 5481 by meal + ADA hypo)
+type clinicalBounds struct {
+	maxCutoff float64
+	minCutoff float64
+	maxSpan   float64
+	minSpan   float64
 }
 
-var vitalSeverityBands = map[string]severityBands{
-	// Fever/hypothermia: WHO-style steps beyond personal target.
-	"temperature": {lowMax: 0.5, mediumMax: 1.5},
-	// Resting heart rate: AHA monitoring increments.
-	"heart_rate": {lowMax: 10, mediumMax: 25},
-	// Adult respiratory rate (Resuscitation Council UK ranges).
-	"respiratory_rate": {lowMax: 2, mediumMax: 6},
-	// SpO2 deficit (% points below personalized minimum).
-	"spo2": {lowMax: 2, mediumMax: 5},
-	// Hypertension/hypotension systolic (mmHg beyond target).
-	"blood_pressure_systolic": {lowMax: 10, mediumMax: 20},
-	// Diastolic BP typically moves less than systolic.
-	"blood_pressure_diastolic": {lowMax: 5, mediumMax: 15},
-	// Capillary blood glucose (mg/dL beyond personalized target).
-	"glucose": {lowMax: 20, mediumMax: 50},
+var vitalClinicalBounds = map[string]clinicalBounds{
+	"temperature":              {maxCutoff: 39.1, minCutoff: 35, maxSpan: 1.1, minSpan: 1.1},
+	"heart_rate":               {maxCutoff: 131, minCutoff: 40, maxSpan: 41, minSpan: 11},
+	"respiratory_rate":         {maxCutoff: 25, minCutoff: 8, maxSpan: 5, minSpan: 4},
+	"spo2":                     {minCutoff: 91, minSpan: 5},
+	"blood_pressure_systolic":  {maxCutoff: 160, minCutoff: 90, maxSpan: 20, minSpan: 21},
+	"blood_pressure_diastolic": {maxCutoff: 100, maxSpan: 10},
 }
 
-func calculateViolationSeverity(vitalType string, observed, threshold float64) domain.Severity {
-	bands, ok := vitalSeverityBands[vitalType]
+// effectiveMealTiming defaults nil / empty to pre_meal (chưa ăn), matching
+// QĐ 5481 fasting plasma glucose criterion when meal context is unknown.
+func effectiveMealTiming(mealTiming *domain.MealTiming) domain.MealTiming {
+	if mealTiming == nil || *mealTiming == "" {
+		return domain.MealTimingPreMeal
+	}
+	return *mealTiming
+}
+
+// glucoseClinicalBounds — QĐ 5481/QĐ-BYT 30/12/2020:
+//   a) lúc đói (pre_meal) ≥126 mg/dL
+//   b) sau 2 giờ OGTT / post_meal ≥200 mg/dL
+// Hypo floor remains ADA/BYT level 2 <54; spans use BYT treatment targets
+// (đói 80–130 → ~100→126; sau ăn <180 → 180→200).
+func glucoseClinicalBounds(mealTiming *domain.MealTiming) clinicalBounds {
+	if effectiveMealTiming(mealTiming) == domain.MealTimingPostMeal {
+		return clinicalBounds{maxCutoff: 200, minCutoff: 54, maxSpan: 20, minSpan: 16}
+	}
+	return clinicalBounds{maxCutoff: 126, minCutoff: 54, maxSpan: 26, minSpan: 16}
+}
+
+func clinicalBoundsFor(vitalType string, mealTiming *domain.MealTiming) (clinicalBounds, bool) {
+	if vitalType == "glucose" {
+		return glucoseClinicalBounds(mealTiming), true
+	}
+	b, ok := vitalClinicalBounds[vitalType]
+	return b, ok
+}
+
+// requiredDeviationHigh is how far past the personal threshold a reading must
+// go before deviation alone is high.
+//
+// When personal is stricter than the clinical cutoff (e.g. SysMax 130 < 160),
+// the bar is max(normal→clinical span, |clinicalCutoff − personal|) so a modest
+// overshoot stays info until the patient-specific clinical distance is covered.
+// Absolute clinical severity is still applied separately via maxSeverity.
+func requiredDeviationHigh(vitalType string, observed, personal float64, mealTiming *domain.MealTiming) (float64, bool) {
+	b, ok := clinicalBoundsFor(vitalType, mealTiming)
 	if !ok {
-		return domain.SeverityMedium
+		return 0, false
 	}
 
-	severity := classifyDeviation(thresholdDeviation(observed, threshold), bands)
-	return maxSeverity(severity, absoluteClinicalSeverity(vitalType, observed, threshold))
+	if observed > personal {
+		req := b.maxSpan
+		if b.maxCutoff != 0 && b.maxCutoff > personal {
+			req = math.Max(req, b.maxCutoff-personal)
+		}
+		return req, req > 0
+	}
+
+	req := b.minSpan
+	if b.minCutoff != 0 && b.minCutoff < personal {
+		req = math.Max(req, personal-b.minCutoff)
+	}
+	return req, req > 0
 }
 
-func thresholdDeviation(observed, threshold float64) float64 {
-	return math.Abs(observed - threshold)
-}
-
-func classifyDeviation(deviation float64, bands severityBands) domain.Severity {
-	switch {
-	case deviation <= bands.lowMax:
-		return domain.SeverityLow
-	case deviation <= bands.mediumMax:
-		return domain.SeverityMedium
-	default:
+func deviationSeverity(vitalType string, observed, personal float64, mealTiming *domain.MealTiming) domain.Severity {
+	req, ok := requiredDeviationHigh(vitalType, observed, personal, mealTiming)
+	if ok && math.Abs(observed-personal) > req {
 		return domain.SeverityHigh
 	}
-}
-
-// absoluteClinicalSeverity applies fixed cutoffs from standard guidelines regardless of ratio.
-func absoluteClinicalSeverity(vitalType string, observed, threshold float64) domain.Severity {
-	switch vitalType {
-	case "spo2":
-		switch {
-		case observed < 88:
-			return domain.SeverityHigh // severe hypoxemia
-		case observed < 90:
-			return domain.SeverityMedium
-		}
-	case "glucose":
-		if observed < threshold {
-			switch {
-			case observed < 54:
-				return domain.SeverityHigh // ADA level 3 hypoglycemia
-			case observed < 70:
-				return domain.SeverityMedium
-			}
-		} else if observed > threshold {
-			switch {
-			case observed >= 250:
-				return domain.SeverityHigh
-			case observed >= 180:
-				return domain.SeverityMedium
-			}
-		}
-	case "blood_pressure_systolic":
-		switch {
-		case observed >= 180:
-			return domain.SeverityHigh // hypertensive crisis
-		case observed >= 160:
-			return domain.SeverityMedium // stage 2 hypertension
-		case observed < 90:
-			return domain.SeverityHigh // hypotensive shock risk
-		case observed < 100:
-			return domain.SeverityMedium
-		}
-	case "temperature":
-		switch {
-		case observed >= 40:
-			return domain.SeverityHigh
-		case observed >= 38.5:
-			return domain.SeverityMedium
-		case observed <= 35:
-			return domain.SeverityHigh // hypothermia
-		case observed <= 36:
-			return domain.SeverityMedium
-		}
-	}
-
-	return domain.SeverityLow
+	return domain.SeverityInfo
 }
 
 func maxSeverity(a, b domain.Severity) domain.Severity {
-	if severityRank(a) >= severityRank(b) {
-		return a
+	if a == domain.SeverityHigh || b == domain.SeverityHigh {
+		return domain.SeverityHigh
 	}
-	return b
+	return domain.SeverityInfo
 }
 
-func severityRank(severity domain.Severity) int {
-	switch severity {
-	case domain.SeverityHigh:
-		return 3
-	case domain.SeverityMedium:
-		return 2
-	case domain.SeverityLow:
-		return 1
-	default:
-		return 0
+// calculateViolationSeverity is max(deviation from personal, absolute clinical).
+func calculateViolationSeverity(vitalType string, observed, threshold float64, mealTiming *domain.MealTiming) domain.Severity {
+	return maxSeverity(
+		deviationSeverity(vitalType, observed, threshold, mealTiming),
+		absoluteClinicalSeverity(vitalType, observed, mealTiming),
+	)
+}
+
+func absoluteClinicalSeverity(vitalType string, observed float64, mealTiming *domain.MealTiming) domain.Severity {
+	switch vitalType {
+	case "temperature":
+		// NEWS2: ≤35.0 score 3 (hypothermia); ≥39.1 is the top fever band
+		// (score 2 — NEWS2 has no fever score 3).
+		if observed <= 35 || observed >= 39.1 {
+			return domain.SeverityHigh
+		}
+	case "heart_rate":
+		if observed <= 40 || observed >= 131 {
+			return domain.SeverityHigh // NEWS2 score 3
+		}
+	case "respiratory_rate":
+		if observed <= 8 || observed >= 25 {
+			return domain.SeverityHigh // NEWS2 score 3
+		}
+	case "spo2":
+		if observed <= 91 {
+			return domain.SeverityHigh // NEWS2 Scale 1 score 3
+		}
+	case "glucose":
+		// ADA/BYT: level 2 hypoglycemia <54 mg/dL.
+		// Hyperglycemia — QĐ 5481/QĐ-BYT 30/12/2020:
+		//   pre_meal / nil (chưa ăn): ≥126 mg/dL (glucose huyết tương lúc đói)
+		//   post_meal:                ≥200 mg/dL (sau 2 giờ OGTT 75g)
+		if observed < 54 {
+			return domain.SeverityHigh
+		}
+		if effectiveMealTiming(mealTiming) == domain.MealTimingPostMeal {
+			if observed >= 200 {
+				return domain.SeverityHigh
+			}
+			break
+		}
+		if observed >= 126 {
+			return domain.SeverityHigh
+		}
+	case "blood_pressure_systolic":
+		if observed <= 90 || observed >= 160 {
+			return domain.SeverityHigh // hypotension or THA độ 2 (QĐ 3192/QĐ-BYT)
+		}
+	case "blood_pressure_diastolic":
+		if observed >= 100 {
+			return domain.SeverityHigh // THA độ 2 (QĐ 3192/QĐ-BYT)
+		}
 	}
+
+	return domain.SeverityInfo
 }
 
 func AggregateSeverity(vs []domain.ThresholdViolation) domain.Severity {
-	if len(vs) == 0 {
-		return domain.SeverityLow
-	}
-
-	max := domain.SeverityLow
 	for _, v := range vs {
-		if severityRank(v.Severity) > severityRank(max) {
-			max = v.Severity
+		if v.Severity == domain.SeverityHigh {
+			return domain.SeverityHigh
 		}
 	}
-	return max
+	return domain.SeverityInfo
 }
