@@ -19,9 +19,9 @@ func (m MealTiming) IsValid() bool {
 func MealTimingLabel(m MealTiming) string {
 	switch m {
 	case MealTimingPreMeal:
-		return "before meal"
+		return "trước ăn"
 	case MealTimingPostMeal:
-		return "after meal"
+		return "sau ăn"
 	default:
 		return ""
 	}

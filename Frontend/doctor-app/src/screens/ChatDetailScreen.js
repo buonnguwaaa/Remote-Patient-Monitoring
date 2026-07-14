@@ -28,6 +28,7 @@ import {
   ensureConversation,
   buildConversationSocketUrl,
 } from "../api/chatApi";
+import { normalizeAlertSeverity } from "../utils/alertSeverity";
 
 const QUICK_REPLIES = [
   "Bác tiếp tục theo dõi thêm 24 giờ nhé.",
@@ -216,7 +217,7 @@ function getUnit(type) {
     bloodPressureSystolic: "mmHg",
     blood_pressure_diastolic: "mmHg",
     bloodPressureDiastolic: "mmHg",
-    glucose: "mmol/L",
+    glucose: "mg/dL",
   };
   const clean = type?.replace(/_(max|min|high|low)$/, "");
   return units[clean] || units[type] || "";
@@ -858,8 +859,8 @@ export default function ChatDetailScreen() {
                   const cachedAlert = item.message.relatedAlertId
                     ? alertsCache[item.message.relatedAlertId]
                     : null;
-                  const isHigh = cachedAlert?.severity === "high";
-                  const isMedium = cachedAlert?.severity === "medium";
+                  // Normalize severity: medium/low → info, chỉ còn high và info
+                  const isHigh = normalizeAlertSeverity(cachedAlert?.severity) === "high";
                   const violations = cachedAlert?.violations ?? [];
 
                   return (
@@ -867,13 +868,13 @@ export default function ChatDetailScreen() {
                       <View
                         style={[
                           styles.systemAvatar,
-                          isHigh ? styles.systemAvatarHigh : isMedium ? styles.systemAvatarWarn : styles.systemAvatarInfo,
+                          isHigh ? styles.systemAvatarHigh : styles.systemAvatarInfo,
                         ]}
                       >
                         <Ionicons
                           name="shield-checkmark"
                           size={16}
-                          color={isHigh ? "#DC2626" : isMedium ? "#D97706" : "#2563EB"}
+                          color={isHigh ? "#DC2626" : "#2563EB"}
                         />
                       </View>
 
@@ -884,25 +885,25 @@ export default function ChatDetailScreen() {
                             <View
                               style={[
                                 styles.systemSeverityBadge,
-                                isHigh ? styles.severityHigh : isMedium ? styles.severityWarn : styles.severityInfo,
+                                isHigh ? styles.severityHigh : styles.severityInfo,
                               ]}
                             >
                               <Text
                                 style={[
                                   styles.systemSeverityText,
-                                  isHigh ? styles.severityHighText : isMedium ? styles.severityWarnText : styles.severityInfoText,
+                                  isHigh ? styles.severityHighText : styles.severityInfoText,
                                 ]}
                               >
-                                {isHigh ? "Nghiêm trọng" : isMedium ? "Cảnh báo" : "Cần theo dõi"}
+                                {isHigh ? "Ưu tiên cao" : "Cần theo dõi"}
                               </Text>
                             </View>
                           ) : null}
                         </View>
 
-                        <View style={[styles.systemCard, isHigh ? styles.systemCardHigh : isMedium ? styles.systemCardWarn : styles.systemCardInfo]}>
+                        <View style={[styles.systemCard, isHigh ? styles.systemCardHigh : styles.systemCardInfo]}>
                           {violations.length > 0 && (
                             <View style={styles.violationsBlock}>
-                              <Text style={[styles.violationsTitle, isHigh ? styles.violationsTitleHigh : isMedium ? styles.violationsTitleWarn : styles.violationsTitleInfo]}>
+                              <Text style={[styles.violationsTitle, isHigh ? styles.violationsTitleHigh : styles.violationsTitleInfo]}>
                                 {violations.length} chỉ số vượt ngưỡng
                               </Text>
                               <View style={styles.violationsGrid}>
@@ -911,11 +912,11 @@ export default function ChatDetailScreen() {
                                     key={idx}
                                     style={[
                                       styles.violationItem,
-                                      v.severity === "high" ? styles.violationItemHigh : v.severity === "medium" ? styles.violationItemWarn : styles.violationItemInfo,
+                                      normalizeAlertSeverity(v.severity) === "high" ? styles.violationItemHigh : styles.violationItemInfo,
                                     ]}
                                   >
                                     <Text style={styles.violationLabel}>{getViolationLabel(v.type)}</Text>
-                                    <Text style={[styles.violationValue, v.severity === "high" ? styles.violationValueHigh : v.severity === "medium" ? styles.violationValueWarn : styles.violationValueInfo]}>
+                                    <Text style={[styles.violationValue, normalizeAlertSeverity(v.severity) === "high" ? styles.violationValueHigh : styles.violationValueInfo]}>
                                       {v.observed} {getUnit(v.type)}
                                     </Text>
                                     <Text style={styles.violationThreshold}>Ngưỡng: {v.threshold}</Text>
@@ -925,7 +926,7 @@ export default function ChatDetailScreen() {
                             </View>
                           )}
 
-                          <Text style={[styles.systemMsgText, isHigh ? styles.systemMsgTextHigh : isMedium ? styles.systemMsgTextWarn : styles.systemMsgTextInfo]}>
+                          <Text style={[styles.systemMsgText, isHigh ? styles.systemMsgTextHigh : styles.systemMsgTextInfo]}>
                             {item.message.content}
                           </Text>
 

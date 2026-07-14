@@ -7,7 +7,7 @@ export interface RealtimeChatEventData {
   messageSource: "user" | "system";
   patientId?: string | null;
   relatedAlertId?: string | null;
-  severity?: "low" | "medium" | "high" | null;
+  severity?: "info" | "high" | null;
   preview: string;
   message?: MessageResponse | null;
 }

@@ -69,7 +69,7 @@ export function AuthProvider({ children }) {
             console.log("[Realtime WS] Received event:", payload);
             if (payload?.type === "chat.alert_message" && payload?.data) {
               DeviceEventEmitter.emit("NEW_ALERT", payload.data);
-              const severityText = payload.data.severity === "high" ? "Nghiêm trọng ⚠️" : "Cảnh báo ⚠️";
+              const severityText = payload.data.severity === "high" ? "Ưu tiên cao ⚠️" : "Cần theo dõi ⚠️";
               Alert.alert(
                 `Cảnh báo mới (${severityText})`,
                 payload.data.preview || "Có cảnh báo sức khỏe mới cần kiểm tra.",

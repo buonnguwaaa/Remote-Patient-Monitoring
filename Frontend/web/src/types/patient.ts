@@ -1,4 +1,6 @@
 
+import type { AlertSeverity } from "./index";
+
 export interface AssignmentResponse {
   id: string;
   patientId: string;
@@ -22,7 +24,7 @@ export interface AlertResponse {
   measurementId: string;
   violations: ThresholdViolation[];
   status: "open" | "ack";
-  severity: "low" | "medium" | "high";
+  severity: AlertSeverity;
   acknowledgedBy?: string;
   acknowledgedByName?: string;
   acknowledgedAt?: string;
@@ -35,7 +37,7 @@ export interface ThresholdViolation {
   rule: string;
   observed: number;
   threshold: number;
-  severity: "low" | "medium" | "high";
+  severity: AlertSeverity;
 }
 
 export interface PatientItem {

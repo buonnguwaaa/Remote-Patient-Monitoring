@@ -39,12 +39,15 @@ export interface Patient {
   status: "active" | "inactive";
 }
 
+// Import từ utils/alertSeverity để tránh khai báo trùng lặp
+export type AlertSeverity = "info" | "high";
+
 export interface ThresholdViolation {
   type: "temperature" | "systolic" | "diastolic" | "pulse" | "glucose" | "spo2" | "respiratoryRate";
   rule: string;
   observed: number;
   threshold: number;
-  severity: "low" | "medium" | "high";
+  severity: AlertSeverity;
 }
 
 export interface Alert {
@@ -54,7 +57,7 @@ export interface Alert {
   patientAvatar?: string;
   violations: ThresholdViolation[];
   status: "open" | "ack";
-  severity: "low" | "medium" | "high";
+  severity: AlertSeverity;
   acknowledgedBy?: string;
   acknowledgedAt?: string;
   doctorNote?: string;

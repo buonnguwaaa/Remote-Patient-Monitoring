@@ -101,7 +101,7 @@ export default function MeasurementInputScreen() {
   const [scannerVisible, setScannerVisible] = useState(false);
   const [scannerLocked, setScannerLocked] = useState(false);
   const [type, setType] = useState("bp");
-  const [mealTiming, setMealTiming] = useState("pre_meal");
+  const [mealTiming, setMealTiming] = useState("");
   const [device, setDevice] = useState("");
   const [note, setNote] = useState("");
   const [systolic, setSystolic] = useState("");
@@ -135,7 +135,7 @@ export default function MeasurementInputScreen() {
 
   const resetMeasurementDraft = () => {
     setType("bp");
-    setMealTiming("pre_meal");
+    setMealTiming("");
     setDevice("");
     setNote("");
     setSystolic("");

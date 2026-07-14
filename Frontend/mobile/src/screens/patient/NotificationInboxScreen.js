@@ -54,6 +54,17 @@ function formatDateTime(iso) {
   });
 }
 
+function translateMealTiming(text) {
+  if (!text) return text;
+  return text
+    .replace(/before meal/gi, "trước ăn")
+    .replace(/after meal/gi, "sau ăn")
+    .replace(/with meal/gi, "trong bữa ăn")
+    .replace(/pre_meal/gi, "trước ăn")
+    .replace(/post_meal/gi, "sau ăn")
+    .replace(/with_meal/gi, "trong bữa ăn");
+}
+
 function buildNotificationMeta(item) {
   if (item?.type === "alert") {
     return {
@@ -70,7 +81,7 @@ function buildNotificationMeta(item) {
     iconColor: item?.data?.reminderKind === "measure" ? "#2563EB" : "#7C3AED",
     pillText: item?.data?.reminderKind === "measure" ? "Nhắc đo" : "Nhắc uống thuốc",
     title: item?.title || "Nhắc nhở sức khỏe",
-    subtitle: item?.body || "Bạn có một nhắc nhở mới.",
+    subtitle: translateMealTiming(item?.body) || "Bạn có một nhắc nhở mới.",
   };
 }
 

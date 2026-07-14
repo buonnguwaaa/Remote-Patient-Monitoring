@@ -509,7 +509,7 @@ export default function PatientDetailModal({
 
               <View style={styles.vitalsGrid}>
                 {renderLatestVitalCard("respiratoryRate", "git-commit-outline", "Nhịp thở", "lần/phút", "#ECFDF5", "#059669")}
-                {renderLatestVitalCard("glucose", "analytics-outline", "Đường huyết", "mmol/L", "#F5F3FF", "#7C3AED")}
+                {renderLatestVitalCard("glucose", "analytics-outline", "Đường huyết", "mg/dL", "#F5F3FF", "#7C3AED")}
               </View>
             </ScrollView>
           ) : activeModalTab === "history" ? (
@@ -668,7 +668,7 @@ export default function PatientDetailModal({
                       {chartType === "spo2" && `≥ ${threshold.spo2Min} %`}
                       {chartType === "temperature" && `${threshold.temperatureMin}–${threshold.temperatureMax} °C`}
                       {chartType === "respiratory" && `${threshold.respiratoryRateMin}–${threshold.respiratoryRateMax} nhịp/phút`}
-                      {chartType === "glucose" && `${threshold.glucoseMin || "--"}–${threshold.glucoseMax || "--"} mmol/L`}
+                      {chartType === "glucose" && `${threshold.glucoseMin || "--"}–${threshold.glucoseMax || "--"} mg/dL`}
                     </Text>
                   </View>
                 )}

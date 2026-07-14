@@ -13,6 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useAuth } from "../context/AuthContext";
 import { getMyPatients, getAlerts } from "../api/patientApi";
+import { normalizeAlerts, normalizeAlertSeverity } from "../utils/alertSeverity";
 
 import { StaffScreenContainer } from "../components/staff/StaffScreenContainer";
 import { StaffSummaryCard } from "../components/staff/StaffSummaryCard";
@@ -62,7 +63,9 @@ export default function HomeScreen({ onNavigate }) {
         getAlerts({ limit: 50, sortOrder: "desc" }),
       ]);
       setAssignments(patientsRes.ok ? (patientsRes.body?.data || []) : []);
-      setAlerts(alertsRes.ok ? (alertsRes.body?.data || []) : []);
+      // Normalize severity ngay tại đây để hỗ trợ dữ liệu legacy
+      const rawAlerts = alertsRes.ok ? (alertsRes.body?.data || []) : [];
+      setAlerts(normalizeAlerts(rawAlerts));
     } catch {
       setError("Không thể tải dữ liệu");
     } finally {
@@ -111,18 +114,30 @@ export default function HomeScreen({ onNavigate }) {
   const patientIds = useMemo(() => new Set(assignments.map((a) => a.patientId)), [assignments]);
   const myAlerts = useMemo(() => alerts.filter((a) => patientIds.has(a.patientId)), [alerts, patientIds]);
 
-  const { attention, stable, total } = useMemo(() => {
-    const attentionPatients = new Set();
+  // high > info > none; bệnh nhân với high open thì vào "Ưu tiên cao", chỉ info thì vào "Cần theo dõi"
+  const { attention, needsMonitoring, stable, total } = useMemo(() => {
+    const highPriorityPatients = new Set();
+    const monitoringPatients = new Set();
     myAlerts.forEach((a) => {
-      if ((a.severity === "high" || a.severity === "medium") && a.status === "open") {
-        attentionPatients.add(a.patientId);
+      if (a.status !== "open") return;
+      const sev = normalizeAlertSeverity(a.severity);
+      if (sev === "high") {
+        highPriorityPatients.add(a.patientId);
+      } else {
+        monitoringPatients.add(a.patientId);
       }
     });
-    const attentionCount = attentionPatients.size;
+    // Bệnh nhân có high không đếm vào monitoring
+    monitoringPatients.forEach((pid) => {
+      if (highPriorityPatients.has(pid)) monitoringPatients.delete(pid);
+    });
+    const highCount = highPriorityPatients.size;
+    const monitorCount = monitoringPatients.size;
     const totalCount = assignments.length;
-    const stableCount = Math.max(totalCount - attentionCount, 0);
+    const stableCount = Math.max(totalCount - highCount - monitorCount, 0);
     return {
-      attention: attentionCount,
+      attention: highCount,
+      needsMonitoring: monitorCount,
       total: totalCount,
       stable: stableCount,
     };
@@ -176,8 +191,9 @@ export default function HomeScreen({ onNavigate }) {
           <StaffStatCard
             items={[
               { label: "Tổng BN", value: loading ? "…" : total, subtitle: "Đang theo dõi", icon: "people", color: "#3B82F6", onPress: () => handleNavigate("Patients") },
+              { label: "Ưu tiên cao", value: loading ? "…" : attention, subtitle: "Cần xử lý ngay", icon: "warning", color: "#EF4444", onPress: () => handleNavigate("Alerts") },
+              { label: "Cần theo dõi", value: loading ? "…" : needsMonitoring, subtitle: "Có alert info", icon: "information-circle", color: "#2563EB", onPress: () => handleNavigate("Alerts") },
               { label: "Ổn định", value: loading ? "…" : stable, subtitle: total > 0 ? `${Math.round((stable/total)*100)}%` : "0%", icon: "checkmark-circle", color: "#10B981", onPress: () => handleNavigate("Patients") },
-              { label: "Chú ý", value: loading ? "…" : attention, subtitle: "Cần xử lý ngay", icon: "warning", color: "#EF4444", onPress: () => handleNavigate("Alerts") },
             ]}
           />
         </View>

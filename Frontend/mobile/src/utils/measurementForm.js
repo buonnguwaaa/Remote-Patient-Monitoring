@@ -135,6 +135,13 @@ export function getMeasurementValidationError(sectionKey, values = {}) {
         message: "Đường huyết nên nằm trong khoảng 40-600 mg/dL.",
       };
     }
+
+    if (!values.mealTiming) {
+      return {
+        title: "Thiếu thời điểm đo",
+        message: "Hãy chọn thời điểm đo đường huyết (Trước ăn hoặc Sau ăn).",
+      };
+    }
   }
 
   if (sectionKey === "spo2") {

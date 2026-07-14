@@ -15,6 +15,7 @@ import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/nativ
 import { Ionicons } from "@expo/vector-icons";
 
 import { getMyAlerts } from "../../api/alertApi";
+import { normalizeAlertSeverity } from "../../utils/alertSeverity";
 
 function extractData(response) {
   if (!response?.ok) return null;
@@ -255,11 +256,21 @@ export default function AlertScreen({ isEmbedded }) {
         );
       }
 
-      nextAlerts.sort(
+      // Normalize severity tại API boundary ngay khi nhận dữ liệu
+      const normalized = nextAlerts.map((alert) => ({
+        ...alert,
+        severity: normalizeAlertSeverity(alert.severity),
+        violations: (alert.violations || []).map((v) => ({
+          ...v,
+          severity: normalizeAlertSeverity(v.severity),
+        })),
+      }));
+
+      normalized.sort(
         (left, right) =>
           new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
       );
-      setAlerts(nextAlerts);
+      setAlerts(normalized);
     } catch (loadError) {
       console.error("Failed to load patient alerts", loadError);
       setError(loadError?.message || "Không thể tải dữ liệu cảnh báo.");
@@ -393,8 +404,7 @@ export default function AlertScreen({ isEmbedded }) {
                   {group.items.map((alert) => {
                     const summary = buildAlertSummary(alert);
                     const statusMeta = getStatusMeta(alert);
-                    const isHigh = alert.severity === "high";
-                    const isMedium = alert.severity === "medium";
+                    const isHigh = normalizeAlertSeverity(alert.severity) === "high";
 
                     return (
                       <TouchableOpacity
@@ -403,7 +413,7 @@ export default function AlertScreen({ isEmbedded }) {
                         style={[
                           styles.alertCard,
                           statusMeta.isOpen 
-                            ? (isHigh ? styles.alertCardHigh : isMedium ? styles.alertCardMedium : styles.alertCardInfo) 
+                            ? (isHigh ? styles.alertCardHigh : styles.alertCardInfo) 
                             : styles.alertCardAck,
                         ]}
                         onPress={() => setSelectedAlert(alert)}
@@ -414,14 +424,14 @@ export default function AlertScreen({ isEmbedded }) {
                               style={[
                                 styles.iconBadge,
                                 statusMeta.isOpen 
-                                  ? (isHigh ? styles.iconBadgeHigh : isMedium ? styles.iconBadgeMedium : styles.iconBadgeInfo) 
+                                  ? (isHigh ? styles.iconBadgeHigh : styles.iconBadgeInfo) 
                                   : styles.iconBadgeAck,
                               ]}
                             >
                               <Ionicons
                                 name={summary.iconName}
                                 size={18}
-                                color={statusMeta.isOpen ? (isHigh ? "#DC2626" : isMedium ? "#D97706" : "#1D4ED8") : "#6B7280"}
+                                color={statusMeta.isOpen ? (isHigh ? "#DC2626" : "#1D4ED8") : "#6B7280"}
                               />
                             </View>
                             <View style={styles.alertTextWrap}>
@@ -433,10 +443,10 @@ export default function AlertScreen({ isEmbedded }) {
                           <View style={styles.alertRight}>
                             <Text style={styles.timePill}>{formatClockTime(alert.createdAt)}</Text>
                             <View
-                              style={statusMeta.isOpen ? (isHigh ? styles.levelPillHigh : isMedium ? styles.levelPillMedium : styles.levelPillInfo) : styles.levelPillAck}
+                              style={statusMeta.isOpen ? (isHigh ? styles.levelPillHigh : styles.levelPillInfo) : styles.levelPillAck}
                             >
-                              <Text style={statusMeta.isOpen ? (isHigh ? styles.levelTextHigh : isMedium ? styles.levelTextMedium : styles.levelTextInfo) : styles.levelTextAck}>
-                                {isHigh ? "Nghiêm trọng" : isMedium ? "Cảnh báo" : "Cần theo dõi"}
+                              <Text style={statusMeta.isOpen ? (isHigh ? styles.levelTextHigh : styles.levelTextInfo) : styles.levelTextAck}>
+                                {isHigh ? "Ưu tiên cao" : "Cần theo dõi"}
                               </Text>
                             </View>
                           </View>
@@ -523,8 +533,8 @@ export default function AlertScreen({ isEmbedded }) {
                   </View>
                   <View style={styles.metaRow}>
                     <Text style={styles.metaLabel}>Mức độ</Text>
-                    <Text style={[styles.metaValue, selectedAlert?.severity === "high" ? styles.metaHigh : selectedAlert?.severity === "medium" ? styles.metaMedium : styles.metaInfo]}>
-                      {selectedAlert?.severity === "high" ? "Nghiêm trọng" : selectedAlert?.severity === "medium" ? "Cảnh báo" : "Cần theo dõi"}
+                    <Text style={[styles.metaValue, normalizeAlertSeverity(selectedAlert?.severity) === "high" ? styles.metaHigh : styles.metaInfo]}>
+                      {normalizeAlertSeverity(selectedAlert?.severity) === "high" ? "Ưu tiên cao" : "Cần theo dõi"}
                     </Text>
                   </View>
                   <View style={styles.metaRow}>
@@ -559,7 +569,7 @@ export default function AlertScreen({ isEmbedded }) {
                         </View>
                         <View style={styles.modalViolationBottom}>
                           <Text style={styles.modalThreshold}>Ngưỡng: {formatViolationReading(violation, "threshold")}</Text>
-                          <Text style={[styles.modalSeverity, violation.severity === "high" ? styles.metaHigh : violation.severity === "medium" ? styles.metaMedium : styles.metaInfo]}>
+                          <Text style={[styles.modalSeverity, normalizeAlertSeverity(violation.severity) === "high" ? styles.metaHigh : styles.metaInfo]}>
                             {isOver ? "Quá cao" : "Quá thấp"}
                           </Text>
                         </View>

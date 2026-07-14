@@ -23,51 +23,27 @@ import {
   getAlerts,
 } from "../services/patientService";
 import type { AlertResponse } from "../types/patient";
+import type { AlertSeverity } from "../types/index";
+import { normalizeAlertSeverity } from "../utils/alertSeverity";
 
-export const AlertSeverity = {
-  LOW: "low",
-  MEDIUM: "medium",
-  HIGH: "high",
-} as const;
-
-// Map english severity to vietnamese per user request
-export const getSeverityLabel = (level: string) => {
-  switch (level) {
-    case AlertSeverity.HIGH:
-      return "Nghiêm trọng";
-    case AlertSeverity.MEDIUM:
-      return "Cảnh báo";
-    case AlertSeverity.LOW:
-      return "Cần theo dõi";
-    default:
-      return "Không rõ";
-  }
+export const getSeverityLabel = (value: unknown): string => {
+  return normalizeAlertSeverity(value) === "high" ? "Ưu tiên cao" : "Cần theo dõi";
 };
 
-export const getSeverityBadge = (level: string) => {
-  switch (level) {
-    case AlertSeverity.HIGH:
-      return "bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300 dark:ring-1 dark:ring-red-500/25";
-    case AlertSeverity.MEDIUM:
-      return "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-200 dark:ring-1 dark:ring-amber-500/25";
-    case AlertSeverity.LOW:
-      return "bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-300 dark:ring-1 dark:ring-blue-500/25";
-    default:
-      return "bg-slate-100 text-slate-800 dark:bg-slate-500/15 dark:text-slate-200 dark:ring-1 dark:ring-slate-500/25";
+export const getSeverityBadge = (value: unknown): string => {
+  const severity = normalizeAlertSeverity(value);
+  if (severity === "high") {
+    return "bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300 dark:ring-1 dark:ring-red-500/25";
   }
+  return "bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-300 dark:ring-1 dark:ring-blue-500/25";
 };
 
-export const getSeverityIcon = (level: string) => {
-  switch (level) {
-    case AlertSeverity.HIGH:
-      return <FaExclamationTriangle className="w-4 h-4 text-red-600 dark:text-red-400" />;
-    case AlertSeverity.MEDIUM:
-      return <FaExclamationTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400" />;
-    case AlertSeverity.LOW:
-      return <FaInfoCircle className="w-4 h-4 text-blue-600 dark:text-blue-400" />;
-    default:
-      return <FaInfoCircle className="w-4 h-4 text-slate-600 dark:text-slate-400" />;
+export const getSeverityIcon = (value: unknown) => {
+  const severity = normalizeAlertSeverity(value);
+  if (severity === "high") {
+    return <FaExclamationTriangle className="w-4 h-4 text-red-600 dark:text-red-400" />;
   }
+  return <FaInfoCircle className="w-4 h-4 text-blue-600 dark:text-blue-400" />;
 };
 
 type TabType = "PENDING" | "ALL" | "RESOLVED";
@@ -123,11 +99,16 @@ const ThresholdAlert = () => {
     }],
     queryFn: async () => {
       await new Promise((resolve) => setTimeout(resolve, 200));
+      // normalize severity filter: ALL → undefined, other → AlertSeverity
+      const severityParam =
+        severityFilter === "ALL"
+          ? undefined
+          : (severityFilter.toLowerCase() as AlertSeverity);
       return getAlerts({ 
         page: currentPage, 
         limit: 10, 
         status: activeStatus || undefined,
-        severity: severityFilter === "ALL" ? undefined : severityFilter.toLowerCase() as any,
+        severity: severityParam,
         patientId: filterPatientId || undefined,
         sortOrder: "desc"
       });
@@ -204,7 +185,7 @@ const ThresholdAlert = () => {
       weight: "Cân nặng"
     };
 
-    let typeName = viNames[v.type] || t(`measurements.types.${v.type}`, v.type);
+    const typeName = viNames[v.type] || t(`measurements.types.${v.type}`, v.type);
     let unit = "";
     
     if (v.type === "glucose") {
@@ -241,7 +222,7 @@ const ThresholdAlert = () => {
     // Search query (filtered locally on current page results)
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      result = result.filter(a => 
+      result = result.filter((a: AlertResponse) => 
         (a.patientName && a.patientName.toLowerCase().includes(q)) ||
         a.patientId.toLowerCase().includes(q)
       );
@@ -260,12 +241,11 @@ const ThresholdAlert = () => {
       patientCode: string;
       alerts: AlertResponse[];
       highCount: number;
-      mediumCount: number;
-      lowCount: number;
+      infoCount: number;
       latestAlert: AlertResponse | null;
     }>();
 
-    filteredAlerts.forEach(alert => {
+    filteredAlerts.forEach((alert: AlertResponse) => {
       const pId = alert.patientId;
       if (!groups.has(pId)) {
         groups.set(pId, {
@@ -274,39 +254,40 @@ const ThresholdAlert = () => {
           patientCode: `PAT-${pId.substring(0, 6).toUpperCase()}`,
           alerts: [],
           highCount: 0,
-          mediumCount: 0,
-          lowCount: 0,
+          infoCount: 0,
           latestAlert: null
         });
       }
       const group = groups.get(pId)!;
       group.alerts.push(alert);
       
-      if (alert.severity === "high") group.highCount++;
-      else if (alert.severity === "medium") group.mediumCount++;
-      else if (alert.severity === "low") group.lowCount++;
+      // Normalize severity rồi đếm
+      const sev = normalizeAlertSeverity(alert.severity);
+      if (sev === "high") group.highCount++;
+      else group.infoCount++;
 
       if (!group.latestAlert || new Date(alert.createdAt) > new Date(group.latestAlert.createdAt)) {
         group.latestAlert = alert;
       }
     });
 
-    // Convert to array and sort by severity (patients with high alerts first)
+    // Sắp xếp: highCount giảm dần → tổng open giảm dần → thời gian mới nhất
     return Array.from(groups.values()).sort((a, b) => {
       if (a.highCount !== b.highCount) return b.highCount - a.highCount;
-      if (a.mediumCount !== b.mediumCount) return b.mediumCount - a.mediumCount;
-      if (a.lowCount !== b.lowCount) return b.lowCount - a.lowCount;
-      return 0;
+      if (a.alerts.length !== b.alerts.length) return b.alerts.length - a.alerts.length;
+      const aTime = a.latestAlert ? new Date(a.latestAlert.createdAt).getTime() : 0;
+      const bTime = b.latestAlert ? new Date(b.latestAlert.createdAt).getTime() : 0;
+      return bTime - aTime;
     });
   }, [filteredAlerts, activeTab]);
 
   const stats = useMemo(() => {
     const pending = filterPatientId 
-      ? openAlertsData.filter(a => a.patientId === filterPatientId)
+      ? openAlertsData.filter((a: AlertResponse) => a.patientId === filterPatientId)
       : openAlertsData;
     return {
       pendingTotal: pending.length,
-      pendingHigh: pending.filter(a => a.severity === "high").length,
+      pendingHigh: pending.filter((a: AlertResponse) => a.severity === "high").length,
     };
   }, [openAlertsData, filterPatientId]);
 
@@ -322,7 +303,7 @@ const ThresholdAlert = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Chờ xử lý</p>
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Tổng cảnh báo chờ xử lý</p>
             {isStatsLoading ? (
               <div className="h-9 w-16 rounded bg-slate-200 dark:bg-slate-700 animate-pulse mt-1" />
             ) : (
@@ -335,7 +316,7 @@ const ThresholdAlert = () => {
         </div>
         <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-red-200 dark:border-red-900/50 flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-red-600 dark:text-red-400">Nghiêm trọng (Chờ xử lý)</p>
+            <p className="text-sm font-medium text-red-600 dark:text-red-400">Cảnh báo ưu tiên cao (Chờ xử lý)</p>
             {isStatsLoading ? (
               <div className="h-9 w-16 rounded bg-slate-200 dark:bg-slate-700 animate-pulse mt-1" />
             ) : (
@@ -387,15 +368,15 @@ const ThresholdAlert = () => {
               className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
             />
           </div>
+          {/* Filter chỉ còn: Tất cả | Ưu tiên cao | Cần theo dõi */}
           <select
             value={severityFilter}
             onChange={(e) => setSeverityFilter(e.target.value)}
             className="pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
           >
             <option value="ALL">Mức độ (Tất cả)</option>
-            <option value="HIGH">Nghiêm trọng</option>
-            <option value="MEDIUM">Cảnh báo</option>
-            <option value="LOW">Cần theo dõi</option>
+            <option value="high">Ưu tiên cao</option>
+            <option value="info">Cần theo dõi</option>
           </select>
         </div>
       </div>
@@ -459,7 +440,7 @@ const ThresholdAlert = () => {
               >
                 <div className="flex items-start gap-4">
                   <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
-                    <FaUserInjured className="text-blue-600 dark:text-blue-400 text-lg" />
+                    <FaUserInjured className="text-blue-600 dark:blue-400 text-lg" />
                   </div>
                   <div>
                     <h3 className="text-lg font-bold text-blue-600 dark:text-blue-400">
@@ -470,18 +451,13 @@ const ThresholdAlert = () => {
                         {group.alerts.length} cảnh báo chờ xử lý:
                       </span>
                       {group.highCount > 0 && (
-                        <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-400">
-                          <FaExclamationTriangle /> {group.highCount} Nghiêm trọng
+                        <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-400" aria-label="Cảnh báo ưu tiên cao">
+                          <FaExclamationTriangle /> {group.highCount} Ưu tiên cao
                         </span>
                       )}
-                      {group.mediumCount > 0 && (
-                        <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-400">
-                          <FaExclamationTriangle /> {group.mediumCount} Cảnh báo
-                        </span>
-                      )}
-                      {group.lowCount > 0 && (
-                        <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-400">
-                          <FaInfoCircle /> {group.lowCount} Cần theo dõi
+                      {group.infoCount > 0 && (
+                        <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-400" aria-label="Cảnh báo cần theo dõi">
+                          <FaInfoCircle /> {group.infoCount} Cần theo dõi
                         </span>
                       )}
                     </div>
@@ -522,7 +498,7 @@ const ThresholdAlert = () => {
                       >
                         <div>
                           <div className="flex items-center gap-2 mb-2">
-                            <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium flex items-center gap-1 ${getSeverityBadge(alert.severity)}`}>
+                            <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium flex items-center gap-1 ${getSeverityBadge(alert.severity)}`} aria-label={getSeverityLabel(alert.severity)}>
                               {getSeverityIcon(alert.severity)}
                               {getSeverityLabel(alert.severity)}
                             </span>
@@ -585,7 +561,7 @@ const ThresholdAlert = () => {
       {
         header: "Mức độ",
         render: (row: AlertResponse) => (
-          <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${getSeverityBadge(row.severity)}`}>
+          <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${getSeverityBadge(row.severity)}`} aria-label={getSeverityLabel(row.severity)}>
             {getSeverityIcon(row.severity)}
             {getSeverityLabel(row.severity)}
           </span>
