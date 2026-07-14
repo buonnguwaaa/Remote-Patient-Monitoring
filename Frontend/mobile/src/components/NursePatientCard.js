@@ -74,7 +74,7 @@ const NursePatientCard = memo(({ patient, onPress }) => {
         <View style={styles.headerRight}>
           {hasHighAlert ? (
             <View style={styles.badgeHigh}>
-              <Text style={styles.badgeHighText}>Nghiêm trọng</Text>
+              <Text style={styles.badgeHighText}>Ưu tiên cao</Text>
             </View>
           ) : hasAlert ? (
             <View style={styles.badgeMedium}>

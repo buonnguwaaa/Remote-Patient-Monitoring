@@ -109,8 +109,7 @@ function buildPatientListItem(profile, latestMeasurement, alertsSummary, thresho
     alertsSummary: alertsSummary || {
       total: 0,
       high: 0,
-      medium: 0,
-      low: 0,
+      info: 0,
       lastAlertAt: null,
     },
   };
@@ -207,15 +206,14 @@ export function useNursePatientListData(currentUser) {
           );
         });
 
-        // Patients are already sorted by the backend, but we can do a secondary sort if needed.
-        // We'll preserve the sort to ensure it completely matches:
         nextPatients.sort((left, right) => {
-          const highDiff = right.alertsSummary.high - left.alertsSummary.high;
+          const highDiff = (right.alertsSummary.high || 0) - (left.alertsSummary.high || 0);
           if (highDiff !== 0) return highDiff;
-          const medDiff = right.alertsSummary.medium - left.alertsSummary.medium;
-          if (medDiff !== 0) return medDiff;
-          const lowDiff = right.alertsSummary.low - left.alertsSummary.low;
-          if (lowDiff !== 0) return lowDiff;
+          const infoDiff = (right.alertsSummary.info || 0) - (left.alertsSummary.info || 0);
+          if (infoDiff !== 0) return infoDiff;
+          const leftTime = left.alertsSummary.lastAlertAt ? new Date(left.alertsSummary.lastAlertAt).getTime() : 0;
+          const rightTime = right.alertsSummary.lastAlertAt ? new Date(right.alertsSummary.lastAlertAt).getTime() : 0;
+          if (rightTime !== leftTime) return rightTime - leftTime;
           return left.user.name.localeCompare(right.user.name, "vi");
         });
 

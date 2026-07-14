@@ -36,7 +36,7 @@ export function StaffSummaryCard({
               <Ionicons name="warning" size={18} color="#DC2626" />
             </View>
             <View style={styles.statusTextWrap}>
-              <Text style={styles.statusTitleWarning}>Cần chú ý</Text>
+              <Text style={styles.statusTitleWarning}>Ưu tiên cao</Text>
               <Text style={styles.statusSubWarning}>Có {attentionCount} bệnh nhân cần xử lý</Text>
             </View>
             <View style={styles.actionRow}>

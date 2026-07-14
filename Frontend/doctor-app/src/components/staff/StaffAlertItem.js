@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { normalizeAlertSeverity } from "../../utils/alertSeverity";
 
 function getInitials(name) {
   return (
@@ -16,13 +17,13 @@ function getInitials(name) {
 
 export function StaffAlertItem({ alert, onPress }) {
   const initials = getInitials(alert.patientName);
-  const isHigh = alert.severity === "high";
-  const isMedium = alert.severity === "medium";
+  const isHigh = normalizeAlertSeverity(alert.severity) === "high";
   const isResolved = alert.status === "ack";
 
-  const severityColor = isHigh ? "#B91C1C" : isMedium ? "#B45309" : "#1D4ED8";
-  const severityBg = isHigh ? "#FEE2E2" : isMedium ? "#FEF3C7" : "#DBEAFE";
-  const severityLabel = isHigh ? "Nguy hiểm" : isMedium ? "Cần chú ý" : "Nhẹ";
+  // Không dùng màu vàng để giả lập medium
+  const severityColor = isHigh ? "#B91C1C" : "#1D4ED8";
+  const severityBg = isHigh ? "#FEE2E2" : "#DBEAFE";
+  const severityLabel = isHigh ? "Ưu tiên cao" : "Cần theo dõi";
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>

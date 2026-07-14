@@ -26,7 +26,7 @@ export default function InputMeasurementPatientScreen({ isEmbedded }) {
   const { showSuccess, showError, showWarning, showInfo } = useSnackbar();
   const currentPatientUser = user || { _id: "u_patient_self_1", id: "p1", name: "Thong tin mau" };
   const [type, setType] = useState("bp");
-  const [mealTiming, setMealTiming] = useState("pre_meal");
+  const [mealTiming, setMealTiming] = useState("");
   const [device, setDevice] = useState("");
   const [note, setNote] = useState("");
   const [systolic, setSystolic] = useState("");

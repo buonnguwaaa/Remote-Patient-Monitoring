@@ -1,5 +1,7 @@
 import api from "./api";
 import type { AssignmentResponse, AlertResponse } from "../types/patient";
+import { normalizeAlertSeverity } from "../utils/alertSeverity";
+import type { AlertSeverity } from "../types/index";
 
 // ---- Patient detail types ----
 export interface PatientDetailResponse {
@@ -96,7 +98,7 @@ export const getLatestAlertForPatient = async (
 export const getAlerts = async (params?: {
   patientId?: string;
   status?: "open" | "ack";
-  severity?: "low" | "medium" | "high";
+  severity?: AlertSeverity;
   isLatest?: boolean;
   limit?: number;
   page?: number;
@@ -114,8 +116,19 @@ export const getAlerts = async (params?: {
     },
   });
 
+  const raw = response.data.data || [];
+  // Normalize severity tại API boundary
+  const alerts: AlertResponse[] = raw.map((alert) => ({
+    ...alert,
+    severity: normalizeAlertSeverity(alert.severity),
+    violations: (alert.violations || []).map((v) => ({
+      ...v,
+      severity: normalizeAlertSeverity(v.severity),
+    })),
+  }));
+
   return {
-    alerts: response.data.data || [],
+    alerts,
     total: response.data.total || 0,
   };
 };
@@ -123,13 +136,30 @@ export const getAlerts = async (params?: {
 
 export const acknowledgeAlert = async (alertId: string): Promise<AlertResponse> => {
   const response = await api.patch<{ data: AlertResponse }>(`/alerts/ack/${alertId}`);
-  return response.data.data;
+  const alert = response.data.data;
+  return {
+    ...alert,
+    severity: normalizeAlertSeverity(alert.severity),
+    violations: (alert.violations || []).map((v) => ({
+      ...v,
+      severity: normalizeAlertSeverity(v.severity),
+    })),
+  };
 };
 
 export const getAlertById = async (alertId: string): Promise<AlertResponse | null> => {
   try {
     const response = await api.get<{ data: AlertResponse }>(`/alerts/${alertId}`);
-    return response.data.data || null;
+    const alert = response.data.data;
+    if (!alert) return null;
+    return {
+      ...alert,
+      severity: normalizeAlertSeverity(alert.severity),
+      violations: (alert.violations || []).map((v) => ({
+        ...v,
+        severity: normalizeAlertSeverity(v.severity),
+      })),
+    };
   } catch {
     return null;
   }

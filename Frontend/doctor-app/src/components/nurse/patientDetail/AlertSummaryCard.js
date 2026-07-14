@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { normalizeAlertSeverity } from "../../../utils/alertSeverity";
 
 export function AlertSummaryCard({ alerts }) {
   if (!alerts || alerts.length === 0) {
@@ -13,15 +14,20 @@ export function AlertSummaryCard({ alerts }) {
   }
 
   const renderAlert = (a) => {
-    const isHigh = a.severity === "high";
-    const bg = isHigh ? "#FEF2F2" : "#FFF7ED";
-    const border = isHigh ? "#FECACA" : "#FED7AA";
-    const color = isHigh ? "#DC2626" : "#EA580C";
+    const isHigh = normalizeAlertSeverity(a.severity) === "high";
+    const bg = isHigh ? "#FEF2F2" : "#EFF6FF";
+    const border = isHigh ? "#FECACA" : "#BFDBFE";
+    const color = isHigh ? "#DC2626" : "#1D4ED8";
+    const label = isHigh ? "Ưu tiên cao" : "Cần theo dõi";
 
     return (
-      <View key={a.id} style={[styles.card, { backgroundColor: bg, borderColor: border }]}>
+      <View
+        key={a.id}
+        style={[styles.card, { backgroundColor: bg, borderColor: border }]}
+        accessibilityLabel={isHigh ? "Cảnh báo ưu tiên cao" : "Cảnh báo cần theo dõi"}
+      >
         <View style={styles.header}>
-          <Text style={[styles.title, { color }]}>Mức độ: {isHigh ? "Cao" : "Trung bình"}</Text>
+          <Text style={[styles.title, { color }]}>{label}</Text>
           <Text style={styles.time}>{new Date(a.createdAt).toLocaleString("vi-VN")}</Text>
         </View>
         <View style={styles.body}>

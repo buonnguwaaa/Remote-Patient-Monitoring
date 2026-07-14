@@ -15,10 +15,9 @@ import { useTranslation } from "react-i18next";
 
 export interface ChartDataPoint {
   period: string;
-  normalPatients: number;
-  warningPatients: number;
-  criticalPatients?: number;
-  lowPatients?: number;
+  stablePatients: number;
+  needsMonitoringPatients: number;
+  highPriorityPatients: number;
 }
 
 export interface ChartStatItem {
@@ -121,12 +120,16 @@ const makeCustomTooltip = (isDark: boolean, t: any) => {
         </p>
         <div className="space-y-1">
           <p className="text-indigo-500">
-            <span className="font-medium">{t("dashboard.stablePatients")}:</span>{" "}
-            {payload[0]?.value?.toLocaleString()}
+            <span className="font-medium">{t("dashboard.stablePatients") || "Ổn định"}:</span>{" "}
+            {payload.find((p: any) => p.dataKey === "stablePatients")?.value?.toLocaleString() || 0}
           </p>
-          <p className="text-teal-500">
-            <span className="font-medium">{t("dashboard.needAttention")}:</span>{" "}
-            {payload[1]?.value?.toLocaleString()}
+          <p className="text-blue-500">
+            <span className="font-medium">{t("dashboard.needAttention") || "Cần theo dõi"}:</span>{" "}
+            {payload.find((p: any) => p.dataKey === "needsMonitoringPatients")?.value?.toLocaleString() || 0}
+          </p>
+          <p className="text-red-500">
+            <span className="font-medium">{t("dashboard.highPriority") || "Ưu tiên cao"}:</span>{" "}
+            {payload.find((p: any) => p.dataKey === "highPriorityPatients")?.value?.toLocaleString() || 0}
           </p>
           <p
             className={`mt-1 border-t pt-1 ${isDark
@@ -135,7 +138,9 @@ const makeCustomTooltip = (isDark: boolean, t: any) => {
               }`}
           >
             <span className="font-medium">{t("dashboard.total") || "Tổng:"}</span>{" "}
-            {((payload[0]?.value ?? 0) + (payload[1]?.value ?? 0)).toLocaleString()}
+            {((payload.find((p: any) => p.dataKey === "stablePatients")?.value ?? 0) +
+              (payload.find((p: any) => p.dataKey === "needsMonitoringPatients")?.value ?? 0) +
+              (payload.find((p: any) => p.dataKey === "highPriorityPatients")?.value ?? 0)).toLocaleString()}
           </p>
         </div>
       </div>
@@ -189,8 +194,9 @@ export const Chart: React.FC<ChartProps> = ({
   const CustomTooltip = makeCustomTooltip(isDark, t);
   const renderLegend = makeRenderLegend(isDark);
   const latestPoint = chartData[chartData.length - 1] || {
-    normalPatients: 0,
-    warningPatients: 0,
+    stablePatients: 0,
+    needsMonitoringPatients: 0,
+    highPriorityPatients: 0,
   };
 
   return (
@@ -263,18 +269,25 @@ export const Chart: React.FC<ChartProps> = ({
               />
               <Legend content={renderLegend} />
               <Bar
-                dataKey="normalPatients"
-                name={t("dashboard.stablePatients") || "Bệnh nhân ổn định"}
+                dataKey="stablePatients"
+                name={t("dashboard.stablePatients") || "Ổn định"}
                 fill="#6366f1"
                 radius={[4, 4, 0, 0]}
-                barSize={36}
+                barSize={24}
               />
               <Bar
-                dataKey="warningPatients"
-                name={t("dashboard.needAttention") || "Bệnh nhân cần chú ý"}
-                fill="#14b8a6"
+                dataKey="needsMonitoringPatients"
+                name={t("dashboard.needAttention") || "Cần theo dõi"}
+                fill="#3b82f6"
                 radius={[4, 4, 0, 0]}
-                barSize={36}
+                barSize={24}
+              />
+              <Bar
+                dataKey="highPriorityPatients"
+                name={t("dashboard.highPriority") || "Ưu tiên cao"}
+                fill="#ef4444"
+                radius={[4, 4, 0, 0]}
+                barSize={24}
               />
             </BarChart>
           </ResponsiveContainer>
@@ -298,18 +311,28 @@ export const Chart: React.FC<ChartProps> = ({
                 style={{ backgroundColor: "#6366f1" }}
               />
               <span style={{ color: summaryText }} className="text-xs">
-                {t("dashboard.stable") || "Ổn định:"}{" "}
-                {latestPoint.normalPatients.toLocaleString()}
+                {t("dashboard.stablePatients")}:{" "}
+                {(latestPoint.stablePatients ?? 0).toLocaleString()}
               </span>
             </div>
             <div className="flex items-center gap-1.5">
               <div
                 className="h-2.5 w-2.5 rounded-full"
-                style={{ backgroundColor: "#14b8a6" }}
+                style={{ backgroundColor: "#3b82f6" }}
               />
               <span style={{ color: summaryText }} className="text-xs">
-                {t("dashboard.attention") || "Cần chú ý:"}{" "}
-                {latestPoint.warningPatients.toLocaleString()}
+                {t("dashboard.needAttention")}:{" "}
+                {(latestPoint.needsMonitoringPatients ?? 0).toLocaleString()}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div
+                className="h-2.5 w-2.5 rounded-full"
+                style={{ backgroundColor: "#ef4444" }}
+              />
+              <span style={{ color: summaryText }} className="text-xs">
+                {t("dashboard.highPriority")}:{" "}
+                {(latestPoint.highPriorityPatients ?? 0).toLocaleString()}
               </span>
             </div>
           </div>
