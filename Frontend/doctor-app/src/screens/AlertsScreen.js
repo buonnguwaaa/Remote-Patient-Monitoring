@@ -19,6 +19,7 @@ import { getAlerts, acknowledgeAlert, getMyPatients, getPatientById, getMeasurem
 import PatientDetailModal from "../components/PatientDetailModal";
 import { useToast } from "../context/ToastContext";
 import { colors, radius, spacing, typography, shadows } from "../theme/rpmTheme";
+import { normalizeAlerts, getAlertSeverityMeta, normalizeAlertSeverity } from "../utils/alertSeverity";
 
 const TABS = [
   { key: "PENDING", label: "Cần xử lý" },
@@ -28,9 +29,8 @@ const TABS = [
 
 const SEVERITY_OPTIONS = [
   { key: "ALL", label: "Tất cả" },
-  { key: "high", label: "Nghiêm trọng" },
-  { key: "medium", label: "Cảnh báo" },
-  { key: "low", label: "Cần theo dõi" },
+  { key: "high", label: "Ưu tiên cao" },
+  { key: "info", label: "Cần theo dõi" },
 ];
 
 const VIOLATION_LABELS = {
@@ -62,7 +62,9 @@ const UNITS = {
   bloodPressureSystolic: "mmHg",
   blood_pressure_diastolic: "mmHg",
   bloodPressureDiastolic: "mmHg",
-  glucose: "mmol/L",
+  glucose: "mg/dL",
+  sys: "mmHg",
+  bp_diastolic: "mmHg",
 };
 
 function getViolationLabel(type) {
@@ -205,12 +207,12 @@ export default function AlertsScreen() {
     return () => clearInterval(interval);
   }, [fetchAlerts]);
 
-  // Stats
+  // Stats: chỉ count high
   const stats = useMemo(() => {
     const pending = alerts.filter((a) => a.status === "open");
     return {
       pendingTotal: pending.length,
-      pendingHigh: pending.filter((a) => a.severity === "high").length,
+      pendingHigh: pending.filter((a) => normalizeAlertSeverity(a.severity) === "high").length,
     };
   }, [alerts]);
 
@@ -240,7 +242,7 @@ export default function AlertsScreen() {
     return list;
   }, [alerts, activeTab, severityFilter, searchQuery]);
 
-  // Grouped pending alerts by patient
+  // Grouped pending alerts by patient - chỉ còn highCount và infoCount
   const groupedPending = useMemo(() => {
     if (activeTab !== "PENDING") return [];
 
@@ -254,16 +256,14 @@ export default function AlertsScreen() {
           patientCode: alert.patientCode,
           alerts: [],
           highCount: 0,
-          mediumCount: 0,
-          lowCount: 0,
+          infoCount: 0,
           latestAlert: null,
         });
       }
       const group = groups.get(pid);
       group.alerts.push(alert);
-      if (alert.severity === "high") group.highCount++;
-      else if (alert.severity === "medium") group.mediumCount++;
-      else group.lowCount++;
+      if (normalizeAlertSeverity(alert.severity) === "high") group.highCount++;
+      else group.infoCount++;
 
       if (!group.latestAlert || new Date(alert.createdAt) > new Date(group.latestAlert.createdAt)) {
         group.latestAlert = alert;
@@ -272,7 +272,7 @@ export default function AlertsScreen() {
 
     return Array.from(groups.values()).sort((a, b) => {
       if (a.highCount !== b.highCount) return b.highCount - a.highCount;
-      if (a.mediumCount !== b.mediumCount) return b.mediumCount - a.mediumCount;
+      if (a.infoCount !== b.infoCount) return b.infoCount - a.infoCount;
       return b.alerts.length - a.alerts.length;
     });
   }, [filteredAlerts, activeTab]);
@@ -335,7 +335,7 @@ export default function AlertsScreen() {
           <Ionicons name="alert-circle" size={20} color={colors.danger} />
         </View>
         <View>
-          <Text style={[styles.statLabel, { color: colors.danger }]}>Nghiêm trọng</Text>
+          <Text style={[styles.statLabel, { color: colors.danger }]}>Ưu tiên cao</Text>
           <Text style={[styles.statValue, { color: colors.dangerAccent }]}>{stats.pendingHigh}</Text>
         </View>
       </View>
@@ -423,21 +423,14 @@ export default function AlertsScreen() {
               {group.highCount > 0 && (
                 <View style={[styles.countBadge, { backgroundColor: colors.dangerSoftAlt }]}>
                   <Text style={[styles.countBadgeText, { color: colors.danger }]}>
-                    {group.highCount} Nghiêm trọng
+                    {group.highCount} Ưu tiên cao
                   </Text>
                 </View>
               )}
-              {group.mediumCount > 0 && (
-                <View style={[styles.countBadge, { backgroundColor: colors.warningSoftBg }]}>
-                  <Text style={[styles.countBadgeText, { color: colors.warningAccent }]}>
-                    {group.mediumCount} Cảnh báo
-                  </Text>
-                </View>
-              )}
-              {group.lowCount > 0 && (
+              {group.infoCount > 0 && (
                 <View style={[styles.countBadge, { backgroundColor: colors.primarySoftBg }]}>
                   <Text style={[styles.countBadgeText, { color: colors.primaryAccent }]}>
-                    {group.lowCount} Cần theo dõi
+                    {group.infoCount} Cần theo dõi
                   </Text>
                 </View>
               )}
@@ -487,14 +480,13 @@ export default function AlertsScreen() {
                 <View style={styles.alertItemHeader}>
                   <View style={[
                     styles.severityBadge,
-                    alert.severity === "high" ? styles.sevHigh :
-                      alert.severity === "medium" ? styles.sevMed : styles.sevLow,
+                    normalizeAlertSeverity(alert.severity) === "high" ? styles.sevHigh : styles.sevLow,
                   ]}>
                     <Text style={[
                       styles.severityBadgeText,
-                      { color: alert.severity === "high" ? colors.danger : alert.severity === "medium" ? colors.warningAccent : colors.primaryAccent },
+                      { color: normalizeAlertSeverity(alert.severity) === "high" ? colors.danger : colors.primaryAccent },
                     ]}>
-                      {alert.severity === "high" ? "Nghiêm trọng" : alert.severity === "medium" ? "Cảnh báo" : "Cần theo dõi"}
+                      {normalizeAlertSeverity(alert.severity) === "high" ? "Ưu tiên cao" : "Cần theo dõi"}
                     </Text>
                   </View>
                   <Text style={styles.alertItemTime}>{formatDate(alert.createdAt)}</Text>
@@ -532,14 +524,13 @@ export default function AlertsScreen() {
         </View>
         <View style={[
           styles.severityBadge,
-          item.severity === "high" ? styles.sevHigh :
-            item.severity === "medium" ? styles.sevMed : styles.sevLow,
+          normalizeAlertSeverity(item.severity) === "high" ? styles.sevHigh : styles.sevLow,
         ]}>
           <Text style={[
             styles.severityBadgeText,
-            { color: item.severity === "high" ? colors.danger : item.severity === "medium" ? colors.warningAccent : colors.primaryAccent },
+            { color: normalizeAlertSeverity(item.severity) === "high" ? colors.danger : colors.primaryAccent },
           ]}>
-            {item.severity === "high" ? "Nghiêm trọng" : item.severity === "medium" ? "Cảnh báo" : "Cần theo dõi"}
+            {normalizeAlertSeverity(item.severity) === "high" ? "Ưu tiên cao" : "Cần theo dõi"}
           </Text>
         </View>
       </View>

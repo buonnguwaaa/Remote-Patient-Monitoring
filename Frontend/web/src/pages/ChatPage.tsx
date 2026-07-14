@@ -37,6 +37,7 @@ import {
   type MessageResponse,
 } from "../services/chatService";
 import type { AlertResponse } from "../types/patient";
+import { normalizeAlertSeverity } from "../utils/alertSeverity";
 import { useTranslation } from "react-i18next";
 
 type SocketState = "idle" | "connecting" | "open" | "closed";
@@ -1077,14 +1078,14 @@ const ChatPage = ({
         ) : null}
 
         {activeAlertId ? (
-          <section className="mb-4 rounded-xl border border-amber-200 bg-white p-4 shadow-sm dark:border-amber-500/20 dark:bg-slate-900 dark:shadow-none">
+          <section className="mb-4 rounded-xl border border-blue-200 bg-white p-4 shadow-sm dark:border-blue-500/20 dark:bg-slate-900 dark:shadow-none">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="flex items-start gap-2.5">
-                <div className="mt-0.5 rounded-lg bg-amber-100 p-2 dark:bg-amber-500/20">
-                  <AlertTriangle size={16} className="text-amber-600 dark:text-amber-300" />
+                <div className="mt-0.5 rounded-lg bg-blue-100 p-2 dark:bg-blue-500/20">
+                  <AlertTriangle size={16} className="text-blue-600 dark:text-blue-300" />
                 </div>
                 <div>
-                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-600 dark:text-amber-300">
+                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-600 dark:text-blue-300">
                     {t("chat.viewingAlertContext")}
                   </div>
                   <h2 className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">
@@ -1102,9 +1103,9 @@ const ChatPage = ({
                 {t("chat.removeContext")}
               </button>
             </div>
-            <div className="mt-4 rounded-lg bg-amber-50/70 p-4 dark:bg-amber-500/10">
+            <div className="mt-4 rounded-lg bg-blue-50/70 p-4 dark:bg-blue-500/10">
               {alertContextLoading ? (
-                <div className="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-200">
+                <div className="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-200">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   {t("chat.loadingAlertDetails")}
                 </div>
@@ -1112,20 +1113,18 @@ const ChatPage = ({
                 <div className="space-y-3">
                   <div className="flex flex-wrap items-center gap-2">
                     <span
-                      className={`inline-flex items-center gap-1 rounded-md px-3 py-1 text-xs font-medium ${alertContext.severity === "high"
+                      className={`inline-flex items-center gap-1 rounded-md px-3 py-1 text-xs font-medium ${normalizeAlertSeverity(alertContext.severity) === "high"
                         ? "bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300"
-                        : alertContext.severity === "medium"
-                        ? "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-200"
-                        : "bg-slate-100 text-slate-700 dark:bg-slate-500/15 dark:text-slate-200"
+                        : "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-200"
                         }`}
                     >
-                      {alertContext.severity === "high" ? (
+                      {normalizeAlertSeverity(alertContext.severity) === "high" ? (
                         <AlertTriangle size={14} />
                       ) : (
                         <Info size={14} />
                       )}
-                      {alertContext.severity === "high"
-                        ? t("chat.severe") : alertContext.severity === "medium" ? t("alerts.medium", "Cảnh báo") : t("alerts.low", "Cần theo dõi")}
+                      {normalizeAlertSeverity(alertContext.severity) === "high"
+                        ? "Ưu tiên cao" : "Cần theo dõi"}
                     </span>
                     <span
                       className={`rounded-md px-3 py-1 text-xs font-medium ${alertContext.status === "ack"
@@ -1161,7 +1160,7 @@ const ChatPage = ({
                   </div>
                 </div>
               ) : (
-                <div className="text-sm text-amber-700 dark:text-amber-200">
+                <div className="text-sm text-blue-700 dark:text-blue-200">
                   {alertContextError ||
                     t("chat.noAlertDetails")}
                 </div>
@@ -1217,8 +1216,9 @@ const ChatPage = ({
                 const cachedAlert = item.message.relatedAlertId
                   ? alertsCache.get(item.message.relatedAlertId)
                   : undefined;
-                const isHighSeverity = cachedAlert?.severity === "high";
-                const isMediumSeverity = cachedAlert?.severity === "medium";
+                // Normalize severity để hỗ trợ dữ liệu legacy (medium/low → info)
+                const normalizedSeverity = normalizeAlertSeverity(cachedAlert?.severity);
+                const isHighSeverity = normalizedSeverity === "high";
                 const violations = cachedAlert?.violations ?? [];
 
                 return (
@@ -1228,13 +1228,12 @@ const ChatPage = ({
                     className="flex items-start gap-3 px-2"
                   >
                     {/* System avatar */}
-                    <div className={`flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center shadow-sm ${isHighSeverity
-                      ? "bg-red-100 dark:bg-red-500/20"
-                      : isMediumSeverity
-                      ? "bg-amber-100 dark:bg-amber-500/20"
-                      : "bg-slate-100 dark:bg-slate-500/20"
+                    <div className={`flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center shadow-sm ${
+                      isHighSeverity
+                        ? "bg-red-100 dark:bg-red-500/20"
+                        : "bg-blue-100 dark:bg-blue-500/20"
                       }`}>
-                      <ShieldAlert size={18} className={isHighSeverity ? "text-red-600 dark:text-red-300" : isMediumSeverity ? "text-amber-600 dark:text-amber-300" : "text-slate-600 dark:text-slate-300"} />
+                      <ShieldAlert size={18} className={isHighSeverity ? "text-red-600 dark:text-red-300" : "text-blue-600 dark:text-blue-300"} />
                     </div>
 
                     <div className="flex-1 min-w-0 max-w-[80%]">
@@ -1244,28 +1243,25 @@ const ChatPage = ({
                         {cachedAlert && (
                           <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${isHighSeverity
                             ? "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300"
-                            : isMediumSeverity
-                            ? "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300"
-                            : "bg-slate-100 text-slate-700 dark:bg-slate-500/20 dark:text-slate-300"
+                            : "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300"
                             }`}>
                             <AlertTriangle size={9} />
-                            {isHighSeverity ? t("chat.severe") : isMediumSeverity ? t("patients.warning", "Cảnh báo") : t("alerts.low", "Cần theo dõi")}
+                            {isHighSeverity ? t("chat.severe") : t("alerts.low", "Cần theo dõi")}
                           </span>
                         )}
                       </div>
 
                       {/* Message card */}
-                      <div className={`rounded-2xl rounded-tl-sm border px-4 py-3 shadow-sm ${isHighSeverity
-                        ? "border-red-200 bg-red-50 dark:border-red-500/20 dark:bg-red-500/8"
-                        : isMediumSeverity
-                        ? "border-amber-200 bg-amber-50 dark:border-amber-500/20 dark:bg-amber-500/8"
-                        : "border-slate-200 bg-slate-50 dark:border-slate-500/20 dark:bg-slate-500/8"
+                      <div className={`rounded-2xl rounded-tl-sm border px-4 py-3 shadow-sm ${
+                        isHighSeverity
+                          ? "border-red-200 bg-red-50 dark:border-red-500/20 dark:bg-red-500/8"
+                          : "border-blue-200 bg-blue-50 dark:border-blue-500/20 dark:bg-blue-500/8"
                         }`}>
 
                         {/* Violations grid — shown when alert data is available */}
                         {violations.length > 0 ? (
                           <div className="mb-3">
-                            <div className={`mb-2 text-[11px] font-semibold uppercase tracking-wider ${isHighSeverity ? "text-red-600 dark:text-red-300" : "text-amber-600 dark:text-amber-300"
+                            <div className={`mb-2 text-[11px] font-semibold uppercase tracking-wider ${isHighSeverity ? "text-red-600 dark:text-red-300" : "text-blue-600 dark:text-blue-300"
                               }`}>
                               {violations.length} chỉ số vượt ngưỡng
                             </div>
@@ -1273,15 +1269,17 @@ const ChatPage = ({
                               {violations.map((v, idx) => (
                                 <div
                                   key={idx}
-                                  className={`rounded-lg border px-3 py-2 ${v.severity === "high"
-                                    ? "border-red-200/70 bg-red-100/60 dark:border-red-500/20 dark:bg-red-500/10"
-                                    : v.severity === "medium"
-                                    ? "border-amber-200/70 bg-amber-100/60 dark:border-amber-500/20 dark:bg-amber-500/10"
-                                    : "border-slate-200/70 bg-slate-100/60 dark:border-slate-500/20 dark:bg-slate-500/10"
+                                  className={`rounded-lg border px-3 py-2 ${
+                                    normalizeAlertSeverity(v.severity) === "high"
+                                      ? "border-red-200/70 bg-red-100/60 dark:border-red-500/20 dark:bg-red-500/10"
+                                      : "border-blue-200/70 bg-blue-100/60 dark:border-blue-500/20 dark:bg-blue-500/10"
                                     }`}
                                 >
                                   <div className="text-[11px] font-medium text-slate-600 dark:text-slate-300">{getViolationLabel(v.type, t)}</div>
-                                  <div className={`text-base font-bold ${v.severity === "high" ? "text-red-600 dark:text-red-300" : v.severity === "medium" ? "text-amber-600 dark:text-amber-300" : "text-slate-600 dark:text-slate-300"
+                                  <div className={`text-base font-bold ${
+                                    normalizeAlertSeverity(v.severity) === "high"
+                                      ? "text-red-600 dark:text-red-300"
+                                      : "text-blue-600 dark:text-blue-300"
                                     }`}>{v.observed}</div>
                                   <div className="text-[10px] text-slate-500 dark:text-slate-400">Ngưỡng: {v.threshold}</div>
                                 </div>
@@ -1291,7 +1289,8 @@ const ChatPage = ({
                         ) : null}
 
                         {/* Message text */}
-                        <p className={`text-sm leading-relaxed ${isHighSeverity ? "text-red-900 dark:text-red-100" : "text-amber-900 dark:text-amber-100"
+                        <p className={`text-sm leading-relaxed ${
+                          isHighSeverity ? "text-red-900 dark:text-red-100" : "text-blue-900 dark:text-blue-100"
                           }`}>
                           {item.message.content}
                         </p>
@@ -1413,11 +1412,11 @@ const ChatPage = ({
                           : "items-start rounded-tl-sm border border-gray-100 bg-white text-gray-800 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                       } ${
                         isActiveAlertMessage
-                          ? "ring-2 ring-amber-300 ring-offset-2 dark:ring-amber-400/70 dark:ring-offset-slate-950"
+                          ? "ring-2 ring-blue-300 ring-offset-2 dark:ring-blue-400/70 dark:ring-offset-slate-950"
                           : ""
                       } ${
                         hasAlertTag
-                          ? "cursor-pointer transition hover:ring-2 hover:ring-amber-400/50 hover:shadow-md"
+                          ? "cursor-pointer transition hover:ring-2 hover:ring-blue-400/50 hover:shadow-md"
                           : ""
                       }`}
                       onClick={() => {
@@ -1436,7 +1435,7 @@ const ChatPage = ({
                           className={`mb-3 inline-flex rounded-md px-2.5 py-1 text-[11px] font-medium ${
                             isMe
                               ? "bg-white/15 text-blue-50 dark:bg-white/10 dark:text-blue-100"
-                              : "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-200"
+                              : "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-200"
                           }`}
                         >
                           {isActiveAlertMessage
@@ -1451,14 +1450,14 @@ const ChatPage = ({
                             className={`rounded-lg border px-3 py-3 ${
                               isMe
                                 ? "border-white/15 bg-white/10 text-blue-50 text-right"
-                                : "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-100 text-left"
+                                : "border-blue-200 bg-blue-50 text-blue-950 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-100 text-left"
                             }`}
                           >
                             <div
                               className={`mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] ${
                                 isMe
                                   ? "justify-end text-blue-100"
-                                  : "justify-start text-amber-700 dark:text-amber-300"
+                                  : "justify-start text-blue-700 dark:text-blue-300"
                               }`}
                             >
                               <AlertTriangle size={14} />
@@ -1471,7 +1470,7 @@ const ChatPage = ({
                               className={`mt-3 text-[11px] ${
                                 isMe
                                   ? "text-blue-100/90"
-                                  : "text-amber-700/80 dark:text-amber-300/80"
+                                  : "text-blue-700/80 dark:text-blue-300/80"
                               }`}
                             >
                               Alert #{alertMessage.shortAlertId}

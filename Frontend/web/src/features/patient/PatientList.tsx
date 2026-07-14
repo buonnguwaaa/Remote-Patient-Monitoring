@@ -8,6 +8,7 @@ import Pagination from "../../components/ui/Pagination";
 import { getAlerts, getMyPatientsPaginated } from "../../services/patientService";
 import type { PatientItem } from "../../types/patient";
 import { Chat, Edit } from "./ActionButton";
+import { normalizeAlertSeverity } from "../../utils/alertSeverity";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -33,26 +34,27 @@ const PatientList = () => {
       ]);
       const alerts = alertsResult.alerts;
 
-      const patientSeverity = new Map<string, string>();
+      const patientSeverity = new Map<string, "high" | "info">();
 
       alerts.forEach((alert) => {
         if (alert.status === "open") {
+          const sev = normalizeAlertSeverity(alert.severity);
           const curr = patientSeverity.get(alert.patientId);
-          if (
-            !curr ||
-            (curr !== "high" && alert.severity === "high") ||
-            (curr === "low" && alert.severity === "medium")
-          ) {
-            patientSeverity.set(alert.patientId, alert.severity);
+          // high > info: không downgrade từ high xuống
+          if (!curr || (curr !== "high" && sev === "high")) {
+            patientSeverity.set(alert.patientId, sev);
           }
         }
       });
 
       const patientItems: PatientItem[] = assignmentsResult.data.map((assignment) => {
+        // Quy tắc trạng thái: high open → "Ưu tiên cao"; info open → "Cần theo dõi"; không open → "Ổn định"
         let status: PatientItem["status"] = t("patients.normal");
 
-        const severity = patientSeverity.get(assignment.patientId);
-        if (severity === "high" || severity === "medium") {
+        const sev = patientSeverity.get(assignment.patientId);
+        if (sev === "high") {
+          status = t("patients.highPriority", "Ưu tiên cao");
+        } else if (sev === "info") {
           status = t("patients.warning");
         }
 
@@ -252,7 +254,7 @@ const PatientList = () => {
             {t("common.noData")}
           </div>
         ) : (
-          filteredPatients.map((patient, index) => (
+          filteredPatients.map((patient: any, index: number) => (
             <div
               key={patient.id}
               className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"

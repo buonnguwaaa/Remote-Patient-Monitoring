@@ -5,7 +5,6 @@ import { FaArrowTrendDown, FaArrowTrendUp } from "react-icons/fa6";
 import {
   FaDownload,
   FaExclamationTriangle,
-  FaEye,
   FaHeartbeat,
   FaInfoCircle,
   FaUserFriends,
@@ -13,7 +12,6 @@ import {
 import { BsCalendar3 } from "react-icons/bs";
 
 import Chart, {
-  type ChartDataPoint,
   type ChartStatItem,
 } from "../components/ui/Chart";
 import { getAlerts, getMyPatients, getMeasurements } from "../services/patientService";
@@ -21,6 +19,7 @@ import { getThresholds } from "../services/thresholdService";
 import { getMyAppointments, type FollowUpAppointment } from "../services/appointmentService";
 import type { AlertResponse, AssignmentResponse } from "../types/patient";
 import { exportAlertsToExcel } from "../utils/export/alertExporter";
+import { normalizeAlertSeverity } from "../utils/alertSeverity";
 import {
   exportHealthReportToExcel,
   calculateHealthStatistics,
@@ -191,10 +190,9 @@ function getPatientCountsAtDate(
   alertsByPatient: Map<string, AlertResponse[]>,
   snapshotAt: Date,
 ) {
-  let normalPatients = 0;
-  let warningPatients = 0;
-  let criticalPatients = 0;
-  let lowPatients = 0;
+  let stablePatients = 0;
+  let highPriorityPatients = 0;
+  let needsMonitoringPatients = 0;
   const snapshotTime = snapshotAt.getTime();
 
   assignments.forEach((assignment) => {
@@ -203,27 +201,28 @@ function getPatientCountsAtDate(
       return;
     }
 
-    const latestAlert = (alertsByPatient.get(assignment.patientId) || []).find(
+    // Xét toàn bộ alert open tại thời điểm snapshot, không chỉ alert mới nhất
+    const patientAlerts = (alertsByPatient.get(assignment.patientId) || []).filter(
       (alert) => new Date(alert.createdAt).getTime() <= snapshotTime,
     );
 
-    if (latestAlert && latestAlert.status === "open") {
-      if (latestAlert.severity === "high") {
-        criticalPatients += 1;
-        return;
-      } else if (latestAlert.severity === "medium") {
-        warningPatients += 1;
-        return;
-      } else if (latestAlert.severity === "low") {
-        lowPatients += 1;
-        return;
-      }
-    }
+    const hasHighOpen = patientAlerts.some(
+      (a) => a.status === "open" && normalizeAlertSeverity(a.severity) === "high"
+    );
+    const hasInfoOpen = patientAlerts.some(
+      (a) => a.status === "open" && normalizeAlertSeverity(a.severity) === "info"
+    );
 
-    normalPatients += 1;
+    if (hasHighOpen) {
+      highPriorityPatients += 1;
+    } else if (hasInfoOpen) {
+      needsMonitoringPatients += 1;
+    } else {
+      stablePatients += 1;
+    }
   });
 
-  return { normalPatients, warningPatients, criticalPatients, lowPatients };
+  return { stablePatients, highPriorityPatients, needsMonitoringPatients };
 }
 
 function buildDashboardChartData(
@@ -235,7 +234,7 @@ function buildDashboardChartData(
   const alertsByPatient = buildAlertsByPatient(alerts, assignedPatientIds);
   const now = new Date();
 
-  const monthlyChartData: ChartDataPoint[] = Array.from(
+  const monthlyChartData: any[] = Array.from(
     { length: CHART_BUCKETS },
     (_, index) => {
       const monthDate = new Date(now.getFullYear(), now.getMonth() - (CHART_BUCKETS - 1 - index), 1);
@@ -250,7 +249,7 @@ function buildDashboardChartData(
     },
   );
 
-  const weeklyChartData: ChartDataPoint[] = Array.from(
+  const weeklyChartData: any[] = Array.from(
     { length: CHART_BUCKETS },
     (_, index) => {
       const weekSeed = new Date(now);
@@ -271,17 +270,15 @@ function buildDashboardChartData(
       id: "month",
       label: t("dashboard.chartThisMonth"),
       value:
-        (monthlyChartData[monthlyChartData.length - 1]?.warningPatients ?? 0) +
-        (monthlyChartData[monthlyChartData.length - 1]?.criticalPatients ?? 0) +
-        (monthlyChartData[monthlyChartData.length - 1]?.lowPatients ?? 0),
+        (monthlyChartData[monthlyChartData.length - 1]?.needsMonitoringPatients ?? 0) +
+        (monthlyChartData[monthlyChartData.length - 1]?.highPriorityPatients ?? 0),
     },
     {
       id: "week",
       label: t("dashboard.chartThisWeek"),
       value:
-        (weeklyChartData[weeklyChartData.length - 1]?.warningPatients ?? 0) +
-        (weeklyChartData[weeklyChartData.length - 1]?.criticalPatients ?? 0) +
-        (weeklyChartData[weeklyChartData.length - 1]?.lowPatients ?? 0),
+        (weeklyChartData[weeklyChartData.length - 1]?.needsMonitoringPatients ?? 0) +
+        (weeklyChartData[weeklyChartData.length - 1]?.highPriorityPatients ?? 0),
     },
   ];
 
@@ -341,7 +338,7 @@ const TodoList: React.FC<{
                     <div key={alert.id} className="flex items-center justify-between rounded-lg bg-red-50 p-3 dark:bg-red-900/10">
                       <div>
                         <p className="text-xs font-semibold text-gray-800 dark:text-slate-200">{alert.patientName || "Chưa rõ"}</p>
-                        <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-0.5">Mức độ: {alert.severity === 'high' ? 'Nghiêm trọng' : alert.severity === 'medium' ? 'Cảnh báo' : 'Thấp'}</p>
+                        <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-0.5">Mức độ: {normalizeAlertSeverity(alert.severity) === 'high' ? 'Ưu tiên cao' : 'Cần theo dõi'}</p>
                       </div>
                       <button onClick={() => navigate("/threshold-alerts")} className="rounded bg-red-100 px-2 py-1 text-[10px] font-medium text-red-600 hover:bg-red-200 dark:bg-red-500/20 dark:text-red-400 dark:hover:bg-red-500/30">
                         Xử lý
@@ -455,14 +452,12 @@ const RecentAlerts: React.FC<{
                 onClick={() => navigate("/threshold-alerts")}
               >
                 <div
-                  className={`mt-0.5 shrink-0 rounded-lg p-1.5 ${alert.severity === "high"
+                  className={`mt-0.5 shrink-0 rounded-lg p-1.5 ${normalizeAlertSeverity(alert.severity) === "high"
                     ? "bg-red-50 text-red-400 dark:bg-red-900/30"
-                    : alert.severity === "medium"
-                    ? "bg-amber-50 text-amber-400 dark:bg-amber-900/30"
-                    : "bg-slate-50 text-slate-400 dark:bg-slate-900/30"
+                    : "bg-blue-50 text-blue-400 dark:bg-blue-900/30"
                     }`}
                 >
-                  {alert.severity === "high" ? (
+                  {normalizeAlertSeverity(alert.severity) === "high" ? (
                     <FaExclamationTriangle size={10} />
                   ) : (
                     <FaInfoCircle size={10} />
@@ -654,29 +649,15 @@ const DashBoard = () => {
     [alerts, assignedPatientIds, startDate, endDate],
   );
 
-  const latestAlertsByPatient = useMemo(() => {
-    const sortedAlerts = [...filteredAlerts].sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    );
-    const latestByPatient = new Map<string, AlertResponse>();
 
-    sortedAlerts.forEach((alert) => {
-      if (!latestByPatient.has(alert.patientId)) {
-        latestByPatient.set(alert.patientId, alert);
-      }
-    });
-
-    return latestByPatient;
-  }, [filteredAlerts]);
 
   const dashboardStats = useMemo(() => {
     if (loading) {
       return {
         total: undefined,
         stable: undefined,
-        warning: undefined,
-        critical: undefined,
-        low: undefined,
+        highPriority: undefined,
+        needsMonitoring: undefined,
       };
     }
 
@@ -684,49 +665,42 @@ const DashBoard = () => {
       return {
         total: null,
         stable: null,
-        warning: null,
-        critical: null,
-        low: null,
+        highPriority: null,
+        needsMonitoring: null,
       };
     }
 
     const total = assignments.length;
 
-    let warning = 0;
-    let critical = 0;
-    let low = 0;
-
-    const patientSeverity = new Map<string, string>();
-
+    // Tính theo toàn bộ alert open, không chỉ alert mới nhất
+    const patientHighestSeverity = new Map<string, "high" | "info">();
     const allAssignedAlerts = alerts.filter(a => assignedPatientIds.has(a.patientId));
 
     allAssignedAlerts.forEach((alert) => {
       if (alert.status === "open") {
-        const curr = patientSeverity.get(alert.patientId);
-        if (
-          !curr ||
-          (curr !== "high" && alert.severity === "high") ||
-          (curr === "low" && alert.severity === "medium")
-        ) {
-          patientSeverity.set(alert.patientId, alert.severity);
+        const sev = normalizeAlertSeverity(alert.severity);
+        const curr = patientHighestSeverity.get(alert.patientId);
+        if (!curr || (curr !== "high" && sev === "high")) {
+          patientHighestSeverity.set(alert.patientId, sev);
         }
       }
     });
 
-    Array.from(patientSeverity.values()).forEach((severity) => {
-      if (severity === "high") critical++;
-      else if (severity === "medium") warning++;
-      else if (severity === "low") low++;
+    let highPriority = 0;
+    let needsMonitoring = 0;
+
+    Array.from(patientHighestSeverity.values()).forEach((sev) => {
+      if (sev === "high") highPriority++;
+      else needsMonitoring++;
     });
 
     return {
       total,
-      stable: Math.max(total - warning - critical - low, 0),
-      warning,
-      critical,
-      low,
+      stable: Math.max(total - highPriority - needsMonitoring, 0),
+      highPriority,
+      needsMonitoring,
     };
-  }, [assignments, error, latestAlertsByPatient, loading]);
+  }, [assignments, error, alerts, assignedPatientIds, loading]);
 
   const recentAlerts = useMemo(
     () => recentAlertsData.slice(0, 5),
@@ -758,25 +732,19 @@ const DashBoard = () => {
         variant: "default",
       },
       {
-        label: t("dashboard.criticalPatients", "Bệnh nhân nguy hiểm"),
-        value: formatKpiValue(dashboardStats.critical),
+        label: t("dashboard.highPriorityPatients", "Cần ưu tiên"),
+        value: formatKpiValue(dashboardStats.highPriority),
         Icon: FaExclamationTriangle,
         variant: "danger",
       },
       {
-        label: t("dashboard.warningPatients", "Bệnh nhân cảnh báo"),
-        value: formatKpiValue(dashboardStats.warning),
+        label: t("dashboard.needsMonitoringPatients", "Cần theo dõi"),
+        value: formatKpiValue(dashboardStats.needsMonitoring),
         Icon: FaInfoCircle,
         variant: "warning",
       },
       {
-        label: t("dashboard.lowPatients", "Bệnh nhân cần lưu ý"),
-        value: formatKpiValue(dashboardStats.low),
-        Icon: FaEye,
-        variant: "info",
-      },
-      {
-        label: t("dashboard.stablePatients", "Bệnh nhân ổn định"),
+        label: t("dashboard.stablePatients", "Ổn định"),
         value: formatKpiValue(dashboardStats.stable),
         Icon: FaHeartbeat,
         variant: "success",
@@ -792,7 +760,11 @@ const DashBoard = () => {
     exportAlertsToExcel({
       allAlerts: filteredAlerts,
       assignments,
-      dashboardStats: { total: dashboardStats.total, stable: dashboardStats.stable, attention: (dashboardStats.warning || 0) + (dashboardStats.critical || 0) + (dashboardStats.low || 0) },
+      dashboardStats: { 
+        total: dashboardStats.total, 
+        stable: dashboardStats.stable, 
+        attention: (dashboardStats.highPriority || 0) + (dashboardStats.needsMonitoring || 0) 
+      },
       dateRange,
     });
   };

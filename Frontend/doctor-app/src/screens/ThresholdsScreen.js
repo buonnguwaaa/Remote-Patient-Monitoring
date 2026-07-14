@@ -506,7 +506,7 @@ export default function ThresholdsScreen() {
           <View style={styles.vitalBox}>
             <Text style={styles.vitalLabel}>Đường huyết</Text>
             <Text style={styles.vitalVal}>{threshold.glucoseMin != null ? `${threshold.glucoseMin}-${threshold.glucoseMax}` : "—"}</Text>
-            <Text style={styles.vitalUnit}>mmol/L</Text>
+            <Text style={styles.vitalUnit}>mg/dL</Text>
           </View>
         </View>
 
@@ -762,7 +762,7 @@ export default function ThresholdsScreen() {
                 />
               </View>
 
-              {renderFormField("Đường huyết (mmol/L)", "glucoseMin", "glucoseMax")}
+              {renderFormField("Đường huyết (mg/dL)", "glucoseMin", "glucoseMax")}
 
               <View style={styles.formSection}>
                 <Text style={styles.formSecTitle}>Thời gian hiệu lực</Text>

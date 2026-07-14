@@ -669,7 +669,7 @@ export const educationArticles = [
       },
       {
         type: 'paragraph',
-        text: 'Nếu không ghi thời điểm đo, bác sĩ sẽ không biết con số đó có nghĩa gì — đo trước ăn 5.5 mmol/L khác hoàn toàn với đo sau ăn 5.5 mmol/L.',
+        text: 'Nếu không ghi thời điểm đo, bác sĩ sẽ không biết con số đó có nghĩa gì — đo trước ăn 100 mg/dL khác hoàn toàn với đo sau ăn 100 mg/dL.',
       },
       {
         type: 'note',
@@ -1385,7 +1385,7 @@ export const educationArticles = [
         title: 'Trước khi gửi kết quả đo:',
         items: [
           'Kiểm tra lại con số trên máy đo trước khi nhập — tránh nhầm số.',
-          'Nhập đúng đơn vị: Huyết áp (mmHg), Đường huyết (mmol/L hoặc mg/dL theo hướng dẫn), Nhiệt độ (°C).',
+          'Nhập đúng đơn vị: Huyết áp (mmHg), Đường huyết (mg/dL theo hướng dẫn), Nhiệt độ (°C).',
           'Chọn đúng thời điểm: Trước ăn hay Sau ăn nếu đo đường huyết.',
           'Ghi lại thời gian đo nếu app yêu cầu.',
         ],

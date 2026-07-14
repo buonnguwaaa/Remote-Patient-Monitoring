@@ -47,6 +47,7 @@ import {
 } from "../services/patientService";
 import { getThresholds, type ThresholdRecord } from "../services/thresholdService";
 import type { AlertResponse } from "../types/patient";
+import { normalizeAlertSeverity } from "../utils/alertSeverity";
 
 // ---- Types ----
 interface ChartRow {
@@ -666,7 +667,8 @@ const PatientDetailPage = () => {
     );
   }
 
-  const hasCritical = openAlerts.some((a) => a.severity === "high" || a.severity === "medium");
+  // Dùng normalizeAlertSeverity để hỗ trợ dữ liệu legacy (medium/low → info)
+  const hasCritical = openAlerts.some((a) => normalizeAlertSeverity(a.severity) === "high");
 
   // Build the latest vitals array
   const thr = threshold;
@@ -779,7 +781,7 @@ const PatientDetailPage = () => {
                   <span
                     className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${hasCritical
                         ? "bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800"
-                        : "bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800"
+                        : "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800"
                       }`}
                   >
                     {openAlerts.length} cảnh báo tồn đọng
@@ -860,9 +862,8 @@ const PatientDetailPage = () => {
             2. ALERTS (UNRESOLVED) — with action buttons
         ══════════════════════════════════════════════════════════════ */}
         {!alertsLoading && openAlerts.length > 0 && (() => {
-          const highCount = openAlerts.filter(a => a.severity === "high").length;
-          const medCount = openAlerts.filter(a => a.severity === "medium").length;
-          const lowCount = openAlerts.filter(a => a.severity === "low").length;
+          const highCount = openAlerts.filter(a => normalizeAlertSeverity(a.severity) === "high").length;
+          const infoCount = openAlerts.length - highCount;
           const latestAlert = openAlerts[0];
           const latestViolation = latestAlert?.violations?.[0];
 
@@ -871,15 +872,15 @@ const PatientDetailPage = () => {
               className={`rounded-xl border px-4 py-3 flex items-center gap-4 cursor-pointer hover:shadow-sm transition ${
                 hasCritical
                   ? "bg-red-50/60 dark:bg-red-900/10 border-red-200 dark:border-red-900/30"
-                  : "bg-amber-50/60 dark:bg-amber-900/10 border-amber-200 dark:border-amber-900/30"
+                  : "bg-blue-50/60 dark:bg-blue-900/10 border-blue-200 dark:border-blue-900/30"
               }`}
               onClick={() => navigate(`/threshold-alerts?patientId=${patientId}`)}
             >
               {/* Icon */}
               <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                hasCritical ? "bg-red-100 dark:bg-red-900/30" : "bg-amber-100 dark:bg-amber-900/30"
+                hasCritical ? "bg-red-100 dark:bg-red-900/30" : "bg-blue-100 dark:bg-blue-900/30"
               }`}>
-                <MdNotificationsActive size={16} className={hasCritical ? "text-red-600 dark:text-red-400" : "text-amber-600 dark:text-amber-400"} />
+                <MdNotificationsActive size={16} className={hasCritical ? "text-red-600 dark:text-red-400" : "text-blue-600 dark:text-blue-400"} />
               </div>
 
               {/* Main info */}
@@ -890,17 +891,12 @@ const PatientDetailPage = () => {
                   </span>
                   {highCount > 0 && (
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400">
-                      {highCount} Nghiêm trọng
+                      {highCount} Ưu tiên cao
                     </span>
                   )}
-                  {medCount > 0 && (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400">
-                      {medCount} Cảnh báo
-                    </span>
-                  )}
-                  {lowCount > 0 && (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400">
-                      {lowCount} Cần theo dõi
+                  {infoCount > 0 && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400">
+                      {infoCount} Cần theo dõi
                     </span>
                   )}
                 </div>
@@ -1327,7 +1323,7 @@ const PatientDetailPage = () => {
               <button
                 onClick={() => setShowOnlyAbnormal(!showOnlyAbnormal)}
                 className={`flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg border transition-all ${showOnlyAbnormal
-                    ? "border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20"
+                    ? "border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20"
                     : "border-gray-200 dark:border-slate-600 text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700"
                   }`}
               >

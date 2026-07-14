@@ -26,6 +26,7 @@ import {
 } from "../../api/chatApi";
 import { getAlertById } from "../../api/alertApi";
 import { getActiveVideoSession } from "../../api/videoSessionApi";
+import { normalizeAlertSeverity } from "../../utils/alertSeverity";
 
 
 const QUICK_REPLIES = [
@@ -910,18 +911,18 @@ export default function DoctorChatScreen() {
                   const cachedAlert = item.message.relatedAlertId
                     ? alertsCache[item.message.relatedAlertId]
                     : null;
-                  const isHigh = cachedAlert?.severity === "high";
-                  const isMedium = cachedAlert?.severity === "medium";
+                  // Normalize: medium/low → info (dữ liệu legacy MongoDB)
+                  const isHigh = normalizeAlertSeverity(cachedAlert?.severity) === "high";
                   const violations = cachedAlert?.violations ?? [];
 
                   return (
                     <View key={item.key} style={styles.systemMsgRow}>
                       {/* Shield avatar */}
-                      <View style={[styles.systemAvatar, isHigh ? styles.systemAvatarHigh : isMedium ? styles.systemAvatarWarn : styles.systemAvatarInfo]}>
+                      <View style={[styles.systemAvatar, isHigh ? styles.systemAvatarHigh : styles.systemAvatarInfo]}>
                         <Ionicons
                           name="shield-checkmark-outline"
                           size={16}
-                          color={isHigh ? "#DC2626" : isMedium ? "#D97706" : "#2563EB"}
+                          color={isHigh ? "#DC2626" : "#2563EB"}
                         />
                       </View>
 
@@ -930,31 +931,33 @@ export default function DoctorChatScreen() {
                         <View style={styles.systemMsgHeader}>
                           <Text style={styles.systemSenderLabel}>Hệ thống giám sát</Text>
                           {cachedAlert ? (
-                            <View style={[styles.systemSeverityBadge, isHigh ? styles.severityHigh : isMedium ? styles.severityWarn : styles.severityInfo]}>
-                              <Ionicons name="warning-outline" size={9} color={isHigh ? "#DC2626" : isMedium ? "#D97706" : "#2563EB"} />
-                              <Text style={[styles.systemSeverityText, isHigh ? styles.severityHighText : isMedium ? styles.severityWarnText : styles.severityInfoText]}>
-                                {isHigh ? "Nghiêm trọng" : isMedium ? "Cảnh báo" : "Cần theo dõi"}
+                            <View style={[styles.systemSeverityBadge, isHigh ? styles.severityHigh : styles.severityInfo]}>
+                              <Ionicons name="warning-outline" size={9} color={isHigh ? "#DC2626" : "#2563EB"} />
+                              <Text style={[styles.systemSeverityText, isHigh ? styles.severityHighText : styles.severityInfoText]}
+                                accessibilityLabel={isHigh ? "Cảnh báo ưu tiên cao" : "Cảnh báo cần theo dõi"}
+                              >
+                                {isHigh ? "Ưu tiên cao" : "Cần theo dõi"}
                               </Text>
                             </View>
                           ) : null}
                         </View>
 
                         {/* Message card */}
-                        <View style={[styles.systemCard, isHigh ? styles.systemCardHigh : isMedium ? styles.systemCardWarn : styles.systemCardInfo]}>
+                        <View style={[styles.systemCard, isHigh ? styles.systemCardHigh : styles.systemCardInfo]}>
                           {/* Violations grid */}
                           {violations.length > 0 ? (
                             <View style={styles.violationsBlock}>
-                              <Text style={[styles.violationsTitle, isHigh ? styles.violationsTitleHigh : isMedium ? styles.violationsTitleWarn : styles.violationsTitleInfo]}>
+                              <Text style={[styles.violationsTitle, isHigh ? styles.violationsTitleHigh : styles.violationsTitleInfo]}>
                                 {violations.length} chỉ số vượt ngưỡng
                               </Text>
                               <View style={styles.violationsGrid}>
                                 {violations.map((v, idx) => (
                                   <View
                                     key={idx}
-                                    style={[styles.violationItem, v.severity === "high" ? styles.violationItemHigh : v.severity === "medium" ? styles.violationItemWarn : styles.violationItemInfo]}
+                                    style={[styles.violationItem, normalizeAlertSeverity(v.severity) === "high" ? styles.violationItemHigh : styles.violationItemInfo]}
                                   >
                                     <Text style={styles.violationLabel}>{getViolationLabel(v.type)}</Text>
-                                    <Text style={[styles.violationValue, v.severity === "high" ? styles.violationValueHigh : v.severity === "medium" ? styles.violationValueWarn : styles.violationValueInfo]}>
+                                    <Text style={[styles.violationValue, normalizeAlertSeverity(v.severity) === "high" ? styles.violationValueHigh : styles.violationValueInfo]}>
                                       {v.observed}
                                     </Text>
                                     <Text style={styles.violationThreshold}>Ngưỡng: {v.threshold}</Text>
@@ -965,7 +968,7 @@ export default function DoctorChatScreen() {
                           ) : null}
 
                           {/* Message text */}
-                          <Text style={[styles.systemMsgText, isHigh ? styles.systemMsgTextHigh : isMedium ? styles.systemMsgTextWarn : styles.systemMsgTextInfo]}>
+                          <Text style={[styles.systemMsgText, isHigh ? styles.systemMsgTextHigh : styles.systemMsgTextInfo]}>
                             {item.message.content}
                           </Text>
 

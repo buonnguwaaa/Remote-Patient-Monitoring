@@ -1,6 +1,7 @@
 import type { AlertResponse, AssignmentResponse } from '../../types/patient';
 import i18n from "../../i18n/config";
 const t = i18n.t;
+import { normalizeAlertSeverity } from '../alertSeverity';
 import {
   createWorkbook,
   addWorksheet,
@@ -56,7 +57,8 @@ export const exportAlertsToExcel = async (data: AlertExportData) => {
   const alertData = sortedAlerts.map((alert) => ({
     [t("chat.patient")]: patientNameById.get(alert.patientId) ?? 'Không rõ',
     'Mã BN': patientCodeById.get(alert.patientId) ?? '-',
-    [t("alerts.severity")]: alert.severity === 'high' ? t("dashboard.filterHigh", "Cao") : alert.severity === 'medium' ? t("dashboard.filterMedium", "Trung bình") : t("dashboard.filterLow", "Thấp"),
+    // Xuất severity thành label rõ ràng, không gây hiểu nhầm lâm sàng
+    [t("alerts.severity")]: normalizeAlertSeverity(alert.severity) === 'high' ? 'Ưu tiên cao' : 'Cần theo dõi',
     [t("patients.status")]: alert.status === 'ack' ? t("dashboard.alertStatusAck") : t("dashboard.alertStatusPending"),
     'Chỉ số vi phạm': alert.violations
       .map((v) => `${violationLabel[v.type] ?? v.type}: ${v.observed}`)

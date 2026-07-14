@@ -1,3 +1,5 @@
+import { normalizeAlertSeverity } from "./alertSeverity";
+
 function toTimestamp(value) {
   const timestamp = new Date(value || 0).getTime();
   return Number.isNaN(timestamp) ? 0 : timestamp;
@@ -144,8 +146,9 @@ export function buildAlertPreviewItems(alerts, limit = 3) {
       const primaryViolation = getPrimaryViolation(alert);
       const summary = buildAlertSummary(alert);
       const additionalSummary = buildAdditionalViolationSummary(alert);
-      const isHigh = alert?.severity === "high";
-      const isMedium = alert?.severity === "medium";
+      // Normalize severity trước khi sử dụng
+      const severityKey = normalizeAlertSeverity(alert?.severity);
+      const isHighPriority = severityKey === "high";
 
       return {
         id: alert?.id || `${summary.title}-${alert?.createdAt || "preview"}`,
@@ -153,14 +156,15 @@ export function buildAlertPreviewItems(alerts, limit = 3) {
         title: summary.title,
         iconName: summary.iconName,
         observedText: formatAlertObservedValue(primaryViolation),
-        severityText: isHigh ? "Nghiêm trọng" : isMedium ? "Cảnh báo" : "Cần theo dõi",
+        // Label chỉ rõ mức ưu tiên, không dùng từ có thể gây hiểu lầm lâm sàng
+        severityText: isHighPriority ? "Ưu tiên cao" : "Cần theo dõi",
         statusText: alert?.status === "open" ? "Chờ xác nhận" : "Đã xác nhận",
         isAcknowledged: alert?.status === "ack",
         ruleText: primaryViolation?.rule || summary.summary,
         additionalSummary,
         createdAt: alert?.createdAt,
-        isHigh,
-        isMedium,
+        isHighPriority,
+        severityKey,
       };
     });
 }
