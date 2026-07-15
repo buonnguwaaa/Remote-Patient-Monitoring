@@ -66,13 +66,13 @@ type trendMetrics struct {
 }
 
 type trendVitalSpec struct {
-	vitalType      string
-	ruleWatch      string
-	ruleHigh       string
-	direction      trendDirection
-	clinicalLimit  float64 // ceiling (rising) or floor (falling)
-	watchLimit     float64
-	extract        func(domain.Measurement) (float64, bool)
+	vitalType     string
+	ruleWatch     string
+	ruleHigh      string
+	direction     trendDirection
+	clinicalLimit float64 // ceiling (rising) or floor (falling)
+	watchLimit    float64
+	extract       func(domain.Measurement) (float64, bool)
 }
 
 // EvaluateTrends runs rising trends (BP sys/dia + glucose) and falling glucose
@@ -679,14 +679,13 @@ func regularizedIncompleteBeta(a, b, x float64) float64 {
 	// Continued fraction (Lentz) for the incomplete beta.
 	const maxIter = 200
 	const eps = 1e-10
-	f := 1.0
 	c := 1.0
 	d := 1 - (a+b)*x/(a+1)
 	if math.Abs(d) < 1e-30 {
 		d = 1e-30
 	}
 	d = 1 / d
-	f = d
+	f := d
 	for i := 1; i <= maxIter; i++ {
 		m := float64(i)
 		numer := m * (b - m) * x / ((a + 2*m - 1) * (a + 2*m))

@@ -5,8 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/dto"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/helper/measurement_helper"
@@ -187,10 +188,11 @@ func (a *ProcessingAlertActivity) SendAlertPushActivity(ctx context.Context, ale
 		log.Printf("[INFO] alert push sent for alert=%s patient=%s", alert.ID.Hex(), alert.PatientID.Hex())
 	}
 
-	// Send push notification to assigned doctor/nurse
+	staffBody := "Bệnh nhân: " + body
+
+	// Send push notification to assigned doctor/nurse (same content model as patient/chat).
 	if assignment, err := a.assignmentRepo.FindByPatientID(ctx, alert.PatientID); err == nil && assignment != nil {
 		if !assignment.DoctorID.IsZero() {
-			doctorBody := fmt.Sprintf("Bệnh nhân có chỉ số %s vượt ngưỡng an toàn (%s).", violationType, strings.ToUpper(string(alert.Severity)))
 			doctorPayload := map[string]string{
 				"type":          "alert",
 				"alertId":       alert.ID.Hex(),
@@ -203,13 +205,12 @@ func (a *ProcessingAlertActivity) SendAlertPushActivity(ctx context.Context, ale
 				UserID:   assignment.DoctorID,
 				Type:     domain.NotificationTypeAlert,
 				Title:    "Cảnh báo sức khỏe bệnh nhân",
-				Body:     doctorBody,
+				Body:     staffBody,
 				Data:     doctorPayload,
 				DedupKey: fmt.Sprintf("alert-doctor:%s", alert.ID.Hex()),
 			})
 		}
 		if !assignment.NurseID.IsZero() {
-			nurseBody := fmt.Sprintf("Bệnh nhân có chỉ số %s vượt ngưỡng an toàn (%s).", violationType, strings.ToUpper(string(alert.Severity)))
 			nursePayload := map[string]string{
 				"type":          "alert",
 				"alertId":       alert.ID.Hex(),
@@ -222,7 +223,7 @@ func (a *ProcessingAlertActivity) SendAlertPushActivity(ctx context.Context, ale
 				UserID:   assignment.NurseID,
 				Type:     domain.NotificationTypeAlert,
 				Title:    "Cảnh báo sức khỏe bệnh nhân",
-				Body:     nurseBody,
+				Body:     staffBody,
 				Data:     nursePayload,
 				DedupKey: fmt.Sprintf("alert-nurse:%s", alert.ID.Hex()),
 			})
@@ -320,32 +321,65 @@ func firstTrendViolationType(alert *domain.Alert) string {
 	return ""
 }
 
+func hasTrendRising(alert *domain.Alert) bool {
+	return alertHasRule(alert, "trend_rising_watch") || alertHasRule(alert, "trend_rising_high")
+}
+
+func hasTrendFalling(alert *domain.Alert) bool {
+	return alertHasRule(alert, "trend_falling_watch") || alertHasRule(alert, "trend_falling_high")
+}
+
 func trendLevelPhrase(alert *domain.Alert) string {
-	if hasTrendHigh(alert) {
-		if alertHasRule(alert, "trend_falling_high") && !alertHasRule(alert, "trend_rising_high") {
-			return "cảnh báo xu hướng giảm đường huyết - mức cao, khuyến nghị liên hệ bác sĩ"
-		}
-		return "cảnh báo xu hướng - mức cao, khuyến nghị liên hệ bác sĩ"
-	}
-	if alertHasRule(alert, "trend_falling_watch") && !alertHasRule(alert, "trend_rising_watch") {
+	rising := hasTrendRising(alert)
+	falling := hasTrendFalling(alert)
+	high := hasTrendHigh(alert)
+
+	switch {
+	case rising && falling && high:
+		return "cảnh báo xu hướng tăng/giảm - mức cao, khuyến nghị liên hệ bác sĩ"
+	case rising && falling:
+		return "cảnh báo xu hướng tăng/giảm - mức theo dõi"
+	case falling && high:
+		return "cảnh báo xu hướng giảm đường huyết - mức cao, khuyến nghị liên hệ bác sĩ"
+	case falling:
 		return "cảnh báo xu hướng giảm đường huyết - mức theo dõi"
+	case high:
+		return "cảnh báo xu hướng - mức cao, khuyến nghị liên hệ bác sĩ"
+	default:
+		return "cảnh báo xu hướng - mức theo dõi"
 	}
-	return "cảnh báo xu hướng - mức theo dõi"
+}
+
+func capitalizeSentence(s string) string {
+	if s == "" {
+		return s
+	}
+	r, size := utf8.DecodeRuneInString(s)
+	if r == utf8.RuneError && size == 1 {
+		return s
+	}
+	return string(unicode.ToUpper(r)) + s[size:]
+}
+
+func humanizeOrDefault(vitalType string) string {
+	if vitalType == "" {
+		return "sức khỏe"
+	}
+	return humanizeViolationType(vitalType)
 }
 
 // buildAlertMessageContent covers threshold-only, trend-only, and merged alerts.
+// Used for patient push, staff push, and system chat so wording stays consistent.
 func buildAlertMessageContent(alert *domain.Alert) string {
+	if alert == nil || len(alert.Violations) == 0 {
+		return "Hệ thống phát hiện cảnh báo sức khỏe. Vui lòng kiểm tra."
+	}
+
 	thresholdHit := hasThresholdViolation(alert)
 	trendHit := hasTrendWatch(alert)
 
-	thresholdType := humanizeViolationType(firstThresholdViolationType(alert))
-	if thresholdType == "" {
-		thresholdType = "sức khỏe"
-	}
-	trendType := humanizeViolationType(firstTrendViolationType(alert))
-	if trendType == "" {
-		trendType = "sức khỏe"
-	}
+	thresholdType := humanizeOrDefault(firstThresholdViolationType(alert))
+	trendType := humanizeOrDefault(firstTrendViolationType(alert))
 
 	switch {
 	case thresholdHit && trendHit:
@@ -356,10 +390,8 @@ func buildAlertMessageContent(alert *domain.Alert) string {
 			trendType,
 		)
 	case trendHit:
-		// Capitalize first letter for a standalone sentence.
-		phrase := trendLevelPhrase(alert)
-		return fmt.Sprintf("%s%s (%s).", strings.ToUpper(phrase[:1]), phrase[1:], trendType)
-	case alert != nil && alert.Severity == domain.SeverityInfo:
+		return capitalizeSentence(trendLevelPhrase(alert)) + fmt.Sprintf(" (%s).", trendType)
+	case alert.Severity == domain.SeverityInfo:
 		return fmt.Sprintf("Có chỉ số %s vượt ngưỡng cá nhân. Vui lòng theo dõi thêm.", thresholdType)
 	default:
 		return fmt.Sprintf("Chỉ số %s vượt ngưỡng an toàn nghiêm trọng. Vui lòng kiểm tra ngay.", thresholdType)

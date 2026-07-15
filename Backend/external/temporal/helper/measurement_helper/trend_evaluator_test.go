@@ -8,8 +8,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-func f64(v float64) *float64 { return &v }
-
 func bpHistory(start time.Time, systolic []float64, spacing time.Duration) []domain.Measurement {
 	out := make([]domain.Measurement, 0, len(systolic))
 	for i, s := range systolic {
@@ -129,11 +127,6 @@ func TestDecideTrendLevelWatchEarlierWithTightPersonal(t *testing.T) {
 		return *m.BloodPressure.Systolic, true
 	})
 	asOf := ms[len(ms)-1].CreatedAt
-
-	clinicalOnly, mClin := decideTrendLevel(points, asOf, absSysMax, absSysMax, trendRising)
-	if clinicalOnly != trendLevelNone && mClin.ProximityWatch < proximityWatchRatio && !(mClin.HasZScore && mClin.ZScore >= zScoreWatchThreshold) {
-		// if somehow still watch via z, that's ok — personal test still valid below
-	}
 
 	watchLim := trendWatchLimit(130, absSysMax) // 130
 	level, metrics := decideTrendLevel(points, asOf, watchLim, absSysMax, trendRising)
