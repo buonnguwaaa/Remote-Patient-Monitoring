@@ -181,6 +181,7 @@
     "updatedAt": "Updated",
     "normal": "Normal",
     "warning": "Warning",
+    "highPriority": "High Priority",
     "allStatuses": "All Statuses",
     "noCode": "No code",
     "loading": "Loading patient list...",

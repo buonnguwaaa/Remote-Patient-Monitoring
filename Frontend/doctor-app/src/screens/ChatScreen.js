@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import {
   View,
   Text,
@@ -29,8 +29,9 @@ export default function ChatScreen() {
   const [redirecting, setRedirecting] = useState(false);
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const patientsRef = useRef([]);
 
-  const loadConversations = useCallback(async (isSilent = false) => {
+  const loadConversations = useCallback(async (isSilent = false, refreshPatients = false) => {
     if (!currentUserId) {
       setError("Không tìm thấy thông tin tài khoản bác sĩ.");
       setLoading(false);
@@ -43,20 +44,35 @@ export default function ChatScreen() {
     setError(null);
 
     try {
-      // Single parallel fetch — patients + conversations (with lastMessage embedded)
-      const [patientsRes, convsRes] = await Promise.all([
-        getMyPatients(),
-        getConversations(50),
-      ]);
+      let patients = patientsRef.current;
+      const shouldFetchPatients = patients.length === 0 || refreshPatients || !isSilent;
 
-      if (!patientsRes.ok) {
-        throw new Error(patientsRes.body?.error || "Không thể tải danh sách bệnh nhân");
+      let convsRes;
+      let patientsRes;
+
+      if (shouldFetchPatients) {
+        const [pRes, cRes] = await Promise.all([
+          getMyPatients(),
+          getConversations(50),
+        ]);
+        patientsRes = pRes;
+        convsRes = cRes;
+      } else {
+        convsRes = await getConversations(50);
       }
+
+      if (shouldFetchPatients && patientsRes) {
+        if (!patientsRes.ok) {
+          throw new Error(patientsRes.body?.error || "Không thể tải danh sách bệnh nhân");
+        }
+        patients = patientsRes.body?.data || [];
+        patientsRef.current = patients;
+      }
+
       if (!convsRes.ok) {
         throw new Error(convsRes.body?.error || "Không thể tải danh sách cuộc trò chuyện");
       }
 
-      const patients = patientsRes.body?.data || [];
       const convList = convsRes.body?.data?.conversations || [];
 
       const patientMap = new Map(patients.map((p) => [p.patientId, p]));
@@ -176,7 +192,7 @@ export default function ChatScreen() {
 
   const onRefresh = () => {
     setRefreshing(true);
-    loadConversations(true);
+    loadConversations(true, true);
   };
 
   const handleOpenChat = (item) => {

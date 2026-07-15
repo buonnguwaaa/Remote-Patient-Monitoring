@@ -170,10 +170,52 @@ func (a *ProcessingAlertActivity) SendAlertPushActivity(ctx context.Context, ale
 	if err != nil {
 		// Best-effort: push notification is non-critical, log and continue
 		log.Printf("[WARN] failed to send alert push (non-fatal) for alert=%s: %v", alertID, err)
-		return nil
+	} else {
+		log.Printf("[INFO] alert push sent for alert=%s patient=%s", alert.ID.Hex(), alert.PatientID.Hex())
 	}
 
-	log.Printf("[INFO] alert push sent for alert=%s patient=%s", alert.ID.Hex(), alert.PatientID.Hex())
+	// Send push notification to assigned doctor/nurse
+	if assignment, err := a.assignmentRepo.FindByPatientID(ctx, alert.PatientID); err == nil && assignment != nil {
+		if !assignment.DoctorID.IsZero() {
+			doctorBody := fmt.Sprintf("Bệnh nhân có chỉ số %s vượt ngưỡng an toàn (%s).", violationType, strings.ToUpper(string(alert.Severity)))
+			doctorPayload := map[string]string{
+				"type":          "alert",
+				"alertId":       alert.ID.Hex(),
+				"patientId":     alert.PatientID.Hex(),
+				"measurementId": alert.MeasurementID.Hex(),
+				"severity":      string(alert.Severity),
+				"targetScreen":  "Alerts",
+			}
+			_, _ = a.notificationService.PublishToUser(ctx, &usecase.InternalPublishNotificationInput{
+				UserID:   assignment.DoctorID,
+				Type:     domain.NotificationTypeAlert,
+				Title:    "Cảnh báo sức khỏe bệnh nhân",
+				Body:     doctorBody,
+				Data:     doctorPayload,
+				DedupKey: fmt.Sprintf("alert-doctor:%s", alert.ID.Hex()),
+			})
+		}
+		if !assignment.NurseID.IsZero() {
+			nurseBody := fmt.Sprintf("Bệnh nhân có chỉ số %s vượt ngưỡng an toàn (%s).", violationType, strings.ToUpper(string(alert.Severity)))
+			nursePayload := map[string]string{
+				"type":          "alert",
+				"alertId":       alert.ID.Hex(),
+				"patientId":     alert.PatientID.Hex(),
+				"measurementId": alert.MeasurementID.Hex(),
+				"severity":      string(alert.Severity),
+				"targetScreen":  "NursePatientDetail",
+			}
+			_, _ = a.notificationService.PublishToUser(ctx, &usecase.InternalPublishNotificationInput{
+				UserID:   assignment.NurseID,
+				Type:     domain.NotificationTypeAlert,
+				Title:    "Cảnh báo sức khỏe bệnh nhân",
+				Body:     nurseBody,
+				Data:     nursePayload,
+				DedupKey: fmt.Sprintf("alert-nurse:%s", alert.ID.Hex()),
+			})
+		}
+	}
+
 	return nil
 }
 
