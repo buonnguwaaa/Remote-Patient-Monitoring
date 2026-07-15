@@ -34,7 +34,7 @@
       },
       "edgeToEdgeEnabled": true,
       "notification": {
-        "icon": "./assets/icon.png",
+        "icon": "./assets/notification-icon.png",
         "color": "#10B981"
       }
     },
@@ -48,7 +48,7 @@
         "expo-notifications",
         {
           "color": "#10B981",
-          "icon": "./assets/icon.png"
+          "icon": "./assets/notification-icon.png"
         }
       ],
       "./plugins/withCleartextTraffic",

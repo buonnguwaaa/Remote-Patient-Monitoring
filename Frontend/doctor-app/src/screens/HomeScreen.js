@@ -46,6 +46,17 @@ const VIOLATION_LABEL = {
   glucose: "Đường huyết",
 };
 
+const TAB_MAP = {
+  Patients: "PatientsTab",
+  Alerts: "AlertsTab",
+  Chat: "ChatTab",
+  Thresholds: "Thresholds",
+  Reminders: "Reminders",
+  Compliance: "Compliance",
+  Prescriptions: "Prescriptions",
+  Settings: "Settings",
+};
+
 export default function HomeScreen({ onNavigate }) {
   const { user } = useAuth();
   const navigation = useNavigation();
@@ -85,18 +96,7 @@ export default function HomeScreen({ onNavigate }) {
 
   const onRefresh = () => { setRefreshing(true); loadData(); };
 
-  const TAB_MAP = {
-    Patients: "PatientsTab",
-    Alerts: "AlertsTab",
-    Chat: "ChatTab",
-    Thresholds: "Thresholds",
-    Reminders: "Reminders",
-    Compliance: "Compliance",
-    Prescriptions: "Prescriptions",
-    Settings: "Settings",
-  };
-
-  const handleNavigate = (screen) => {
+  const handleNavigate = useCallback((screen) => {
     if (onNavigate) {
       onNavigate(screen);
     } else {
@@ -109,7 +109,7 @@ export default function HomeScreen({ onNavigate }) {
         navigation.navigate(screen);
       }
     }
-  };
+  }, [onNavigate, navigation]);
 
   const patientIds = useMemo(() => new Set(assignments.map((a) => a.patientId)), [assignments]);
   const myAlerts = useMemo(() => alerts.filter((a) => patientIds.has(a.patientId)), [alerts, patientIds]);
@@ -154,12 +154,19 @@ export default function HomeScreen({ onNavigate }) {
   const greeting = hour < 12 ? "Chào buổi sáng" : hour < 18 ? "Chào buổi chiều" : "Chào buổi tối";
   const dateString = now.toLocaleDateString("vi-VN", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" });
 
-  const QUICK_ACTIONS = [
+  const QUICK_ACTIONS = useMemo(() => [
     { label: "Cấu hình ngưỡng", subtitle: "Thiết lập chỉ số", icon: "options-outline", color: "#2563EB", onPress: () => handleNavigate("Thresholds") },
     { label: "Nhắc nhở", subtitle: "Lịch chăm sóc", icon: "alarm-outline", color: "#D97706", onPress: () => handleNavigate("Reminders") },
     { label: "Tuân thủ thuốc", subtitle: "Theo dõi dùng thuốc", icon: "checkmark-done-circle-outline", color: "#16A34A", onPress: () => handleNavigate("Compliance") },
     { label: "Đơn thuốc", subtitle: "Quản lý kê đơn", icon: "document-text-outline", color: "#7C3AED", onPress: () => handleNavigate("Prescriptions") },
-  ];
+  ], [handleNavigate]);
+
+  const statItems = useMemo(() => [
+    { label: "Tổng BN", value: loading ? "…" : total, subtitle: "Đang theo dõi", icon: "people", color: "#3B82F6", onPress: () => handleNavigate("Patients") },
+    { label: "Ưu tiên cao", value: loading ? "…" : attention, subtitle: "Cần xử lý ngay", icon: "warning", color: "#EF4444", onPress: () => handleNavigate("Alerts") },
+    { label: "Cần theo dõi", value: loading ? "…" : needsMonitoring, subtitle: "Có alert info", icon: "information-circle", color: "#2563EB", onPress: () => handleNavigate("Alerts") },
+    { label: "Ổn định", value: loading ? "…" : stable, subtitle: total > 0 ? `${Math.round((stable / total) * 100)}%` : "0%", icon: "checkmark-circle", color: "#10B981", onPress: () => handleNavigate("Patients") },
+  ], [loading, total, attention, needsMonitoring, stable, handleNavigate]);
 
   return (
     <StaffScreenContainer style={styles.container}>
@@ -188,14 +195,7 @@ export default function HomeScreen({ onNavigate }) {
         ) : null}
 
         <View style={{ marginTop: 24 }}>
-          <StaffStatCard
-            items={[
-              { label: "Tổng BN", value: loading ? "…" : total, subtitle: "Đang theo dõi", icon: "people", color: "#3B82F6", onPress: () => handleNavigate("Patients") },
-              { label: "Ưu tiên cao", value: loading ? "…" : attention, subtitle: "Cần xử lý ngay", icon: "warning", color: "#EF4444", onPress: () => handleNavigate("Alerts") },
-              { label: "Cần theo dõi", value: loading ? "…" : needsMonitoring, subtitle: "Có alert info", icon: "information-circle", color: "#2563EB", onPress: () => handleNavigate("Alerts") },
-              { label: "Ổn định", value: loading ? "…" : stable, subtitle: total > 0 ? `${Math.round((stable/total)*100)}%` : "0%", icon: "checkmark-circle", color: "#10B981", onPress: () => handleNavigate("Patients") },
-            ]}
-          />
+          <StaffStatCard items={statItems} />
         </View>
 
         <View style={{ marginTop: 8 }}>

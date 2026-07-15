@@ -322,7 +322,7 @@ const QuickChatWidget = () => {
       {isOpen ? (
         <div
           id="quick-chat-panel"
-          className="fixed bottom-24 right-4 z-50 flex h-130 w-90 max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-950 sm:right-6"
+          className="fixed bottom-6 right-20 z-50 flex h-130 w-90 max-w-[calc(100vw-6rem)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-950"
         >
           {view === "list" ? (
             <div className="flex h-full min-h-0 flex-col">

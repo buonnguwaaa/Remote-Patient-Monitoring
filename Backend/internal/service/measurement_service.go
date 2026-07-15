@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
@@ -42,6 +43,12 @@ func (s *measurementService) CreateMeasurement(ctx context.Context, input *useca
 
 	if _, err := s.patientRepo.FindPatientByID(ctx, patientId); err != nil {
 		return nil, fmt.Errorf("Không tìm thấy người dùng hoặc người dùng không phải bệnh nhân")
+	}
+
+	// Làm tròn nhiệt độ tới 1 chữ số thập phân
+	if input.Temperature != nil {
+		rounded := math.Round(*input.Temperature*10) / 10
+		input.Temperature = &rounded
 	}
 
 	// Tính MAP chỉ khi cả systolic và diastolic có giá trị
@@ -97,7 +104,8 @@ func (s *measurementService) UpdateMeasurement(ctx context.Context, input *useca
 	}
 
 	if input.Temperature != nil {
-		existing.Temperature = input.Temperature
+		rounded := math.Round(*input.Temperature*10) / 10
+		existing.Temperature = &rounded
 	}
 	if input.HeartRate != nil {
 		existing.HeartRate = input.HeartRate

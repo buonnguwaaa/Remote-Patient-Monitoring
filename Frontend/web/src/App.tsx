@@ -35,6 +35,7 @@ const DocterProfile = lazy(() => import("./pages/DocterProfile.tsx"));
 const PrescriptionPage = lazy(() => import("./pages/PrescriptionPage.tsx"));
 const PrescriptionDetailPage = lazy(() => import("./pages/PrescriptionDetailPage.tsx"));
 const AppointmentPage = lazy(() => import("./pages/AppointmentPage.tsx"));
+const AlertDetailPage = lazy(() => import("./pages/AlertDetailPage.tsx"));
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -76,6 +77,7 @@ function App() {
                 <Route path="/patient/chats/:id" element={<ChatListPage />} />
                 <Route path="/patient/chat/:id" element={<ChatPage />} />
                 <Route path="/threshold-alerts" element={<ThresholdAlert />} />
+                <Route path="/alert/:id" element={<AlertDetailPage />} />
                 <Route path="/doctor-profile" element={<DocterProfile />} />
                 <Route path="/reminders" element={<ReminderPage />} />
                 <Route

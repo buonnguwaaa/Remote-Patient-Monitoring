@@ -1,21 +1,21 @@
 {
   "project_info": {
-    "project_number": "586824051784",
-    "project_id": "rpm---app",
-    "storage_bucket": "rpm---app.firebasestorage.app"
+    "project_number": "141850470097",
+    "project_id": "datn-rpm",
+    "storage_bucket": "datn-rpm.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:586824051784:android:307cc0d7ebe2cc3b01bc7d",
+        "mobilesdk_app_id": "1:141850470097:android:b2628e8bbeabf6fee287f0",
         "android_client_info": {
-          "package_name": "com.remotepatientmonitoring.mobile"
+          "package_name": "com.rpm.app"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyAUem2tKE7nIr_sHvYPzO1veLBhDdQ0Hfg"
+          "current_key": "AIzaSyDef0QGGCaKytcwwARzty3tKB_ATXHj5n8"
         }
       ],
       "services": {
@@ -26,7 +26,7 @@
     },
     {
       "client_info": {
-        "mobilesdk_app_id": "1:586824051784:android:ccb7fc8d556ed6ac01bc7d",
+        "mobilesdk_app_id": "1:141850470097:android:83f1a56053f241a3e287f0",
         "android_client_info": {
           "package_name": "com.rpm.doctor"
         }
@@ -34,7 +34,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyAUem2tKE7nIr_sHvYPzO1veLBhDdQ0Hfg"
+          "current_key": "AIzaSyDef0QGGCaKytcwwARzty3tKB_ATXHj5n8"
         }
       ],
       "services": {
