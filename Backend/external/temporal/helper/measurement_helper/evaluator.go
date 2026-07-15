@@ -13,8 +13,9 @@ import (
 // absolute reading hits a guideline safety cutoff; otherwise info.
 //
 // Glucose hyperglycemia cutoffs follow QĐ 5481/QĐ-BYT (30/12/2020) by meal:
-//   pre_meal / nil (mặc định chưa ăn): ≥126 mg/dL
-//   post_meal:                         ≥200 mg/dL
+//
+//	pre_meal / nil (mặc định chưa ăn): ≥126 mg/dL
+//	post_meal:                         ≥200 mg/dL
 func EvaluateMeasurementAgainstThreshold(m *domain.Measurement, t *domain.Threshold) []domain.ThresholdViolation {
 	violations := []domain.ThresholdViolation{}
 
@@ -109,13 +110,14 @@ func EvaluateMeasurementAgainstThreshold(m *domain.Measurement, t *domain.Thresh
 // span used when the personal threshold sits beyond that cutoff.
 //
 // Cutoffs / spans (same sources as absoluteClinicalSeverity):
-//   temperature:              NEWS2 ≤35.0 / ≥39.1; spans from score 0 edges 36.1 / 38.0
-//   heart_rate:               NEWS2 ≤40 / ≥131; spans from 51 / 90
-//   respiratory_rate:         NEWS2 ≤8 / ≥25; spans from 12 / 20
-//   spo2:                     NEWS2 Scale 1 ≤91; span from 96
-//   blood_pressure_systolic:  ≤90 / THA độ 2 ≥160; spans 111→90, 140→160
-//   blood_pressure_diastolic: THA độ 2 ≥100; span 90→100
-//   glucose:                  see glucoseClinicalBounds (QĐ 5481 by meal + ADA hypo)
+//
+//	temperature:              NEWS2 ≤35.0 / ≥39.1; spans from score 0 edges 36.1 / 38.0
+//	heart_rate:               NEWS2 ≤40 / ≥131; spans from 51 / 90
+//	respiratory_rate:         NEWS2 ≤8 / ≥25; spans from 12 / 20
+//	spo2:                     NEWS2 Scale 1 ≤91; span from 96
+//	blood_pressure_systolic:  ≤90 / THA độ 2 ≥160; spans 111→90, 140→160
+//	blood_pressure_diastolic: THA độ 2 ≥100; span 90→100
+//	glucose:                  see glucoseClinicalBounds (QĐ 5481 by meal + ADA hypo)
 type clinicalBounds struct {
 	maxCutoff float64
 	minCutoff float64
@@ -142,8 +144,10 @@ func effectiveMealTiming(mealTiming *domain.MealTiming) domain.MealTiming {
 }
 
 // glucoseClinicalBounds — QĐ 5481/QĐ-BYT 30/12/2020:
-//   a) lúc đói (pre_meal) ≥126 mg/dL
-//   b) sau 2 giờ OGTT / post_meal ≥200 mg/dL
+//
+//	a) lúc đói (pre_meal) ≥126 mg/dL
+//	b) sau 2 giờ OGTT / post_meal ≥200 mg/dL
+//
 // Hypo floor remains ADA/BYT level 2 <54; spans use BYT treatment targets
 // (đói 80–130 → ~100→126; sau ăn <180 → 180→200).
 func glucoseClinicalBounds(mealTiming *domain.MealTiming) clinicalBounds {

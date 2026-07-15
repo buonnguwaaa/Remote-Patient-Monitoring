@@ -5,8 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/dto"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/helper/measurement_helper"
@@ -291,6 +292,17 @@ func trendLevelPhrase(alert *domain.Alert) string {
 	return "cảnh báo xu hướng - mức theo dõi"
 }
 
+func capitalizeSentence(s string) string {
+	if s == "" {
+		return s
+	}
+	r, size := utf8.DecodeRuneInString(s)
+	if r == utf8.RuneError && size == 1 {
+		return s
+	}
+	return string(unicode.ToUpper(r)) + s[size:]
+}
+
 // buildAlertMessageContent covers threshold-only, trend-only, and merged alerts.
 func buildAlertMessageContent(alert *domain.Alert) string {
 	thresholdHit := hasThresholdViolation(alert)
@@ -314,9 +326,8 @@ func buildAlertMessageContent(alert *domain.Alert) string {
 			trendType,
 		)
 	case trendHit:
-		// Capitalize first letter for a standalone sentence.
 		phrase := trendLevelPhrase(alert)
-		return fmt.Sprintf("%s%s (%s).", strings.ToUpper(phrase[:1]), phrase[1:], trendType)
+		return capitalizeSentence(phrase) + fmt.Sprintf(" (%s).", trendType)
 	case alert != nil && alert.Severity == domain.SeverityInfo:
 		return fmt.Sprintf("Có chỉ số %s vượt ngưỡng cá nhân. Vui lòng theo dõi thêm.", thresholdType)
 	default:

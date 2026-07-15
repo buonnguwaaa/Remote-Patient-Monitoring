@@ -173,7 +173,10 @@ func main() {
 	alertDel, err := db.Collection("alerts").DeleteMany(ctx, bson.M{
 		"patientId": patientID,
 		"createdAt": bson.M{"$gte": today},
-		"violations.rule": bson.M{"$in": []string{"trend_rising_watch", "trend_rising_high"}},
+		"violations.rule": bson.M{"$in": []string{
+			"trend_rising_watch", "trend_rising_high",
+			"trend_falling_watch", "trend_falling_high",
+		}},
 	})
 	if err != nil {
 		log.Fatal(err)

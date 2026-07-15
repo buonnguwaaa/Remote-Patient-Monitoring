@@ -66,13 +66,13 @@ type trendMetrics struct {
 }
 
 type trendVitalSpec struct {
-	vitalType      string
-	ruleWatch      string
-	ruleHigh       string
-	direction      trendDirection
-	clinicalLimit  float64 // ceiling (rising) or floor (falling)
-	watchLimit     float64
-	extract        func(domain.Measurement) (float64, bool)
+	vitalType     string
+	ruleWatch     string
+	ruleHigh      string
+	direction     trendDirection
+	clinicalLimit float64 // ceiling (rising) or floor (falling)
+	watchLimit    float64
+	extract       func(domain.Measurement) (float64, bool)
 }
 
 // EvaluateTrends runs rising trends (BP sys/dia + glucose) and falling glucose
