@@ -95,7 +95,29 @@ func (a *ProcessingAlertActivity) EvaluateAndCreateAlertActivity(ctx context.Con
 		return nil, fmt.Errorf("no threshold set for patient")
 	}
 
-	violations := measurement_helper.EvaluateMeasurementAgainstThreshold(measurement, &thresholds[0])
+	thresholdViolations := measurement_helper.EvaluateMeasurementAgainstThreshold(measurement, &thresholds[0])
+
+	asOf := measurement.CreatedAt
+	if asOf.IsZero() {
+		asOf = time.Now().UTC()
+	}
+	since := measurement_helper.TrendHistorySince(asOf)
+	history, err := a.measurementRepo.FindWithFilter(ctx, repository.MeasurementFilter{
+		PatientID: patientID,
+		Since:     &since,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get measurement history for trend: %w", err)
+	}
+
+	// One alert per measurement. If a threshold is breached, attach any
+	// currently-active trend (edgeOnly=false) so both appear in Violations.
+	// If only a trend is active, use edge-trigger (edgeOnly=true) to avoid
+	// creating a new alert on every subsequent rising reading.
+	edgeOnly := len(thresholdViolations) == 0
+	trendViolations := measurement_helper.EvaluateTrends(history, measurement, &thresholds[0], measurement.MealTiming, edgeOnly)
+
+	violations := append(thresholdViolations, trendViolations...)
 	if len(violations) == 0 {
 		return &dto.EvaluateAndCreateAlertResult{Created: false}, nil
 	}
@@ -139,16 +161,7 @@ func (a *ProcessingAlertActivity) SendAlertPushActivity(ctx context.Context, ale
 		return fmt.Errorf("alert not found")
 	}
 
-	violationType := "sức khỏe"
-	if len(alert.Violations) > 0 {
-		violationType = humanizeViolationType(alert.Violations[0].Type)
-	}
-
-	body := fmt.Sprintf("Chỉ số %s vượt ngưỡng an toàn nghiêm trọng (%s). Vui lòng kiểm tra ngay.", violationType, strings.ToUpper(string(alert.Severity)))
-	switch alert.Severity {
-	case domain.SeverityInfo:
-		body = fmt.Sprintf("Có chỉ số %s vượt ngưỡng cá nhân. Vui lòng theo dõi thêm.", violationType)
-	}
+	body := buildAlertMessageContent(alert)
 
 	payload := map[string]string{
 		"type":          "alert",
@@ -170,10 +183,52 @@ func (a *ProcessingAlertActivity) SendAlertPushActivity(ctx context.Context, ale
 	if err != nil {
 		// Best-effort: push notification is non-critical, log and continue
 		log.Printf("[WARN] failed to send alert push (non-fatal) for alert=%s: %v", alertID, err)
-		return nil
+	} else {
+		log.Printf("[INFO] alert push sent for alert=%s patient=%s", alert.ID.Hex(), alert.PatientID.Hex())
 	}
 
-	log.Printf("[INFO] alert push sent for alert=%s patient=%s", alert.ID.Hex(), alert.PatientID.Hex())
+	// Send push notification to assigned doctor/nurse
+	if assignment, err := a.assignmentRepo.FindByPatientID(ctx, alert.PatientID); err == nil && assignment != nil {
+		if !assignment.DoctorID.IsZero() {
+			doctorBody := fmt.Sprintf("Bệnh nhân có chỉ số %s vượt ngưỡng an toàn (%s).", violationType, strings.ToUpper(string(alert.Severity)))
+			doctorPayload := map[string]string{
+				"type":          "alert",
+				"alertId":       alert.ID.Hex(),
+				"patientId":     alert.PatientID.Hex(),
+				"measurementId": alert.MeasurementID.Hex(),
+				"severity":      string(alert.Severity),
+				"targetScreen":  "Alerts",
+			}
+			_, _ = a.notificationService.PublishToUser(ctx, &usecase.InternalPublishNotificationInput{
+				UserID:   assignment.DoctorID,
+				Type:     domain.NotificationTypeAlert,
+				Title:    "Cảnh báo sức khỏe bệnh nhân",
+				Body:     doctorBody,
+				Data:     doctorPayload,
+				DedupKey: fmt.Sprintf("alert-doctor:%s", alert.ID.Hex()),
+			})
+		}
+		if !assignment.NurseID.IsZero() {
+			nurseBody := fmt.Sprintf("Bệnh nhân có chỉ số %s vượt ngưỡng an toàn (%s).", violationType, strings.ToUpper(string(alert.Severity)))
+			nursePayload := map[string]string{
+				"type":          "alert",
+				"alertId":       alert.ID.Hex(),
+				"patientId":     alert.PatientID.Hex(),
+				"measurementId": alert.MeasurementID.Hex(),
+				"severity":      string(alert.Severity),
+				"targetScreen":  "NursePatientDetail",
+			}
+			_, _ = a.notificationService.PublishToUser(ctx, &usecase.InternalPublishNotificationInput{
+				UserID:   assignment.NurseID,
+				Type:     domain.NotificationTypeAlert,
+				Title:    "Cảnh báo sức khỏe bệnh nhân",
+				Body:     nurseBody,
+				Data:     nursePayload,
+				DedupKey: fmt.Sprintf("alert-nurse:%s", alert.ID.Hex()),
+			})
+		}
+	}
+
 	return nil
 }
 
@@ -195,6 +250,119 @@ func humanizeViolationType(raw string) string {
 		return "đường huyết"
 	default:
 		return raw
+	}
+}
+
+func isTrendRule(rule string) bool {
+	switch rule {
+	case "trend_rising_watch", "trend_rising_high", "trend_falling_watch", "trend_falling_high":
+		return true
+	default:
+		return false
+	}
+}
+
+func hasThresholdViolation(alert *domain.Alert) bool {
+	if alert == nil {
+		return false
+	}
+	for _, v := range alert.Violations {
+		if !isTrendRule(v.Rule) {
+			return true
+		}
+	}
+	return false
+}
+
+func hasTrendHigh(alert *domain.Alert) bool {
+	return alertHasRule(alert, "trend_rising_high") || alertHasRule(alert, "trend_falling_high")
+}
+
+func hasTrendWatch(alert *domain.Alert) bool {
+	return alertHasRule(alert, "trend_rising_watch") ||
+		alertHasRule(alert, "trend_falling_watch") ||
+		hasTrendHigh(alert)
+}
+
+func alertHasRule(alert *domain.Alert, rule string) bool {
+	if alert == nil {
+		return false
+	}
+	for _, v := range alert.Violations {
+		if v.Rule == rule {
+			return true
+		}
+	}
+	return false
+}
+
+func firstThresholdViolationType(alert *domain.Alert) string {
+	if alert == nil {
+		return ""
+	}
+	for _, v := range alert.Violations {
+		if !isTrendRule(v.Rule) {
+			return v.Type
+		}
+	}
+	return ""
+}
+
+func firstTrendViolationType(alert *domain.Alert) string {
+	if alert == nil {
+		return ""
+	}
+	for _, v := range alert.Violations {
+		if isTrendRule(v.Rule) {
+			return v.Type
+		}
+	}
+	return ""
+}
+
+func trendLevelPhrase(alert *domain.Alert) string {
+	if hasTrendHigh(alert) {
+		if alertHasRule(alert, "trend_falling_high") && !alertHasRule(alert, "trend_rising_high") {
+			return "cảnh báo xu hướng giảm đường huyết - mức cao, khuyến nghị liên hệ bác sĩ"
+		}
+		return "cảnh báo xu hướng - mức cao, khuyến nghị liên hệ bác sĩ"
+	}
+	if alertHasRule(alert, "trend_falling_watch") && !alertHasRule(alert, "trend_rising_watch") {
+		return "cảnh báo xu hướng giảm đường huyết - mức theo dõi"
+	}
+	return "cảnh báo xu hướng - mức theo dõi"
+}
+
+// buildAlertMessageContent covers threshold-only, trend-only, and merged alerts.
+func buildAlertMessageContent(alert *domain.Alert) string {
+	thresholdHit := hasThresholdViolation(alert)
+	trendHit := hasTrendWatch(alert)
+
+	thresholdType := humanizeViolationType(firstThresholdViolationType(alert))
+	if thresholdType == "" {
+		thresholdType = "sức khỏe"
+	}
+	trendType := humanizeViolationType(firstTrendViolationType(alert))
+	if trendType == "" {
+		trendType = "sức khỏe"
+	}
+
+	switch {
+	case thresholdHit && trendHit:
+		return fmt.Sprintf(
+			"Chỉ số %s vượt ngưỡng; đồng thời %s (%s).",
+			thresholdType,
+			trendLevelPhrase(alert),
+			trendType,
+		)
+	case trendHit:
+		// Capitalize first letter for a standalone sentence.
+		phrase := trendLevelPhrase(alert)
+		return fmt.Sprintf("%s%s (%s).", strings.ToUpper(phrase[:1]), phrase[1:], trendType)
+	case alert != nil && alert.Severity == domain.SeverityInfo:
+		return fmt.Sprintf("Có chỉ số %s vượt ngưỡng cá nhân. Vui lòng theo dõi thêm.", thresholdType)
+	default:
+		return fmt.Sprintf("Chỉ số %s vượt ngưỡng an toàn nghiêm trọng. Vui lòng kiểm tra ngay.", thresholdType)
 	}
 }
 
@@ -232,11 +400,7 @@ func (a *ProcessingAlertActivity) SendAlertMessageActivity(ctx context.Context, 
 		return nil, fmt.Errorf("failed to get/create conversation: %w", err)
 	}
 
-	severityVN := "nghiêm trọng"
-	if alert.Severity == domain.SeverityInfo {
-		severityVN = "thông tin"
-	}
-	messageContent := fmt.Sprintf("Hệ thống vừa phát hiện một số chỉ số vượt ngưỡng ở mức %s. Vui lòng kiểm tra và có biện pháp xử lý phù hợp.", strings.ToUpper(severityVN))
+	messageContent := buildAlertMessageContent(alert)
 	message := &chatDomain.Message{
 		ConversationID: conversation.ID,
 		MessageSource:  chatDomain.SystemMessage,
