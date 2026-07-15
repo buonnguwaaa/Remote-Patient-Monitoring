@@ -51,7 +51,11 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer client.Disconnect(context.Background())
+	defer func() {
+		if err := client.Disconnect(context.Background()); err != nil {
+			log.Printf("mongo disconnect: %v", err)
+		}
+	}()
 
 	db := client.Database(dbName)
 	users := db.Collection("users")
