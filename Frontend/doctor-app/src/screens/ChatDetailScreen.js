@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
@@ -12,7 +12,6 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  FlatList,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons, FontAwesome5 } from "@expo/vector-icons";
@@ -238,6 +237,7 @@ export default function ChatDetailScreen() {
   const [loadingPatient, setLoadingPatient] = useState(true);
   const [conversation, setConversation] = useState(null);
   const [messages, setMessages] = useState([]);
+  const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [socketState, setSocketState] = useState("idle");
@@ -251,7 +251,7 @@ export default function ChatDetailScreen() {
   const [loadingAlertContext, setLoadingAlertContext] = useState(false);
 
   const socketRef = useRef(null);
-  const flatListRef = useRef(null);
+  const scrollViewRef = useRef(null);
   const lastDeliveredSentRef = useRef(null);
   const lastReadSentRef = useRef(null);
   const [alertsCache, setAlertsCache] = useState({});
@@ -339,7 +339,7 @@ export default function ChatDetailScreen() {
   // 3. Scroll to bottom when messages change
   useEffect(() => {
     setTimeout(() => {
-      flatListRef.current?.scrollToEnd({ animated: true });
+      scrollViewRef.current?.scrollToEnd({ animated: true });
     }, 150);
   }, [messages]);
 
@@ -569,7 +569,13 @@ export default function ChatDetailScreen() {
     return new Map(messages.map((m, idx) => [m.id, idx]));
   }, [messages]);
 
-  const handleSend = useCallback((content) => {
+  const handleSelectQuickReply = (text) => {
+    setDraft(text);
+    setError(null);
+  };
+
+  const handleSend = (nextContent = draft) => {
+    const content = String(nextContent || "").trim();
     if (!content) return;
 
     if (!socketRef.current || socketRef.current.readyState !== WebSocket.OPEN) {
@@ -592,9 +598,10 @@ export default function ChatDetailScreen() {
       })
     );
 
+    setDraft("");
     setReplyTarget(null);
     setError(null);
-  }, [replyTarget, activeAlertId]);
+  };
 
   const handleReplyFromMessage = (message) => {
     setReplyTarget(message);
@@ -785,422 +792,422 @@ export default function ChatDetailScreen() {
             </View>
           )}
 
-          <FlatList
-            ref={flatListRef}
-            data={messageItems}
-            keyExtractor={(item) => item.key}
+          <ScrollView
+            ref={scrollViewRef}
             style={styles.chatContainer}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.chatContent}
             onScrollBeginDrag={() => setMessageMenu(null)}
-            ListEmptyComponent={
+          >
+            {messageItems.length === 0 ? (
               <View style={styles.emptyConversation}>
                 <Text style={styles.emptyConversationText}>
                   Cuộc trò chuyện này chưa có tin nhắn nào. Bạn có thể gửi tin nhắn đầu tiên
                   cho bệnh nhân ở khung bên dưới.
                 </Text>
               </View>
-            }
-            renderItem={({ item }) => {
-              if (item.type === "day") {
-                return (
-                  <View key={item.key} style={styles.dayBadgeWrapper}>
-                    <View style={styles.dayBadge}>
-                      <Text style={styles.dayBadgeText}>{item.label}</Text>
-                    </View>
-                  </View>
-                );
-              }
-
-              const isMine = item.message.senderId === currentUserId;
-              const isSystemMessage = item.message.messageSource === "system";
-              const isPatientMsg = !isMine && !isSystemMessage;
-
-              // 1. Render system metrics alerts
-              if (isSystemMessage) {
-                if (item.message.content && item.message.content.includes('"type":"video_call_invite"')) {
-                  try {
-                    const payload = JSON.parse(item.message.content);
-                    return (
-                      <View key={item.key} style={{ marginVertical: 12, alignItems: 'center' }}>
-                        <View style={{ backgroundColor: '#E0F2FE', padding: 12, borderRadius: 16, width: '85%', alignItems: 'center', borderColor: '#BAE6FD', borderWidth: 1 }}>
-                          <Ionicons name="videocam" size={24} color="#0284C7" style={{ marginBottom: 8 }} />
-                          <Text style={{ fontSize: 13, color: '#0369A1', textAlign: 'center', marginBottom: 10, fontWeight: '500' }}>
-                            Cuộc gọi video đã bắt đầu.
-                          </Text>
-                          <TouchableOpacity
-                            style={{ backgroundColor: '#0284C7', paddingVertical: 8, paddingHorizontal: 20, borderRadius: 8 }}
-                            onPress={() => navigation.navigate("VideoCall", { videoSessionId: payload.videoSessionId, patientId, conversationId: conversation?.id })}
-                          >
-                            <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>Tham gia cuộc gọi</Text>
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    );
-                  } catch (e) { }
-                }
-                if (item.message.content && item.message.content.includes('"type":"video_call_ended"')) {
+            ) : (
+              messageItems.map((item) => {
+                if (item.type === "day") {
                   return (
-                    <View key={item.key} style={{ marginVertical: 12, alignItems: 'center' }}>
-                      <View style={{ backgroundColor: '#F1F5F9', padding: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}>
-                        <Ionicons name="call-outline" size={16} color="#64748B" style={{ marginRight: 6 }} />
-                        <Text style={{ fontSize: 12, color: '#64748B' }}>Cuộc gọi video đã kết thúc.</Text>
+                    <View key={item.key} style={styles.dayBadgeWrapper}>
+                      <View style={styles.dayBadge}>
+                        <Text style={styles.dayBadgeText}>{item.label}</Text>
                       </View>
                     </View>
                   );
                 }
 
-                const cachedAlert = item.message.relatedAlertId
-                  ? alertsCache[item.message.relatedAlertId]
-                  : null;
-                // Normalize severity: medium/low → info, chỉ còn high và info
-                const isHigh = normalizeAlertSeverity(cachedAlert?.severity) === "high";
-                const violations = cachedAlert?.violations ?? [];
+                const isMine = item.message.senderId === currentUserId;
+                const isSystemMessage = item.message.messageSource === "system";
+                const isPatientMsg = !isMine && !isSystemMessage;
 
-                return (
-                  <View key={item.key} style={styles.systemMsgRow}>
-                    <View
-                      style={[
-                        styles.systemAvatar,
-                        isHigh ? styles.systemAvatarHigh : styles.systemAvatarInfo,
-                      ]}
-                    >
-                      <Ionicons
-                        name="shield-checkmark"
-                        size={16}
-                        color={isHigh ? "#DC2626" : "#2563EB"}
-                      />
-                    </View>
-
-                    <View style={styles.systemMsgBody}>
-                      <View style={styles.systemMsgHeader}>
-                        <Text style={styles.systemSenderLabel}>Hệ thống giám sát</Text>
-                        {cachedAlert ? (
-                          <View
-                            style={[
-                              styles.systemSeverityBadge,
-                              isHigh ? styles.severityHigh : styles.severityInfo,
-                            ]}
-                          >
-                            <Text
-                              style={[
-                                styles.systemSeverityText,
-                                isHigh ? styles.severityHighText : styles.severityInfoText,
-                              ]}
+                // 1. Render system metrics alerts
+                if (isSystemMessage) {
+                  if (item.message.content && item.message.content.includes('"type":"video_call_invite"')) {
+                    try {
+                      const payload = JSON.parse(item.message.content);
+                      return (
+                        <View key={item.key} style={{ marginVertical: 12, alignItems: 'center' }}>
+                          <View style={{ backgroundColor: '#E0F2FE', padding: 12, borderRadius: 16, width: '85%', alignItems: 'center', borderColor: '#BAE6FD', borderWidth: 1 }}>
+                            <Ionicons name="videocam" size={24} color="#0284C7" style={{ marginBottom: 8 }} />
+                            <Text style={{ fontSize: 13, color: '#0369A1', textAlign: 'center', marginBottom: 10, fontWeight: '500' }}>
+                              Cuộc gọi video đã bắt đầu.
+                            </Text>
+                            <TouchableOpacity
+                              style={{ backgroundColor: '#0284C7', paddingVertical: 8, paddingHorizontal: 20, borderRadius: 8 }}
+                              onPress={() => navigation.navigate("VideoCall", { videoSessionId: payload.videoSessionId, patientId, conversationId: conversation?.id })}
                             >
-                              {isHigh ? "Ưu tiên cao" : "Cần theo dõi"}
-                            </Text>
+                              <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>Tham gia cuộc gọi</Text>
+                            </TouchableOpacity>
                           </View>
-                        ) : null}
-                      </View>
-
-                      <View style={[styles.systemCard, isHigh ? styles.systemCardHigh : styles.systemCardInfo]}>
-                        {violations.length > 0 && (
-                          <View style={styles.violationsBlock}>
-                            <Text style={[styles.violationsTitle, isHigh ? styles.violationsTitleHigh : styles.violationsTitleInfo]}>
-                              {violations.length} chỉ số vượt ngưỡng
-                            </Text>
-                            <View style={styles.violationsGrid}>
-                              {violations.map((v, idx) => (
-                                <View
-                                  key={idx}
-                                  style={[
-                                    styles.violationItem,
-                                    normalizeAlertSeverity(v.severity) === "high" ? styles.violationItemHigh : styles.violationItemInfo,
-                                  ]}
-                                >
-                                  <Text style={styles.violationLabel}>{getViolationLabel(v.type)}</Text>
-                                  <Text style={[styles.violationValue, normalizeAlertSeverity(v.severity) === "high" ? styles.violationValueHigh : styles.violationValueInfo]}>
-                                    {v.observed} {getUnit(v.type)}
-                                  </Text>
-                                  <Text style={styles.violationThreshold}>Ngưỡng: {v.threshold}</Text>
-                                </View>
-                              ))}
-                            </View>
-                          </View>
-                        )}
-
-                        <Text style={[styles.systemMsgText, isHigh ? styles.systemMsgTextHigh : styles.systemMsgTextInfo]}>
-                          {item.message.content}
-                        </Text>
-
-                        <View style={styles.systemMsgFooter}>
-                          <Text style={styles.systemMsgTime}>{formatTime(item.message.createdAt)}</Text>
-                          {cachedAlert && (
-                            <Text style={styles.systemMsgStatus}>
-                              • {cachedAlert.status === "ack" ? "Đã xử lý" : "Chờ xử lý"}
-                            </Text>
-                          )}
+                        </View>
+                      );
+                    } catch (e) { }
+                  }
+                  if (item.message.content && item.message.content.includes('"type":"video_call_ended"')) {
+                    return (
+                      <View key={item.key} style={{ marginVertical: 12, alignItems: 'center' }}>
+                        <View style={{ backgroundColor: '#F1F5F9', padding: 8, borderRadius: 12, flexDirection: 'row', alignItems: 'center' }}>
+                          <Ionicons name="call-outline" size={16} color="#64748B" style={{ marginRight: 6 }} />
+                          <Text style={{ fontSize: 12, color: '#64748B' }}>Cuộc gọi video đã kết thúc.</Text>
                         </View>
                       </View>
+                    );
+                  }
+
+                  const cachedAlert = item.message.relatedAlertId
+                    ? alertsCache[item.message.relatedAlertId]
+                    : null;
+                  // Normalize severity: medium/low → info, chỉ còn high và info
+                  const isHigh = normalizeAlertSeverity(cachedAlert?.severity) === "high";
+                  const violations = cachedAlert?.violations ?? [];
+
+                  return (
+                    <View key={item.key} style={styles.systemMsgRow}>
+                      <View
+                        style={[
+                          styles.systemAvatar,
+                          isHigh ? styles.systemAvatarHigh : styles.systemAvatarInfo,
+                        ]}
+                      >
+                        <Ionicons
+                          name="shield-checkmark"
+                          size={16}
+                          color={isHigh ? "#DC2626" : "#2563EB"}
+                        />
+                      </View>
+
+                      <View style={styles.systemMsgBody}>
+                        <View style={styles.systemMsgHeader}>
+                          <Text style={styles.systemSenderLabel}>Hệ thống giám sát</Text>
+                          {cachedAlert ? (
+                            <View
+                              style={[
+                                styles.systemSeverityBadge,
+                                isHigh ? styles.severityHigh : styles.severityInfo,
+                              ]}
+                            >
+                              <Text
+                                style={[
+                                  styles.systemSeverityText,
+                                  isHigh ? styles.severityHighText : styles.severityInfoText,
+                                ]}
+                              >
+                                {isHigh ? "Ưu tiên cao" : "Cần theo dõi"}
+                              </Text>
+                            </View>
+                          ) : null}
+                        </View>
+
+                        <View style={[styles.systemCard, isHigh ? styles.systemCardHigh : styles.systemCardInfo]}>
+                          {violations.length > 0 && (
+                            <View style={styles.violationsBlock}>
+                              <Text style={[styles.violationsTitle, isHigh ? styles.violationsTitleHigh : styles.violationsTitleInfo]}>
+                                {violations.length} chỉ số vượt ngưỡng
+                              </Text>
+                              <View style={styles.violationsGrid}>
+                                {violations.map((v, idx) => (
+                                  <View
+                                    key={idx}
+                                    style={[
+                                      styles.violationItem,
+                                      normalizeAlertSeverity(v.severity) === "high" ? styles.violationItemHigh : styles.violationItemInfo,
+                                    ]}
+                                  >
+                                    <Text style={styles.violationLabel}>{getViolationLabel(v.type)}</Text>
+                                    <Text style={[styles.violationValue, normalizeAlertSeverity(v.severity) === "high" ? styles.violationValueHigh : styles.violationValueInfo]}>
+                                      {v.observed} {getUnit(v.type)}
+                                    </Text>
+                                    <Text style={styles.violationThreshold}>Ngưỡng: {v.threshold}</Text>
+                                  </View>
+                                ))}
+                              </View>
+                            </View>
+                          )}
+
+                          <Text style={[styles.systemMsgText, isHigh ? styles.systemMsgTextHigh : styles.systemMsgTextInfo]}>
+                            {item.message.content}
+                          </Text>
+
+                          <View style={styles.systemMsgFooter}>
+                            <Text style={styles.systemMsgTime}>{formatTime(item.message.createdAt)}</Text>
+                            {cachedAlert && (
+                              <Text style={styles.systemMsgStatus}>
+                                • {cachedAlert.status === "ack" ? "Đã xử lý" : "Chờ xử lý"}
+                              </Text>
+                            )}
+                          </View>
+                        </View>
+                      </View>
+                    </View>
+                  );
+                }
+
+                // 2. Render standard user messages
+                const alertMessage = parseAlertLinkedMessage(
+                  item.message.content,
+                  item.message.relatedAlertId
+                );
+                const hasAlertTag = Boolean(item.message.relatedAlertId);
+
+                const repliedMessage = item.message.replyToMessageId
+                  ? messageLookup.get(item.message.replyToMessageId)
+                  : null;
+
+                const repliedSenderLabel = repliedMessage
+                  ? repliedMessage.senderId === currentUserId
+                    ? "Bạn"
+                    : displayPatientName
+                  : "";
+
+                // Check read status
+                let isReadByOther = false;
+                if (isMine && otherParticipantState?.lastReadMessageId) {
+                  const myMsgIndex = messageOrder.get(item.message.id);
+                  const otherReadIndex = messageOrder.get(otherParticipantState.lastReadMessageId);
+                  if (myMsgIndex !== undefined && otherReadIndex !== undefined) {
+                    isReadByOther = otherReadIndex >= myMsgIndex;
+                  }
+                }
+
+                return (
+                  <View
+                    key={item.key}
+                    style={[
+                      styles.messageWrapper,
+                      isMine ? styles.messageWrapperRight : styles.messageWrapperLeft,
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.messageRow,
+                        isMine ? styles.messageRowRight : styles.messageRowLeft,
+                      ]}
+                    >
+                      {/* Avatar for patient messages */}
+                      {isPatientMsg && (
+                        <View style={[styles.avatarSmall, styles.avatarPatient]}>
+                          <Text style={styles.avatarSmallText}>
+                            {getInitials(displayPatientName)}
+                          </Text>
+                        </View>
+                      )}
+
+                      <Pressable
+                        onLongPress={(event) =>
+                          handleOpenMessageMenu(event, item.message, isMine)
+                        }
+                        delayLongPress={220}
+                        onPress={() => {
+                          if (messageMenu) setMessageMenu(null);
+                        }}
+                      >
+                        <View
+                          style={[
+                            styles.bubble,
+                            isMine ? styles.bubbleDoctor : styles.bubblePatient,
+                          ]}
+                        >
+                          {/* Alert metadata embedded */}
+                          {hasAlertTag && alertMessage?.hasStructuredAlertSummary ? (
+                            <View style={styles.alertContentBlock}>
+                              <View
+                                style={[
+                                  styles.alertSummaryCard,
+                                  isMine
+                                    ? styles.alertSummaryCardDoctor
+                                    : styles.alertSummaryCardPatient,
+                                ]}
+                              >
+                                <View style={styles.alertSummaryHeader}>
+                                  <Ionicons
+                                    name="warning-outline"
+                                    size={14}
+                                    color={isMine ? "#DBEAFE" : "#B45309"}
+                                  />
+                                  <Text
+                                    style={[
+                                      styles.alertSummaryLabel,
+                                      isMine
+                                        ? styles.alertSummaryLabelDoctor
+                                        : styles.alertSummaryLabelPatient,
+                                    ]}
+                                  >
+                                    Cảnh báo liên quan
+                                  </Text>
+                                </View>
+                                <Text
+                                  style={[
+                                    styles.alertSummaryText,
+                                    isMine
+                                      ? styles.alertSummaryTextDoctor
+                                      : styles.alertSummaryTextPatient,
+                                  ]}
+                                >
+                                  {alertMessage.alertSummary}
+                                </Text>
+                                <Text
+                                  style={[
+                                    styles.alertSummaryMeta,
+                                    isMine
+                                      ? styles.alertSummaryMetaDoctor
+                                      : styles.alertSummaryMetaPatient,
+                                  ]}
+                                >
+                                  Alert #{alertMessage.shortAlertId}
+                                </Text>
+                              </View>
+
+                              {alertMessage.note ? (
+                                <View
+                                  style={[
+                                    styles.alertNoteCard,
+                                    isMine
+                                      ? styles.alertNoteCardDoctor
+                                      : styles.alertNoteCardPatient,
+                                  ]}
+                                >
+                                  <Text
+                                    style={[
+                                      styles.alertNoteLabel,
+                                      isMine
+                                        ? styles.alertNoteLabelDoctor
+                                        : styles.alertNoteLabelPatient,
+                                    ]}
+                                  >
+                                    Nội dung lời nhắn
+                                  </Text>
+                                  <Text
+                                    style={[
+                                      styles.messageText,
+                                      isMine ? styles.messageTextDoctor : styles.messageTextPatient,
+                                    ]}
+                                  >
+                                    {alertMessage.note}
+                                  </Text>
+                                </View>
+                              ) : null}
+                            </View>
+                          ) : (
+                            <>
+                              {repliedMessage ? (
+                                <View
+                                  style={[
+                                    styles.replyPreviewCard,
+                                    isMine ? styles.replyPreviewCardDoctor : styles.replyPreviewCardPatient,
+                                  ]}
+                                >
+                                  <Text
+                                    style={[
+                                      styles.replyPreviewSender,
+                                      isMine
+                                        ? styles.replyPreviewSenderDoctor
+                                        : styles.replyPreviewSenderPatient,
+                                    ]}
+                                  >
+                                    {repliedSenderLabel}
+                                  </Text>
+                                  <Text
+                                    style={[
+                                      styles.replyPreviewText,
+                                      isMine
+                                        ? styles.replyPreviewTextDoctor
+                                        : styles.replyPreviewTextPatient,
+                                    ]}
+                                    numberOfLines={2}
+                                  >
+                                    {getReplyPreviewContent(repliedMessage)}
+                                  </Text>
+                                </View>
+                              ) : null}
+                              {(() => {
+                                if (
+                                  item.message.content &&
+                                  item.message.content.startsWith("{") &&
+                                  item.message.content.includes('"type":"video_call_invite"')
+                                ) {
+                                  try {
+                                    const payload = JSON.parse(item.message.content);
+                                    if (payload.type === "video_call_invite") {
+                                      return (
+                                        <TouchableOpacity
+                                          style={styles.videoInviteBubble}
+                                          onPress={() => {
+                                            navigation.navigate("VideoCall", {
+                                              videoSessionId: payload.videoSessionId,
+                                              patientId,
+                                              conversationId: conversation?.id,
+                                            });
+                                          }}
+                                        >
+                                          <View style={styles.videoInviteRow}>
+                                            <Ionicons name="videocam" size={20} color="#fff" />
+                                            <Text style={styles.videoInviteTitle}>Cuộc gọi video</Text>
+                                          </View>
+                                          <Text style={styles.videoInviteDesc}>
+                                            Bác sĩ đã bắt đầu cuộc gọi video. Nhấn để tham gia!
+                                          </Text>
+                                          <View style={styles.videoInviteBtn}>
+                                            <Text style={styles.videoInviteBtnText}>Tham gia ngay</Text>
+                                          </View>
+                                        </TouchableOpacity>
+                                      );
+                                    }
+                                  } catch (e) { }
+                                }
+                                if (
+                                  item.message.content &&
+                                  item.message.content.startsWith("{") &&
+                                  item.message.content.includes('"type":"video_call_ended"')
+                                ) {
+                                  return (
+                                    <View style={styles.videoEndedBubble}>
+                                      <Ionicons name="videocam-off" size={16} color="#4B5563" />
+                                      <Text style={styles.videoEndedText}>Cuộc gọi video đã kết thúc</Text>
+                                    </View>
+                                  );
+                                }
+                                return (
+                                  <Text
+                                    style={[
+                                      styles.messageText,
+                                      isMine ? styles.messageTextDoctor : styles.messageTextPatient,
+                                    ]}
+                                  >
+                                    {item.message.content}
+                                  </Text>
+                                );
+                              })()}
+                            </>
+                          )}
+
+                          <View style={styles.messageFooterRow}>
+                            <Text
+                              style={[
+                                styles.timeText,
+                                isMine ? styles.timeTextDoctor : styles.timeTextPatient,
+                              ]}
+                            >
+                              {formatTime(item.message.createdAt)}
+                            </Text>
+                            {isMine && (
+                              <Ionicons
+                                name={isReadByOther ? "checkmark-done" : "checkmark"}
+                                size={14}
+                                color={isReadByOther ? "#BAE6FD" : "#C7D2FE"}
+                                style={styles.messageStatusIcon}
+                              />
+                            )}
+                          </View>
+                        </View>
+                      </Pressable>
                     </View>
                   </View>
                 );
-              }
-
-              // 2. Render standard user messages
-              const alertMessage = parseAlertLinkedMessage(
-                item.message.content,
-                item.message.relatedAlertId
-              );
-              const hasAlertTag = Boolean(item.message.relatedAlertId);
-
-              const repliedMessage = item.message.replyToMessageId
-                ? messageLookup.get(item.message.replyToMessageId)
-                : null;
-
-              const repliedSenderLabel = repliedMessage
-                ? repliedMessage.senderId === currentUserId
-                  ? "Bạn"
-                  : displayPatientName
-                : "";
-
-              // Check read status
-              let isReadByOther = false;
-              if (isMine && otherParticipantState?.lastReadMessageId) {
-                const myMsgIndex = messageOrder.get(item.message.id);
-                const otherReadIndex = messageOrder.get(otherParticipantState.lastReadMessageId);
-                if (myMsgIndex !== undefined && otherReadIndex !== undefined) {
-                  isReadByOther = otherReadIndex >= myMsgIndex;
-                }
-              }
-
-              return (
-                <View
-                  key={item.key}
-                  style={[
-                    styles.messageWrapper,
-                    isMine ? styles.messageWrapperRight : styles.messageWrapperLeft,
-                  ]}
-                >
-                  <View
-                    style={[
-                      styles.messageRow,
-                      isMine ? styles.messageRowRight : styles.messageRowLeft,
-                    ]}
-                  >
-                    {/* Avatar for patient messages */}
-                    {isPatientMsg && (
-                      <View style={[styles.avatarSmall, styles.avatarPatient]}>
-                        <Text style={styles.avatarSmallText}>
-                          {getInitials(displayPatientName)}
-                        </Text>
-                      </View>
-                    )}
-
-                    <Pressable
-                      onLongPress={(event) =>
-                        handleOpenMessageMenu(event, item.message, isMine)
-                      }
-                      delayLongPress={220}
-                      onPress={() => {
-                        if (messageMenu) setMessageMenu(null);
-                      }}
-                    >
-                      <View
-                        style={[
-                          styles.bubble,
-                          isMine ? styles.bubbleDoctor : styles.bubblePatient,
-                        ]}
-                      >
-                        {/* Alert metadata embedded */}
-                        {hasAlertTag && alertMessage?.hasStructuredAlertSummary ? (
-                          <View style={styles.alertContentBlock}>
-                            <View
-                              style={[
-                                styles.alertSummaryCard,
-                                isMine
-                                  ? styles.alertSummaryCardDoctor
-                                  : styles.alertSummaryCardPatient,
-                              ]}
-                            >
-                              <View style={styles.alertSummaryHeader}>
-                                <Ionicons
-                                  name="warning-outline"
-                                  size={14}
-                                  color={isMine ? "#DBEAFE" : "#B45309"}
-                                />
-                                <Text
-                                  style={[
-                                    styles.alertSummaryLabel,
-                                    isMine
-                                      ? styles.alertSummaryLabelDoctor
-                                      : styles.alertSummaryLabelPatient,
-                                  ]}
-                                >
-                                  Cảnh báo liên quan
-                                </Text>
-                              </View>
-                              <Text
-                                style={[
-                                  styles.alertSummaryText,
-                                  isMine
-                                    ? styles.alertSummaryTextDoctor
-                                    : styles.alertSummaryTextPatient,
-                                ]}
-                              >
-                                {alertMessage.alertSummary}
-                              </Text>
-                              <Text
-                                style={[
-                                  styles.alertSummaryMeta,
-                                  isMine
-                                    ? styles.alertSummaryMetaDoctor
-                                    : styles.alertSummaryMetaPatient,
-                                ]}
-                              >
-                                Alert #{alertMessage.shortAlertId}
-                              </Text>
-                            </View>
-
-                            {alertMessage.note ? (
-                              <View
-                                style={[
-                                  styles.alertNoteCard,
-                                  isMine
-                                    ? styles.alertNoteCardDoctor
-                                    : styles.alertNoteCardPatient,
-                                ]}
-                              >
-                                <Text
-                                  style={[
-                                    styles.alertNoteLabel,
-                                    isMine
-                                      ? styles.alertNoteLabelDoctor
-                                      : styles.alertNoteLabelPatient,
-                                  ]}
-                                >
-                                  Nội dung lời nhắn
-                                </Text>
-                                <Text
-                                  style={[
-                                    styles.messageText,
-                                    isMine ? styles.messageTextDoctor : styles.messageTextPatient,
-                                  ]}
-                                >
-                                  {alertMessage.note}
-                                </Text>
-                              </View>
-                            ) : null}
-                          </View>
-                        ) : (
-                          <>
-                            {repliedMessage ? (
-                              <View
-                                style={[
-                                  styles.replyPreviewCard,
-                                  isMine ? styles.replyPreviewCardDoctor : styles.replyPreviewCardPatient,
-                                ]}
-                              >
-                                <Text
-                                  style={[
-                                    styles.replyPreviewSender,
-                                    isMine
-                                      ? styles.replyPreviewSenderDoctor
-                                      : styles.replyPreviewSenderPatient,
-                                  ]}
-                                >
-                                  {repliedSenderLabel}
-                                </Text>
-                                <Text
-                                  style={[
-                                    styles.replyPreviewText,
-                                    isMine
-                                      ? styles.replyPreviewTextDoctor
-                                      : styles.replyPreviewTextPatient,
-                                  ]}
-                                  numberOfLines={2}
-                                >
-                                  {getReplyPreviewContent(repliedMessage)}
-                                </Text>
-                              </View>
-                            ) : null}
-                            {(() => {
-                              if (
-                                item.message.content &&
-                                item.message.content.startsWith("{") &&
-                                item.message.content.includes('"type":"video_call_invite"')
-                              ) {
-                                try {
-                                  const payload = JSON.parse(item.message.content);
-                                  if (payload.type === "video_call_invite") {
-                                    return (
-                                      <TouchableOpacity
-                                        style={styles.videoInviteBubble}
-                                        onPress={() => {
-                                          navigation.navigate("VideoCall", {
-                                            videoSessionId: payload.videoSessionId,
-                                            patientId,
-                                            conversationId: conversation?.id,
-                                          });
-                                        }}
-                                      >
-                                        <View style={styles.videoInviteRow}>
-                                          <Ionicons name="videocam" size={20} color="#fff" />
-                                          <Text style={styles.videoInviteTitle}>Cuộc gọi video</Text>
-                                        </View>
-                                        <Text style={styles.videoInviteDesc}>
-                                          Bác sĩ đã bắt đầu cuộc gọi video. Nhấn để tham gia!
-                                        </Text>
-                                        <View style={styles.videoInviteBtn}>
-                                          <Text style={styles.videoInviteBtnText}>Tham gia ngay</Text>
-                                        </View>
-                                      </TouchableOpacity>
-                                    );
-                                  }
-                                } catch (e) { }
-                              }
-                              if (
-                                item.message.content &&
-                                item.message.content.startsWith("{") &&
-                                item.message.content.includes('"type":"video_call_ended"')
-                              ) {
-                                return (
-                                  <View style={styles.videoEndedBubble}>
-                                    <Ionicons name="videocam-off" size={16} color="#4B5563" />
-                                    <Text style={styles.videoEndedText}>Cuộc gọi video đã kết thúc</Text>
-                                  </View>
-                                );
-                              }
-                              return (
-                                <Text
-                                  style={[
-                                    styles.messageText,
-                                    isMine ? styles.messageTextDoctor : styles.messageTextPatient,
-                                  ]}
-                                >
-                                  {item.message.content}
-                                </Text>
-                              );
-                            })()}
-                          </>
-                        )}
-
-                        <View style={styles.messageFooterRow}>
-                          <Text
-                            style={[
-                              styles.timeText,
-                              isMine ? styles.timeTextDoctor : styles.timeTextPatient,
-                            ]}
-                          >
-                            {formatTime(item.message.createdAt)}
-                          </Text>
-                          {isMine && (
-                            <Ionicons
-                              name={isReadByOther ? "checkmark-done" : "checkmark"}
-                              size={14}
-                              color={isReadByOther ? "#BAE6FD" : "#C7D2FE"}
-                              style={styles.messageStatusIcon}
-                            />
-                          )}
-                        </View>
-                      </View>
-                    </Pressable>
-                  </View>
-                </View>
-              );
-            }}
-          />
+              })
+            )}
+          </ScrollView>
         </View>
 
         {/* Long Press Menu Modal */}
@@ -1244,108 +1251,78 @@ export default function ChatDetailScreen() {
           </View>
         </Modal>
 
-        <ChatInputComposer
-          onSend={handleSend}
-          replyTarget={replyTarget}
-          onClearReplyTarget={() => setReplyTarget(null)}
-          displayPatientName={displayPatientName}
-          currentUserId={currentUserId}
-          insets={insets}
-        />
+        {/* Quick replies scrollable list */}
+        <View style={styles.quickBarWrapper}>
+          <Text style={styles.quickBarTitle}>Gửi nhanh mẫu tin</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.quickScrollContent}
+          >
+            {QUICK_REPLIES.map((text) => (
+              <TouchableOpacity
+                key={text}
+                style={styles.quickChip}
+                onPress={() => handleSelectQuickReply(text)}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.quickChipText} numberOfLines={1}>
+                  {text}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* Input composer row */}
+        <View style={[styles.composerWrapper, { paddingBottom: Math.max(insets.bottom, 10), flexDirection: "column", alignItems: "stretch" }]}>
+          {replyTarget && (
+            <View style={styles.replyComposerCard}>
+              <View style={styles.replyComposerBody}>
+                <Text style={styles.replyComposerLabel}>Đang trả lời</Text>
+                <Text style={styles.replyComposerSender}>
+                  {replyTarget.senderId === currentUserId ? "Bạn" : displayPatientName}
+                </Text>
+                <Text style={styles.replyComposerText} numberOfLines={2}>
+                  {getReplyPreviewContent(replyTarget)}
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setReplyTarget(null)}
+                activeOpacity={0.85}
+                style={styles.replyComposerClose}
+              >
+                <Ionicons name="close" size={16} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+          )}
+
+          <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 10 }}>
+            <View style={styles.composerInputWrap}>
+              <TextInput
+                value={draft}
+                onChangeText={setDraft}
+                placeholder="Nhập lời nhắn cho bệnh nhân..."
+                placeholderTextColor="#9CA3AF"
+                multiline
+                style={styles.composerInput}
+              />
+            </View>
+
+            <TouchableOpacity
+              style={[styles.sendButton, !draft.trim() && styles.sendButtonDisabled]}
+              onPress={() => handleSend()}
+              activeOpacity={0.85}
+              disabled={!draft.trim()}
+            >
+              <Ionicons name="send" size={18} color="#FFF" />
+            </TouchableOpacity>
+          </View>
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
-
-const ChatInputComposer = React.memo(({
-  onSend,
-  replyTarget,
-  onClearReplyTarget,
-  displayPatientName,
-  currentUserId,
-  insets,
-}) => {
-  const [draft, setDraft] = useState("");
-
-  return (
-    <>
-      {/* Quick replies scrollable list */}
-      <View style={styles.quickBarWrapper}>
-        <Text style={styles.quickBarTitle}>Gửi nhanh mẫu tin</Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.quickScrollContent}
-        >
-          {QUICK_REPLIES.map((text) => (
-            <TouchableOpacity
-              key={text}
-              style={styles.quickChip}
-              onPress={() => setDraft(text)}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.quickChipText} numberOfLines={1}>
-                {text}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
-
-      {/* Input composer row */}
-      <View style={[styles.composerWrapper, { paddingBottom: Math.max(insets.bottom, 10), flexDirection: "column", alignItems: "stretch" }]}>
-        {replyTarget && (
-          <View style={styles.replyComposerCard}>
-            <View style={styles.replyComposerBody}>
-              <Text style={styles.replyComposerLabel}>Đang trả lời</Text>
-              <Text style={styles.replyComposerSender}>
-                {replyTarget.senderId === currentUserId ? "Bạn" : displayPatientName}
-              </Text>
-              <Text style={styles.replyComposerText} numberOfLines={2}>
-                {getReplyPreviewContent(replyTarget)}
-              </Text>
-            </View>
-            <TouchableOpacity
-              onPress={onClearReplyTarget}
-              activeOpacity={0.85}
-              style={styles.replyComposerClose}
-            >
-              <Ionicons name="close" size={16} color="#6B7280" />
-            </TouchableOpacity>
-          </View>
-        )}
-
-        <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 10 }}>
-          <View style={styles.composerInputWrap}>
-            <TextInput
-              value={draft}
-              onChangeText={setDraft}
-              placeholder="Nhập lời nhắn cho bệnh nhân..."
-              placeholderTextColor="#9CA3AF"
-              multiline
-              style={styles.composerInput}
-            />
-          </View>
-
-          <TouchableOpacity
-            style={[styles.sendButton, !draft.trim() && styles.sendButtonDisabled]}
-            onPress={() => {
-              const content = draft.trim();
-              if (content) {
-                onSend(content);
-                setDraft("");
-              }
-            }}
-            activeOpacity={0.85}
-            disabled={!draft.trim()}
-          >
-            <Ionicons name="send" size={18} color="#FFF" />
-          </TouchableOpacity>
-        </View>
-      </View>
-    </>
-  );
-});
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#FFF" },

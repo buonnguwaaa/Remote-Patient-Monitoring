@@ -155,7 +155,7 @@ export async function deactivateCurrentDevicePushToken() {
 
 export function attachPushTokenRefreshListener() {
   if (Platform.OS !== "android") {
-    return () => { };
+    return () => {};
   }
 
   const subscription = Notifications.addPushTokenListener(async (token) => {

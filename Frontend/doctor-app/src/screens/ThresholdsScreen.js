@@ -179,7 +179,7 @@ export default function ThresholdsScreen() {
   }), [patients, activePatients, missingPatients]);
 
   // Form actions
-  const handleOpenCreate = useCallback((patientId = "") => {
+  const handleOpenCreate = (patientId = "") => {
     if (!patientId && missingPatients.length === 0) {
       showToast("Tất cả bệnh nhân đều đã có cấu hình ngưỡng.", "warning");
       return;
@@ -188,7 +188,7 @@ export default function ThresholdsScreen() {
     setEditingPatientId(null);
     setErrorMessage("");
     setIsFormVisible(true);
-  }, [missingPatients]);
+  };
 
   const handleCreateForAll = () => {
     if (missingPatients.length === 0) {
@@ -242,7 +242,7 @@ export default function ThresholdsScreen() {
     );
   };
 
-  const handleEdit = useCallback((threshold) => {
+  const handleEdit = (threshold) => {
     setFormData({
       patientId: threshold.patientId,
       temperatureMin: String(threshold.temperatureMin ?? "36.0"),
@@ -264,14 +264,14 @@ export default function ThresholdsScreen() {
     setEditingPatientId(threshold.patientId);
     setErrorMessage("");
     setIsFormVisible(true);
-  }, []);
+  };
 
-  const handleClone = useCallback((threshold) => {
+  const handleClone = (threshold) => {
     handleEdit(threshold);
     setEditingPatientId(null);
-  }, [handleEdit]);
+  };
 
-  const handleStop = useCallback((threshold) => {
+  const handleStop = (threshold) => {
     Alert.alert(
       "Ngưng áp dụng",
       "Bạn có chắc muốn ngưng áp dụng ngưỡng hiện tại? Bệnh nhân sẽ không được giám sát.",
@@ -302,7 +302,7 @@ export default function ThresholdsScreen() {
         },
       ]
     );
-  }, [loadData]);
+  };
 
   const validateForm = () => {
     if (!formData.patientId) return "Vui lòng chọn bệnh nhân.";
@@ -445,7 +445,7 @@ export default function ThresholdsScreen() {
     </View>
   );
 
-  const renderMissingCard = useCallback(({ item }) => (
+  const renderMissingCard = ({ item }) => (
     <View style={styles.missingCard}>
       <View style={{ flex: 1 }}>
         <Text style={styles.cardName}>{item.patientName || "Bệnh nhân"}</Text>
@@ -459,9 +459,9 @@ export default function ThresholdsScreen() {
         <Text style={styles.createBtnText}>Tạo ngưỡng</Text>
       </TouchableOpacity>
     </View>
-  ), [handleOpenCreate]);
+  );
 
-  const renderActiveCard = useCallback(({ item }) => {
+  const renderActiveCard = ({ item }) => {
     const threshold = activeThresholds.get(item.patientId);
     if (!threshold) return null;
     return (
@@ -523,9 +523,9 @@ export default function ThresholdsScreen() {
         </View>
       </View>
     );
-  }, [activeThresholds, handleEdit, handleStop]);
+  };
 
-  const renderHistoryCard = useCallback(({ item }) => {
+  const renderHistoryCard = ({ item }) => {
     const pt = patients.find((p) => p.patientId === item.patientId);
     return (
       <View style={styles.historyCard}>
@@ -544,7 +544,7 @@ export default function ThresholdsScreen() {
         </Text>
       </View>
     );
-  }, [patients, handleClone]);
+  };
 
   const renderContent = () => {
     if (loadingPatients || loadingThresholds) {

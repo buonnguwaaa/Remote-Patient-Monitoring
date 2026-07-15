@@ -506,27 +506,6 @@ const ReminderPage = () => {
     });
   };
 
-  const selectedTimes = useMemo(() => {
-    if (!formData.time) return [];
-    return formData.time.split(",").map((t) => t.trim()).filter(Boolean);
-  }, [formData.time]);
-
-  const handleTimeChange = (index: number, val: string) => {
-    const updated = [...selectedTimes];
-    updated[index] = val;
-    setFormData((prev) => ({ ...prev, time: updated.join(", ") }));
-  };
-
-  const handleAddTime = () => {
-    const updated = [...selectedTimes, "08:00"];
-    setFormData((prev) => ({ ...prev, time: updated.join(", ") }));
-  };
-
-  const handleRemoveTime = (index: number) => {
-    const updated = selectedTimes.filter((_, i) => i !== index);
-    setFormData((prev) => ({ ...prev, time: updated.join(", ") }));
-  };
-
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     const payload = buildPayload();
@@ -586,7 +565,7 @@ const ReminderPage = () => {
             onClick={handleOpenCreateForm}
             className="inline-flex items-center rounded-xl bg-blue-600 hover:bg-blue-700 px-4 py-2 text-sm font-medium text-white transition shadow-sm"
           >
-            <FaPlus className="mr-2" /> Tạo nhắc nhở
+            <FaPlus className="mr-2" /> Tạo nhắc nhở đo chỉ số
           </button>
           <button
             type="button"
@@ -1034,7 +1013,7 @@ const ReminderPage = () => {
           <div className="relative w-full max-w-2xl rounded-2xl bg-white dark:bg-slate-800 shadow-2xl my-8">
             <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 px-6 py-4">
               <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                {editingReminderId ? "Chỉnh sửa nhắc nhở thủ công" : "Tạo nhắc nhở"}
+                {editingReminderId ? "Chỉnh sửa nhắc nhở thủ công" : "Tạo nhắc nhở đo chỉ số"}
               </h3>
               <button onClick={handleCloseForm} className="text-gray-400 hover:text-gray-500 focus:outline-none"><FaTimes size={20} /></button>
             </div>
@@ -1092,41 +1071,18 @@ const ReminderPage = () => {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
-                  Giờ nhắc (HH:mm) *
-                </label>
-                <div className="space-y-3 max-h-48 overflow-y-auto pr-1">
-                  {selectedTimes.map((tVal, idx) => (
-                    <div key={idx} className="flex items-center gap-2">
-                      <div className="relative flex-1">
-                        <input
-                          type="time"
-                          value={tVal}
-                          onChange={(e) => handleTimeChange(idx, e.target.value)}
-                          required
-                          className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 outline-none"
-                        />
-                      </div>
-                      {selectedTimes.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveTime(idx)}
-                          className="p-2.5 rounded-xl border border-rose-200 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/40 transition"
-                        >
-                          <FaTimes size={16} />
-                        </button>
-                      )}
-                    </div>
-                  ))}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Giờ nhắc (HH:mm) *</label>
+                  <input
+                    type="time"
+                    name="time"
+                    value={formData.time}
+                    onChange={handleFormChange}
+                    required
+                    className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500"
+                  />
                 </div>
-                <button
-                  type="button"
-                  onClick={handleAddTime}
-                  className="mt-2 inline-flex items-center gap-2 text-sm font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
-                >
-                  <FaPlus size={10} /> Thêm khung giờ nhắc
-                </button>
               </div>
               
               <div>

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator, Alert, RefreshControl, ScrollView, StyleSheet,
-  Text, TouchableOpacity, View, Modal, TextInput, FlatList
+  Text, TouchableOpacity, View, Modal, TextInput
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -243,7 +243,7 @@ export default function PrescriptionsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["bottom", "left", "right"]}>
+    <SafeAreaView style={styles.safeArea}>
       <View style={[styles.topBar, { justifyContent: "flex-end" }]}>
         <TouchableOpacity style={styles.createBtn} onPress={() => { setFormData(createDefaultForm(selectedPatientId)); setFormVisible(true); }}>
           <Ionicons name="add" size={18} color="#FFFFFF" />
@@ -273,33 +273,32 @@ export default function PrescriptionsScreen() {
         ))}
       </ScrollView>
 
-      <FlatList
-        style={styles.listWrapper}
+      <ScrollView 
+        style={styles.listWrapper} 
         contentContainerStyle={styles.listContent}
-        data={Object.entries(grouped)}
-        keyExtractor={([pId]) => pId}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchPrescriptions({ isRefresh: true })} />}
-        ListHeaderComponent={<PrescriptionStatsHeader stats={stats} />}
-        ListEmptyComponent={
-          loadingPres && !prescriptions.length ? (
-            <ActivityIndicator size="large" color="#2563EB" style={{ marginTop: 40 }} />
-          ) : !loadingPres ? (
-            <View style={styles.emptyState}>
-              <Ionicons name="receipt-outline" size={40} color="#D1D5DB" />
-              <Text style={styles.emptyStateText}>Không có đơn thuốc nào phù hợp.</Text>
-            </View>
-          ) : null
-        }
-        renderItem={({ item: [pId, list] }) => (
-          <PrescriptionPatientGroup
-            patientInfo={patientMap[pId] || { name: "Bệnh nhân ẩn danh" }}
-            prescriptions={list}
-            onDetail={setDetailModal}
-            onEdit={openEdit}
-            onStatusChange={setStatusModal}
-          />
+      >
+        <PrescriptionStatsHeader stats={stats} />
+        
+        {loadingPres && !prescriptions.length ? <ActivityIndicator size="large" color="#2563EB" style={{ marginTop: 40 }} /> : null}
+        {!loadingPres && Object.keys(grouped).length === 0 ? (
+          <View style={styles.emptyState}>
+            <Ionicons name="receipt-outline" size={40} color="#D1D5DB" />
+            <Text style={styles.emptyStateText}>Không có đơn thuốc nào phù hợp.</Text>
+          </View>
+        ) : (
+          Object.entries(grouped).map(([pId, list]) => (
+            <PrescriptionPatientGroup 
+              key={pId} 
+              patientInfo={patientMap[pId] || { name: "Bệnh nhân ẩn danh" }} 
+              prescriptions={list} 
+              onDetail={setDetailModal}
+              onEdit={openEdit}
+              onStatusChange={setStatusModal}
+            />
+          ))
         )}
-      />
+      </ScrollView>
 
       <PrescriptionDetailModal visible={!!detailModal} prescription={detailModal} patientName={detailModal ? patientMap[detailModal.patientId]?.name : ""} onClose={() => setDetailModal(null)} onEdit={openEdit} onStatusChange={setStatusModal} />
       <PrescriptionFormModal visible={formVisible} onClose={() => setFormVisible(false)} initialData={formData} onSave={handleSaveForm} patients={patients} />

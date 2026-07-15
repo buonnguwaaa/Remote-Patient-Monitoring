@@ -1,11 +1,11 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 
 import Table, { type Column } from "../../components/ui/Table";
 import Pagination from "../../components/ui/Pagination";
-import { getAlerts, getMyPatients } from "../../services/patientService";
+import { getAlerts, getMyPatientsPaginated } from "../../services/patientService";
 import type { PatientItem } from "../../types/patient";
 import { Chat, Edit } from "./ActionButton";
 import { normalizeAlertSeverity } from "../../utils/alertSeverity";
@@ -23,14 +23,13 @@ const PatientList = () => {
   const [currentPage, setCurrentPage] = useState(1);
 
   const { data, isLoading: loading, error } = useQuery({
-    queryKey: ["patients"],
-    staleTime: 0,
+    queryKey: ["patients", currentPage],
     queryFn: async () => {
       // Simulate 200ms network delay for testing skeleton loader
       await new Promise((resolve) => setTimeout(resolve, 200));
 
-      const [assignments, alertsResult] = await Promise.all([
-        getMyPatients(),
+      const [assignmentsResult, alertsResult] = await Promise.all([
+        getMyPatientsPaginated(currentPage, ITEMS_PER_PAGE),
         getAlerts({ limit: 1000, page: 1, sortOrder: "desc" })
       ]);
       const alerts = alertsResult.alerts;
@@ -48,15 +47,15 @@ const PatientList = () => {
         }
       });
 
-      const patientItems: PatientItem[] = assignments.map((assignment) => {
-        // Quy tắc trạng thái (giống app mobile):
-        //   - Có bất kỳ alert open nào (high hoặc info) → "Cảnh báo"
-        //   - Không có alert open → "Bình thường"
+      const patientItems: PatientItem[] = assignmentsResult.data.map((assignment) => {
+        // Quy tắc trạng thái: high open → "Ưu tiên cao"; info open → "Cần theo dõi"; không open → "Ổn định"
         let status: PatientItem["status"] = t("patients.normal");
 
-        const hasOpenAlert = patientSeverity.has(assignment.patientId);
-        if (hasOpenAlert) {
-          status = t("patients.warning"); // "Cảnh báo" — luôn dùng chung 1 label cho cả high và info
+        const sev = patientSeverity.get(assignment.patientId);
+        if (sev === "high") {
+          status = t("patients.highPriority", "Ưu tiên cao");
+        } else if (sev === "info") {
+          status = t("patients.warning");
         }
 
         return {
@@ -70,18 +69,17 @@ const PatientList = () => {
         };
       });
 
-      return patientItems;
+      return {
+        patients: patientItems,
+        total: assignmentsResult.total
+      };
     },
   });
 
-  const patients = data || [];
+  const patients = data?.patients || [];
+  const totalItems = data?.total || 0;
 
-  // Reset page to 1 when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [filterStatus, searchQuery]);
-
-  // Client-side filtering on all data
+  // Client-side filtering on the current page's data
   const filteredPatients = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
 
@@ -100,19 +98,12 @@ const PatientList = () => {
     });
   }, [patients, filterStatus, searchQuery]);
 
-  const totalItems = filteredPatients.length;
   const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
-
-  const paginatedPatients = useMemo(() => {
-    const start = (currentPage - 1) * ITEMS_PER_PAGE;
-    const end = start + ITEMS_PER_PAGE;
-    return filteredPatients.slice(start, end);
-  }, [filteredPatients, currentPage]);
 
   const columns: Column<PatientItem>[] = [
     {
       header: t("patients.index"),
-      render: (patient) => <span className="font-bold">{filteredPatients.indexOf(patient) + 1}</span>,
+      render: (patient) => <span className="font-bold">{(currentPage - 1) * ITEMS_PER_PAGE + filteredPatients.indexOf(patient) + 1}</span>,
       className: "w-10 px-3",
     },
     {
@@ -263,7 +254,7 @@ const PatientList = () => {
             {t("common.noData")}
           </div>
         ) : (
-          paginatedPatients.map((patient: any, index: number) => (
+          filteredPatients.map((patient: any, index: number) => (
             <div
               key={patient.id}
               className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"
@@ -326,7 +317,7 @@ const PatientList = () => {
 
       <div className="hidden md:block">
         <Table
-          data={paginatedPatients}
+          data={filteredPatients}
           columns={columns}
           onRowClick={clickedRow}
           paginated={false}

@@ -47,7 +47,7 @@
         "expo-notifications",
         {
           "color": "#2563EB",
-          "defaultChannel": "rpm_notification",
+          "defaultChannel": "rpm_doctor_notification",
           "icon": "./assets/icon.png"
         }
       ]

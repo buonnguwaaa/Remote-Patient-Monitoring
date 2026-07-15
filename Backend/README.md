@@ -18,7 +18,6 @@ Built with **Go**, **MongoDB**, **Redis**, and **Temporal** for durable backgrou
 - [Database seeding](#database-seeding)
 - [API documentation](#api-documentation)
 - [Temporal workflows](#temporal-workflows)
-- [Measurement alert evaluators](#measurement-alert-evaluators)
 - [Project structure](#project-structure)
 - [Development](#development)
 - [Docker &amp; production](#docker--production)
@@ -35,7 +34,7 @@ Built with **Go**, **MongoDB**, **Redis**, and **Temporal** for durable backgrou
 | **Users & departments**       | Staff and patient profiles, department management                                |
 | **Care assignments**          | Link patients to doctors and nurses                                              |
 | **Measurements**              | Vital sign ingestion with configurable thresholds                                |
-| **Alerts**                    | Point threshold + rising/falling trend evaluation, push, and chat messages       |
+| **Alerts**                    | Automated threshold evaluation, push notifications, and in-app chat messages     |
 | **Prescriptions & reminders** | Medication schedules with Temporal-backed reminder delivery                      |
 | **Medication intake**         | Track whether patients took prescribed doses                                     |
 | **Follow-up appointments**    | Scheduling with automated appointment reminders                                  |
@@ -348,7 +347,7 @@ The worker registers two task queues:
 
 | Task queue              | Workflows                                             | Purpose                                                                                   |
 | ----------------------- | ----------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `ALERT-TASK-QUEUE`    | `AlertWorkflow`                                     | Run point-threshold and trend evaluators (rising BP/glucose + falling glucose), create one alert per measurement, send push and chat |
+| `ALERT-TASK-QUEUE`    | `AlertWorkflow`                                     | Evaluate measurements against thresholds, create alerts, send push and chat notifications |
 | `REMINDER-TASK-QUEUE` | `ReminderWorkflow`, `AppointmentReminderWorkflow` | Deliver medication and appointment reminders                                              |
 
 ### Temporal Web UI
@@ -360,164 +359,6 @@ After starting Docker Compose, open the UI to inspect workflow runs, retries, an
 In production (`docker-compose.prod.yml`), the UI is provided by the `temporal-ui` service on the same port.
 
 Workflow state in production is persisted in PostgreSQL (`temporal-postgres-data` volume) and survives container restarts.
-
----
-
-## Measurement alert evaluators
-
-Code lives under `external/temporal/helper/measurement_helper/`. On each new measurement, `EvaluateAndCreateAlertActivity` runs the point-threshold evaluator and `EvaluateTrends` (rising BP/glucose + falling glucose), then merges results into **one alert per measurement** (if any violations exist).
-
-| Evaluator | Package entrypoint | What it detects |
-| --------- | ------------------ | --------------- |
-| Point threshold | `EvaluateMeasurementAgainstThreshold` | Single reading vs personal min/max |
-| Rising trend | `EvaluateRisingTrends` (via `EvaluateTrends`) | Sustained upward BP / glucose |
-| Falling glucose trend | `EvaluateFallingGlucoseTrends` (via `EvaluateTrends`) | Sustained downward glucose toward hypo |
-
-```
-CreateMeasurement
-  → AlertWorkflow
-       1. EvaluateAndCreateAlertActivity
-            ├─ EvaluateMeasurementAgainstThreshold(current, personalThreshold)
-            └─ EvaluateTrends(last ~21d history, current, personalThreshold, edgeOnly?)
-                 ├─ rising: BP sys/dia + glucose
-                 └─ falling: glucose only
-            → create Alert if len(violations) > 0
-       2. SendAlertPushActivity
-       3. SendAlertMessageActivity
-       …
-```
-
-**Merge / anti-spam rules**
-
-- Threshold + active trend on the same reading → **one** alert whose `violations[]` contains both kinds (rising and/or falling rules may appear together with threshold rules).
-- Trend-only → create an alert only on an **edge** (level increases `none→watch` or `watch→high`), so an ongoing trend does not spam every reading. Applies separately per vital/direction.
-- When a threshold breach already creates an alert, trend uses `edgeOnly=false` so the current Watch/High state is attached even if it is not a new edge.
-
----
-
-### 1. Point threshold evaluator
-
-File: `evaluator.go`
-
-A vital becomes a violation **only** when it crosses the patient’s personal limit. Severity is then:
-
-```text
-severity = max(deviationSeverity, absoluteClinicalSeverity)
-```
-
-- **`info`** — personal breach without large overshoot and without hitting a clinical cutoff.
-- **`high`** — overshoot past personal exceeds the clinical-derived distance bar, **or** the absolute reading hits a guideline safety cutoff.
-
-**Absolute clinical cutoffs used for `high` (and for trend proximity)**
-
-| Vital | High when (absolute) | Source |
-| ----- | -------------------- | ------ |
-| Temperature | ≤35.0 or ≥39.1 | NEWS2 |
-| Heart rate | ≤40 or ≥131 | NEWS2 score 3 |
-| Respiratory rate | ≤8 or ≥25 | NEWS2 score 3 |
-| SpO₂ | ≤91 | NEWS2 Scale 1 score 3 |
-| Systolic BP | ≤90 or ≥160 | Hypotension / THA độ 2 (QĐ 3192/QĐ-BYT) |
-| Diastolic BP | ≥100 | THA độ 2 (QĐ 3192/QĐ-BYT) |
-| Glucose (hypo) | <54 | ADA / BYT level 2 |
-| Glucose (hyper, `pre_meal` / nil) | ≥126 mg/dL | QĐ 5481/QĐ-BYT (fasting / chưa ăn) |
-| Glucose (hyper, `post_meal`) | ≥200 mg/dL | QĐ 5481/QĐ-BYT |
-
-Personal-only breaches that never cross these clinical bars stay `info` unless the overshoot distance itself warrants `high` (see `requiredDeviationHigh` in code).
-
-Violation `rule` examples: `bp_systolic_max`, `glucose_min`, `spo2_min`.  
-`threshold` on the violation is the **personal** limit that was crossed.
-
----
-
-### 2. Trend evaluator (rising & falling glucose)
-
-File: `trend_evaluator.go`
-
-Shared windows/metrics for both directions:
-
-| Step | Detail |
-| ---- | ------ |
-| History fetch | Last **21 days** (`TrendHistorySince`) |
-| Baseline | Rolling **14-day** mean / std after Tukey IQR outlier removal |
-| Slope | Linear regression on last **7 days** (units/day), R² + two-tailed p-value |
-| Z-score | `(latest − baseline_mean) / baseline_std` |
-| Consecutive same way | ≥ 3 consecutive rises (rising) or drops (falling) ending at latest |
-
-#### 2a. Rising — BP systolic / diastolic + glucose
-
-```text
-watchLimit = min(personalMax, clinicalMax)   if personalMax set (> 0)
-           = clinicalMax                       otherwise
-highLimit  = clinicalMax                       ALWAYS
-ProximityWatch = latest / watchLimit
-ProximityHigh  = latest / clinicalMax
-```
-
-Clinical maxes: systolic **160**, diastolic **100**, glucose **126** (`pre_meal`/nil) or **200** (`post_meal`).
-
-**Watch** (`trend_rising_watch`, `info`):
-
-```text
-slope > 0
-AND (p-value < 0.05 OR R² > 0.5)
-AND consecutiveRising >= 3
-AND (ProximityWatch >= 0.85 OR Z-score >= 1.5)
-```
-
-**High** (`trend_rising_high`, `high`): Watch now + Watch 7 days ago + `ProximityHigh >= 0.90`.
-
-**Reset (rising):** (`Z-score < 1.0` **and** `ProximityWatch < 0.85`) OR `slope <= 0` on this reading and the previous one.
-
-| Rule | `threshold` field |
-| ---- | ----------------- |
-| `trend_rising_watch` | `watchLimit` |
-| `trend_rising_high` | `clinicalMax` |
-
-#### 2b. Falling — glucose only (hypoglycemia direction)
-
-No falling trend for BP (acute low BP remains a point alert).
-
-```text
-watchFloor = max(personalMin, clinicalMin=54)   if personalMin set (> 0)
-           = 54                                   otherwise
-highFloor  = 54                                   ALWAYS (ADA/BYT level 2)
-ProximityWatch = watchFloor / latest
-ProximityHigh  = highFloor / latest
-```
-
-Stricter personal min is **higher** (e.g. 70 vs 54) and pulls Watch earlier. Looser personal min below 54 is ignored.
-
-**Watch** (`trend_falling_watch`, `info`):
-
-```text
-slope < 0
-AND (p-value < 0.05 OR R² > 0.5)
-AND consecutiveFalling >= 3
-AND (ProximityWatch >= 0.85 OR Z-score <= -1.5)
-```
-
-**High** (`trend_falling_high`, `high`): Watch now + Watch 7 days ago + `ProximityHigh >= 0.90` (vs clinical 54).
-
-**Reset (falling):** (`Z-score > -1.0` **and** `ProximityWatch < 0.85`) OR `slope >= 0` on this reading and the previous one.
-
-Z recovery alone does not clear a trend that is still near the danger line by proximity.
-
-| Rule | `threshold` field |
-| ---- | ----------------- |
-| `trend_falling_watch` | `watchFloor` |
-| `trend_falling_high` | clinical **54** |
-
----
-
-### Local trend test seed
-
-To prepare ~6 backdated BP readings so **one** API measurement today can edge-trigger **rising** Watch (values scale to the patient’s personal `watchLimit`):
-
-```bash
-go run ./script/main/seed_trend_measurement.go <patientId>
-```
-
-Follow the printed systolic/diastolic targets for today’s create call. Restart the Temporal worker after evaluator changes. Avoid posting a second reading that reverses direction afterward — that breaks consecutive same-way steps and clears the trend.
 
 ---
 
@@ -537,7 +378,7 @@ Backend/
 │       ├── activity/    # Temporal activities (alerts, reminders, appointments)
 │       ├── client/      # Workflow starters and Temporal client
 │       ├── dto/         # Workflow input/output types
-│       ├── helper/      # measurement_helper: point-threshold + rising/falling trend evaluators
+│       ├── helper/      # Shared helpers (e.g. measurement evaluation)
 │       ├── worker/      # Worker registration and startup
 │       └── workflow/    # Workflow definitions
 ├── internal/
@@ -555,7 +396,6 @@ Backend/
 │   ├── util/            # Email, auth helpers
 │   └── ws/              # WebSocket client utilities
 ├── migration/seed/      # Seed data and helpers
-├── script/main/         # One-off tools (e.g. seed_trend_measurement.go)
 ├── docker-compose.yml   # Local dev infrastructure (Temporal + Redis)
 ├── docker-compose.prod.yml
 ├── Dockerfile           # Multi-stage build for server and worker binaries

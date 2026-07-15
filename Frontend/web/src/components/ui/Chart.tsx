@@ -119,11 +119,11 @@ const makeCustomTooltip = (isDark: boolean, t: any) => {
           {label}
         </p>
         <div className="space-y-1">
-          <p className="text-emerald-500">
+          <p className="text-indigo-500">
             <span className="font-medium">{t("dashboard.stablePatients") || "Ổn định"}:</span>{" "}
             {payload.find((p: any) => p.dataKey === "stablePatients")?.value?.toLocaleString() || 0}
           </p>
-          <p className="text-amber-500">
+          <p className="text-blue-500">
             <span className="font-medium">{t("dashboard.needAttention") || "Cần theo dõi"}:</span>{" "}
             {payload.find((p: any) => p.dataKey === "needsMonitoringPatients")?.value?.toLocaleString() || 0}
           </p>
@@ -271,14 +271,14 @@ export const Chart: React.FC<ChartProps> = ({
               <Bar
                 dataKey="stablePatients"
                 name={t("dashboard.stablePatients") || "Ổn định"}
-                fill="#10b981"
+                fill="#6366f1"
                 radius={[4, 4, 0, 0]}
                 barSize={24}
               />
               <Bar
                 dataKey="needsMonitoringPatients"
                 name={t("dashboard.needAttention") || "Cần theo dõi"}
-                fill="#f59e0b"
+                fill="#3b82f6"
                 radius={[4, 4, 0, 0]}
                 barSize={24}
               />
@@ -308,7 +308,7 @@ export const Chart: React.FC<ChartProps> = ({
             <div className="flex items-center gap-1.5">
               <div
                 className="h-2.5 w-2.5 rounded-full"
-                style={{ backgroundColor: "#10b981" }}
+                style={{ backgroundColor: "#6366f1" }}
               />
               <span style={{ color: summaryText }} className="text-xs">
                 {t("dashboard.stablePatients")}:{" "}
@@ -318,7 +318,7 @@ export const Chart: React.FC<ChartProps> = ({
             <div className="flex items-center gap-1.5">
               <div
                 className="h-2.5 w-2.5 rounded-full"
-                style={{ backgroundColor: "#f59e0b" }}
+                style={{ backgroundColor: "#3b82f6" }}
               />
               <span style={{ color: summaryText }} className="text-xs">
                 {t("dashboard.needAttention")}:{" "}

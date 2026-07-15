@@ -27,7 +27,7 @@ async function ensureAndroidChannel() {
     await Notifications.deleteNotificationChannelAsync("default");
   } catch (_) {}
 
-  await Notifications.setNotificationChannelAsync("rpm_notification", {
+  await Notifications.setNotificationChannelAsync("rpm_doctor_notification", {
     name: "Cảnh báo RPM Staff",
     importance: Notifications.AndroidImportance.MAX,
     vibrationPattern: [0, 250, 250, 250],

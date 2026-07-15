@@ -78,17 +78,6 @@ function getUnit(type) {
   return UNITS[clean] || "";
 }
 
-function formatViolationValue(type, val) {
-  if (val === null || val === undefined) return "";
-  const num = Number(val);
-  if (isNaN(num)) return val;
-  const clean = type?.replace(/_(max|min|high|low)$/, "");
-  if (clean === "temperature") {
-    return num.toFixed(1);
-  }
-  return val;
-}
-
 function formatDate(isoString) {
   if (!isoString) return "";
   const d = new Date(isoString);
@@ -253,8 +242,10 @@ export default function AlertsScreen() {
     return list;
   }, [alerts, activeTab, severityFilter, searchQuery]);
 
-  // Grouped alerts by patient for the active tab
-  const groupedAlerts = useMemo(() => {
+  // Grouped pending alerts by patient - chỉ còn highCount và infoCount
+  const groupedPending = useMemo(() => {
+    if (activeTab !== "PENDING") return [];
+
     const groups = new Map();
     filteredAlerts.forEach((alert) => {
       const pid = alert.patientId;
@@ -264,8 +255,6 @@ export default function AlertsScreen() {
           patientName: alert.patientName,
           patientCode: alert.patientCode,
           alerts: [],
-          openCount: 0,
-          resolvedCount: 0,
           highCount: 0,
           infoCount: 0,
           latestAlert: null,
@@ -273,11 +262,6 @@ export default function AlertsScreen() {
       }
       const group = groups.get(pid);
       group.alerts.push(alert);
-      if (alert.status === "open") {
-        group.openCount++;
-      } else {
-        group.resolvedCount++;
-      }
       if (normalizeAlertSeverity(alert.severity) === "high") group.highCount++;
       else group.infoCount++;
 
@@ -287,13 +271,11 @@ export default function AlertsScreen() {
     });
 
     return Array.from(groups.values()).sort((a, b) => {
-      if (a.openCount !== b.openCount) return b.openCount - a.openCount;
       if (a.highCount !== b.highCount) return b.highCount - a.highCount;
-      const aTime = a.latestAlert ? new Date(a.latestAlert.createdAt).getTime() : 0;
-      const bTime = b.latestAlert ? new Date(b.latestAlert.createdAt).getTime() : 0;
-      return bTime - aTime;
+      if (a.infoCount !== b.infoCount) return b.infoCount - a.infoCount;
+      return b.alerts.length - a.alerts.length;
     });
-  }, [filteredAlerts]);
+  }, [filteredAlerts, activeTab]);
 
   const toggleExpanded = (patientId) => {
     setExpandedPatients((prev) => {
@@ -381,6 +363,7 @@ export default function AlertsScreen() {
   );
 
   const renderFilters = () => {
+    if (activeTab === "PENDING") return null;
     return (
       <View style={styles.filterContainer}>
         <View style={styles.searchBox}>
@@ -404,16 +387,10 @@ export default function AlertsScreen() {
             return (
               <TouchableOpacity
                 key={opt.key}
-                style={[
-                  styles.severityChip,
-                  isActive && styles.severityChipActive,
-                ]}
+                style={[styles.severityChip, isActive && styles.severityChipActive]}
                 onPress={() => setSeverityFilter(opt.key)}
               >
-                <Text style={[
-                  styles.severityChipText,
-                  isActive && styles.severityChipTextActive,
-                ]}>
+                <Text style={[styles.severityChipText, isActive && styles.severityChipTextActive]}>
                   {opt.label}
                 </Text>
               </TouchableOpacity>
@@ -424,8 +401,8 @@ export default function AlertsScreen() {
     );
   };
 
-  // Grouped by patient for all tabs
-  const renderGroupedItem = ({ item: group }) => {
+  // Pending tab: grouped by patient
+  const renderPendingItem = ({ item: group }) => {
     const isExpanded = expandedPatients.has(group.patientId);
 
     return (
@@ -443,17 +420,17 @@ export default function AlertsScreen() {
             <Text style={styles.groupName}>{group.patientName}</Text>
             <View style={styles.groupBadges}>
               <Text style={styles.groupAlertCount}>{group.alerts.length} cảnh báo:</Text>
-              {group.openCount > 0 && (
-                <View style={[styles.countBadge, { backgroundColor: colors.dangerSoft }]}>
+              {group.highCount > 0 && (
+                <View style={[styles.countBadge, { backgroundColor: colors.dangerSoftAlt }]}>
                   <Text style={[styles.countBadgeText, { color: colors.danger }]}>
-                    {group.openCount} Chưa xử lý
+                    {group.highCount} Ưu tiên cao
                   </Text>
                 </View>
               )}
-              {group.resolvedCount > 0 && (
-                <View style={[styles.countBadge, { backgroundColor: colors.successSoft }]}>
-                  <Text style={[styles.countBadgeText, { color: colors.success }]}>
-                    {group.resolvedCount} Đã xử lý
+              {group.infoCount > 0 && (
+                <View style={[styles.countBadge, { backgroundColor: colors.primarySoftBg }]}>
+                  <Text style={[styles.countBadgeText, { color: colors.primaryAccent }]}>
+                    {group.infoCount} Cần theo dõi
                   </Text>
                 </View>
               )}
@@ -469,21 +446,14 @@ export default function AlertsScreen() {
 
         {/* Group Actions */}
         <View style={styles.groupActions}>
-          {group.openCount > 0 ? (
-            <TouchableOpacity
-              style={styles.resolveAllBtn}
-              onPress={() => openResolveModal(group.alerts.filter((a) => a.status === "open"))}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="checkmark-done" size={14} color={colors.surface} />
-              <Text style={styles.resolveAllBtnText}>Xử lý tất cả</Text>
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.allResolvedIndicator}>
-              <Ionicons name="checkmark-circle-outline" size={14} color={colors.success} />
-              <Text style={styles.allResolvedIndicatorText}>Đã xử lý xong</Text>
-            </View>
-          )}
+          <TouchableOpacity
+            style={styles.resolveAllBtn}
+            onPress={() => openResolveModal(group.alerts)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="checkmark-done" size={14} color={colors.surface} />
+            <Text style={styles.resolveAllBtnText}>Xử lý tất cả</Text>
+          </TouchableOpacity>
           <TouchableOpacity
             style={styles.chatBtn}
             onPress={() => navigation.navigate("ChatTab", { screen: "Chat", params: { patientId: group.patientId } })}
@@ -514,46 +484,28 @@ export default function AlertsScreen() {
                   ]}>
                     <Text style={[
                       styles.severityBadgeText,
-                      { color: normalizeAlertSeverity(alert.severity) === "high" ? colors.danger : colors.primary },
+                      { color: normalizeAlertSeverity(alert.severity) === "high" ? colors.danger : colors.primaryAccent },
                     ]}>
                       {normalizeAlertSeverity(alert.severity) === "high" ? "Ưu tiên cao" : "Cần theo dõi"}
                     </Text>
                   </View>
-                  {alert.status === "ack" ? (
-                    <View style={styles.resolvedBadgeCompact}>
-                      <Ionicons name="checkmark-circle" size={12} color={colors.success} />
-                      <Text style={styles.resolvedTextCompact}>
-                        Đã xử lý{alert.acknowledgedByName ? ` • ${alert.acknowledgedByName}` : ""}
-                      </Text>
-                    </View>
-                  ) : (
-                    <Text style={styles.alertItemTime}>{formatDate(alert.createdAt)}</Text>
-                  )}
+                  <Text style={styles.alertItemTime}>{formatDate(alert.createdAt)}</Text>
                 </View>
                 <View style={styles.violationsBlock}>
                   {alert.violations.map((v, i) => (
                     <Text key={i} style={styles.violationText}>
-                      • {getViolationLabel(v.type)}: <Text style={styles.violationObserved}>{formatViolationValue(v.type, v.observed)} {getUnit(v.type)}</Text>
-                      <Text style={styles.violationThreshold}> (Ngưỡng: {formatViolationValue(v.type, v.threshold)} {getUnit(v.type)})</Text>
+                      • {getViolationLabel(v.type)}: <Text style={styles.violationObserved}>{v.observed} {getUnit(v.type)}</Text>
+                      <Text style={styles.violationThreshold}> (Ngưỡng: {v.threshold} {getUnit(v.type)})</Text>
                     </Text>
                   ))}
                 </View>
-                {alert.status === "open" ? (
-                  <View style={styles.alertActionRow}>
-                    <Text style={styles.alertItemTime}>{formatDate(alert.createdAt)}</Text>
-                    <TouchableOpacity
-                      style={styles.resolveOneBtn}
-                      onPress={() => openResolveModal(alert)}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={styles.resolveOneBtnText}>Xác nhận xử lý</Text>
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <View style={styles.alertActionRow}>
-                    <Text style={styles.alertItemTime}>{formatDate(alert.createdAt)}</Text>
-                  </View>
-                )}
+                <TouchableOpacity
+                  style={styles.resolveOneBtn}
+                  onPress={() => openResolveModal(alert)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.resolveOneBtnText}>Xác nhận xử lý</Text>
+                </TouchableOpacity>
               </View>
             ))}
           </View>
@@ -561,6 +513,80 @@ export default function AlertsScreen() {
       </View>
     );
   };
+
+  // All/Resolved tab: flat list
+  const renderFlatItem = ({ item }) => (
+    <View style={styles.flatCard}>
+      <View style={styles.flatHeader}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.flatName}>{item.patientName}</Text>
+          <Text style={styles.flatCode}>{item.patientCode}</Text>
+        </View>
+        <View style={[
+          styles.severityBadge,
+          normalizeAlertSeverity(item.severity) === "high" ? styles.sevHigh : styles.sevLow,
+        ]}>
+          <Text style={[
+            styles.severityBadgeText,
+            { color: normalizeAlertSeverity(item.severity) === "high" ? colors.danger : colors.primaryAccent },
+          ]}>
+            {normalizeAlertSeverity(item.severity) === "high" ? "Ưu tiên cao" : "Cần theo dõi"}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.violationsBlock}>
+        {item.violations.map((v, i) => (
+          <Text key={i} style={styles.violationText}>
+            • {getViolationLabel(v.type)}: <Text style={styles.violationObserved}>{v.observed} {getUnit(v.type)}</Text>
+            <Text style={styles.violationThreshold}> (Ngưỡng: {v.threshold} {getUnit(v.type)})</Text>
+          </Text>
+        ))}
+      </View>
+
+      <View style={styles.flatFooter}>
+        <View style={styles.flatTimeRow}>
+          <Ionicons name="time-outline" size={12} color={colors.textSecondary} />
+          <Text style={styles.flatTime}>{formatDate(item.createdAt)}</Text>
+        </View>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <TouchableOpacity
+            style={styles.detailBtn}
+            onPress={() => handleOpenDetail(item.patientId, item.patientName)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="person-outline" size={12} color="#D97706" />
+            <Text style={styles.detailBtnText}>Hồ sơ</Text>
+          </TouchableOpacity>
+          {item.status === "ack" ? (
+            <View style={styles.resolvedBadge}>
+              <Ionicons name="checkmark-circle" size={14} color={colors.success} />
+              <Text style={styles.resolvedText}>
+                Đã xử lý{item.acknowledgedByName ? ` • ${item.acknowledgedByName}` : ""}
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.flatActions}>
+              <TouchableOpacity
+                style={styles.chatBtn}
+                onPress={() => navigation.navigate("ChatTab", { screen: "Chat", params: { patientId: item.patientId } })}
+              >
+                <Ionicons name="chatbubble-ellipses-outline" size={13} color={colors.primary} />
+                <Text style={styles.chatBtnText}>Nhắn</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.resolveAllBtn}
+                onPress={() => openResolveModal(item)}
+              >
+                <Ionicons name="checkmark-circle-outline" size={13} color={colors.surface} />
+                <Text style={styles.resolveAllBtnText}>Xử lý</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      </View>
+    </View>
+  );
 
   const renderContent = () => {
     if (loading) {
@@ -572,33 +598,42 @@ export default function AlertsScreen() {
       );
     }
 
-    if (groupedAlerts.length === 0) {
-      const emptyMsg =
-        activeTab === "PENDING"
-          ? "Không có cảnh báo nào cần xử lý"
-          : activeTab === "RESOLVED"
-          ? "Chưa có cảnh báo nào được xử lý"
-          : "Không tìm thấy cảnh báo nào";
+    if (activeTab === "PENDING") {
+      if (groupedPending.length === 0) {
+        return (
+          <View style={styles.emptyBox}>
+            <Ionicons name="checkmark-circle-outline" size={56} color={colors.success} />
+            <Text style={styles.emptyTitle}>Tuyệt vời!</Text>
+            <Text style={styles.emptyText}>Không có cảnh báo nào cần xử lý</Text>
+          </View>
+        );
+      }
+      return (
+        <FlatList
+          data={groupedPending}
+          keyExtractor={(item) => item.patientId}
+          renderItem={renderPendingItem}
+          contentContainerStyle={styles.listContent}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchAlerts(true)} tintColor={colors.primary} />}
+          showsVerticalScrollIndicator={false}
+        />
+      );
+    }
+ 
+    if (filteredAlerts.length === 0) {
       return (
         <View style={styles.emptyBox}>
-          <Ionicons
-            name={activeTab === "PENDING" ? "checkmark-circle-outline" : "notifications-off-outline"}
-            size={56}
-            color={activeTab === "PENDING" ? colors.success : colors.textMuted}
-          />
-          <Text style={styles.emptyTitle}>
-            {activeTab === "PENDING" ? "Tuyệt vời!" : "Trống"}
-          </Text>
-          <Text style={styles.emptyText}>{emptyMsg}</Text>
+          <Ionicons name="notifications-off-outline" size={48} color={colors.textMuted} />
+          <Text style={styles.emptyText}>Không có cảnh báo nào</Text>
         </View>
       );
     }
-
+ 
     return (
       <FlatList
-        data={groupedAlerts}
-        keyExtractor={(item) => item.patientId}
-        renderItem={renderGroupedItem}
+        data={filteredAlerts}
+        keyExtractor={(item) => item.id}
+        renderItem={renderFlatItem}
         contentContainerStyle={styles.listContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchAlerts(true)} tintColor={colors.primary} />}
         showsVerticalScrollIndicator={false}
@@ -750,15 +785,15 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, marginLeft: 8, fontSize: 13, color: colors.text },
   severityRow: { flexDirection: "row", gap: 8 },
   severityChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: radius.pill,
-    backgroundColor: colors.surface,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: radius.sm,
+    backgroundColor: colors.borderSoft,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderSoft,
   },
   severityChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  severityChipText: { fontSize: 12, fontWeight: "600", color: colors.textSecondary },
+  severityChipText: { fontSize: 12, fontWeight: "600", color: colors.textHint },
   severityChipTextActive: { color: colors.surface },
 
   // Center/Empty
@@ -959,38 +994,4 @@ const styles = StyleSheet.create({
     minWidth: 90,
   },
   confirmBtnText: { fontSize: 13, fontWeight: "600", color: colors.surface },
-  allResolvedIndicator: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: colors.successSoft,
-    paddingHorizontal: 12,
-    height: 32,
-    borderRadius: radius.sm,
-    gap: 4,
-  },
-  allResolvedIndicatorText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: colors.success,
-  },
-  alertActionRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 8,
-  },
-  resolvedBadgeCompact: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: colors.successSoft,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: radius.xs,
-    gap: 4,
-  },
-  resolvedTextCompact: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: colors.success,
-  },
 });

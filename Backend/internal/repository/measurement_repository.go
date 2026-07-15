@@ -28,8 +28,6 @@ type MeasurementFilter struct {
 	PatientID  string
 	MealTiming string
 	IsLatest   bool
-	// Since, when set, keeps only measurements with createdAt >= Since (inclusive).
-	Since *time.Time
 }
 
 func NewMeasurementRepository(db *mongo.Database) MeasurementRepository {
@@ -125,10 +123,6 @@ func (r *measurementRepository) FindWithFilter(ctx context.Context, f Measuremen
 
 	if f.MealTiming != "" {
 		filter["mealTiming"] = f.MealTiming
-	}
-
-	if f.Since != nil {
-		filter["createdAt"] = bson.M{"$gte": f.Since.UTC()}
 	}
 
 	if f.IsLatest {

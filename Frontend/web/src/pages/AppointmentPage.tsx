@@ -666,16 +666,16 @@ function MiniCalendar({ selected, onSelect }: MiniCalendarProps) {
       </div>
 
       {/* Day-of-week headers */}
-      <div className="grid grid-cols-7 mb-2">
+      <div className="grid grid-cols-7 mb-1">
         {["T2","T3","T4","T5","T6","T7","CN"].map((d) => (
-          <div key={d} className="text-center text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase py-1">
+          <div key={d} className="text-center text-[9px] font-semibold text-slate-400 dark:text-slate-500 uppercase py-0.5">
             {d}
           </div>
         ))}
       </div>
 
       {/* Date cells */}
-      <div className="grid grid-cols-7 gap-y-2">
+      <div className="grid grid-cols-7 gap-y-0.5">
         {cells.map((date, idx) => {
           if (!date) return <div key={idx} />;
           const isToday = isSameDay(date, today);
@@ -685,7 +685,7 @@ function MiniCalendar({ selected, onSelect }: MiniCalendarProps) {
             <button
               key={idx}
               onClick={() => onSelect(date)}
-              className={`relative flex flex-col items-center justify-center rounded-full w-9 h-9 mx-auto text-xs font-medium transition ${
+              className={`relative flex flex-col items-center justify-center rounded-full w-7 h-7 mx-auto text-[11px] font-medium transition ${
                 isSelected
                   ? "bg-indigo-600 text-white"
                   : isToday
@@ -834,7 +834,7 @@ function CalendarView({
     <>
       <div className="flex gap-4 items-start">
       {/* ── Mini calendar sidebar ── */}
-      <div className="hidden lg:block shrink-0 w-[280px] rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm p-3">
+      <div className="hidden lg:block shrink-0 w-[196px] rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm p-3">
         <MiniCalendar
           selected={currentDate}
           onSelect={(d) => {
@@ -1560,7 +1560,7 @@ export default function AppointmentPage() {
       {/* ── Calendar view ── */}
       {viewMode === "calendar" ? (
         <CalendarView
-          appointments={filteredAppointments.filter((a) => a.status !== "canceled")}
+          appointments={filteredAppointments}
           patientMap={patientMap}
           onEdit={openEdit}
           onStatusChange={handleStatusChange}

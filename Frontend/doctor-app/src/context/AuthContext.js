@@ -53,12 +53,10 @@ export function AuthProvider({ children }) {
 
     let socket = null;
     let reconnectTimeout = null;
-    let active = true;
 
     const connectSocket = async () => {
       try {
         const url = await buildRealtimeSocketUrl();
-        if (!active) return;
         socket = new WebSocket(url);
 
         socket.onopen = () => {
@@ -85,9 +83,7 @@ export function AuthProvider({ children }) {
 
         socket.onclose = (e) => {
           console.log("[Realtime WS] Socket closed, reconnecting in 5s...", e.reason);
-          if (active) {
-            reconnectTimeout = setTimeout(connectSocket, 5000);
-          }
+          reconnectTimeout = setTimeout(connectSocket, 5000);
         };
 
         socket.onerror = (e) => {
@@ -101,7 +97,6 @@ export function AuthProvider({ children }) {
     connectSocket();
 
     return () => {
-      active = false;
       if (socket) {
         socket.onclose = null;
         socket.close();
@@ -129,16 +124,8 @@ export function AuthProvider({ children }) {
     (async () => {
       const result = await registerCurrentDevicePushToken();
       if (!mounted) return;
-      if (!result?.ok) {
-        console.warn(
-          "[Push Notification Debug]",
-          `Status: Failed/Skipped\nReason: ${result?.reason || "error"}\nError: ${result?.error || "none"}`
-        );
-      } else {
-        console.log(
-          "[Push Notification Debug]",
-          "Status: Registered Successfully!"
-        );
+      if (!result?.ok && !result?.skipped) {
+        console.warn("[push] failed to register staff device token", result?.error);
       }
     })();
 
