@@ -9,6 +9,27 @@ const (
 	// the rest of the seed data.
 	adminCount = 5
 
+	// appendExtraPatientsPerDoctor is how many additional patients RunAppend
+	// attaches to each target doctor (doctor@gmail.com + seed doctors 1..10).
+	appendExtraPatientsPerDoctor = 10
+
+	// appendDoctorMaxIndex is the last doctor index included in RunAppend
+	// (0 = doctor@gmail.com, 1..10 = seed-doctor-02..seed-doctor-11).
+	appendDoctorMaxIndex = 10
+
+	// appendPatientIndexBase offsets new patient emails/names so they never
+	// collide with the original seed-patient-02..seed-patient-50 accounts.
+	appendPatientIndexBase = 1000
+
+	// Measurement history series (per patient). Span/count vary by patient
+	// index so windows are consecutive but not identical across everyone.
+	// 16–24 daily-ish readings over 18–25 days covers the trend lookback
+	// (~21d) used by EvaluateTrends.
+	historyMinReadings = 16
+	historyMaxReadings = 24
+	historyMinSpanDays = 18
+	historyMaxSpanDays = 25
+
 	localProvider = "local"
 	seedTimezone  = "Asia/Ho_Chi_Minh"
 	seedDomain    = "rpm.local"

@@ -12,8 +12,16 @@ endif
 
 
 seed:
-	@echo "Seeding database..."
-	@go run cmd/seed/main.go
+	@echo "Seeding database (full reset)..."
+	@go run cmd/seed/main.go full
+
+seed-append:
+	@echo "Appending patients for doctor@gmail.com and seed doctors 1..10..."
+	@go run cmd/seed/main.go append
+
+seed-history:
+	@echo "Enriching measurement history + alerts for all patients..."
+	@go run cmd/seed/main.go history
 
 server:
 	@echo "Running server..."
@@ -40,7 +48,7 @@ static_check:
 	@go vet ./...
 	@echo "Static analysis completed!"
 
-.PHONY: up up-dev up-prod
+.PHONY: up up-dev up-prod seed seed-append seed-history
 up:
 	@echo "Specify environment: run 'make up-dev' or 'make up-prod'"
 

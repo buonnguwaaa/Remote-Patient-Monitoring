@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"os"
 	"time"
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/config"
@@ -24,10 +25,32 @@ func main() {
 		}
 	}()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
 	defer cancel()
 
-	if err := seed.Run(ctx, config.Mongo.Database); err != nil {
-		log.Fatalf("[seed] failed: %v", err)
+	mode := "full"
+	if len(os.Args) > 1 {
+		mode = os.Args[1]
+	}
+
+	switch mode {
+	case "append":
+		// Adds patients/records for doctor@gmail.com + seed doctors 1..10
+		// without dropping existing data. Requires a prior full seed.
+		if err := seed.RunAppend(ctx, config.Mongo.Database); err != nil {
+			log.Fatalf("[seed-append] failed: %v", err)
+		}
+	case "history":
+		// Adds consecutive past measurements + threshold/trend alerts for
+		// every existing patient. Does not drop data or seed chat.
+		if err := seed.RunEnrichMeasurementHistory(ctx, config.Mongo.Database); err != nil {
+			log.Fatalf("[seed-history] failed: %v", err)
+		}
+	case "full", "":
+		if err := seed.Run(ctx, config.Mongo.Database); err != nil {
+			log.Fatalf("[seed] failed: %v", err)
+		}
+	default:
+		log.Fatalf("[seed] unknown mode %q (use \"full\", \"append\", or \"history\")", mode)
 	}
 }

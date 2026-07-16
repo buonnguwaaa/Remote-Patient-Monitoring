@@ -42,7 +42,6 @@ type seedData struct {
 	nurses        []*userDomain.Nurse
 	patients      []*userDomain.Patient
 	thresholds    []*domain.Threshold
-	measurements  []*domain.Measurement
 	prescriptions []*domain.Prescription
 	conversations []*chatDomain.Conversation
 }
@@ -71,6 +70,7 @@ func NewSeeder(db *mongo.Database) *Seeder {
 }
 
 // Run drops the database, then seeds default accounts and 50 records per domain.
+// For additive seeding without dropping, use RunAppend.
 func Run(ctx context.Context, db *mongo.Database) error {
 	if err := DropDatabase(ctx, db); err != nil {
 		return fmt.Errorf("drop database: %w", err)
@@ -106,14 +106,11 @@ func Run(ctx context.Context, db *mongo.Database) error {
 	if data.thresholds, err = s.seedThresholds(ctx, data); err != nil {
 		return fmt.Errorf("seed thresholds: %w", err)
 	}
-	if data.measurements, err = s.seedMeasurements(ctx, data); err != nil {
-		return fmt.Errorf("seed measurements: %w", err)
+	if _, _, err = s.enrichPatientsMeasurementHistory(ctx, data.patients); err != nil {
+		return fmt.Errorf("seed measurement history: %w", err)
 	}
 	if data.prescriptions, err = s.seedPrescriptions(ctx, data); err != nil {
 		return fmt.Errorf("seed prescriptions: %w", err)
-	}
-	if err := s.seedAlerts(ctx, data); err != nil {
-		return fmt.Errorf("seed alerts: %w", err)
 	}
 	if err := s.seedReminders(ctx, data); err != nil {
 		return fmt.Errorf("seed reminders: %w", err)
