@@ -5,10 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math"
 	"strings"
 	"time"
 
-	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/helper/measurement_helper"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
 	chatDomain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/chat"
 	userDomain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
@@ -93,8 +93,8 @@ func (s *Seeder) seedThresholds(ctx context.Context, data *seedData) ([]*domain.
 			DiaMax:             90,
 			GlucoseMin:         &glucoseMin,
 			GlucoseMax:         &glucoseMax,
-			// Must predate every measurement seedAlerts will evaluate against
-			// it (measurements go back up to ~51 days, see seedMeasurements)
+			// Must predate every measurement the history seeder / alert
+			// evaluator will evaluate against it (histories span ~18-25 days)
 			// but still land after the patient's own account was created
 			// (accountCreatedAt: 120+ days ago) - otherwise EvaluateAndCreate
 			// AlertActivity would find no threshold effective yet at
@@ -122,153 +122,98 @@ func (s *Seeder) seedThresholds(ctx context.Context, data *seedData) ([]*domain.
 	return result, nil
 }
 
-func (s *Seeder) seedMeasurements(ctx context.Context, data *seedData) ([]*domain.Measurement, error) {
-	count, err := s.countCollection(ctx, "measurements", bson.M{})
-	if err != nil {
-		return nil, err
-	}
+// buildSeedMeasurement builds one measurement for patientID using the same
+// vitals/glucose anomaly rotation rules as the original seedMeasurements loop.
+func buildSeedMeasurement(patientID primitive.ObjectID, i int) domain.Measurement {
+	device := "Máy đo tại nhà"
+	preMeal := domain.MealTimingPreMeal
+	postMeal := domain.MealTimingPostMeal
+	note := fmt.Sprintf("Số liệu đo mẫu %02d", i+1)
 
-	created := 0
-	if count < seedCount {
-		device := "Máy đo tại nhà"
-		preMeal := domain.MealTimingPreMeal
-		postMeal := domain.MealTimingPostMeal
+	switch i % 3 {
+	case 0:
+		// Baseline vitals sit comfortably inside the seeded threshold
+		// (temp 36-37.5, HR 60-100, RR 12-20, SpO2>=95, sys 90-140,
+		// dia 60-90); a rotating subset is pushed out of range so
+		// seedAlerts (which evaluates against the real threshold) has
+		// a realistic mix of low/medium/high alerts instead of none.
+		temperature := 36.5 + float64(i%5)*0.1
+		heartRate := 70.0 + float64(i%20)
+		respiratoryRate := 14.0 + float64(i%6)
+		spo2 := 96.0 + float64(i%3)
+		systolic := 115.0 + float64(i%20)
+		diastolic := 75.0 + float64(i%10)
 
-		for i := int(count); i < seedCount; i++ {
-			patient := data.patients[i]
-			note := fmt.Sprintf("Số liệu đo mẫu %02d", i+1)
+		switch i % 8 {
+		case 0:
+			heartRate = 105 + float64(i%15) // tachycardia
+		case 3:
+			temperature = 38.6 + float64(i%4)*0.4 // fever
+		case 5:
+			spo2 = 92 - float64(i%5) // hypoxemia
+		case 7:
+			systolic = 148 + float64(i%15) // hypertension
+		}
 
-			var measurement domain.Measurement
-			switch i % 3 {
-			case 0:
-				// Baseline vitals sit comfortably inside the seeded threshold
-				// (temp 36-37.5, HR 60-100, RR 12-20, SpO2>=95, sys 90-140,
-				// dia 60-90); a rotating subset is pushed out of range so
-				// seedAlerts (which evaluates against the real threshold) has
-				// a realistic mix of low/medium/high alerts instead of none.
-				temperature := 36.5 + float64(i%5)*0.1
-				heartRate := 70.0 + float64(i%20)
-				respiratoryRate := 14.0 + float64(i%6)
-				spo2 := 96.0 + float64(i%3)
-				systolic := 115.0 + float64(i%20)
-				diastolic := 75.0 + float64(i%10)
+		systolic = math.Round(systolic)
+		diastolic = math.Round(diastolic)
 
-				switch i % 8 {
-				case 0:
-					heartRate = 105 + float64(i%15) // tachycardia
-				case 3:
-					temperature = 38.6 + float64(i%4)*0.4 // fever
-				case 5:
-					spo2 = 92 - float64(i%5) // hypoxemia
-				case 7:
-					systolic = 148 + float64(i%15) // hypertension
-				}
+		return domain.Measurement{
+			PatientID:       patientID,
+			Temperature:     fp(temperature),
+			HeartRate:       fp(heartRate),
+			RespiratoryRate: fp(respiratoryRate),
+			SpO2:            fp(spo2),
+			BloodPressure: domain.BloodPressure{
+				Systolic:  fp(systolic),
+				Diastolic: fp(diastolic),
+				MAP:       fp(math.Round(calculateMAP(systolic, diastolic))),
+			},
+			Device: &device,
+			Note:   &note,
+		}
+	case 1:
+		// Pre-meal glucose baseline stays inside 70-140; a rotating
+		// subset simulates hyper/hypoglycemia for alert variety.
+		// This branch only ever sees i with i%3==1, so the anomaly
+		// switch must key off a modulus whose residues are actually
+		// reachable from that subset (i%6 here would always be 1 or
+		// 4, making a switch on 0/3 permanently dead) - i%9 cycles
+		// through 1, 4, 7 across i%3==1 values instead.
+		glucose := 90.0 + float64(i%35)
+		switch i % 9 {
+		case 1:
+			glucose = 145 + float64(i%30) // hyperglycemia
+		case 4:
+			glucose = 58 + float64(i%10) // hypoglycemia
+		}
 
-				measurement = domain.Measurement{
-					PatientID:       patient.ID,
-					Temperature:     fp(temperature),
-					HeartRate:       fp(heartRate),
-					RespiratoryRate: fp(respiratoryRate),
-					SpO2:            fp(spo2),
-					BloodPressure: domain.BloodPressure{
-						Systolic:  fp(systolic),
-						Diastolic: fp(diastolic),
-						MAP:       fp(calculateMAP(systolic, diastolic)),
-					},
-					Device: &device,
-					Note:   &note,
-				}
-			case 1:
-				// Pre-meal glucose baseline stays inside 70-140; a rotating
-				// subset simulates hyper/hypoglycemia for alert variety.
-				// This branch only ever sees i with i%3==1, so the anomaly
-				// switch must key off a modulus whose residues are actually
-				// reachable from that subset (i%6 here would always be 1 or
-				// 4, making a switch on 0/3 permanently dead) - i%9 cycles
-				// through 1, 4, 7 across i%3==1 values instead.
-				glucose := 90.0 + float64(i%35)
-				switch i % 9 {
-				case 1:
-					glucose = 145 + float64(i%30) // hyperglycemia
-				case 4:
-					glucose = 58 + float64(i%10) // hypoglycemia
-				}
+		return domain.Measurement{
+			PatientID: patientID,
+			Glucose: domain.Glucose{
+				BloodGlucose: fp(glucose),
+			},
+			MealTiming: &preMeal,
+			Device:     &device,
+		}
+	default:
+		// Post-meal glucose runs naturally higher but is kept under
+		// the (meal-agnostic) 140 threshold by default; a rotating
+		// subset spikes above it to simulate post-prandial hyperglycemia.
+		glucose := 105.0 + float64(i%34)
+		if i%5 == 0 {
+			glucose = 185 + float64(i%60)
+		}
 
-				measurement = domain.Measurement{
-					PatientID: patient.ID,
-					Glucose: domain.Glucose{
-						BloodGlucose: fp(glucose),
-					},
-					MealTiming: &preMeal,
-					Device:     &device,
-				}
-			default:
-				// Post-meal glucose runs naturally higher but is kept under
-				// the (meal-agnostic) 140 threshold by default; a rotating
-				// subset spikes above it to simulate post-prandial hyperglycemia.
-				glucose := 105.0 + float64(i%34)
-				if i%5 == 0 {
-					glucose = 185 + float64(i%60)
-				}
-
-				measurement = domain.Measurement{
-					PatientID: patient.ID,
-					Glucose: domain.Glucose{
-						BloodGlucose: fp(glucose),
-					},
-					MealTiming: &postMeal,
-					Device:     &device,
-				}
-			}
-
-			if _, err := s.measurementRepo.Create(ctx, &measurement); err != nil {
-				return nil, err
-			}
-
-			// measurementRepo.Create hard-codes CreatedAt to time.Now(), and
-			// Measurement has no separate "recordedAt" field - CreatedAt *is*
-			// when the reading was taken. Left alone, every seeded measurement
-			// would carry the same timestamp: the instant the seed ran, rather
-			// than being spread across the past like a real vitals history.
-			recordedAt := daysAgoWithin(i, 90).
-				Add(time.Duration(6+i%14) * time.Hour).
-				Add(time.Duration(i%60) * time.Minute)
-			if err := s.backdateCreatedAt(ctx, "measurements", measurement.ID, recordedAt); err != nil {
-				return nil, err
-			}
-			created++
+		return domain.Measurement{
+			PatientID: patientID,
+			Glucose: domain.Glucose{
+				BloodGlucose: fp(glucose),
+			},
+			MealTiming: &postMeal,
+			Device:     &device,
 		}
 	}
-
-	result, err := s.loadMeasurements(ctx, seedCount)
-	if err != nil {
-		return nil, err
-	}
-
-	log.Printf("[seed] measurements: %d total (%d created)", len(result), created)
-	return result, nil
-}
-
-func (s *Seeder) loadMeasurements(ctx context.Context, limit int) ([]*domain.Measurement, error) {
-	cursor, err := s.db.Collection("measurements").Find(
-		ctx,
-		bson.M{},
-		options.Find().SetLimit(int64(limit)).SetSort(bson.D{{Key: "createdAt", Value: 1}}),
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer cursor.Close(ctx)
-
-	result := make([]*domain.Measurement, 0, limit)
-	for cursor.Next(ctx) {
-		var m domain.Measurement
-		if err := cursor.Decode(&m); err != nil {
-			return nil, err
-		}
-		result = append(result, &m)
-	}
-	return result, cursor.Err()
 }
 
 func (s *Seeder) seedPrescriptions(ctx context.Context, data *seedData) ([]*domain.Prescription, error) {
@@ -414,103 +359,6 @@ func (s *Seeder) ensureMedicationReminder(ctx context.Context, prescription *dom
 		return false, err
 	}
 	return true, nil
-}
-
-// seedAlerts mirrors ProcessingAlertActivity.EvaluateAndCreateAlertActivity:
-// it evaluates each measurement against its own patient's threshold using
-// the exact same helper the real Temporal activity uses, and only creates an
-// alert when a real violation is found - instead of attaching a fabricated
-// heart-rate violation to every measurement regardless of its actual values.
-func (s *Seeder) seedAlerts(ctx context.Context, data *seedData) error {
-	if len(data.measurements) < seedCount {
-		return fmt.Errorf("need at least %d measurements, got %d", seedCount, len(data.measurements))
-	}
-	if len(data.thresholds) < seedCount {
-		return fmt.Errorf("need at least %d thresholds, got %d", seedCount, len(data.thresholds))
-	}
-
-	thresholdByPatient := make(map[primitive.ObjectID]*domain.Threshold, len(data.thresholds))
-	for _, threshold := range data.thresholds {
-		thresholdByPatient[threshold.PatientID] = threshold
-	}
-
-	created := 0
-	skippedNoViolation := 0
-
-	for _, measurement := range data.measurements {
-		existing, err := s.alertRepo.FindByMeasurementID(ctx, measurement.ID)
-		if err != nil {
-			return err
-		}
-		if existing != nil {
-			continue
-		}
-
-		threshold, ok := thresholdByPatient[measurement.PatientID]
-		if !ok {
-			return fmt.Errorf("no threshold seeded for patient %s", measurement.PatientID.Hex())
-		}
-
-		violations := measurement_helper.EvaluateMeasurementAgainstThreshold(measurement, threshold)
-		if len(violations) == 0 {
-			skippedNoViolation++
-			continue
-		}
-
-		// A subset of alerts is acknowledged by the patient's assigned
-		// doctor shortly after being raised, so the alerts dashboard isn't
-		// 100% "open" - matching what a real clinician workflow produces
-		// over time instead of every alert sitting untouched forever.
-		acknowledged := created%3 == 0
-		status := domain.StatusOpen
-		if acknowledged {
-			status = domain.StatusAck
-		}
-
-		alert := &domain.Alert{
-			ID:            primitive.NewObjectID(),
-			PatientID:     measurement.PatientID,
-			MeasurementID: measurement.ID,
-			Violations:    violations,
-			Status:        status,
-			Severity:      measurement_helper.AggregateSeverity(violations),
-		}
-
-		if _, err := s.alertRepo.Create(ctx, alert); err != nil {
-			return err
-		}
-
-		// alertRepo.Create hard-codes CreatedAt to time.Now(), and Alert (like
-		// Measurement) has no separate "triggeredAt" field - CreatedAt *is*
-		// when the violation was raised. Anchor it a couple of minutes after
-		// the measurement's own (already-backdated) CreatedAt, mirroring the
-		// real evaluator's near-immediate reaction, instead of leaving every
-		// alert dated at the seed run's wall-clock regardless of how old the
-		// measurement it's about actually is.
-		triggeredAt := measurement.CreatedAt.Add(time.Duration(1+created%9) * time.Minute)
-		fields := bson.M{"createdAt": triggeredAt.UTC(), "updatedAt": triggeredAt.UTC()}
-
-		if acknowledged {
-			// Acknowledged shortly (15 min - 3h) after the alert fired, by
-			// the same doctor the threshold was set up by - never after
-			// "now", however recent the triggering measurement was.
-			ackAt := triggeredAt.Add(time.Duration(15+created%165) * time.Minute)
-			if now := time.Now().UTC(); !ackAt.Before(now) {
-				ackAt = now.Add(-time.Minute)
-			}
-			fields["acknowledgedBy"] = threshold.DoctorID
-			fields["acknowledgedAt"] = ackAt.UTC()
-			fields["updatedAt"] = ackAt.UTC()
-		}
-
-		if err := s.setTimestampFields(ctx, "alerts", alert.ID, fields); err != nil {
-			return err
-		}
-		created++
-	}
-
-	log.Printf("[seed] alerts: %d created (%d measurements had no violation)", created, skippedNoViolation)
-	return nil
 }
 
 // seedReminders creates standalone "measure" reminders (e.g. reminders to

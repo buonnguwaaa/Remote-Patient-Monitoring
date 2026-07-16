@@ -135,12 +135,22 @@ func (r *medicationIntakeRepository) FindBySlot(
 	dose domain.MedicationDose,
 	scheduledDate time.Time,
 ) (*domain.MedicationIntake, error) {
+	// MedicationDose.MealTiming is bson `omitempty`, so a dose without meal
+	// timing is stored with the field absent (null to the unique index). A
+	// query for the empty string would never match those documents, making
+	// this lookup miss existing intakes and the subsequent insert fail on
+	// the unique index instead.
+	var mealTiming interface{} = dose.MealTiming
+	if dose.MealTiming == "" {
+		mealTiming = bson.M{"$in": bson.A{"", nil}}
+	}
+
 	filter := bson.M{
 		"patientId":       patientID,
 		"prescriptionId":  prescriptionID,
 		"drugName":        drugName,
 		"dose.timeOfDay":  dose.TimeOfDay,
-		"dose.mealTiming": dose.MealTiming,
+		"dose.mealTiming": mealTiming,
 		"dose.pillCount":  dose.PillCount,
 		"scheduledDate":   scheduledDate,
 	}
