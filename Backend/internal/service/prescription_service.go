@@ -290,9 +290,6 @@ func (s *prescriptionService) createMedicationReminders(
 		return nil, nil
 	}
 
-	// A single medication reminder covers the whole prescription and fires at
-	// every distinct dose time. The exact doses and skip decision for each fire
-	// are resolved from the prescription at reminder time (like Temporal does).
 	times := make([]domain.ReminderTime, 0, len(slots))
 	allMessages := make([]string, 0)
 	for _, slot := range slots {

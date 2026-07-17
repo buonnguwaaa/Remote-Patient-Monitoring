@@ -15,6 +15,7 @@ import {
 } from "../services/thresholdService";
 import type { AssignmentResponse } from "../types/patient";
 import PatientSearchSelect from "../components/common/PatientSearchSelect";
+import Pagination from "../components/ui/Pagination";
 
 interface ThresholdFormData {
   patientId: string;
@@ -108,6 +109,8 @@ export default function ThresholdSettingsPage() {
   // History filtering
   const [filterPatientId, setFilterPatientId] = useState("");
   const [missingSearchTerm, setMissingSearchTerm] = useState("");
+  const [activeSearchTerm, setActiveSearchTerm] = useState("");
+  const [activeCurrentPage, setActiveCurrentPage] = useState(1);
 
   const loadData = async () => {
     if (!user?.id) return;
@@ -586,21 +589,71 @@ export default function ThresholdSettingsPage() {
             </div>
             )}
 
-            {activeTab === "ACTIVE" && (
-              <div className="space-y-4">
-                {activePatients.length === 0 ? (
-                  <div className="py-12 text-center text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
-                    Chưa có bệnh nhân nào có cấu hình ngưỡng.
-                  </div>
-                ) : (
-                  activePatients.map(pt => {
-                    const threshold = activeThresholds.get(pt.patientId);
-                    if (!threshold) return null;
-                    return renderActiveCard(threshold, pt.patientName || pt.patientId, pt.patientCode);
-                  })
-                )}
-              </div>
-            )}
+            {activeTab === "ACTIVE" && (() => {
+              const filteredActive = activePatients.filter(pt => {
+                const q = activeSearchTerm.toLowerCase();
+                if (!q) return true;
+                return (pt.patientName || "").toLowerCase().includes(q) || (pt.patientCode || "").toLowerCase().includes(q);
+              });
+              
+              const ITEMS_PER_PAGE = 10;
+              const totalPages = Math.ceil(filteredActive.length / ITEMS_PER_PAGE) || 1;
+              const paginatedActive = filteredActive.slice(
+                (activeCurrentPage - 1) * ITEMS_PER_PAGE,
+                activeCurrentPage * ITEMS_PER_PAGE
+              );
+
+              return (
+                <div className="space-y-4">
+                  {/* Search Bar */}
+                  {activePatients.length > 0 && (
+                    <div className="max-w-md mb-2">
+                      <div className="relative">
+                        <FaSearch className="pointer-events-none absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                        <input
+                          type="text"
+                          placeholder="Tìm kiếm theo tên hoặc mã bệnh nhân..."
+                          value={activeSearchTerm}
+                          onChange={(e) => {
+                            setActiveSearchTerm(e.target.value);
+                            setActiveCurrentPage(1);
+                          }}
+                          className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 py-2.5 pl-9 pr-4 text-sm text-gray-900 dark:text-slate-100 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {activePatients.length === 0 ? (
+                    <div className="py-12 text-center text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+                      Chưa có bệnh nhân nào có cấu hình ngưỡng.
+                    </div>
+                  ) : filteredActive.length === 0 ? (
+                    <div className="py-8 text-center text-slate-500 dark:text-slate-400">
+                      Không tìm thấy bệnh nhân nào khớp với từ khóa "{activeSearchTerm}"
+                    </div>
+                  ) : (
+                    <>
+                      {paginatedActive.map(pt => {
+                        const threshold = activeThresholds.get(pt.patientId);
+                        if (!threshold) return null;
+                        return renderActiveCard(threshold, pt.patientName || pt.patientId, pt.patientCode);
+                      })}
+                      
+                      {totalPages > 1 && (
+                        <div className="mt-6 flex justify-center">
+                          <Pagination
+                            currentPage={activeCurrentPage}
+                            totalPages={totalPages}
+                            onPageChange={(page) => setActiveCurrentPage(page)}
+                          />
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              );
+            })()}
 
             {activeTab === "HISTORY" && (
               <div className="space-y-4">

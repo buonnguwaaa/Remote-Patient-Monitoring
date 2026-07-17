@@ -479,7 +479,8 @@ const RecentAlerts: React.FC<{
                         (violation) => {
                           const cleanType = violation.type.replace(/_(max|min|high|low)$/, "");
                           const label = violationLabel[cleanType] || violationLabel[violation.type] || violation.type;
-                          return `${label}: ${violation.observed}`;
+                          const val = typeof violation.observed === 'number' ? Number(violation.observed.toFixed(1)) : violation.observed;
+                          return `${label}: ${val}`;
                         }
                       )
                       .join(" · ")}

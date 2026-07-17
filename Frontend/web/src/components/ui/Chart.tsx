@@ -150,31 +150,6 @@ const makeCustomTooltip = (isDark: boolean, t: any) => {
   return CustomTooltip;
 };
 
-const makeRenderLegend = (isDark: boolean) => {
-  return (props: any) => {
-    const { payload } = props;
-
-    return (
-      <div className="mt-4 flex justify-center space-x-6">
-        {payload.map((entry: any, index: number) => (
-          <div key={`item-${index}`} className="flex items-center">
-            <div
-              className="mr-2 h-3 w-3 rounded-full"
-              style={{ backgroundColor: entry.color }}
-            />
-            <span
-              className={`text-sm ${isDark ? "text-slate-300" : "text-gray-600"
-                }`}
-            >
-              {entry.value}
-            </span>
-          </div>
-        ))}
-      </div>
-    );
-  };
-};
-
 export const Chart: React.FC<ChartProps> = ({
   stats,
   monthlyChartData,
@@ -192,7 +167,6 @@ export const Chart: React.FC<ChartProps> = ({
   const gridColor = isDark ? "#334155" : "#f3f4f6";
   const tickColor = isDark ? "#94a3b8" : "#6b7280";
   const CustomTooltip = makeCustomTooltip(isDark, t);
-  const renderLegend = makeRenderLegend(isDark);
   const latestPoint = chartData[chartData.length - 1] || {
     stablePatients: 0,
     needsMonitoringPatients: 0,
@@ -267,7 +241,6 @@ export const Chart: React.FC<ChartProps> = ({
                   fill: isDark ? "rgba(148,163,184,0.08)" : "rgba(0,0,0,0.04)",
                 }}
               />
-              <Legend content={renderLegend} />
               <Bar
                 dataKey="stablePatients"
                 name={t("dashboard.stablePatients") || "Ổn định"}
