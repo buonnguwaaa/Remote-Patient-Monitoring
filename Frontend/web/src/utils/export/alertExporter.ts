@@ -61,7 +61,10 @@ export const exportAlertsToExcel = async (data: AlertExportData) => {
     [t("alerts.severity")]: normalizeAlertSeverity(alert.severity) === 'high' ? 'Ưu tiên cao' : 'Cần theo dõi',
     [t("patients.status")]: alert.status === 'ack' ? t("dashboard.alertStatusAck") : t("dashboard.alertStatusPending"),
     'Chỉ số vi phạm': alert.violations
-      .map((v) => `${violationLabel[v.type] ?? v.type}: ${v.observed}`)
+      .map((v) => {
+        const val = typeof v.observed === 'number' ? Number(v.observed.toFixed(1)) : v.observed;
+        return `${violationLabel[v.type] ?? v.type}: ${val}`;
+      })
       .join('; '),
     [t("patientDetail.time")]: formatDateTimeVN(alert.createdAt),
   }));
