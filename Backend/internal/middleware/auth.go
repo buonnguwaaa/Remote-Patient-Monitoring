@@ -7,12 +7,13 @@ import (
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/constant"
 	domain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/util"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 )
 
-func JWTAuthMiddleware(jwtManager *util.JWTManager) gin.HandlerFunc {
+func JWTAuthMiddleware(jwtManager *util.JWTManager, blacklist repository.TokenBlacklistRepository) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var token string
 
@@ -50,8 +51,38 @@ func JWTAuthMiddleware(jwtManager *util.JWTManager) gin.HandlerFunc {
 			return
 		}
 
+		if blacklist != nil {
+			revoked, err := blacklist.IsJTIBlacklisted(c.Request.Context(), claims.ID)
+			if err != nil {
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": constant.MsgInvalidToken})
+				return
+			}
+			if revoked {
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": constant.MsgTokenRevoked})
+				return
+			}
+
+			if claims.IssuedAt != nil {
+				invalidBefore, ok, err := blacklist.GetUserInvalidBefore(c.Request.Context(), claims.Subject)
+				if err != nil {
+					c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": constant.MsgInvalidToken})
+					return
+				}
+				// Compare at second precision to match Redis storage and avoid
+				// rejecting a freshly issued token that shares the same second.
+				if ok && claims.IssuedAt.Time.Unix() < invalidBefore.Unix() {
+					c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": constant.MsgTokenRevoked})
+					return
+				}
+			}
+		}
+
 		c.Set("userId", claims.Subject)
 		c.Set("role", claims.Role)
+		c.Set("jti", claims.ID)
+		if claims.ExpiresAt != nil {
+			c.Set("tokenExp", claims.ExpiresAt.Time)
+		}
 		c.Next()
 	}
 }

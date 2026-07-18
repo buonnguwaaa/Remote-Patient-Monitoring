@@ -357,6 +357,13 @@ func isSensitiveField(fieldName string) bool {
 		"secret",
 		"apiKey",
 		"accessToken",
+		"phone",
+		"cccd",
+		"insuranceNumber",
+		"medicalHistory",
+		"emergencyContact",
+		"licenseNumber",
+		"content",
 	}
 
 	fieldLower := strings.ToLower(fieldName)

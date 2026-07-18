@@ -8,7 +8,7 @@ import (
 
 func RegisterNotificationTokenRoutes(r *gin.Engine, c *container.MainServerContainer) {
 	notificationTokenGroup := r.Group("/notification-tokens")
-	notificationTokenGroup.Use(middleware.JWTAuthMiddleware(c.JWTManager))
+	notificationTokenGroup.Use(middleware.JWTAuthMiddleware(c.JWTManager, c.TokenBlacklistRepo))
 	{
 		notificationTokenGroup.POST("/register", c.NotificationTokenHandler.RegisterNotificationToken)
 		notificationTokenGroup.POST("/deactivate", c.NotificationTokenHandler.DeactivateNotificationToken)

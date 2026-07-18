@@ -166,7 +166,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 }
 
 // @Summary Logout
-// @Description Revoke refresh token and clear session
+// @Description Revoke refresh token, blacklist access token, and clear session
 // @Tags auth
 // @Accept json
 // @Produce json
@@ -188,7 +188,19 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
-	if err := h.service.Logout(ctx, &usecase.LogoutInput{RefreshToken: req.RefreshToken}); err != nil {
+	logoutInput := &usecase.LogoutInput{RefreshToken: req.RefreshToken}
+	if jti, ok := c.Get("jti"); ok {
+		if jtiStr, ok := jti.(string); ok {
+			logoutInput.AccessJTI = jtiStr
+		}
+	}
+	if exp, ok := c.Get("tokenExp"); ok {
+		if expTime, ok := exp.(time.Time); ok {
+			logoutInput.AccessExp = expTime
+		}
+	}
+
+	if err := h.service.Logout(ctx, logoutInput); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}

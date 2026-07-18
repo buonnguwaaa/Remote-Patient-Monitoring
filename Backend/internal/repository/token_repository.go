@@ -16,6 +16,7 @@ type TokenRepository interface {
 	Save(ctx context.Context, userIDHex string, tokenHash string, expiresAt time.Time) error
 	IsValid(ctx context.Context, userIDHex string, tokenHash string) (bool, error)
 	RevokeTokenByTokenHash(ctx context.Context, userIDHex string, tokenHash string) error
+	RevokeAllByUserID(ctx context.Context, userIDHex string) error
 	GetActiveTokenHashByUserID(ctx context.Context, userIDHex string) (string, error)
 }
 
@@ -96,6 +97,22 @@ func (r *tokenRepository) RevokeTokenByTokenHash(ctx context.Context, userIDHex 
 		bson.M{
 			"userId":    userID,
 			"tokenHash": tokenHash,
+			"revokedAt": bson.M{"$exists": false},
+		},
+		bson.M{"$set": bson.M{"revokedAt": &now}},
+	)
+	return err
+}
+
+func (r *tokenRepository) RevokeAllByUserID(ctx context.Context, userIDHex string) error {
+	userID, err := primitive.ObjectIDFromHex(userIDHex)
+	if err != nil {
+		return err
+	}
+	now := time.Now().UTC()
+	_, err = r.col.UpdateMany(ctx,
+		bson.M{
+			"userId":    userID,
 			"revokedAt": bson.M{"$exists": false},
 		},
 		bson.M{"$set": bson.M{"revokedAt": &now}},

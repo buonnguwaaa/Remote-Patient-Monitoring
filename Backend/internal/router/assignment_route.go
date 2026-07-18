@@ -9,7 +9,7 @@ import (
 
 func RegisterAssignmentRoutes(r *gin.Engine, c *container.MainServerContainer) {
 	assignGroup := r.Group("/assignments")
-	assignGroup.Use(middleware.JWTAuthMiddleware(c.JWTManager))
+	assignGroup.Use(middleware.JWTAuthMiddleware(c.JWTManager, c.TokenBlacklistRepo))
 	{
 		assignGroup.POST("/assign", middleware.RequireRoles(domain.RoleAdmin), c.AssignmentHandler.AssignPatient)
 		assignGroup.GET("", middleware.RequireRoles(domain.RoleAdmin), c.AssignmentHandler.GetAllAssignments)

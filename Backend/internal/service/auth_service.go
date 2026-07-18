@@ -45,12 +45,13 @@ type AuthService interface {
 }
 
 type authService struct {
-	baseUserRepo userRepository.BaseUserRepository
-	patientRepo  userRepository.PatientRepository
-	doctorRepo   userRepository.StaffRepository[domain.Doctor]
-	nurseRepo    userRepository.StaffRepository[domain.Nurse]
-	tokenRepo    repository.TokenRepository
-	jwtManager   *util.JWTManager
+	baseUserRepo  userRepository.BaseUserRepository
+	patientRepo   userRepository.PatientRepository
+	doctorRepo    userRepository.StaffRepository[domain.Doctor]
+	nurseRepo     userRepository.StaffRepository[domain.Nurse]
+	tokenRepo     repository.TokenRepository
+	blacklistRepo repository.TokenBlacklistRepository
+	jwtManager    *util.JWTManager
 }
 
 func NewAuthService(
@@ -59,15 +60,17 @@ func NewAuthService(
 	doctorRepo userRepository.StaffRepository[domain.Doctor],
 	nurseRepo userRepository.StaffRepository[domain.Nurse],
 	tokenRepo repository.TokenRepository,
+	blacklistRepo repository.TokenBlacklistRepository,
 	jwtManager *util.JWTManager,
 ) AuthService {
 	return &authService{
-		baseUserRepo: baseUserRepo,
-		patientRepo:  patientRepo,
-		doctorRepo:   doctorRepo,
-		nurseRepo:    nurseRepo,
-		tokenRepo:    tokenRepo,
-		jwtManager:   jwtManager,
+		baseUserRepo:  baseUserRepo,
+		patientRepo:   patientRepo,
+		doctorRepo:    doctorRepo,
+		nurseRepo:     nurseRepo,
+		tokenRepo:     tokenRepo,
+		blacklistRepo: blacklistRepo,
+		jwtManager:    jwtManager,
 	}
 }
 
@@ -192,6 +195,17 @@ func (s *authService) Logout(ctx context.Context, input *usecase.LogoutInput) er
 		return errors.New("Token đã bị thu hồi hoặc không hợp lệ")
 	}
 
+	// Blacklist access token first so a partial failure still blocks API use.
+	if input.AccessJTI != "" && s.blacklistRepo != nil {
+		expiresAt := input.AccessExp
+		if expiresAt.IsZero() {
+			expiresAt = time.Now().UTC().Add(util.AccessTokenTTL)
+		}
+		if err := s.blacklistRepo.BlacklistJTI(ctx, input.AccessJTI, expiresAt); err != nil {
+			return fmt.Errorf("không thể thu hồi token truy cập: %w", err)
+		}
+	}
+
 	return s.tokenRepo.RevokeTokenByTokenHash(ctx, claims.Subject, tokenHash)
 }
 
@@ -309,7 +323,16 @@ func (s *authService) ResetPassword(ctx context.Context, input *usecase.ResetPas
 		return err
 	}
 
-	return s.baseUserRepo.ResetPassword(ctx, u.ID, hashedPwd)
+	if err := s.baseUserRepo.ResetPassword(ctx, u.ID, hashedPwd); err != nil {
+		return err
+	}
+
+	userIDStr := u.ID.Hex()
+	_ = s.tokenRepo.RevokeAllByUserID(ctx, userIDStr)
+	if s.blacklistRepo != nil {
+		_ = s.blacklistRepo.InvalidateUserTokensIssuedBefore(ctx, userIDStr, time.Now().UTC(), util.AccessTokenTTL)
+	}
+	return nil
 }
 
 func (s *authService) ActivateAccount(ctx context.Context, input *usecase.ActivateAccountInput) error {
@@ -406,9 +429,15 @@ func (s *authService) sendActivationOTP(ctx context.Context, email, name string)
 
 func (s *authService) issueTokens(ctx context.Context, u *domain.BaseUser) (*dto.LoginResponse, error) {
 	userIDStr := u.ID.Hex()
+	now := time.Now().UTC()
 
-	if existingHash, err := s.tokenRepo.GetActiveTokenHashByUserID(ctx, userIDStr); err == nil && existingHash != "" {
-		_ = s.tokenRepo.RevokeTokenByTokenHash(ctx, userIDStr, existingHash)
+	if err := s.tokenRepo.RevokeAllByUserID(ctx, userIDStr); err != nil {
+		return nil, err
+	}
+	if s.blacklistRepo != nil {
+		if err := s.blacklistRepo.InvalidateUserTokensIssuedBefore(ctx, userIDStr, now, util.AccessTokenTTL); err != nil {
+			return nil, fmt.Errorf("không thể vô hiệu hóa phiên cũ: %w", err)
+		}
 	}
 
 	accessToken, err := s.jwtManager.GenerateAccessToken(userIDStr, u.Role)

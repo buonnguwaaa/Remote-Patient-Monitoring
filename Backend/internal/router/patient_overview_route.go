@@ -9,7 +9,7 @@ import (
 
 func RegisterPatientOverviewRoutes(r *gin.Engine, c *container.MainServerContainer) {
 	grp := r.Group("/patient-overview")
-	grp.Use(middleware.JWTAuthMiddleware(c.JWTManager))
+	grp.Use(middleware.JWTAuthMiddleware(c.JWTManager, c.TokenBlacklistRepo))
 	{
 		grp.GET("/me", middleware.RequireRoles(domain.RoleDoctor, domain.RoleNurse), c.PatientOverviewHandler.GetMyPatientOverview)
 	}

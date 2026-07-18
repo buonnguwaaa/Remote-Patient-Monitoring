@@ -8,6 +8,7 @@ const (
 	MsgMissingAccessToken      = "Thiếu token truy cập"
 	MsgTokenExpired            = "Token đã hết hạn"
 	MsgInvalidToken            = "Token không hợp lệ"
+	MsgTokenRevoked            = "Token đã bị thu hồi"
 	MsgMissingRole             = "Thiếu vai trò người dùng"
 	MsgInvalidRole             = "Vai trò không hợp lệ"
 	MsgInsufficientPermissions = "Không đủ quyền thực hiện thao tác"

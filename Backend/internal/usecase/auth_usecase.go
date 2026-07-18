@@ -31,6 +31,8 @@ type RefreshInput struct {
 
 type LogoutInput struct {
 	RefreshToken string
+	AccessJTI    string
+	AccessExp    time.Time
 }
 
 type GoogleOAuth2Input struct {

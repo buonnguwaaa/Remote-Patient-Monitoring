@@ -6,6 +6,7 @@ import (
 
 	domain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
 const (
@@ -35,12 +36,14 @@ type Claims struct {
 }
 
 func (m *JWTManager) GenerateAccessToken(userID string, role domain.Role) (string, error) {
+	now := time.Now().UTC()
 	claims := &Claims{
 		Role: role,
 		RegisteredClaims: jwt.RegisteredClaims{
+			ID:        uuid.NewString(),
 			Subject:   userID,
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(m.accessTokenTTL)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			ExpiresAt: jwt.NewNumericDate(now.Add(m.accessTokenTTL)),
+			IssuedAt:  jwt.NewNumericDate(now),
 		},
 	}
 
@@ -49,11 +52,13 @@ func (m *JWTManager) GenerateAccessToken(userID string, role domain.Role) (strin
 }
 
 func (m *JWTManager) GenerateRefreshToken(userID string) (string, error) {
+	now := time.Now().UTC()
 	claims := &Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
+			ID:        uuid.NewString(),
 			Subject:   userID,
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(m.refreshTokenTTL)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			ExpiresAt: jwt.NewNumericDate(now.Add(m.refreshTokenTTL)),
+			IssuedAt:  jwt.NewNumericDate(now),
 		},
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -74,6 +79,9 @@ func (m *JWTManager) VerifyAccessToken(strToken string) (*Claims, error) {
 	claims, ok := token.Claims.(*Claims)
 	if !ok || !token.Valid {
 		return nil, errors.New("invalid token")
+	}
+	if claims.ID == "" {
+		return nil, errors.New("missing token id")
 	}
 	return claims, nil
 }

@@ -9,7 +9,7 @@ import (
 
 func RegisterChatRoutes(r *gin.Engine, c *container.MainServerContainer) {
 	chatGroup := r.Group("/chat")
-	chatGroup.Use(middleware.JWTAuthMiddleware(c.JWTManager))
+	chatGroup.Use(middleware.JWTAuthMiddleware(c.JWTManager, c.TokenBlacklistRepo))
 	{
 		chatGroup.GET("/ws", middleware.RequireRoles(domain.RoleDoctor, domain.RolePatient), c.WSChatHandler.ServeWs)
 		chatGroup.GET("/conversations", middleware.RequireRoles(domain.RoleDoctor, domain.RolePatient), c.ChatHandler.GetConversations)

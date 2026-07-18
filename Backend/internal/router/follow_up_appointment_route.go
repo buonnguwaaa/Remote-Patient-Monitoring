@@ -9,7 +9,7 @@ import (
 
 func RegisterFollowUpAppointmentRoutes(r *gin.Engine, c *container.MainServerContainer) {
 	appointmentGroup := r.Group("/appointments")
-	appointmentGroup.Use(middleware.JWTAuthMiddleware(c.JWTManager))
+	appointmentGroup.Use(middleware.JWTAuthMiddleware(c.JWTManager, c.TokenBlacklistRepo))
 	{
 		appointmentGroup.GET("", middleware.RequireRoles(domain.RoleAdmin, domain.RoleDoctor, domain.RoleNurse), c.FollowUpAppointmentHandler.GetFollowUpAppointments)
 		appointmentGroup.GET("/me", middleware.RequireRoles(domain.RolePatient, domain.RoleDoctor), c.FollowUpAppointmentHandler.GetMyFollowUpAppointments)

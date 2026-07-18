@@ -9,7 +9,7 @@ import (
 
 func RegisterDepartmentRoutes(r *gin.Engine, c *container.MainServerContainer) {
 	deptGroup := r.Group("/departments")
-	deptGroup.Use(middleware.JWTAuthMiddleware(c.JWTManager))
+	deptGroup.Use(middleware.JWTAuthMiddleware(c.JWTManager, c.TokenBlacklistRepo))
 	{
 		// Only Admin can manage departments
 		deptGroup.POST("", middleware.RequireRoles(domain.RoleAdmin), c.DepartmentHandler.CreateDepartment)

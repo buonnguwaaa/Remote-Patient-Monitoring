@@ -9,7 +9,7 @@ import (
 
 func RegisterActivityLogRoutes(r *gin.Engine, c *container.MainServerContainer) {
 	activityLogGroup := r.Group("/activity-logs")
-	activityLogGroup.Use(middleware.JWTAuthMiddleware(c.JWTManager))
+	activityLogGroup.Use(middleware.JWTAuthMiddleware(c.JWTManager, c.TokenBlacklistRepo))
 	activityLogGroup.Use(middleware.RequireRoles(domain.RoleAdmin))
 	{
 		activityLogGroup.GET("", c.ActivityLogHandler.GetActivityLogs)

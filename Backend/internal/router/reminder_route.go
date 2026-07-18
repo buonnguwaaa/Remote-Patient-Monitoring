@@ -9,7 +9,7 @@ import (
 
 func RegisterReminderRoutes(r *gin.Engine, c *container.MainServerContainer) {
 	reminderGroup := r.Group("/reminders")
-	reminderGroup.Use(middleware.JWTAuthMiddleware(c.JWTManager))
+	reminderGroup.Use(middleware.JWTAuthMiddleware(c.JWTManager, c.TokenBlacklistRepo))
 	{
 		reminderGroup.GET("", c.ReminderHandler.GetReminders)
 		reminderGroup.GET("/me", middleware.RequireRoles(domain.RoleAdmin, domain.RoleDoctor, domain.RoleNurse, domain.RolePatient), c.ReminderHandler.GetMyReminders)

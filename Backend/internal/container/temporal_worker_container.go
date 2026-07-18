@@ -1,10 +1,13 @@
 package container
 
 import (
+	"log"
+
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/config"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository"
 	chatRepository "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository/chat"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/service"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/util"
 )
 
 type TemporalWorkerContainer struct {
@@ -45,7 +48,12 @@ func NewTemporalWorkerContainer(pushProvider service.PushProvider) *TemporalWork
 	c.NotificationService = service.NewNotificationService(c.NotificationTokenRepo, c.NotificationRepo, pushProvider)
 	c.AssignmentRepo = repository.NewAssignmentRepository(db)
 	c.ConversationRepo = chatRepository.NewConversationRepository(db)
-	c.MessageRepo = chatRepository.NewMessageRepository(db)
+
+	fieldCrypto, err := util.LoadFieldEncryptorFromEnv()
+	if err != nil {
+		log.Fatalf("[FATAL] field encryption: %v", err)
+	}
+	c.MessageRepo = chatRepository.NewEncryptedMessageRepository(chatRepository.NewMessageRepository(db), fieldCrypto)
 
 	return c
 }
