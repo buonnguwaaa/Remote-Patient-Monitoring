@@ -805,7 +805,6 @@ const ThresholdAlert = () => {
             </h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
               Theo dõi và xử lý các chỉ số sinh tồn vượt ngưỡng của bệnh nhân.
-              {lastUpdated && ` Cập nhật lúc: ${lastUpdated}`}
             </p>
           </div>
 

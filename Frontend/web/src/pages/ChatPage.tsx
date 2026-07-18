@@ -1150,10 +1150,10 @@ const ChatPage = ({
                           {getViolationLabel(violation.type, t)}
                         </div>
                         <div className="mt-1 text-lg font-semibold text-red-600 dark:text-red-300">
-                          {violation.observed}
+                          {typeof violation.observed === 'number' ? Number(violation.observed.toFixed(1)) : violation.observed}
                         </div>
                         <div className="text-xs text-slate-500 dark:text-slate-400">
-                          Ngưỡng tham chiếu: {violation.threshold}
+                          Ngưỡng tham chiếu: {typeof violation.threshold === 'number' ? Number(violation.threshold.toFixed(1)) : violation.threshold}
                         </div>
                       </div>
                     ))}
@@ -1280,8 +1280,8 @@ const ChatPage = ({
                                     normalizeAlertSeverity(v.severity) === "high"
                                       ? "text-red-600 dark:text-red-300"
                                       : "text-blue-600 dark:text-blue-300"
-                                    }`}>{v.observed}</div>
-                                  <div className="text-[10px] text-slate-500 dark:text-slate-400">Ngưỡng: {v.threshold}</div>
+                                    }`}>{typeof v.observed === 'number' ? Number(v.observed.toFixed(1)) : v.observed}</div>
+                                  <div className="text-[10px] text-slate-500 dark:text-slate-400">Ngưỡng: {typeof v.threshold === 'number' ? Number(v.threshold.toFixed(1)) : v.threshold}</div>
                                 </div>
                               ))}
                             </div>

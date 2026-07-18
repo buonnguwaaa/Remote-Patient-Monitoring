@@ -99,9 +99,10 @@ export default function AlertDetailPage() {
     return { label: "Vi phạm ngưỡng", isHigh: true };
   };
 
-  const formatViolationValue = (type: string, val: number) => {
+  const formatViolationValue = (type: string, rawVal: number) => {
+    const val = typeof rawVal === 'number' ? Number(rawVal.toFixed(1)) : rawVal;
     if (type.toLowerCase().includes("temp")) {
-      return `${val.toFixed(1)}°C`;
+      return `${val}°C`;
     }
     if (type.toLowerCase().includes("spo2")) {
       return `${val}%`;
@@ -152,7 +153,7 @@ export default function AlertDetailPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-sans pb-24">
-      <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
+      <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
         
         {/* Back Button */}
         <button
