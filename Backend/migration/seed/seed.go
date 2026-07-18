@@ -11,6 +11,7 @@ import (
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository"
 	chatRepository "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository/chat"
 	userRepo "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository/user"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/util"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -33,6 +34,7 @@ type Seeder struct {
 	conversationRepo        chatRepository.ConversationRepository
 	messageRepo             chatRepository.MessageRepository
 	usersCol                *mongo.Collection
+	fieldCrypto             util.FieldEncryptor
 }
 
 type seedData struct {
@@ -47,12 +49,20 @@ type seedData struct {
 }
 
 func NewSeeder(db *mongo.Database) *Seeder {
+	fieldCrypto, err := util.LoadFieldEncryptorFromEnv()
+	if err != nil {
+		log.Printf("[WARN] field encryption unavailable for seed: %v (seeding plaintext PHI)", err)
+		fieldCrypto = util.NewNoopFieldEncryptor()
+	} else if fieldCrypto.Enabled() {
+		log.Println("[seed] PHI field encryption enabled for patient records")
+	}
+
 	return &Seeder{
 		db:                      db,
-		baseUserRepo:            userRepo.NewBaseUserRepository(db),
-		patientRepo:             userRepo.NewPatientRepository(db),
-		doctorRepo:              userRepo.NewStaffRepository[userDomain.Doctor](db),
-		nurseRepo:               userRepo.NewStaffRepository[userDomain.Nurse](db),
+		baseUserRepo:            userRepo.NewEncryptedBaseUserRepository(userRepo.NewBaseUserRepository(db), fieldCrypto),
+		patientRepo:             userRepo.NewEncryptedPatientRepository(userRepo.NewPatientRepository(db), fieldCrypto),
+		doctorRepo:              userRepo.NewEncryptedStaffRepository(userRepo.NewStaffRepository[userDomain.Doctor](db), fieldCrypto),
+		nurseRepo:               userRepo.NewEncryptedStaffRepository(userRepo.NewStaffRepository[userDomain.Nurse](db), fieldCrypto),
 		deptRepo:                repository.NewDepartmentRepository(db),
 		assignmentRepo:          repository.NewAssignmentRepository(db),
 		thresholdRepo:           repository.NewThresholdRepository(db),
@@ -64,8 +74,9 @@ func NewSeeder(db *mongo.Database) *Seeder {
 		followUpAppointmentRepo: repository.NewFollowUpAppointmentRepository(db),
 		activityLogRepo:         repository.NewActivityLogRepository(db),
 		conversationRepo:        chatRepository.NewConversationRepository(db),
-		messageRepo:             chatRepository.NewMessageRepository(db),
+		messageRepo:             chatRepository.NewEncryptedMessageRepository(chatRepository.NewMessageRepository(db), fieldCrypto),
 		usersCol:                db.Collection("users"),
+		fieldCrypto:             fieldCrypto,
 	}
 }
 

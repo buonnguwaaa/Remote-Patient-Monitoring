@@ -330,9 +330,19 @@ func (s *Seeder) seedBaseUsers(
 			UpdatedAt:    createdAt,
 		}
 
+		if s.fieldCrypto != nil && s.fieldCrypto.Enabled() {
+			encryptedPhone, err := s.fieldCrypto.Encrypt(user.Phone)
+			if err != nil {
+				return nil, fmt.Errorf("encrypt admin phone: %w", err)
+			}
+			user.Phone = encryptedPhone
+		}
+
 		if _, err := s.usersCol.InsertOne(ctx, user); err != nil {
 			return nil, err
 		}
+		// Return plaintext phone to callers (seed in-memory use).
+		user.Phone = fmt.Sprintf("0901%06d", i+1)
 		result = append(result, &user)
 		created++
 	}

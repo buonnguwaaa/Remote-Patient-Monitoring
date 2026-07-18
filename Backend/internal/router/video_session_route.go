@@ -12,7 +12,7 @@ import (
 // to prevent Gin from treating "active" as a path parameter.
 func RegisterVideoSessionRoutes(r *gin.Engine, c *container.MainServerContainer) {
 	group := r.Group("/video-sessions")
-	group.Use(middleware.JWTAuthMiddleware(c.JWTManager))
+	group.Use(middleware.JWTAuthMiddleware(c.JWTManager, c.TokenBlacklistRepo))
 	{
 		// Doctor creates a session.
 		group.POST("",

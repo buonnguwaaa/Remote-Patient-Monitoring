@@ -8,7 +8,7 @@ import (
 
 func RegisterMeasurementRoutes(r *gin.Engine, c *container.MainServerContainer) {
 	measurementGroup := r.Group("/measurements")
-	measurementGroup.Use(middleware.JWTAuthMiddleware(c.JWTManager))
+	measurementGroup.Use(middleware.JWTAuthMiddleware(c.JWTManager, c.TokenBlacklistRepo))
 	{
 		measurementGroup.GET("", c.MeasurementHandler.GetMeasurements)
 		measurementGroup.POST("", c.MeasurementHandler.CreateMeasurement)

@@ -9,7 +9,7 @@ import (
 
 func RegisterPrescriptionRoutes(r *gin.Engine, c *container.MainServerContainer) {
 	prescriptionGroup := r.Group("/prescriptions")
-	prescriptionGroup.Use(middleware.JWTAuthMiddleware(c.JWTManager))
+	prescriptionGroup.Use(middleware.JWTAuthMiddleware(c.JWTManager, c.TokenBlacklistRepo))
 	{
 		prescriptionGroup.GET("", middleware.RequireRoles(domain.RoleAdmin, domain.RoleDoctor, domain.RoleNurse), c.PrescriptionHandler.GetPrescriptions)
 		prescriptionGroup.GET("/me", middleware.RequireRoles(domain.RolePatient), c.PrescriptionHandler.GetMyPrescriptions)

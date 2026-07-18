@@ -25,6 +25,7 @@ type MainServerContainer struct {
 	DoctorRepo              userRepository.StaffRepository[domain.Doctor]
 	NurseRepo               userRepository.StaffRepository[domain.Nurse]
 	TokenRepo               repository.TokenRepository
+	TokenBlacklistRepo      repository.TokenBlacklistRepository
 	NotificationTokenRepo   repository.NotificationTokenRepository
 	NotificationRepo        repository.UserNotificationRepository
 	MeasurementRepo         repository.MeasurementRepository
@@ -105,12 +106,36 @@ func NewMainServerContainer() *MainServerContainer {
 	}
 	cacheTTL := config.CacheDefaultTTL()
 
-	c.BaseUserRepo = userRepository.NewCachedBaseUserRepository(userRepository.NewBaseUserRepository(db), cacheStore, cacheTTL)
-	c.PatientRepo = userRepository.NewCachedPatientRepository(userRepository.NewPatientRepository(db), cacheStore, cacheTTL)
-	c.DoctorRepo = userRepository.NewCachedStaffRepository[domain.Doctor](userRepository.NewStaffRepository[domain.Doctor](db), cacheStore, cacheTTL)
-	c.NurseRepo = userRepository.NewCachedStaffRepository[domain.Nurse](userRepository.NewStaffRepository[domain.Nurse](db), cacheStore, cacheTTL)
+	fieldCrypto, err := util.LoadFieldEncryptorFromEnv()
+	if err != nil {
+		log.Fatalf("[FATAL] field encryption: %v", err)
+	}
+	if fieldCrypto.Enabled() {
+		log.Println("[GIN-info] PHI field encryption (AES-256-GCM) enabled")
+	} else {
+		log.Println("[GIN-warn] PHI field encryption disabled (set FIELD_ENCRYPTION_KEY to enable)")
+	}
+
+	c.BaseUserRepo = userRepository.NewEncryptedBaseUserRepository(
+		userRepository.NewCachedBaseUserRepository(userRepository.NewBaseUserRepository(db), cacheStore, cacheTTL),
+		fieldCrypto,
+	)
+	// Encrypted wraps Cached so Redis stores ciphertext for sensitive fields.
+	c.PatientRepo = userRepository.NewEncryptedPatientRepository(
+		userRepository.NewCachedPatientRepository(userRepository.NewPatientRepository(db), cacheStore, cacheTTL),
+		fieldCrypto,
+	)
+	c.DoctorRepo = userRepository.NewEncryptedStaffRepository(
+		userRepository.NewCachedStaffRepository[domain.Doctor](userRepository.NewStaffRepository[domain.Doctor](db), cacheStore, cacheTTL),
+		fieldCrypto,
+	)
+	c.NurseRepo = userRepository.NewEncryptedStaffRepository(
+		userRepository.NewCachedStaffRepository[domain.Nurse](userRepository.NewStaffRepository[domain.Nurse](db), cacheStore, cacheTTL),
+		fieldCrypto,
+	)
 
 	c.TokenRepo = repository.NewTokenRepository(db)
+	c.TokenBlacklistRepo = repository.NewTokenBlacklistRepository(config.Redis.Client)
 	c.NotificationTokenRepo = repository.NewNotificationTokenRepository(db)
 	c.NotificationRepo = repository.NewUserNotificationRepository(db)
 	c.MeasurementRepo = repository.NewCachedMeasurementRepository(repository.NewMeasurementRepository(db), cacheStore, cacheTTL)
@@ -124,7 +149,7 @@ func NewMainServerContainer() *MainServerContainer {
 	c.MedicationIntakeRepo = repository.NewMedicationIntakeRepository(db)
 	c.FollowUpAppointmentRepo = repository.NewCachedFollowUpAppointmentRepository(repository.NewFollowUpAppointmentRepository(db), cacheStore, cacheTTL)
 	c.ConversationRepo = chatRepository.NewConversationRepository(db)
-	c.MessageRepo = chatRepository.NewMessageRepository(db)
+	c.MessageRepo = chatRepository.NewEncryptedMessageRepository(chatRepository.NewMessageRepository(db), fieldCrypto)
 	c.ActivityLogRepo = repository.NewActivityLogRepository(db)
 	c.VideoSessionRepo = repository.NewVideoSessionRepository(db)
 
@@ -146,7 +171,7 @@ func NewMainServerContainer() *MainServerContainer {
 		fcmClient = client
 	}
 
-	c.AuthService = service.NewAuthService(c.BaseUserRepo, c.PatientRepo, c.DoctorRepo, c.NurseRepo, c.TokenRepo, c.JWTManager)
+	c.AuthService = service.NewAuthService(c.BaseUserRepo, c.PatientRepo, c.DoctorRepo, c.NurseRepo, c.TokenRepo, c.TokenBlacklistRepo, c.JWTManager)
 	c.UserService = service.NewUserService(c.BaseUserRepo, c.PatientRepo, c.NurseRepo, c.DoctorRepo)
 	c.MeasurementService = service.NewMeasurementService(c.PatientRepo, c.MeasurementRepo)
 	c.ThresholdService = service.NewThresholdService(c.PatientRepo, c.DoctorRepo, c.ThresholdRepo)

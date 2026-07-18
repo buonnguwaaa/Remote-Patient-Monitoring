@@ -8,7 +8,7 @@ import (
 
 func RegisterNotificationRoutes(r *gin.Engine, c *container.MainServerContainer) {
 	notificationGroup := r.Group("/notifications")
-	notificationGroup.Use(middleware.JWTAuthMiddleware(c.JWTManager))
+	notificationGroup.Use(middleware.JWTAuthMiddleware(c.JWTManager, c.TokenBlacklistRepo))
 	{
 		notificationGroup.GET("", c.NotificationHandler.GetMyNotifications)
 		notificationGroup.GET("/unread-count", c.NotificationHandler.GetUnreadNotificationCount)

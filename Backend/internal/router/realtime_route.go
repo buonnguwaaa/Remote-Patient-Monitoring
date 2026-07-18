@@ -9,7 +9,7 @@ import (
 
 func RegisterRealtimeRoutes(r *gin.Engine, c *container.MainServerContainer) {
 	realtimeGroup := r.Group("/realtime")
-	realtimeGroup.Use(middleware.JWTAuthMiddleware(c.JWTManager))
+	realtimeGroup.Use(middleware.JWTAuthMiddleware(c.JWTManager, c.TokenBlacklistRepo))
 	{
 		realtimeGroup.GET("/ws", middleware.RequireRoles(domain.RoleDoctor), c.RealtimeHandler.ServeWs)
 	}

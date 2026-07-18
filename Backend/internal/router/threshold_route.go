@@ -9,7 +9,7 @@ import (
 
 func RegisterThresholdRoutes(r *gin.Engine, c *container.MainServerContainer) {
 	thresholdGroup := r.Group("/thresholds")
-	thresholdGroup.Use(middleware.JWTAuthMiddleware(c.JWTManager))
+	thresholdGroup.Use(middleware.JWTAuthMiddleware(c.JWTManager, c.TokenBlacklistRepo))
 	{
 		thresholdGroup.GET("", middleware.RequireRoles(domain.RoleDoctor, domain.RoleNurse, domain.RolePatient), c.ThresholdHandler.GetThresholds)
 		thresholdGroup.POST("", middleware.RequireRoles(domain.RoleDoctor), c.ThresholdHandler.CreateThreshold)

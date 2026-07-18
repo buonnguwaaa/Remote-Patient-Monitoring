@@ -180,6 +180,7 @@ Environment variables are loaded from `.env` at startup via [godotenv](https://g
 | `GIN_MODE`      | Gin mode:`debug` or `release` | `debug`          |
 | `PORT`          | HTTP server port                  | `8080`           |
 | `JWT_SECRET`    | Secretly signing secret           | — (required)      |
+| `FIELD_ENCRYPTION_KEY` | Base64 AES-256 key for PHI fields (CCCD, BHYT, medicalHistory, …). Generate with `openssl rand -base64 32`. Required when `GIN_MODE=release`. | — (optional in debug) |
 | `MONGO_URI`     | MongoDB connection string         | — (required)      |
 | `MONGO_DB_NAME` | MongoDB database name             | — (required)      |
 | `TEMPORAL_HOST` | Temporal frontend address         | `localhost:7233` |

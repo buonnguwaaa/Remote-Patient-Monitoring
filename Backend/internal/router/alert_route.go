@@ -9,7 +9,7 @@ import (
 
 func RegisterAlertRoutes(r *gin.Engine, c *container.MainServerContainer) {
 	alertGroup := r.Group("/alerts")
-	alertGroup.Use(middleware.JWTAuthMiddleware(c.JWTManager))
+	alertGroup.Use(middleware.JWTAuthMiddleware(c.JWTManager, c.TokenBlacklistRepo))
 	{
 		alertGroup.GET("/doctors/me", middleware.RequireRoles(domain.RoleDoctor), c.AlertHandler.GetDoctorAlerts)
 		alertGroup.GET("/nurses/me", middleware.RequireRoles(domain.RoleNurse), c.AlertHandler.GetNurseAlerts)
