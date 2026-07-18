@@ -98,7 +98,7 @@ const ThresholdAlert = () => {
   const openAlertsData = openAlertsResult?.alerts || [];
 
   // Query 2: Fetch paginated alerts
-  const { data: alertsResult, isLoading: loading, isFetching: refreshing, refetch, dataUpdatedAt } = useQuery({
+  const { data: alertsResult, isLoading: loading, isFetching: refreshing, refetch } = useQuery({
     queryKey: ["alerts", { 
       page: currentPage, 
       limit: 10, 
@@ -133,9 +133,7 @@ const ThresholdAlert = () => {
     return alertsData;
   }, [alertsData]);
 
-  const lastUpdated = useMemo(() => {
-    return dataUpdatedAt ? new Date(dataUpdatedAt).toLocaleTimeString() : null;
-  }, [dataUpdatedAt]);
+
 
   const togglePatientExpanded = (patientId: string) => {
     setExpandedPatients((prev) => {
