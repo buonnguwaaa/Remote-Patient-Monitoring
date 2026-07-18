@@ -31,6 +31,10 @@ api.interceptors.response.use(
 
                 return api(originalRequest);
             } catch (refreshError) {
+                // Refresh token hết hạn hoặc không hợp lệ → đẩy user về trang đăng nhập
+                if (window.location.pathname !== "/login") {
+                    window.location.href = "/login";
+                }
                 return Promise.reject(refreshError);
             }
         }
