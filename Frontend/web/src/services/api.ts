@@ -17,6 +17,7 @@ api.interceptors.request.use(
     }
 );
 
+
 // Mutex để tránh nhiều request 401 cùng lúc đều tự gọi refresh riêng
 let isRefreshing = false;
 let refreshSubscribers: Array<(success: boolean) => void> = [];
@@ -55,7 +56,7 @@ api.interceptors.response.use(
             isRefreshing = true;
 
             try {
-                await api.post("/auth/refresh", {}, { withCredentials: true });
+                await axios.post(`${import.meta.env.VITE_API_URL}/auth/refresh`, {}, { withCredentials: true });
 
                 isRefreshing = false;
                 onRefreshComplete(true);
@@ -64,12 +65,15 @@ api.interceptors.response.use(
                     delete originalRequest.headers["Authorization"];
                 }
                 return api({ ...originalRequest, withCredentials: true });
-            } catch (refreshError) {
+            } catch (refreshError: any) {
                 isRefreshing = false;
                 onRefreshComplete(false);
 
-                // Refresh token hết hạn hoặc không hợp lệ → đẩy user về trang đăng nhập
-                if (window.location.pathname !== "/login") {
+                // Chỉ đẩy user về trang đăng nhập nếu API trả về lỗi xác thực (400, 401, 403)
+                // Bỏ qua nếu là lỗi mạng (Network Error) hoặc lỗi server 5xx để tránh văng app oan
+                const isAuthError = refreshError.response && [400, 401, 403].includes(refreshError.response.status);
+                
+                if (isAuthError && window.location.pathname !== "/login") {
                     window.location.href = "/login";
                 }
                 return Promise.reject(refreshError);

@@ -63,9 +63,10 @@ type ClinicalHistoryItem struct {
 	ActorRole  string    `json:"actorRole"`
 	Action     string    `json:"action"`
 	Resource   string    `json:"resource,omitempty"`
-	ResourceID string    `json:"resourceId,omitempty"`
-	PatientID  string    `json:"patientId,omitempty"`
-	CreatedAt  time.Time `json:"createdAt"`
+	ResourceID  string    `json:"resourceId,omitempty"`
+	PatientID   string    `json:"patientId,omitempty"`
+	PatientName string    `json:"patientName,omitempty"`
+	CreatedAt   time.Time `json:"createdAt"`
 	Timestamp  string    `json:"timestamp"`
 	Date       string    `json:"date"`
 }

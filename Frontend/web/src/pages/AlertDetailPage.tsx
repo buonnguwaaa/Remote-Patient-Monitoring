@@ -14,13 +14,25 @@ import {
   FaLungs,
   FaTint,
 } from "react-icons/fa";
+import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  YAxis,
+  Tooltip,
+  ReferenceLine,
+  LabelList,
+} from "recharts";
 
 import {
   getAlertById,
   acknowledgeAlert,
   getPatientById,
+  getMeasurements,
+  type MeasurementResponse,
 } from "../services/patientService";
 import { normalizeAlertSeverity } from "../utils/alertSeverity";
+import { getAlertTypeBadge, getAlertSourceType, filterRedundantViolations } from "./ThresholdAlert";
 
 export default function AlertDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -43,6 +55,13 @@ export default function AlertDetailPage() {
   const { data: patient, isLoading: loadingPatient } = useQuery({
     queryKey: ["patientDetail", alert?.patientId],
     queryFn: () => getPatientById(alert?.patientId || ""),
+    enabled: !!alert?.patientId,
+  });
+
+  // Fetch patient measurements to show trend history
+  const { data: measurements } = useQuery({
+    queryKey: ["patientMeasurements", alert?.patientId],
+    queryFn: () => getMeasurements({ patientId: alert?.patientId }),
     enabled: !!alert?.patientId,
   });
 
@@ -106,15 +125,28 @@ export default function AlertDetailPage() {
     return type;
   };
 
-  // Determine violation direction from rule field (e.g. "temperature_max" → Vượt ngưỡng tối đa)
+  // Determine violation direction from rule field
   const getViolationDirection = (
     rule: string,
-  ): { label: string; isHigh: boolean } => {
+    source?: "threshold" | "trend",
+  ): { label: string; isHigh: boolean; isTrend: boolean } => {
+    const isTrend = source === "trend" ||
+      ["trend_rising_watch", "trend_rising_high", "trend_falling_watch", "trend_falling_high"].includes(rule);
+
+    if (isTrend) {
+      const isRising = rule.includes("rising");
+      return {
+        label: isRising ? "↗ Xu hướng tăng dần" : "↘ Xu hướng giảm dần",
+        isHigh: isRising,
+        isTrend: true,
+      };
+    }
+
     if (rule.endsWith("_max"))
-      return { label: "↑ Vượt ngưỡng tối đa", isHigh: true };
+      return { label: "↑ Vượt ngưỡng tối đa", isHigh: true, isTrend: false };
     if (rule.endsWith("_min"))
-      return { label: "↓ Dưới ngưỡng tối thiểu", isHigh: false };
-    return { label: "Vi phạm ngưỡng", isHigh: true };
+      return { label: "↓ Dưới ngưỡng tối thiểu", isHigh: false, isTrend: false };
+    return { label: "Vi phạm ngưỡng", isHigh: true, isTrend: false };
   };
 
   const formatViolationValue = (type: string, rawVal: number) => {
@@ -144,6 +176,21 @@ export default function AlertDetailPage() {
       return `${val} lần/phút`;
     }
     return val.toString();
+  };
+
+  const extractVitalValue = (m: MeasurementResponse, type: string): number | null => {
+    const t = type.toLowerCase();
+    if (t.includes("temp")) return m.temperature ?? null;
+    if (t.includes("heart") || t.includes("pulse")) return m.heartRate ?? null;
+    if (t.includes("respir")) return m.respiratoryRate ?? null;
+    if (t.includes("spo2")) return m.spo2 ?? null;
+    if (t.includes("systolic")) return m.bloodPressure?.systolic ?? null;
+    if (t.includes("diastolic")) return m.bloodPressure?.diastolic ?? null;
+    if (t.includes("glucose")) {
+      if (typeof m.glucose === "number") return m.glucose;
+      return m.glucose?.bloodGlucose ?? null;
+    }
+    return null;
   };
 
   if (isLoading) {
@@ -192,8 +239,10 @@ export default function AlertDetailPage() {
           <FaArrowLeft /> Quay lại danh sách cảnh báo
         </button>
 
-        {/* Alert Overview Header */}
-        <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col md:flex-row md:items-center justify-between gap-6">
+        {/* Unified Header Card: Alert Info + Patient Info */}
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden mb-6">
+          {/* Top half: Alert Overview */}
+          <div className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex items-start gap-4">
             <div className="p-3 bg-red-50 dark:bg-red-950/20 rounded-xl flex-shrink-0">
               {getSeverityIcon(alert.severity)}
@@ -205,6 +254,8 @@ export default function AlertDetailPage() {
                 >
                   {getSeverityLabel(alert.severity)}
                 </span>
+                {/* Alert type badge */}
+                {getAlertTypeBadge(alert)}
                 {alert.status === "ack" ? (
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-400 text-xs font-semibold">
                     <FaCheckCircle className="text-green-500 w-3.5 h-3.5" /> Đã
@@ -217,7 +268,12 @@ export default function AlertDetailPage() {
                 )}
               </div>
               <h1 className="text-2xl font-bold text-slate-950 dark:text-white mt-2">
-                Cảnh báo vượt ngưỡng chỉ số sinh tồn
+                {(() => {
+                  const sourceType = getAlertSourceType(alert);
+                  return sourceType === "trend"
+                    ? "⚠️ Cảnh báo xu hướng bất thường"
+                    : "Cảnh báo vượt ngưỡng chỉ số sinh tồn";
+                })()}
               </h1>
               <div className="text-xs text-slate-500 dark:text-slate-400 mt-2 flex items-center gap-1">
                 <FaRegClock /> Phát hiện lúc:{" "}
@@ -246,82 +302,89 @@ export default function AlertDetailPage() {
               <FaCommentDots /> Nhắn tin
             </button>
           </div>
-        </div>
+          </div>
 
-        {/* Info Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Patient Card */}
-          <div className="md:col-span-1 bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="h-10 w-10 rounded-full bg-blue-50 dark:bg-blue-950/20 flex items-center justify-center text-blue-600 dark:text-blue-400">
-                  <FaUser />
-                </div>
-                <div>
-                  <h3 className="font-bold text-slate-950 dark:text-white leading-tight">
-                    {patient?.name || "Bệnh nhân"}
-                  </h3>
-                  <span className="text-xs text-slate-500 dark:text-slate-400">
-                    Mã: {patient?.patientCode || patient?.id?.substring(0, 8)}
-                  </span>
-                </div>
+          {/* Divider */}
+          <hr className="border-slate-100 dark:border-slate-700 mx-6" />
+
+          {/* Bottom half: Patient Header Info */}
+          <div className="bg-slate-50/50 dark:bg-slate-800/50 p-5 px-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+            
+            <div className="flex items-center gap-4">
+              <div className="h-12 w-12 rounded-full bg-blue-50 dark:bg-blue-950/20 flex items-center justify-center text-blue-600 dark:text-blue-400 text-lg">
+                <FaUser />
               </div>
+              <div>
+                <h3 className="font-bold text-lg text-slate-950 dark:text-white leading-tight">
+                  {patient?.name || "Bệnh nhân"}
+                </h3>
+                <span className="text-sm text-slate-500 dark:text-slate-400">
+                  Mã: {patient?.patientCode || patient?.id?.substring(0, 8)}
+                </span>
+              </div>
+            </div>
 
-              <div className="space-y-3 text-sm">
-                <div>
-                  <span className="text-slate-500 dark:text-slate-400 block text-xs">
-                    Ngày sinh
-                  </span>
-                  <span className="font-medium">
-                    {patient?.dob
-                      ? new Date(patient.dob).toLocaleDateString("vi-VN")
-                      : "Chưa có"}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-500 dark:text-slate-400 block text-xs">
-                    Giới tính
-                  </span>
-                  <span className="font-medium">
-                    {patient?.gender || "Chưa có"}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-500 dark:text-slate-400 block text-xs">
-                    Số điện thoại
-                  </span>
-                  <span className="font-medium">
-                    {patient?.phone || "Chưa có"}
-                  </span>
-                </div>
+            <div className="flex flex-wrap items-center gap-8 text-sm flex-1 md:justify-center">
+              <div>
+                <span className="text-slate-500 dark:text-slate-400 block text-xs mb-0.5">
+                  Ngày sinh
+                </span>
+                <span className="font-medium text-slate-900 dark:text-slate-100">
+                  {patient?.dob
+                    ? new Date(patient.dob).toLocaleDateString("vi-VN")
+                    : "Chưa có"}
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-500 dark:text-slate-400 block text-xs mb-0.5">
+                  Giới tính
+                </span>
+                <span className="font-medium text-slate-900 dark:text-slate-100">
+                  {patient?.gender || "Chưa có"}
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-500 dark:text-slate-400 block text-xs mb-0.5">
+                  Số điện thoại
+                </span>
+                <span className="font-medium text-slate-900 dark:text-slate-100">
+                  {patient?.phone || "Chưa có"}
+                </span>
               </div>
             </div>
 
             <button
               onClick={() => navigate(`/patient/${alert.patientId}`)}
-              className="mt-6 w-full py-2 bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+              className="w-full md:w-auto px-5 py-2.5 bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
             >
               <FaFolder /> Xem hồ sơ chi tiết
             </button>
           </div>
+        </div>
 
+        <div className="flex flex-col gap-6">
           {/* Violations Detail Card */}
-          <div className="md:col-span-2 bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
             <h3 className="text-lg font-bold text-slate-950 dark:text-white mb-4">
-              Chi tiết các chỉ số vượt ngưỡng
+              {getAlertSourceType(alert) === "trend"
+                ? "Chi tiết các chỉ số xu hướng bất thường"
+                : "Chi tiết các chỉ số vượt ngưỡng"}
             </h3>
 
             <div className="space-y-4">
-              {alert.violations.map((v, i) => {
-                const direction = getViolationDirection(v.rule);
+              {filterRedundantViolations(alert.violations).map((v, i) => {
+                const direction = getViolationDirection(v.rule, v.source);
                 const isAbove = direction.isHigh;
+                const isTrend = direction.isTrend;
                 return (
                   <div
                     key={i}
                     className={`p-4 rounded-xl border flex items-start gap-4 ${
-                      isAbove
-                        ? "bg-red-50/50 dark:bg-red-950/10 border-red-100 dark:border-red-950/30"
-                        : "bg-blue-50/50 dark:bg-blue-950/10 border-blue-100 dark:border-blue-950/30"
+                      isTrend
+                        ? "bg-amber-50/60 dark:bg-amber-950/10 border-amber-200 dark:border-amber-800/30"
+                        : isAbove
+                          ? "bg-red-50/50 dark:bg-red-950/10 border-red-100 dark:border-red-950/30"
+                          : "bg-blue-50/50 dark:bg-blue-950/10 border-blue-100 dark:border-blue-950/30"
                     }`}
                   >
                     <div className="p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm flex-shrink-0">
@@ -335,9 +398,11 @@ export default function AlertDetailPage() {
                         </span>
                         <span
                           className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
-                            isAbove
-                              ? "bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400"
-                              : "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400"
+                            isTrend
+                              ? "bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300"
+                              : isAbove
+                                ? "bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400"
+                                : "bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400"
                           }`}
                         >
                           {direction.label}
@@ -350,31 +415,134 @@ export default function AlertDetailPage() {
                           }`}
                         >
                           {v.severity === "high"
-                            ? "⚠ Nghiêm trọng"
+                            ? "⚠ Ưu tiên cao"
                             : "ℹ Cần theo dõi"}
                         </span>
                       </div>
                       {/* Values */}
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-white dark:bg-slate-800 rounded-lg p-2.5 border border-slate-200 dark:border-slate-600">
-                          <span className="text-xs text-slate-500 dark:text-slate-400 block mb-0.5">
-                            Chỉ số đo được
+                      {isTrend ? (
+                        <div className="bg-white dark:bg-slate-800 rounded-lg p-4 border border-slate-200 dark:border-slate-600">
+                          <span className="text-xs text-slate-500 dark:text-slate-400 block mb-2">
+                            Lịch sử biến động gần nhất
                           </span>
-                          <span
-                            className={`text-lg font-bold ${isAbove ? "text-red-600 dark:text-red-400" : "text-blue-600 dark:text-blue-400"}`}
-                          >
-                            {formatViolationValue(v.type, v.observed)}
-                          </span>
+                          {(() => {
+                            if (!measurements) return <span className="text-sm">Đang tải dữ liệu...</span>;
+                            // backend measurements usually return sorted by createdAt desc
+                            const historyVals = measurements
+                              .filter((m) => new Date(m.createdAt) <= new Date(alert.createdAt))
+                              .map((m) => extractVitalValue(m, v.type))
+                              .filter((val) => val !== null)
+                              .slice(0, 5)
+                              .reverse(); // oldest to newest among the 5
+
+                            if (historyVals.length === 0) {
+                              return <span className="text-sm font-semibold">{formatViolationValue(v.type, v.observed)}</span>;
+                            }
+
+                            const chartData = historyVals.map((val, idx) => ({ name: `Lần ${idx + 1}`, value: val }));
+                            
+                            // Calculate min/max for YAxis domain to include both history values and threshold
+                            const chartValues = [...historyVals, v.threshold];
+                            const minVal = Math.min(...chartValues);
+                            const maxVal = Math.max(...chartValues);
+                            // add a little padding
+                            const padding = (maxVal - minVal) * 0.2 || minVal * 0.05;
+                            const yMin = minVal - padding;
+                            const yMax = maxVal + padding;
+                            
+                            const formattedFirst = formatViolationValue(v.type, historyVals[0]!);
+                            const unit = formattedFirst.replace(/[0-9.]/g, '').trim();
+
+                            return (
+                              <div className="flex flex-col gap-1">
+                                {/* Sparkline Chart */}
+                                <div className="h-28 w-full mt-2 -ml-2">
+                                  <ResponsiveContainer width="100%" height="100%">
+                                    <AreaChart data={chartData} margin={{ top: 25, right: 35, left: 35, bottom: 5 }}>
+                                      <defs>
+                                        <linearGradient id={`colorValue-${i}`} x1="0" y1="0" x2="0" y2="1">
+                                          <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.4}/>
+                                          <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
+                                        </linearGradient>
+                                      </defs>
+                                      <YAxis domain={[yMin, yMax]} hide />
+                                      <Tooltip 
+                                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)', fontSize: '12px' }}
+                                        formatter={(value: number) => [`${value} ${unit}`, 'Giá trị']}
+                                        labelStyle={{ fontWeight: 'bold', color: '#475569', marginBottom: '4px' }}
+                                      />
+                                      <ReferenceLine 
+                                        y={v.threshold} 
+                                        stroke={isAbove ? "#ef4444" : "#3b82f6"} 
+                                        strokeDasharray="4 4" 
+                                        strokeOpacity={0.6}
+                                        label={{ 
+                                          position: isAbove ? 'insideBottomLeft' : 'insideTopLeft', 
+                                          value: `Ngưỡng: ${formatViolationValue(v.type, v.threshold)}`, 
+                                          fill: isAbove ? '#ef4444' : '#3b82f6', 
+                                          fontSize: 11,
+                                          fontWeight: 600,
+                                          offset: 5
+                                        }} 
+                                      />
+                                      <Area 
+                                        type="monotone" 
+                                        dataKey="value" 
+                                        stroke="#d97706" 
+                                        strokeWidth={3}
+                                        fillOpacity={1} 
+                                        fill={`url(#colorValue-${i})`} 
+                                        isAnimationActive={true}
+                                        activeDot={{ r: 5, fill: '#b45309', stroke: '#fff', strokeWidth: 2 }}
+                                      >
+                                        <LabelList 
+                                          dataKey="value" 
+                                          position="top" 
+                                          offset={10}
+                                          formatter={(value: number) => formatViolationValue(v.type, value)}
+                                          style={{ fontSize: '12px', fontWeight: 'bold', fill: '#b45309' }}
+                                        />
+                                      </Area>
+                                    </AreaChart>
+                                  </ResponsiveContainer>
+                                </div>
+                              </div>
+                            );
+                          })()}
                         </div>
-                        <div className="bg-white dark:bg-slate-800 rounded-lg p-2.5 border border-slate-200 dark:border-slate-600">
-                          <span className="text-xs text-slate-500 dark:text-slate-400 block mb-0.5">
-                            Ngưỡng giới hạn
-                          </span>
-                          <span className="text-lg font-semibold text-slate-700 dark:text-slate-200">
-                            {formatViolationValue(v.type, v.threshold)}
-                          </span>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="bg-white dark:bg-slate-800 rounded-lg p-2.5 border border-slate-200 dark:border-slate-600">
+                            <span className="text-xs text-slate-500 dark:text-slate-400 block mb-0.5">
+                              Chỉ số đo được
+                            </span>
+                            <span
+                              className={`text-lg font-bold ${
+                                isAbove
+                                  ? "text-red-600 dark:text-red-400"
+                                  : "text-blue-600 dark:text-blue-400"
+                              }`}
+                            >
+                              {formatViolationValue(v.type, v.observed)}
+                            </span>
+                          </div>
+                          <div className="bg-white dark:bg-slate-800 rounded-lg p-2.5 border border-slate-200 dark:border-slate-600">
+                            <span className="text-xs text-slate-500 dark:text-slate-400 block mb-0.5">
+                              {isAbove ? "Ngưỡng tối đa" : "Ngưỡng tối thiểu"}
+                            </span>
+                            <span className="text-lg font-semibold text-slate-700 dark:text-slate-200">
+                              {formatViolationValue(v.type, v.threshold)}
+                            </span>
+                          </div>
                         </div>
-                      </div>
+                      )}
+                      
+                      {/* Trend extra note */}
+                      {isTrend && getAlertSourceType(alert) === "trend" && (
+                        <p className="text-xs text-amber-700 dark:text-amber-400 mt-2 italic">
+                          Theo dõi sát xu hướng để can thiệp kịp thời.
+                        </p>
+                      )}
                     </div>
                   </div>
                 );

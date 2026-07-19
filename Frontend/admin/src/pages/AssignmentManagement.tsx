@@ -174,6 +174,7 @@ const AssignmentManagement: React.FC = () => {
       return [
         assignment.patientName,
         assignment.patientCode,
+        assignment.patientPublicId,
         assignment.doctorName,
         assignment.nurseName,
       ]
@@ -327,10 +328,9 @@ const AssignmentManagement: React.FC = () => {
                     <div className="font-medium text-gray-900 dark:text-gray-100">
                       {assignment.patientName || t("common.noName")}
                     </div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400">{assignment.patientId}</div>
                   </td>
                   <td className="px-4 py-4 text-sm font-medium text-gray-700 dark:text-gray-200">
-                    {assignment.patientCode || t("common.noCode")}
+                    {assignment.patientPublicId || assignment.patientCode || t("common.noCode")}
                   </td>
                   <td className="px-4 py-4 text-sm text-gray-700 dark:text-gray-200">
                     {assignment.doctorName || t("common.notSpecified")}

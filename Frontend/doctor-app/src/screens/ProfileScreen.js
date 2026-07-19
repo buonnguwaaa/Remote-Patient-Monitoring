@@ -12,6 +12,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../context/AuthContext";
 import request from "../api/httpClient";
 import { colors, radius, spacing, typography, shadows } from "../theme/rpmTheme";
+import ActivityHistorySection from "../components/ActivityHistorySection";
+
 
 function formatDate(d) {
   if (!d) return "Chưa cập nhật";
@@ -148,6 +150,9 @@ export default function ProfileScreen() {
         <InfoRow icon="trophy-outline"       label="Kinh nghiệm"       value={d.yearsOfExperience ? `${d.yearsOfExperience} năm` : null} />
         <InfoRow icon="briefcase-outline"    label="Vai trò"           value="Bác sĩ" />
       </Section>
+
+      {/* Activity History */}
+      <ActivityHistorySection />
 
       {/* Logout */}
       <TouchableOpacity style={styles.logoutBtn} onPress={logout} activeOpacity={0.8}>

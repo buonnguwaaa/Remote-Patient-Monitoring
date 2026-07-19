@@ -31,6 +31,9 @@ import {
   validatePatientProfileForm,
 } from "../../utils/profileValidation";
 import { buildPatientQrValue } from "../../utils/patientQrUtils";
+import { request } from "../../api/httpClient";
+import AccountActivitySection from "../../components/AccountActivitySection";
+
 
 const EMPTY_USER_FORM = {
   id: "",
@@ -937,9 +940,13 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           ) : null}
 
+          {/* ── Lịch sử tài khoản ───────────────────────────────────── */}
+          <AccountActivitySection />
+
           <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
             <Text style={styles.logoutText}>Đăng xuất</Text>
           </TouchableOpacity>
+
 
           <Text style={styles.footerVersion}>Phiên bản 1.0.0</Text>
           <Text style={styles.footerBrand}>© 2025 Remote Patient Monitoring</Text>

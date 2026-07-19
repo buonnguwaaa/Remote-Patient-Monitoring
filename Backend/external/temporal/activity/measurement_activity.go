@@ -404,7 +404,7 @@ func buildAlertMessageContent(alert *domain.Alert) string {
 	case alert.Severity == domain.SeverityInfo:
 		return fmt.Sprintf("Có chỉ số %s vượt ngưỡng cá nhân. Vui lòng theo dõi thêm.", thresholdType)
 	default:
-		return fmt.Sprintf("Chỉ số %s vượt ngưỡng an toàn nghiêm trọng. Vui lòng kiểm tra ngay.", thresholdType)
+		return fmt.Sprintf("Chỉ số %s vượt ngưỡng an toàn (ưu tiên cao). Vui lòng kiểm tra ngay.", thresholdType)
 	}
 }
 

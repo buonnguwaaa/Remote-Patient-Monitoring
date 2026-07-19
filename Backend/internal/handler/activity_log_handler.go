@@ -8,6 +8,7 @@ import (
 	domainUser "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository"
+	userRepo "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository/user"
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -15,15 +16,18 @@ import (
 type ActivityLogHandler struct {
 	repo           *repository.ActivityLogRepository
 	assignmentRepo repository.AssignmentRepository
+	baseUserRepo   userRepo.BaseUserRepository
 }
 
 func NewActivityLogHandler(
 	repo *repository.ActivityLogRepository,
 	assignmentRepo repository.AssignmentRepository,
+	baseUserRepo userRepo.BaseUserRepository,
 ) *ActivityLogHandler {
 	return &ActivityLogHandler{
 		repo:           repo,
 		assignmentRepo: assignmentRepo,
+		baseUserRepo:   baseUserRepo,
 	}
 }
 
@@ -222,6 +226,11 @@ func (h *ActivityLogHandler) GetClinicalHistory(c *gin.Context) {
 		}
 		if logEntry.PatientID != nil {
 			item.PatientID = logEntry.PatientID.Hex()
+			// Tải tên bệnh nhân
+			patientUser, err := h.baseUserRepo.FindByID(c.Request.Context(), *logEntry.PatientID)
+			if err == nil && patientUser != nil {
+				item.PatientName = patientUser.Name
+			}
 		}
 		items = append(items, item)
 	}
@@ -299,6 +308,11 @@ func (h *ActivityLogHandler) GetMyAccountActivity(c *gin.Context) {
 			}
 			if logEntry.PatientID != nil {
 				item.PatientID = logEntry.PatientID.Hex()
+				// Tải tên bệnh nhân
+				patientUser, err := h.baseUserRepo.FindByID(c.Request.Context(), *logEntry.PatientID)
+				if err == nil && patientUser != nil {
+					item.PatientName = patientUser.Name
+				}
 			}
 			items = append(items, item)
 		}
