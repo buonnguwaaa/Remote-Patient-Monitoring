@@ -43,7 +43,7 @@ Built with **Go**, **MongoDB**, **Redis**, and **Temporal** for durable backgrou
 | **Notifications**             | In-app notifications and Firebase Cloud Messaging (FCM) push                     |
 | **Realtime**                  | WebSocket hub backed by Redis pub/sub for live updates                           |
 | **Video sessions**            | Jitsi-based telehealth room provisioning                                         |
-| **Activity logs**             | Audit trail for admin actions                                                    |
+| **Activity logs**             | Audit trail for admin/doctor/nurse/patient write actions                          |
 
 ---
 

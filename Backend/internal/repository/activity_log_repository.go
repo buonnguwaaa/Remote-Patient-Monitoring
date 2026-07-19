@@ -46,6 +46,13 @@ func (r *ActivityLogRepository) EnsureIndexes(ctx context.Context) error {
 			},
 			Options: options.Index().SetName("idx_activity_log_type_created"),
 		},
+		{
+			Keys: bson.D{
+				{Key: "patientId", Value: 1},
+				{Key: "createdAt", Value: -1},
+			},
+			Options: options.Index().SetName("idx_activity_log_patient_created").SetSparse(true),
+		},
 	}
 	_, err := r.collection.Indexes().CreateMany(ctx, models)
 	return err
@@ -112,9 +119,17 @@ func (r *ActivityLogRepository) CountByDateRange(ctx context.Context, startDate,
 	return r.collection.CountDocuments(ctx, filter)
 }
 
-// FindByUserID finds activity logs by user ID
-func (r *ActivityLogRepository) FindByUserID(ctx context.Context, userID primitive.ObjectID, limit, skip int) ([]*domain.ActivityLog, error) {
+// FindByUserID finds activity logs by actor user ID, optionally limited to resources.
+func (r *ActivityLogRepository) FindByUserID(
+	ctx context.Context,
+	userID primitive.ObjectID,
+	resources []string,
+	limit, skip int,
+) ([]*domain.ActivityLog, error) {
 	filter := bson.M{"userId": userID}
+	if len(resources) > 0 {
+		filter["resource"] = bson.M{"$in": resources}
+	}
 
 	opts := options.Find().
 		SetSort(bson.D{{Key: "createdAt", Value: -1}}).
@@ -133,6 +148,19 @@ func (r *ActivityLogRepository) FindByUserID(ctx context.Context, userID primiti
 	}
 
 	return logs, nil
+}
+
+// CountByUserID counts activity logs by actor user ID.
+func (r *ActivityLogRepository) CountByUserID(
+	ctx context.Context,
+	userID primitive.ObjectID,
+	resources []string,
+) (int64, error) {
+	filter := bson.M{"userId": userID}
+	if len(resources) > 0 {
+		filter["resource"] = bson.M{"$in": resources}
+	}
+	return r.collection.CountDocuments(ctx, filter)
 }
 
 // GetStatsByDateRange gets statistics for activity logs within a date range
@@ -169,6 +197,75 @@ func (r *ActivityLogRepository) GetStatsByDateRange(ctx context.Context, startDa
 	}
 
 	return stats, nil
+}
+
+// ClinicalResources are write events that belong on a patient clinical chart.
+var ClinicalResources = []string{
+	"patients",
+	"measurements",
+	"prescriptions",
+	"medication-intakes",
+	"alerts",
+	"thresholds",
+	"reminders",
+	"follow-up-appointments",
+	"messages",
+	"chat",
+	"video-sessions",
+}
+
+// AccountActivityResources are events a patient may see about their own chart.
+var AccountActivityResources = []string{
+	"patients",
+	"measurements",
+	"prescriptions",
+	"medication-intakes",
+	"alerts",
+	"reminders",
+	"follow-up-appointments",
+}
+
+// FindByPatientID finds activity logs linked to a patient, optionally limited to resources.
+func (r *ActivityLogRepository) FindByPatientID(
+	ctx context.Context,
+	patientID primitive.ObjectID,
+	resources []string,
+	limit, skip int,
+) ([]*domain.ActivityLog, error) {
+	filter := bson.M{"patientId": patientID}
+	if len(resources) > 0 {
+		filter["resource"] = bson.M{"$in": resources}
+	}
+
+	opts := options.Find().
+		SetSort(bson.D{{Key: "createdAt", Value: -1}}).
+		SetLimit(int64(limit)).
+		SetSkip(int64(skip))
+
+	cursor, err := r.collection.Find(ctx, filter, opts)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var logs []*domain.ActivityLog
+	if err := cursor.All(ctx, &logs); err != nil {
+		return nil, err
+	}
+	return logs, nil
+}
+
+// CountByPatientID counts activity logs linked to a patient.
+func (r *ActivityLogRepository) CountByPatientID(
+	ctx context.Context,
+	patientID primitive.ObjectID,
+	resources []string,
+) (int64, error) {
+	filter := bson.M{"patientId": patientID}
+	if len(resources) > 0 {
+		filter["resource"] = bson.M{"$in": resources}
+	}
+	return r.collection.CountDocuments(ctx, filter)
 }
 
 // DeleteOlderThan deletes activity logs older than the specified duration
