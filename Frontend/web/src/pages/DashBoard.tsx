@@ -10,6 +10,7 @@ import {
   FaUserFriends,
 } from "react-icons/fa";
 import { BsCalendar3 } from "react-icons/bs";
+import StatCard from "../components/ui/StatCard";
 
 import Chart, {
   type ChartStatItem,
@@ -42,70 +43,18 @@ interface KpiDef {
 
 const CHART_BUCKETS = 4;
 
-
-
-const Badge: React.FC<{ value: number; up: boolean }> = ({ value, up }) => (
+const TrendBadge: React.FC<{ value: number; up: boolean }> = ({ value, up }) => (
   <span
-    className={`inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[11px] font-semibold ${up
-      ? "bg-teal-50 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400"
-      : "bg-red-50 text-red-500 dark:bg-red-900/30 dark:text-red-400"
-      }`}
+    className={`inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[11px] font-semibold ${
+      up
+        ? "bg-teal-50 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400"
+        : "bg-red-50 text-red-500 dark:bg-red-900/30 dark:text-red-400"
+    }`}
   >
     {up ? <FaArrowTrendUp size={9} /> : <FaArrowTrendDown size={9} />}
     {value}%
   </span>
 );
-
-const KpiCard: React.FC<KpiDef> = ({ label, value, change, up, Icon, variant = "default", loading }) => {
-  const bgClass =
-    variant === "danger" ? "bg-red-50 dark:bg-red-900/10" :
-    variant === "warning" ? "bg-amber-50 dark:bg-amber-900/10" :
-    variant === "success" ? "bg-emerald-50 dark:bg-emerald-900/10" :
-    variant === "info" ? "bg-blue-50 dark:bg-blue-900/10" :
-    "bg-white dark:bg-slate-800";
-
-  const iconClass =
-    variant === "danger" ? "text-red-500" :
-    variant === "warning" ? "text-amber-500" :
-    variant === "success" ? "text-emerald-500" :
-    variant === "info" ? "text-blue-500" :
-    "text-gray-400 dark:text-slate-500";
-
-  if (loading) {
-    return (
-      <div className="rounded-2xl border border-gray-100 p-5 dark:border-slate-700/60 bg-white dark:bg-slate-800 animate-pulse">
-        <div className="mb-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="h-4 w-4 rounded-lg bg-slate-200 dark:bg-slate-700" />
-            <div className="h-3.5 w-24 rounded bg-slate-200 dark:bg-slate-700" />
-          </div>
-        </div>
-        <div className="flex items-end gap-2">
-          <div className="h-8 w-16 rounded bg-slate-200 dark:bg-slate-700" />
-        </div>
-      </div>
-    );
-  }
-    
-  return (
-    <div className={`rounded-2xl border border-gray-100 p-5 dark:border-slate-700/60 ${bgClass}`}>
-      <div className="mb-3 flex items-center justify-between">
-        <div className={`flex items-center gap-2 ${iconClass}`}>
-          <Icon size={14} />
-          <span className="text-xs font-medium">{label}</span>
-        </div>
-      </div>
-      <div className="flex items-end gap-2">
-        <span className={`text-3xl font-bold leading-none ${variant === "default" ? "text-gray-900 dark:text-white" : iconClass}`}>
-          {value}
-        </span>
-        {typeof change === "number" && typeof up === "boolean" ? (
-          <Badge value={change} up={up} />
-        ) : null}
-      </div>
-    </div>
-  );
-};
 
 const SectionHeader: React.FC<{
   title: string;
@@ -449,7 +398,7 @@ const RecentAlerts: React.FC<{
                   ? "border-t border-gray-50 dark:border-slate-700/30"
                   : ""
                   }`}
-                onClick={() => navigate("/threshold-alerts")}
+                onClick={() => navigate(`/alert/${alert.id}`)}
               >
                 <div
                   className={`mt-0.5 shrink-0 rounded-lg p-1.5 ${normalizeAlertSeverity(alert.severity) === "high"
@@ -1112,9 +1061,21 @@ const DashBoard = () => {
           </div>
         ) : null}
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {kpis.map((kpi) => (
-            <KpiCard key={kpi.label} {...kpi} loading={loading} />
+            <StatCard
+              key={kpi.label}
+              label={kpi.label}
+              value={kpi.value}
+              icon={kpi.Icon}
+              variant={kpi.variant}
+              loading={loading}
+              badge={
+                typeof kpi.change === "number" && typeof kpi.up === "boolean"
+                  ? <TrendBadge value={kpi.change} up={kpi.up} />
+                  : undefined
+              }
+            />
           ))}
         </div>
 

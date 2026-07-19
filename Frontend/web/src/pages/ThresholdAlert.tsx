@@ -18,6 +18,8 @@ import {
 
 import Toast from "../components/ui/Toast";
 import Pagination from "../components/ui/Pagination";
+import StatCard from "../components/ui/StatCard";
+import PatientListCard, { CardActionBtn, StatusBadge } from "../components/ui/PatientListCard";
 import { useToast } from "../hooks/useToast";
 import {
   acknowledgeAlert,
@@ -368,32 +370,20 @@ const ThresholdAlert = () => {
 
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-700 flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Tổng cảnh báo chờ xử lý</p>
-            {isStatsLoading ? (
-              <div className="h-9 w-16 rounded bg-slate-200 dark:bg-slate-700 animate-pulse mt-1" />
-            ) : (
-              <p className="text-3xl font-bold text-slate-900 dark:text-white mt-1">{stats.pendingTotal}</p>
-            )}
-          </div>
-          <div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center">
-            <FaRegClock className="text-xl text-blue-600 dark:text-blue-400" />
-          </div>
-        </div>
-        <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-red-200 dark:border-red-900/50 flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-red-600 dark:text-red-400">Cảnh báo ưu tiên cao (Chờ xử lý)</p>
-            {isStatsLoading ? (
-              <div className="h-9 w-16 rounded bg-slate-200 dark:bg-slate-700 animate-pulse mt-1" />
-            ) : (
-              <p className="text-3xl font-bold text-red-700 dark:text-red-300 mt-1">{stats.pendingHigh}</p>
-            )}
-          </div>
-          <div className="h-12 w-12 rounded-full bg-red-100 dark:bg-red-500/20 flex items-center justify-center">
-            <FaExclamationTriangle className="text-xl text-red-600 dark:text-red-400" />
-          </div>
-        </div>
+        <StatCard
+          label="Tổng cảnh báo chờ xử lý"
+          value={stats.pendingTotal}
+          icon={FaRegClock}
+          variant="info"
+          loading={isStatsLoading}
+        />
+        <StatCard
+          label="Cảnh báo ưu tiên cao (Chờ xử lý)"
+          value={stats.pendingHigh}
+          icon={FaExclamationTriangle}
+          variant="danger"
+          loading={isStatsLoading}
+        />
       </div>
     );
   };
@@ -500,128 +490,117 @@ const ThresholdAlert = () => {
       <div className="space-y-4">
         {groupedAlerts.map(group => {
           const isExpanded = expandedPatients.has(group.patientId);
-          
+          const hasOpen = group.openCount > 0;
+
           return (
-            <div 
-              key={group.patientId} 
-              className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden transition-all"
-            >
-              <div 
-                className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/40 transition-colors"
-                onClick={() => togglePatientExpanded(group.patientId)}
-              >
-                <div className="flex items-start gap-4">
-                  <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
-                    <FaUserInjured className="text-blue-600 dark:blue-400 text-lg" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-blue-600 dark:blue-400">
-                      {group.patientName} <span className="text-sm font-normal text-slate-500 ml-2">({group.patientCode})</span>
-                    </h3>
-                    <div className="flex flex-wrap items-center gap-3 mt-2">
-                      <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                        {group.alerts.length} cảnh báo:
-                      </span>
-                      {group.openCount > 0 && (
-                        <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-400 font-semibold">
-                          {group.openCount} Chưa xử lý
-                        </span>
-                      )}
-                      {group.resolvedCount > 0 && (
-                        <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-400 font-semibold">
-                          {group.resolvedCount} Đã xử lý
-                        </span>
-                      )}
-                    </div>
-                    {group.latestAlert && (
-                      <p className="text-xs text-slate-500 mt-2 flex items-center gap-1">
-                        <FaRegClock /> Mới nhất: {new Date(group.latestAlert.createdAt).toLocaleString("vi-VN")}
-                      </p>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                  {group.openCount > 0 ? (
-                    <button 
-                      onClick={() => openResolveModal(group.alerts.filter(a => a.status === "open"))}
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
-                    >
-                      Xử lý tất cả
-                    </button>
-                  ) : (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-400 text-sm font-semibold">
-                      <FaCheckCircle className="text-green-500" /> Đã xử lý xong
+            <PatientListCard
+              key={group.patientId}
+              name={group.patientName}
+              code={group.patientCode}
+              accentColor={hasOpen ? (group.alerts.some(a => normalizeAlertSeverity(a.severity) === "high" && a.status === "open") ? "red" : "amber") : "emerald"}
+              badge={
+                hasOpen ? (
+                  <StatusBadge color="red">
+                    {group.openCount} Chưa xử lý
+                  </StatusBadge>
+                ) : (
+                  <StatusBadge color="emerald" dot>
+                    Đã xử lý xong
+                  </StatusBadge>
+                )
+              }
+              infoRow={
+                <span className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                  {group.alerts.length} cảnh báo
+                  {group.resolvedCount > 0 && (
+                    <span className="ml-2 text-xs text-slate-400">
+                      ({group.resolvedCount} đã xử lý)
                     </span>
                   )}
-                  <button 
-                    onClick={() => navigate(`/patient/chat/${group.patientId}`)}
-                    className="p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                </span>
+              }
+              subtitle={
+                group.latestAlert ? (
+                  <span className="flex items-center gap-1">
+                    <FaRegClock />
+                    Mới nhất: {new Date(group.latestAlert.createdAt).toLocaleString("vi-VN")}
+                  </span>
+                ) : undefined
+              }
+              isExpanded={isExpanded}
+              onClick={() => togglePatientExpanded(group.patientId)}
+              actions={
+                <>
+                  {hasOpen ? (
+                    <CardActionBtn
+                      variant="primary"
+                      onClick={() => openResolveModal(group.alerts.filter(a => a.status === "open"))}
+                    >
+                      Xử lý tất cả
+                    </CardActionBtn>
+                  ) : null}
+                  <CardActionBtn
+                    variant="icon"
                     title="Nhắn tin"
+                    onClick={() => navigate(`/patient/chat/${group.patientId}`)}
                   >
                     <FaCommentDots className="w-5 h-5" />
-                  </button>
-                  <button 
-                    onClick={() => navigate(`/patient/${group.patientId}`)}
-                    className="p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                  </CardActionBtn>
+                  <CardActionBtn
+                    variant="icon"
                     title="Hồ sơ bệnh nhân"
+                    onClick={() => navigate(`/patient/${group.patientId}`)}
                   >
                     <FaFileMedical className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-
-              {isExpanded && (
-                <div className="border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-4">
-                  <div className="space-y-3">
-                    {group.alerts.map(alert => (
-                      <div 
-                        key={alert.id} 
-                        className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer hover:border-blue-300 dark:hover:border-blue-700 transition-colors"
-                        onClick={() => navigate(`/alert/${alert.id}`)}
-                      >
-                        <div>
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium flex items-center gap-1 ${getSeverityBadge(alert.severity)}`} aria-label={getSeverityLabel(alert.severity)}>
-                              {getSeverityIcon(alert.severity)}
-                              {getSeverityLabel(alert.severity)}
-                            </span>
-                            <span className="text-xs text-slate-500 flex items-center gap-1">
-                              <FaRegClock /> {new Date(alert.createdAt).toLocaleString("vi-VN")}
-                            </span>
-                          </div>
-                          <ul className="space-y-1">
-                            {alert.violations.map((v, i) => (
-                              <li key={i} className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                                • {formatViolation(v)}
-                              </li>
-                            ))}
-                          </ul>
-                          <span className="text-xs font-medium text-blue-600 dark:text-blue-400 mt-3 inline-block">
-                            Xem chi tiết cảnh báo →
+                  </CardActionBtn>
+                </>
+              }
+              expanded={
+                <div className="p-4 space-y-3">
+                  {group.alerts.map(alert => (
+                    <div
+                      key={alert.id}
+                      className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer hover:border-blue-300 dark:hover:border-blue-700 transition-colors"
+                      onClick={() => navigate(`/alert/${alert.id}`)}
+                    >
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium flex items-center gap-1 ${getSeverityBadge(alert.severity)}`}>
+                            {getSeverityIcon(alert.severity)}
+                            {getSeverityLabel(alert.severity)}
+                          </span>
+                          <span className="text-xs text-slate-500 flex items-center gap-1">
+                            <FaRegClock /> {new Date(alert.createdAt).toLocaleString("vi-VN")}
                           </span>
                         </div>
-                        {alert.status === "open" ? (
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openResolveModal(alert);
-                            }}
-                            className="whitespace-nowrap px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
-                          >
-                            Xác nhận xử lý
-                          </button>
-                        ) : (
-                          <div className="text-sm text-green-600 dark:text-green-400 font-semibold flex items-center gap-1">
-                            <FaCheckCircle className="text-green-500" /> Đã xử lý {alert.acknowledgedByName && `• ${alert.acknowledgedByName}`}
-                          </div>
-                        )}
+                        <ul className="space-y-1">
+                          {alert.violations.map((v, i) => (
+                            <li key={i} className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                              • {formatViolation(v)}
+                            </li>
+                          ))}
+                        </ul>
+                        <span className="text-xs font-medium text-blue-600 dark:text-blue-400 mt-3 inline-block">
+                          Xem chi tiết cảnh báo →
+                        </span>
                       </div>
-                    ))}
-                  </div>
+                      {alert.status === "open" ? (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); openResolveModal(alert); }}
+                          className="whitespace-nowrap px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+                        >
+                          Xác nhận xử lý
+                        </button>
+                      ) : (
+                        <div className="text-sm text-green-600 dark:text-green-400 font-semibold flex items-center gap-1">
+                          <FaCheckCircle className="text-green-500" /> Đã xử lý {alert.acknowledgedByName && `• ${alert.acknowledgedByName}`}
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
-              )}
-            </div>
+              }
+            />
           );
         })}
       </div>

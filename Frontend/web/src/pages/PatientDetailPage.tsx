@@ -171,7 +171,7 @@ const getBpTags = (sys: number | null, dia: number | null, thr: ThresholdRecord 
     if (dia > thr.diaMax) tags.push("Tâm trương ↑");
     else if (dia < thr.diaMin) tags.push("Tâm trương ↓");
   }
-  return tags.length > 0 ? tags.join(", ") : null;
+  return tags.length > 0 ? tags : null;
 };
 
 const getChartConfig = (type: string, data: ChartRow[], thr: ThresholdRecord | null) => {
@@ -554,7 +554,7 @@ const PatientDetailPage = () => {
               </span>
               {bpTags && (
                 <span className="ml-1 text-[10px] font-medium px-1.5 py-px rounded-sm" style={{ backgroundColor: "#c0392b18", color: abnormalColor }}>
-                  {bpTags}
+                  {bpTags.join(", ")}
                 </span>
               )}
             </span>
@@ -955,9 +955,13 @@ const PatientDetailPage = () => {
                       {v.label}
                     </div>
                     {v.isOut && v.subTag && (
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400">
-                        {v.subTag}
-                      </span>
+                      <div className="flex flex-col gap-1 items-end text-right max-w-[60%]">
+                        {(Array.isArray(v.subTag) ? v.subTag : [v.subTag]).map((tag, idx) => (
+                          <span key={idx} className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
                     )}
                     {v.isOut && !v.subTag && (
                       <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
