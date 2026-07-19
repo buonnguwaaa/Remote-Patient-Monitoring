@@ -263,12 +263,22 @@ func isTrendRule(rule string) bool {
 	}
 }
 
+func isTrendViolation(v domain.ThresholdViolation) bool {
+	if v.Source == domain.ViolationSourceTrend {
+		return true
+	}
+	if v.Source == domain.ViolationSourceThreshold {
+		return false
+	}
+	return isTrendRule(v.Rule)
+}
+
 func hasThresholdViolation(alert *domain.Alert) bool {
 	if alert == nil {
 		return false
 	}
 	for _, v := range alert.Violations {
-		if !isTrendRule(v.Rule) {
+		if !isTrendViolation(v) {
 			return true
 		}
 	}
@@ -302,7 +312,7 @@ func firstThresholdViolationType(alert *domain.Alert) string {
 		return ""
 	}
 	for _, v := range alert.Violations {
-		if !isTrendRule(v.Rule) {
+		if !isTrendViolation(v) {
 			return v.Type
 		}
 	}
@@ -314,7 +324,7 @@ func firstTrendViolationType(alert *domain.Alert) string {
 		return ""
 	}
 	for _, v := range alert.Violations {
-		if isTrendRule(v.Rule) {
+		if isTrendViolation(v) {
 			return v.Type
 		}
 	}

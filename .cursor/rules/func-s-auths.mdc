@@ -1,0 +1,11 @@
+---
+alwaysApply: true
+---
+
+func (s *authService) issueTokens(ctx context.Context, u *domain.BaseUser) (*dto.LoginResponse, error) {
+	userIDStr := u.ID.Hex()
+	now := time.Now().UTC()
+
+	if err := s.tokenRepo.RevokeAllByUserID(ctx, userIDStr); err != nil {
+		return nil, err
+	}

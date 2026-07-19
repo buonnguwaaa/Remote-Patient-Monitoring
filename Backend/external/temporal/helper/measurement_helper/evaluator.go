@@ -26,6 +26,7 @@ func EvaluateMeasurementAgainstThreshold(m *domain.Measurement, t *domain.Thresh
 			Observed:  observed,
 			Threshold: threshold,
 			Severity:  calculateViolationSeverity(vitalType, observed, threshold, m.MealTiming),
+			Source:    domain.ViolationSourceThreshold,
 		})
 	}
 

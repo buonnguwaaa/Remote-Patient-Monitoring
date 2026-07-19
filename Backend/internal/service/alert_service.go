@@ -38,6 +38,66 @@ func NewAlertService(
 	}
 }
 
+func normalizeViolationSource(v domain.ThresholdViolation) domain.ThresholdViolation {
+	if v.Source == domain.ViolationSourceThreshold || v.Source == domain.ViolationSourceTrend {
+		return v
+	}
+	if isTrendViolationRule(v.Rule) {
+		v.Source = domain.ViolationSourceTrend
+	} else {
+		v.Source = domain.ViolationSourceThreshold
+	}
+	return v
+}
+
+func isTrendViolationRule(rule string) bool {
+	switch rule {
+	case "trend_rising_watch", "trend_rising_high", "trend_falling_watch", "trend_falling_high":
+		return true
+	default:
+		return false
+	}
+}
+
+func normalizeViolations(violations []domain.ThresholdViolation) []domain.ThresholdViolation {
+	if len(violations) == 0 {
+		return violations
+	}
+	out := make([]domain.ThresholdViolation, len(violations))
+	for i, v := range violations {
+		out[i] = normalizeViolationSource(v)
+	}
+	return out
+}
+
+func mapAlertResponse(alert *domain.Alert, userData *repository.AlertUserData) dto.AlertResponse {
+	if userData == nil {
+		userData = &repository.AlertUserData{}
+	}
+
+	var acknowledgedByStr *string
+	if alert.AcknowledgedBy != nil {
+		str := alert.AcknowledgedBy.Hex()
+		acknowledgedByStr = &str
+	}
+
+	return dto.AlertResponse{
+		ID:                 alert.ID.Hex(),
+		PatientID:          alert.PatientID.Hex(),
+		PatientName:        userData.PatientName,
+		PatientAvatarURL:   userData.PatientAvatarURL,
+		MeasurementID:      alert.MeasurementID.Hex(),
+		Violations:         normalizeViolations(alert.Violations),
+		Status:             alert.Status,
+		Severity:           alert.Severity,
+		AcknowledgedBy:     acknowledgedByStr,
+		AcknowledgedByName: userData.AcknowledgedByName,
+		AcknowledgedAt:     alert.AcknowledgedAt,
+		CreatedAt:          alert.CreatedAt,
+		UpdatedAt:          alert.UpdatedAt,
+	}
+}
+
 func (s *alertService) GetDoctorAlerts(ctx context.Context, input *usecase.GetAlertsInput) ([]dto.AlertResponse, int64, error) {
 	filter := repository.AlertFilter{
 		PatientID: input.PatientID,
@@ -63,32 +123,7 @@ func (s *alertService) GetDoctorAlerts(ctx context.Context, input *usecase.GetAl
 
 	responses := make([]dto.AlertResponse, 0, len(alerts))
 	for _, alert := range alerts {
-		userData := userDataMap[alert.ID]
-		if userData == nil {
-			userData = &repository.AlertUserData{}
-		}
-
-		var acknowledgedByStr *string
-		if alert.AcknowledgedBy != nil {
-			str := alert.AcknowledgedBy.Hex()
-			acknowledgedByStr = &str
-		}
-
-		responses = append(responses, dto.AlertResponse{
-			ID:                 alert.ID.Hex(),
-			PatientID:          alert.PatientID.Hex(),
-			PatientName:        userData.PatientName,
-			PatientAvatarURL:   userData.PatientAvatarURL,
-			MeasurementID:      alert.MeasurementID.Hex(),
-			Violations:         alert.Violations,
-			Status:             alert.Status,
-			Severity:           alert.Severity,
-			AcknowledgedBy:     acknowledgedByStr,
-			AcknowledgedByName: userData.AcknowledgedByName,
-			AcknowledgedAt:     alert.AcknowledgedAt,
-			CreatedAt:          alert.CreatedAt,
-			UpdatedAt:          alert.UpdatedAt,
-		})
+		responses = append(responses, mapAlertResponse(alert, userDataMap[alert.ID]))
 	}
 
 	return responses, total, nil
@@ -119,32 +154,7 @@ func (s *alertService) GetNurseAlerts(ctx context.Context, input *usecase.GetAle
 
 	responses := make([]dto.AlertResponse, 0, len(alerts))
 	for _, alert := range alerts {
-		userData := userDataMap[alert.ID]
-		if userData == nil {
-			userData = &repository.AlertUserData{}
-		}
-
-		var acknowledgedByStr *string
-		if alert.AcknowledgedBy != nil {
-			str := alert.AcknowledgedBy.Hex()
-			acknowledgedByStr = &str
-		}
-
-		responses = append(responses, dto.AlertResponse{
-			ID:                 alert.ID.Hex(),
-			PatientID:          alert.PatientID.Hex(),
-			PatientName:        userData.PatientName,
-			PatientAvatarURL:   userData.PatientAvatarURL,
-			MeasurementID:      alert.MeasurementID.Hex(),
-			Violations:         alert.Violations,
-			Status:             alert.Status,
-			Severity:           alert.Severity,
-			AcknowledgedBy:     acknowledgedByStr,
-			AcknowledgedByName: userData.AcknowledgedByName,
-			AcknowledgedAt:     alert.AcknowledgedAt,
-			CreatedAt:          alert.CreatedAt,
-			UpdatedAt:          alert.UpdatedAt,
-		})
+		responses = append(responses, mapAlertResponse(alert, userDataMap[alert.ID]))
 	}
 
 	return responses, total, nil
@@ -174,32 +184,7 @@ func (s *alertService) GetPatientAlerts(ctx context.Context, input *usecase.GetA
 
 	responses := make([]dto.AlertResponse, 0, len(alerts))
 	for _, alert := range alerts {
-		userData := userDataMap[alert.ID]
-		if userData == nil {
-			userData = &repository.AlertUserData{}
-		}
-
-		var acknowledgedByStr *string
-		if alert.AcknowledgedBy != nil {
-			str := alert.AcknowledgedBy.Hex()
-			acknowledgedByStr = &str
-		}
-
-		responses = append(responses, dto.AlertResponse{
-			ID:                 alert.ID.Hex(),
-			PatientID:          alert.PatientID.Hex(),
-			PatientName:        userData.PatientName,
-			PatientAvatarURL:   userData.PatientAvatarURL,
-			MeasurementID:      alert.MeasurementID.Hex(),
-			Violations:         alert.Violations,
-			Status:             alert.Status,
-			Severity:           alert.Severity,
-			AcknowledgedBy:     acknowledgedByStr,
-			AcknowledgedByName: userData.AcknowledgedByName,
-			AcknowledgedAt:     alert.AcknowledgedAt,
-			CreatedAt:          alert.CreatedAt,
-			UpdatedAt:          alert.UpdatedAt,
-		})
+		responses = append(responses, mapAlertResponse(alert, userDataMap[alert.ID]))
 	}
 
 	return responses, total, nil
@@ -219,27 +204,8 @@ func (s *alertService) GetAlertByID(ctx context.Context, input *usecase.GetAlert
 		return nil, ErrAlertNotFound
 	}
 
-	var acknowledgedByStr *string
-	if alert.AcknowledgedBy != nil {
-		str := alert.AcknowledgedBy.Hex()
-		acknowledgedByStr = &str
-	}
-
-	return &dto.AlertResponse{
-		ID:                 alert.ID.Hex(),
-		PatientID:          alert.PatientID.Hex(),
-		PatientName:        userData.PatientName,
-		PatientAvatarURL:   userData.PatientAvatarURL,
-		MeasurementID:      alert.MeasurementID.Hex(),
-		Violations:         alert.Violations,
-		Status:             alert.Status,
-		Severity:           alert.Severity,
-		AcknowledgedBy:     acknowledgedByStr,
-		AcknowledgedByName: userData.AcknowledgedByName,
-		AcknowledgedAt:     alert.AcknowledgedAt,
-		CreatedAt:          alert.CreatedAt,
-		UpdatedAt:          alert.UpdatedAt,
-	}, nil
+	resp := mapAlertResponse(alert, userData)
+	return &resp, nil
 }
 
 func (s *alertService) UpdateAlertAcknowledgementByID(ctx context.Context, input *usecase.UpdateAlertAcknowledgementByIDInput) (*dto.AlertResponse, error) {
@@ -260,29 +226,6 @@ func (s *alertService) UpdateAlertAcknowledgementByID(ctx context.Context, input
 		return nil, ErrAlertNotFound
 	}
 
-	if userData == nil {
-		userData = &repository.AlertUserData{}
-	}
-
-	var acknowledgedByStr *string
-	if updatedAlert.AcknowledgedBy != nil {
-		str := updatedAlert.AcknowledgedBy.Hex()
-		acknowledgedByStr = &str
-	}
-
-	return &dto.AlertResponse{
-		ID:                 updatedAlert.ID.Hex(),
-		PatientID:          updatedAlert.PatientID.Hex(),
-		PatientName:        userData.PatientName,
-		PatientAvatarURL:   userData.PatientAvatarURL,
-		MeasurementID:      updatedAlert.MeasurementID.Hex(),
-		Violations:         updatedAlert.Violations,
-		Status:             updatedAlert.Status,
-		Severity:           updatedAlert.Severity,
-		AcknowledgedBy:     acknowledgedByStr,
-		AcknowledgedByName: userData.AcknowledgedByName,
-		AcknowledgedAt:     updatedAlert.AcknowledgedAt,
-		CreatedAt:          updatedAlert.CreatedAt,
-		UpdatedAt:          updatedAlert.UpdatedAt,
-	}, nil
+	resp := mapAlertResponse(updatedAlert, userData)
+	return &resp, nil
 }

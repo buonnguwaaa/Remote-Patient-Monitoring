@@ -6,3 +6,4 @@ debug.log
 *.exe
 doc__personal/
 firebase-service-account.json
+.cursor/

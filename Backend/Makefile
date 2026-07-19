@@ -13,15 +13,15 @@ endif
 
 seed:
 	@echo "Seeding database (full reset)..."
-	@go run cmd/seed/main.go full
+	@go run migration/cmd/seed/main.go full
 
 seed-append:
 	@echo "Appending patients for doctor@gmail.com and seed doctors 1..10..."
-	@go run cmd/seed/main.go append
+	@go run migration/cmd/seed/main.go append
 
 seed-history:
 	@echo "Enriching measurement history + alerts for all patients..."
-	@go run cmd/seed/main.go history
+	@go run migration/cmd/seed/main.go history
 
 server:
 	@echo "Running server..."

@@ -528,8 +528,7 @@ Follow the printed systolic/diastolic targets for today’s create call. Restart
 Backend/
 ├── cmd/
 │   ├── server/          # HTTP API entrypoint
-│   ├── worker/          # Temporal worker entrypoint
-│   └── seed/            # Database seeding CLI
+│   └── worker/          # Temporal worker entrypoint
 ├── config/              # MongoDB, Redis, Firebase, OAuth2, Cloudinary setup
 ├── docs/                # Generated Swagger specs
 ├── external/
@@ -555,7 +554,9 @@ Backend/
 │   ├── usecase/         # Application use cases
 │   ├── util/            # Email, auth helpers
 │   └── ws/              # WebSocket client utilities
-├── migration/seed/      # Seed data and helpers
+├── migration/
+│   ├── cmd/             # Seed & one-off migration CLIs
+│   └── seed/            # Seed data generators/helpers
 ├── script/main/         # One-off tools (e.g. seed_trend_measurement.go)
 ├── docker-compose.yml   # Local dev infrastructure (Temporal + Redis)
 ├── docker-compose.prod.yml
