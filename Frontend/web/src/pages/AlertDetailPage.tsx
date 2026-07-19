@@ -468,7 +468,7 @@ export default function AlertDetailPage() {
                                       <YAxis domain={[yMin, yMax]} hide />
                                       <Tooltip 
                                         contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)', fontSize: '12px' }}
-                                        formatter={(value: number) => [`${value} ${unit}`, 'Giá trị']}
+                                        formatter={(value: any) => [`${value} ${unit}`, 'Giá trị']}
                                         labelStyle={{ fontWeight: 'bold', color: '#475569', marginBottom: '4px' }}
                                       />
                                       <ReferenceLine 
@@ -499,7 +499,7 @@ export default function AlertDetailPage() {
                                           dataKey="value" 
                                           position="top" 
                                           offset={10}
-                                          formatter={(value: number) => formatViolationValue(v.type, value)}
+                                          formatter={(value: any) => formatViolationValue(v.type, value)}
                                           style={{ fontSize: '12px', fontWeight: 'bold', fill: '#b45309' }}
                                         />
                                       </Area>

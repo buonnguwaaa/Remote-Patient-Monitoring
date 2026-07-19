@@ -238,7 +238,7 @@ const ActivityHistoryTab = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [total, setTotal] = useState(0);
+
   const [error, setError] = useState<string | null>(null);
 
   const fetchPage = useCallback(async (p: number, append = false) => {
