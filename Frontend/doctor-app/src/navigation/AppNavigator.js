@@ -30,6 +30,7 @@ import SettingsScreen from "../screens/SettingsScreen";
 import VideoCallScreen from "../screens/VideoCallScreen";
 import ComplianceScreen from "../screens/ComplianceScreen";
 import MoreScreen from "../screens/MoreScreen";
+import AlertDetailScreen from "../screens/AlertDetailScreen";
 
 // Nurse Screens
 import NursePatientListScreen from "../screens/nurse/NursePatientListScreen";
@@ -257,6 +258,7 @@ function RootNavigator() {
       <Stack.Screen name="Compliance" component={ComplianceScreen} options={themeRootHeaderOptions("Tuân thủ dùng thuốc")} />
       <Stack.Screen name="Prescriptions" component={PrescriptionsScreen} options={themeRootHeaderOptions("Đơn thuốc")} />
       <Stack.Screen name="Settings" component={SettingsScreen} options={themeRootHeaderOptions("Cài đặt")} />
+      <Stack.Screen name="AlertDetail" component={AlertDetailScreen} options={themeRootHeaderOptions("Chi tiết cảnh báo")} />
     </Stack.Navigator>
   );
 }

@@ -16,6 +16,7 @@ type ActivityLogResponse struct {
 	Method     string         `json:"method,omitempty"`
 	Path       string         `json:"path,omitempty"`
 	IPAddress  string         `json:"ipAddress,omitempty"`
+	UserAgent  string         `json:"userAgent,omitempty"`
 	StatusCode int            `json:"statusCode,omitempty"`
 	ErrorMsg   string         `json:"errorMsg,omitempty"`
 	Metadata   map[string]any `json:"metadata,omitempty"`
@@ -62,9 +63,10 @@ type ClinicalHistoryItem struct {
 	ActorRole  string    `json:"actorRole"`
 	Action     string    `json:"action"`
 	Resource   string    `json:"resource,omitempty"`
-	ResourceID string    `json:"resourceId,omitempty"`
-	PatientID  string    `json:"patientId,omitempty"`
-	CreatedAt  time.Time `json:"createdAt"`
+	ResourceID  string    `json:"resourceId,omitempty"`
+	PatientID   string    `json:"patientId,omitempty"`
+	PatientName string    `json:"patientName,omitempty"`
+	CreatedAt   time.Time `json:"createdAt"`
 	Timestamp  string    `json:"timestamp"`
 	Date       string    `json:"date"`
 }

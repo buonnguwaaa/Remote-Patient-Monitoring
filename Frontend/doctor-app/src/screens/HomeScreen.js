@@ -71,7 +71,7 @@ export default function HomeScreen({ onNavigate }) {
       setError(null);
       const [patientsRes, alertsRes] = await Promise.all([
         getMyPatients(),
-        getAlerts({ limit: 50, sortOrder: "desc" }),
+        getAlerts({ limit: 500, sortOrder: "desc" }),
       ]);
       setAssignments(patientsRes.ok ? (patientsRes.body?.data || []) : []);
       // Normalize severity ngay tại đây để hỗ trợ dữ liệu legacy
@@ -226,7 +226,7 @@ export default function HomeScreen({ onNavigate }) {
                       return `${VIOLATION_LABEL[v.type] ?? v.type}: ${roundedObserved}`;
                     }).join(" · "),
                   }}
-                  onPress={() => handleNavigate("Alerts")}
+                  onPress={() => navigation.navigate("AlertDetail", { alertId: alert.id })}
                 />
               ))}
               {recentAlerts.length > 3 && (

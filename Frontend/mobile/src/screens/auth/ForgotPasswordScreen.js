@@ -12,16 +12,18 @@ import { Feather } from '@expo/vector-icons';
 import ButtonPrimary from '../../components/ButtonPrimary';
 import styles from '../../styles/login';
 import * as authApi from '../../api/authApi';
+import { useSnackbar } from '../../hooks/useSnackbar';
 
 export default function ForgotPasswordScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
+  const { showError } = useSnackbar();
 
   const handleSubmit = async () => {
     const trimmed = email.trim();
     if (!trimmed) {
-      alert('Vui lòng nhập địa chỉ email.');
+      showError('Vui lòng nhập địa chỉ email.');
       return;
     }
     setLoading(true);
@@ -30,7 +32,7 @@ export default function ForgotPasswordScreen({ navigation }) {
     if (res.ok || res.status === 200) {
       setSent(true);
     } else {
-      alert('Đã có lỗi xảy ra. Vui lòng thử lại.');
+      showError('Đã có lỗi xảy ra. Vui lòng thử lại.');
     }
   };
 

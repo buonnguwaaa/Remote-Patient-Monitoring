@@ -31,6 +31,9 @@ import {
   validatePatientProfileForm,
 } from "../../utils/profileValidation";
 import { buildPatientQrValue } from "../../utils/patientQrUtils";
+import { request } from "../../api/httpClient";
+import AccountActivitySection from "../../components/AccountActivitySection";
+
 
 const EMPTY_USER_FORM = {
   id: "",
@@ -198,7 +201,7 @@ export default function ProfileScreen() {
     if (isBiometricEnabled) {
       const res = await disableBiometric();
       if (!res.ok) {
-        Alert.alert("Lỗi", res.error);
+        showError(res.error);
       }
     } else {
       if (!sessionPassword) {
@@ -212,16 +215,16 @@ export default function ProfileScreen() {
                 text: "Xác nhận",
                 onPress: async (pwd) => {
                   if (!pwd) {
-                    Alert.alert("Lỗi", "Mật khẩu không được để trống.");
+                    showError("Mật khẩu không được để trống.");
                     return;
                   }
                   setBiometricLoading(true);
                   const res = await enableBiometric(pwd);
                   setBiometricLoading(false);
                   if (!res.ok) {
-                    Alert.alert("Lỗi", res.error);
+                    showError(res.error);
                   } else {
-                    Alert.alert("Thành công", "Đã bật đăng nhập sinh trắc học.");
+                    showSuccess("Đã bật đăng nhập sinh trắc học.");
                   }
                 },
               },
@@ -229,9 +232,8 @@ export default function ProfileScreen() {
             "secure-text"
           );
         } else {
-          Alert.alert(
-            "Yêu cầu đăng nhập lại",
-            "Vì lý do bảo mật, vui lòng đăng xuất và đăng nhập lại bằng mật khẩu để có thể kích hoạt tính năng sinh trắc học trên thiết bị này."
+          showWarning(
+            "Vì lý do bảo mật, vui lòng đăng xuất và đăng nhập lại bằng mật khẩu để kích hoạt sinh trắc học."
           );
         }
       } else {
@@ -239,9 +241,9 @@ export default function ProfileScreen() {
         const res = await enableBiometric();
         setBiometricLoading(false);
         if (!res.ok) {
-          Alert.alert("Lỗi", res.error);
+          showError(res.error);
         } else {
-          Alert.alert("Thành công", "Đã bật đăng nhập sinh trắc học.");
+          showSuccess("Đã bật đăng nhập sinh trắc học.");
         }
       }
     }
@@ -295,6 +297,9 @@ export default function ProfileScreen() {
       try {
         const response = await getMyPatientProfile();
         if (!response.ok) {
+          // 401 → httpClient đã gọi emitSessionExpired → AuthContext sẽ logout tự động
+          // Không set error để tránh flash "Token đã hết hạn" trước khi navigate về Login
+          if (response.status === 401) return;
           throw new Error(getErrorMessage(response));
         }
 
@@ -935,9 +940,13 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           ) : null}
 
+          {/* ── Lịch sử tài khoản ───────────────────────────────────── */}
+          <AccountActivitySection />
+
           <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
             <Text style={styles.logoutText}>Đăng xuất</Text>
           </TouchableOpacity>
+
 
           <Text style={styles.footerVersion}>Phiên bản 1.0.0</Text>
           <Text style={styles.footerBrand}>© 2025 Remote Patient Monitoring</Text>

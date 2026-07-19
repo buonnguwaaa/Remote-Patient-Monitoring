@@ -17,6 +17,7 @@ import { Feather, FontAwesome } from '@expo/vector-icons';
 import styles from '../../styles/login';
 
 import { useAuth } from '../../hooks/useAuth';
+import { useSnackbar } from '../../hooks/useSnackbar';
 import * as GoogleAuth from '../../api/googleAuth';
 import * as authApi from '../../api/authApi';
 
@@ -46,6 +47,7 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
   const [loading, setLoading] = useState(false);
   const { login, saveGoogleTokens, updateUser } = useAuth();
   const [hasBiometric, setHasBiometric] = useState(false);
+  const { showError, showWarning } = useSnackbar();
 
   useEffect(() => {
     (async () => {
@@ -63,14 +65,14 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
     try {
       const bioEnabled = await SecureStore.getItemAsync("patient_biometric_enabled");
       if (bioEnabled !== "true") {
-        Alert.alert("Chưa kích hoạt", "Vui lòng đăng nhập bằng mật khẩu trước và kích hoạt sinh trắc học ở màn hình Hồ sơ.");
+        showWarning("Vui lòng đăng nhập bằng mật khẩu trước và kích hoạt sinh trắc học ở màn hình Hồ sơ.");
         return;
       }
 
       const hasHardware = await LocalAuthentication.hasHardwareAsync();
       const isEnrolled = await LocalAuthentication.isEnrolledAsync();
       if (!hasHardware || !isEnrolled) {
-        Alert.alert("Lỗi", "Thiết bị không hỗ trợ hoặc chưa đăng ký sinh trắc học.");
+        showError("Thiết bị không hỗ trợ hoặc chưa đăng ký sinh trắc học.");
         return;
       }
 
@@ -88,7 +90,7 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
           const res = await login(savedEmail, savedPassword);
           setLoading(false);
           if (!res.ok) {
-            Alert.alert("Đăng nhập thất bại", String(res.error?.error || res.error || "Lỗi xác thực"));
+            showError(String(res.error || "Đăng nhập thất bại."));
             return;
           }
 
@@ -100,22 +102,30 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
             }
           }
         } else {
-          Alert.alert("Lỗi", "Không tìm thấy thông tin đăng nhập đã lưu.");
+          showError("Không tìm thấy thông tin đăng nhập đã lưu.");
         }
       }
     } catch (e) {
       console.error(e);
-      Alert.alert("Lỗi", "Đã xảy ra lỗi khi xác thực sinh trắc học.");
+      showError("Đã xảy ra lỗi khi xác thực sinh trắc học.");
     }
   };
 
   const handleSubmit = () => {
+    if (!email.trim()) {
+      showError('Vui lòng nhập địa chỉ email.');
+      return;
+    }
+    if (!password) {
+      showError('Vui lòng nhập mật khẩu.');
+      return;
+    }
     setLoading(true);
     (async () => {
-      const res = await login(email, password);
+      const res = await login(email.trim(), password);
       setLoading(false);
       if (!res.ok) {
-        alert('Login failed: ' + JSON.stringify(res.error));
+        showError(String(res.error || "Đăng nhập thất bại."));
         return;
       }
 
@@ -188,11 +198,11 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
 
           <TouchableOpacity
             style={biometricStyle.btn}
-            onPress={() => {}}
+            onPress={handleBiometricLogin}
             activeOpacity={0.8}
           >
             <Feather name="unlock" size={18} color="#030213" style={{ marginRight: 8 }} />
-            <Text style={biometricStyle.text}>Sign in with Biometrics</Text>
+            <Text style={biometricStyle.text}>Đăng nhập bằng sinh trắc học</Text>
           </TouchableOpacity>
 
           <View style={styles.dividerWrap}>
@@ -209,11 +219,11 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
                 try {
                   const res = await GoogleAuth.loginWithGoogle();
                   if (!res.ok) {
-                    alert('Đăng nhập Google thất bại: ' + (res.error || 'Lỗi không xác định'));
+                    showError('Đăng nhập Google thất bại: ' + (res.error || 'Lỗi không xác định'));
                   } else {
                     const { accessToken, refreshToken } = res.data;
                     await saveGoogleTokens(accessToken, refreshToken);
-                    
+
                     const meRes = await authApi.me();
                     if (meRes.ok) {
                       const body = meRes.body;
@@ -223,24 +233,20 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
                         await onLoginSuccess(meUser);
                       }
                     } else {
-                      alert('Lỗi lấy thông tin user: ' + JSON.stringify(meRes.error || meRes.body));
+                      showError('Lỗi lấy thông tin user: ' + JSON.stringify(meRes.error || meRes.body));
                     }
                   }
                 } catch (e) {
-                  alert('Lỗi đăng nhập Google: ' + String(e));
+                  showError('Lỗi đăng nhập Google: ' + String(e));
                 } finally {
                   setLoading(false);
                 }
               }}
               disabled={loading}
-              style={{ flex: 1, marginRight: 8 }}
+              style={{ flex: 1 }}
             >
               <FontAwesome name="google" size={18} color="#000" style={{ marginRight: 8 }} />
               <Text style={{ color: '#030213', fontWeight: '600' }}>{loading ? 'Đang xử lý...' : 'Google'}</Text>
-            </ButtonPrimary>
-            <ButtonPrimary variant="outline" onPress={() => { }} disabled={loading} style={{ flex: 1, marginLeft: 8 }}>
-              <FontAwesome name="apple" size={18} color="#000" style={{ marginRight: 8 }} />
-              <Text style={{ color: '#030213', fontWeight: '600' }}>Apple</Text>
             </ButtonPrimary>
           </View>
         </View>

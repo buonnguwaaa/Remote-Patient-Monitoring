@@ -66,8 +66,8 @@ function StatusUpdateModal({ visible, prescription, onClose, onUpdated }) {
           try {
             const res = await updatePrescriptionStatus(prescription.id, status);
             if (res.ok) { onUpdated(); onClose(); }
-            else Alert.alert("Lỗi", "Không cập nhật được.");
-          } catch { Alert.alert("Lỗi", "Lỗi kết nối máy chủ."); }
+            else showError("Không cập nhật được.");
+          } catch { showError("Lỗi kết nối máy chủ."); }
           finally { setLoading(false); }
       }}
     ]);

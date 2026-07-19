@@ -57,6 +57,8 @@ const NursePatientCard = memo(({ patient, onPress }) => {
   const m = patient?.lastMeasurements;
   const t = patient?.thresholds || {};
 
+  // Threshold checks are used only for coloring metric pills red.
+  // Badge logic uses only backend alertsSummary (to stay consistent with web dashboard).
   const isBpHpWarning = m?.bp?.systolic != null && t.systolicMax != null && m.bp.systolic > t.systolicMax;
   const isBpLpWarning = m?.bp?.systolic != null && t.systolicMin != null && m.bp.systolic < t.systolicMin;
   const isBpDiaHigh = m?.bp?.diastolic != null && t.diastolicMax != null && m.bp.diastolic > t.diastolicMax;
@@ -68,8 +70,6 @@ const NursePatientCard = memo(({ patient, onPress }) => {
   const isTempWarning = m?.temp?.value != null && ((t.temperatureMax != null && m.temp.value > t.temperatureMax) || (t.temperatureMin != null && m.temp.value < t.temperatureMin));
   const isGlucoseWarning = m?.glucose?.value != null && ((t.glucoseMax != null && m.glucose.value > t.glucoseMax) || (t.glucoseMin != null && m.glucose.value < t.glucoseMin));
   const isRespWarning = m?.respiratoryRate?.value != null && ((t.respiratoryRateMax != null && m.respiratoryRate.value > t.respiratoryRateMax) || (t.respiratoryRateMin != null && m.respiratoryRate.value < t.respiratoryRateMin));
-
-  const hasOutlier = isBpWarning || isHrWarning || isSpo2Warning || isTempWarning || isGlucoseWarning || isRespWarning;
 
   return (
     <TouchableOpacity
@@ -96,10 +96,6 @@ const NursePatientCard = memo(({ patient, onPress }) => {
           ) : hasAlert ? (
             <View style={styles.badgeMedium}>
               <Text style={styles.badgeMediumText}>{totalAlerts} cảnh báo</Text>
-            </View>
-          ) : hasOutlier ? (
-            <View style={styles.badgeMedium}>
-              <Text style={styles.badgeMediumText}>Chỉ số bất thường</Text>
             </View>
           ) : (
             <View style={styles.badgeNormal}>

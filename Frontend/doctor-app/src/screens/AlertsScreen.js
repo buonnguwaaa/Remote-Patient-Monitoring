@@ -78,6 +78,37 @@ function getUnit(type) {
   return UNITS[clean] || "";
 }
 
+const TREND_RULES = ["trend_rising_watch", "trend_rising_high", "trend_falling_watch", "trend_falling_high"];
+
+/**
+ * Returns 'trend' if ALL violations are from the trend engine, 'threshold' otherwise.
+ */
+function getAlertSourceType(alert) {
+  if (!alert.violations || alert.violations.length === 0) return "threshold";
+  const allTrend = alert.violations.every(
+    (v) => v.source === "trend" || (v.source === undefined && TREND_RULES.includes(v.rule))
+  );
+  return allTrend ? "trend" : "threshold";
+}
+
+function getAlertTypeMeta(alert) {
+  const type = getAlertSourceType(alert);
+  if (type === "trend") {
+    const firstRule = alert.violations[0]?.rule ?? "";
+    const isRising = firstRule.includes("rising");
+    return {
+      label: isRising ? "↗ Xu hướng tăng" : "↘ Xu hướng giảm",
+      bgColor: "#FEF3C7",   // amber-100
+      textColor: "#92400E", // amber-800
+    };
+  }
+  return {
+    label: "⚠ Vượt ngưỡng",
+    bgColor: "#FEE2E2",   // red-100
+    textColor: "#991B1B", // red-800
+  };
+}
+
 function formatViolationValue(type, val) {
   if (val === null || val === undefined) return "";
   const num = Number(val);
@@ -198,7 +229,7 @@ export default function AlertsScreen() {
       setAlerts(alertList);
     } catch (err) {
       console.error("Failed to fetch alerts:", err);
-      Alert.alert("Lỗi", "Không thể tải danh sách cảnh báo");
+      showToast("Không thể tải danh sách cảnh báo", "error");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -329,7 +360,7 @@ export default function AlertsScreen() {
       showToast(`Đã xử lý thành công ${resolvedIds.size} cảnh báo`, "success");
     } catch (err) {
       console.error("Resolve error:", err);
-      Alert.alert("Lỗi", "Có lỗi xảy ra khi xử lý cảnh báo");
+      showToast("Có lỗi xảy ra khi xử lý cảnh báo", "error");
     } finally {
       setSubmitting(false);
     }
@@ -506,8 +537,25 @@ export default function AlertsScreen() {
         {isExpanded && (
           <View style={styles.expandedContainer}>
             {group.alerts.map((alert) => (
-              <View key={alert.id} style={styles.alertItem}>
+              <TouchableOpacity
+                key={alert.id}
+                style={styles.alertItem}
+                activeOpacity={0.8}
+                onPress={() => navigation.navigate("AlertDetail", { alertId: alert.id })}
+              >
                 <View style={styles.alertItemHeader}>
+                  {/* Alert type chip: threshold or trend */}
+                  {(() => {
+                    const meta = getAlertTypeMeta(alert);
+                    return (
+                      <View style={[styles.typeBadge, { backgroundColor: meta.bgColor }]}>
+                        <Text style={[styles.typeBadgeText, { color: meta.textColor }]}>
+                          {meta.label}
+                        </Text>
+                      </View>
+                    );
+                  })()}
+                  {/* Severity badge */}
                   <View style={[
                     styles.severityBadge,
                     normalizeAlertSeverity(alert.severity) === "high" ? styles.sevHigh : styles.sevLow,
@@ -554,7 +602,7 @@ export default function AlertsScreen() {
                     <Text style={styles.alertItemTime}>{formatDate(alert.createdAt)}</Text>
                   </View>
                 )}
-              </View>
+              </TouchableOpacity>
             ))}
           </View>
         )}
@@ -992,5 +1040,15 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "700",
     color: colors.success,
+  },
+  typeBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 99,
+    alignSelf: "flex-start",
+  },
+  typeBadgeText: {
+    fontSize: 10,
+    fontWeight: "700",
   },
 });

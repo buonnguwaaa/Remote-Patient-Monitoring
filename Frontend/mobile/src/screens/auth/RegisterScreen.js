@@ -14,6 +14,7 @@ import { Feather } from '@expo/vector-icons';
 import styles from '../../styles/login';
 
 import { useAuth } from '../../hooks/useAuth';
+import { useSnackbar } from '../../hooks/useSnackbar';
 
 export default function RegisterScreen({ navigation, onSwitchToLogin }) {
   const [name, setName] = useState('');
@@ -37,10 +38,31 @@ export default function RegisterScreen({ navigation, onSwitchToLogin }) {
   const [loading, setLoading] = useState(false);
   const { register } = useAuth();
   const [showDobInput, setShowDobInput] = useState(false);
+  const { showSuccess, showError } = useSnackbar();
 
   const handleSubmit = () => {
+    if (!name.trim()) {
+      showError('Vui lòng nhập họ tên.');
+      return;
+    }
+    if (!email.trim() || !email.includes('@')) {
+      showError('Vui lòng nhập email hợp lệ.');
+      return;
+    }
+    if (!dob) {
+      showError('Vui lòng nhập hoặc chọn ngày sinh.');
+      return;
+    }
+    if (!password) {
+      showError('Vui lòng nhập mật khẩu.');
+      return;
+    }
+    if (password.length < 8) {
+      showError('Mật khẩu phải có ít nhất 8 ký tự.');
+      return;
+    }
     if (password !== confirmPassword) {
-      alert('Passwords do not match');
+      showError('Mật khẩu xác nhận không khớp.');
       return;
     }
     setLoading(true);
@@ -64,10 +86,11 @@ export default function RegisterScreen({ navigation, onSwitchToLogin }) {
       });
       setLoading(false);
       if (ok) {
-        alert('Register successful. Please sign in.');
+        showSuccess('Đăng ký thành công. Vui lòng đăng nhập.');
         navigation.navigate('Login');
       } else {
-        alert('Register failed: ' + JSON.stringify(error));
+        const errorMsg = error?.error || error?.message || (typeof error === 'string' ? error : JSON.stringify(error)) || "Đăng ký thất bại.";
+        showError(errorMsg);
       }
     })();
   };

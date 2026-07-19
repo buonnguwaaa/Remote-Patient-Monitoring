@@ -67,6 +67,8 @@ const TrendBadge: React.FC<{ value: number; up: boolean }> = ({
   </span>
 );
 
+
+
 const SectionHeader: React.FC<{
   title: string;
   icon: React.ReactNode;
@@ -797,9 +799,7 @@ const DashBoard = () => {
       dashboardStats: {
         total: dashboardStats.total,
         stable: dashboardStats.stable,
-        attention:
-          (dashboardStats.highPriority || 0) +
-          (dashboardStats.needsMonitoring || 0),
+        attention: (dashboardStats.highPriority || 0) + (dashboardStats.needsMonitoring || 0)
       },
       dateRange,
     });
@@ -1447,11 +1447,10 @@ const DashBoard = () => {
                       key={d}
                       onClick={() => setComplianceDays(d)}
                       disabled={isGeneratingCompliance}
-                      className={`flex-1 rounded-lg py-2 text-sm font-semibold transition-all disabled:opacity-50 ${
-                        complianceDays === d
-                          ? "bg-emerald-600 text-white shadow-sm"
-                          : "bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-600"
-                      }`}
+                      className={`flex-1 rounded-lg py-2 text-sm font-semibold transition-all disabled:opacity-50 ${complianceDays === d
+                        ? "bg-emerald-600 text-white shadow-sm"
+                        : "bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-600"
+                        }`}
                     >
                       {d} ngày
                     </button>

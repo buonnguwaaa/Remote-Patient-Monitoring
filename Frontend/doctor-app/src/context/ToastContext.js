@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useRef } from "react";
-import { StyleSheet, Animated, Text } from "react-native";
+import { StyleSheet, Animated, Text, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 const ToastContext = createContext(null);
@@ -13,7 +13,7 @@ export function useToast() {
 export function ToastProvider({ children }) {
   const [toast, setToast] = useState({ visible: false, message: "", type: "success" });
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(20)).current;
+  const slideAnim = useRef(new Animated.Value(-20)).current;
   const timerRef = useRef(null);
 
   const showToast = useCallback((message, type = "success", duration = 3500) => {
@@ -24,7 +24,7 @@ export function ToastProvider({ children }) {
 
     // Animate in
     fadeAnim.setValue(0);
-    slideAnim.setValue(20);
+    slideAnim.setValue(-20);
     Animated.parallel([
       Animated.timing(fadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
       Animated.timing(slideAnim, { toValue: 0, duration: 300, useNativeDriver: true }),
@@ -34,7 +34,7 @@ export function ToastProvider({ children }) {
     timerRef.current = setTimeout(() => {
       Animated.parallel([
         Animated.timing(fadeAnim, { toValue: 0, duration: 250, useNativeDriver: true }),
-        Animated.timing(slideAnim, { toValue: 20, duration: 250, useNativeDriver: true }),
+        Animated.timing(slideAnim, { toValue: -20, duration: 250, useNativeDriver: true }),
       ]).start(() => setToast((prev) => ({ ...prev, visible: false })));
     }, duration);
   }, [fadeAnim, slideAnim]);
@@ -67,7 +67,7 @@ export function ToastProvider({ children }) {
 const styles = StyleSheet.create({
   toastContainer: {
     position: "absolute",
-    bottom: 100,
+    top: Platform.OS === "ios" ? 60 : 45,
     left: 20,
     right: 20,
     backgroundColor: "#1E293B",
