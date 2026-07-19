@@ -19,6 +19,8 @@ import { useAuth } from "../../hooks/useAuth";
 import { getDepartments } from "../../api/departmentApi";
 import { getMyNurseProfile } from "../../api/profileApi";
 import { useToast } from "../../context/ToastContext";
+import ActivityHistorySection from "../../components/ActivityHistorySection";
+
 
 const EMPTY_PROFILE = {
   id: "",
@@ -518,9 +520,13 @@ export default function NurseProfileScreen() {
           </View>
         </View>
 
+        {/* Activity History */}
+        <ActivityHistorySection />
+
         <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
           <Text style={styles.logoutText}>Đăng xuất</Text>
         </TouchableOpacity>
+
 
         <Text style={styles.footerVersion}>Phiên bản 1.0.0</Text>
         <Text style={styles.footerBrand}>© 2025 Remote Patient Monitoring</Text>

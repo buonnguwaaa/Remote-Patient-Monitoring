@@ -94,9 +94,6 @@ const isFontFamily = (value: string | null): value is FontFamily =>
 const isFontSize = (value: string | null): value is FontSize =>
   value === "small" || value === "medium" || value === "large";
 
-const getSystemTheme = (): Theme =>
-  window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-
 interface ThemeContextType {
   theme: Theme;
   setTheme: (theme: Theme) => void;

@@ -38,6 +38,7 @@ export interface ThresholdViolation {
   observed: number;
   threshold: number;
   severity: AlertSeverity;
+  source?: "threshold" | "trend"; // added by backend migration
 }
 
 export interface PatientItem {

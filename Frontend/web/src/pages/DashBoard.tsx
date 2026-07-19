@@ -67,56 +67,7 @@ const TrendBadge: React.FC<{ value: number; up: boolean }> = ({
   </span>
 );
 
-const KpiCard: React.FC<KpiDef> = ({ label, value, change, up, Icon, variant = "default", loading }) => {
-  const bgClass =
-    variant === "danger" ? "bg-red-50 dark:bg-red-900/10" :
-      variant === "warning" ? "bg-amber-50 dark:bg-amber-900/10" :
-        variant === "success" ? "bg-emerald-50 dark:bg-emerald-900/10" :
-          variant === "info" ? "bg-blue-50 dark:bg-blue-900/10" :
-            "bg-white dark:bg-slate-800";
 
-  const iconClass =
-    variant === "danger" ? "text-red-500" :
-      variant === "warning" ? "text-amber-500" :
-        variant === "success" ? "text-emerald-500" :
-          variant === "info" ? "text-blue-500" :
-            "text-gray-400 dark:text-slate-500";
-
-  if (loading) {
-    return (
-      <div className="rounded-2xl border border-gray-100 p-5 dark:border-slate-700/60 bg-white dark:bg-slate-800 animate-pulse">
-        <div className="mb-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="h-4 w-4 rounded-lg bg-slate-200 dark:bg-slate-700" />
-            <div className="h-3.5 w-24 rounded bg-slate-200 dark:bg-slate-700" />
-          </div>
-        </div>
-        <div className="flex items-end gap-2">
-          <div className="h-8 w-16 rounded bg-slate-200 dark:bg-slate-700" />
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className={`rounded-2xl border border-gray-100 p-5 dark:border-slate-700/60 ${bgClass}`}>
-      <div className="mb-3 flex items-center justify-between">
-        <div className={`flex items-center gap-2 ${iconClass}`}>
-          <Icon size={14} />
-          <span className="text-xs font-medium">{label}</span>
-        </div>
-      </div>
-      <div className="flex items-end gap-2">
-        <span className={`text-3xl font-bold leading-none ${variant === "default" ? "text-gray-900 dark:text-white" : iconClass}`}>
-          {value}
-        </span>
-        {typeof change === "number" && typeof up === "boolean" ? (
-          <Badge value={change} up={up} />
-        ) : null}
-      </div>
-    </div>
-  );
-};
 
 const SectionHeader: React.FC<{
   title: string;

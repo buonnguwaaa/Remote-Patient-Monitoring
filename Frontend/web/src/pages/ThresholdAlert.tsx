@@ -14,6 +14,7 @@ import {
   FaFileMedical,
   FaTable,
   FaThLarge,
+  FaChartLine,
 } from "react-icons/fa";
 
 import Toast from "../components/ui/Toast";
@@ -53,7 +54,64 @@ export const getSeverityIcon = (value: unknown) => {
   return <FaInfoCircle className="w-4 h-4 text-blue-600 dark:text-blue-400" />;
 };
 
+// ── Alert source helpers ──────────────────────────────────────────────────────
+
+const TREND_RULES = ["trend_rising_watch", "trend_rising_high", "trend_falling_watch", "trend_falling_high"];
+
+export const filterRedundantViolations = (violations: any[]) => {
+  if (!violations) return [];
+  // Find all vital types that have a threshold violation
+  const thresholdVitalTypes = new Set(
+    violations
+      .filter((v) => !TREND_RULES.includes(v.rule))
+      .map((v) => v.type)
+  );
+
+  // Keep threshold violations, and only keep trend violations if they don't have a threshold violation for the same vital
+  return violations.filter((v) => {
+    if (TREND_RULES.includes(v.rule)) {
+      return !thresholdVitalTypes.has(v.type);
+    }
+    return true;
+  });
+};
+
+// An alert is "trend-only" when ALL violations come from the trend engine.
+// Mixed (threshold + trend) counts as threshold.
+export const getAlertSourceType = (alert: AlertResponse): "threshold" | "trend" => {
+  if (!alert.violations || alert.violations.length === 0) return "threshold";
+  const isTrendRule = (rule: string) => TREND_RULES.includes(rule);
+  const allTrend = alert.violations.every(
+    (v) => v.source === "trend" || (v.source === undefined && isTrendRule(v.rule))
+  );
+  return allTrend ? "trend" : "threshold";
+};
+
+export const getAlertTypeBadge = (alert: AlertResponse) => {
+  const type = getAlertSourceType(alert);
+  if (type === "trend") {
+    // Determine direction from violations
+    const firstRule = alert.violations[0]?.rule ?? "";
+    const isRising = firstRule.includes("rising");
+    const arrow = isRising ? "↗" : "↘";
+    const label = isRising ? `${arrow} Xu hướng tăng` : `${arrow} Xu hướng giảm`;
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300 ring-1 ring-amber-200 dark:ring-amber-500/25">
+        <FaChartLine className="w-3 h-3" />
+        {label}
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300 ring-1 ring-red-200 dark:ring-red-500/20">
+      <FaExclamationTriangle className="w-3 h-3" />
+      Vượt ngưỡng
+    </span>
+  );
+};
+
 type TabType = "PENDING" | "ALL" | "RESOLVED";
+type SourceFilter = "ALL" | "threshold" | "trend";
 
 const ThresholdAlert = () => {
   const navigate = useNavigate();
@@ -64,6 +122,7 @@ const ThresholdAlert = () => {
   const [activeTab, setActiveTab] = useState<TabType>("PENDING");
   const [searchQuery, setSearchQuery] = useState("");
   const [severityFilter, setSeverityFilter] = useState<string>("ALL");
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>("ALL");
   const [viewMode, setViewMode] = useState<"card" | "table">(
     () =>
       (localStorage.getItem("alert_view_mode") as "card" | "table") || "card",
@@ -93,7 +152,7 @@ const ThresholdAlert = () => {
   // Reset page when filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [activeTab, severityFilter, searchQuery]);
+  }, [activeTab, severityFilter, sourceFilter, searchQuery]);
 
   const activeStatus =
     activeTab === "PENDING" ? "open" : activeTab === "RESOLVED" ? "ack" : "";
@@ -109,7 +168,7 @@ const ThresholdAlert = () => {
   });
   const openAlertsData = openAlertsResult?.alerts || [];
 
-  // Query 2: Fetch paginated alerts
+  // Query 2: Fetch all matching alerts to support client-side filtering and pagination
   const {
     data: alertsResult,
     isLoading: loading,
@@ -119,8 +178,6 @@ const ThresholdAlert = () => {
     queryKey: [
       "alerts",
       {
-        page: currentPage,
-        limit: 10,
         status: activeStatus,
         severity: severityFilter === "ALL" ? "" : severityFilter.toLowerCase(),
         patientId: filterPatientId || "",
@@ -134,8 +191,8 @@ const ThresholdAlert = () => {
           ? undefined
           : (severityFilter.toLowerCase() as AlertSeverity);
       return getAlerts({
-        page: currentPage,
-        limit: 10,
+        page: 1,
+        limit: 1000,
         status: activeStatus || undefined,
         severity: severityParam,
         patientId: filterPatientId || undefined,
@@ -146,8 +203,6 @@ const ThresholdAlert = () => {
   });
 
   const alertsData = alertsResult?.alerts || [];
-  const totalItems = alertsResult?.total || 0;
-  const totalPages = Math.ceil(totalItems / 10);
 
   const alerts = useMemo(() => {
     return alertsData;
@@ -336,8 +391,13 @@ const ThresholdAlert = () => {
       );
     }
 
+    // Source type filter (threshold vs trend)
+    if (sourceFilter !== "ALL") {
+      result = result.filter((a: AlertResponse) => getAlertSourceType(a) === sourceFilter);
+    }
+
     return result;
-  }, [alerts, searchQuery]);
+  }, [alerts, searchQuery, sourceFilter]);
 
   // Group alerts for the active tab
   const groupedAlerts = useMemo(() => {
@@ -407,6 +467,21 @@ const ThresholdAlert = () => {
     });
   }, [filteredAlerts]);
 
+  // Client-side pagination
+  const ITEMS_PER_PAGE = 10;
+  const totalItems = viewMode === "card" ? groupedAlerts.length : filteredAlerts.length;
+  const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE) || 1;
+
+  const paginatedGroups = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return groupedAlerts.slice(start, start + ITEMS_PER_PAGE);
+  }, [groupedAlerts, currentPage]);
+
+  const paginatedTableAlerts = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredAlerts.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredAlerts, currentPage]);
+
   const stats = useMemo(() => {
     const pending = filterPatientId
       ? openAlertsData.filter(
@@ -415,33 +490,44 @@ const ThresholdAlert = () => {
       : openAlertsData;
     return {
       pendingTotal: pending.length,
-      pendingHigh: pending.filter((a: AlertResponse) => a.severity === "high")
+      pendingHigh: pending.filter((a: AlertResponse) => normalizeAlertSeverity(a.severity) === "high")
         .length,
+      pendingTrend: pending.filter((a: AlertResponse) => getAlertSourceType(a) === "trend").length,
+      pendingThreshold: pending.filter((a: AlertResponse) => getAlertSourceType(a) === "threshold").length,
     };
   }, [openAlertsData, filterPatientId]);
-
-  // Pagination for ALL / RESOLVED tabs
-  // const itemsPerPage = 10;
-  // const totalPages = Math.ceil(filteredAlerts.length / itemsPerPage);
-  // const paginatedAlerts = filteredAlerts.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const renderStats = () => {
     const isStatsLoading = loading && openAlertsData.length === 0;
 
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <StatCard
-          label="Tổng cảnh báo chờ xử lý"
+          label="Tổng chờ xử lý"
           value={stats.pendingTotal}
           icon={FaRegClock}
           variant="info"
           loading={isStatsLoading}
         />
         <StatCard
-          label="Cảnh báo ưu tiên cao (Chờ xử lý)"
+          label="Ưu tiên cao"
           value={stats.pendingHigh}
           icon={FaExclamationTriangle}
           variant="danger"
+          loading={isStatsLoading}
+        />
+        <StatCard
+          label="Vượt ngưỡng"
+          value={stats.pendingThreshold}
+          icon={FaExclamationTriangle}
+          variant="danger"
+          loading={isStatsLoading}
+        />
+        <StatCard
+          label="Xu hướng bất thường"
+          value={stats.pendingTrend}
+          icon={FaChartLine}
+          variant="warning"
           loading={isStatsLoading}
         />
       </div>
@@ -487,7 +573,7 @@ const ThresholdAlert = () => {
               className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
             />
           </div>
-          {/* Filter chỉ còn: Tất cả | Ưu tiên cao | Cần theo dõi */}
+          {/* Severity filter */}
           <select
             value={severityFilter}
             onChange={(e) => setSeverityFilter(e.target.value)}
@@ -496,6 +582,16 @@ const ThresholdAlert = () => {
             <option value="ALL">Mức độ (Tất cả)</option>
             <option value="high">Ưu tiên cao</option>
             <option value="info">Cần theo dõi</option>
+          </select>
+          {/* Source type filter */}
+          <select
+            value={sourceFilter}
+            onChange={(e) => setSourceFilter(e.target.value as SourceFilter)}
+            className="pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="ALL">Loại (Tất cả)</option>
+            <option value="threshold">Vượt ngưỡng</option>
+            <option value="trend">Xu hướng</option>
           </select>
         </div>
       </div>
@@ -533,7 +629,7 @@ const ThresholdAlert = () => {
     if (loading && groupedAlerts.length === 0) {
       return renderPendingSkeleton();
     }
-    if (groupedAlerts.length === 0) {
+    if (paginatedGroups.length === 0) {
       return (
         <div className="text-center py-12 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
           <FaCheckCircle className="mx-auto h-12 w-12 text-green-500 opacity-50 mb-4" />
@@ -550,7 +646,7 @@ const ThresholdAlert = () => {
 
     return (
       <div className="space-y-4">
-        {groupedAlerts.map((group) => {
+        {paginatedGroups.map((group) => {
           const isExpanded = expandedPatients.has(group.patientId);
           const hasOpen = group.openCount > 0;
 
@@ -643,7 +739,10 @@ const ThresholdAlert = () => {
                       onClick={() => navigate(`/alert/${alert.id}`)}
                     >
                       <div>
-                        <div className="flex items-center gap-2 mb-2">
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                          {/* Alert type badge: threshold or trend */}
+                          {getAlertTypeBadge(alert)}
+                          {/* Severity badge */}
                           <span
                             className={`px-2.5 py-0.5 rounded-full text-xs font-medium flex items-center gap-1 ${getSeverityBadge(alert.severity)}`}
                           >
@@ -738,7 +837,7 @@ const ThresholdAlert = () => {
       );
     }
 
-    if (filteredAlerts.length === 0) {
+    if (paginatedTableAlerts.length === 0) {
       return (
         <div className="text-center py-12 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
           <FaCheckCircle className="mx-auto h-12 w-12 text-green-500 opacity-50 mb-4" />
@@ -781,7 +880,7 @@ const ThresholdAlert = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-              {filteredAlerts.map((alert: AlertResponse, idx: number) => {
+              {paginatedTableAlerts.map((alert: AlertResponse, idx: number) => {
                 const isOpen = alert.status === "open";
                 const sev = normalizeAlertSeverity(alert.severity);
                 const patientCode = `PAT-${alert.patientId.substring(0, 6).toUpperCase()}`;
@@ -799,7 +898,7 @@ const ThresholdAlert = () => {
                         className={`w-1 h-full absolute left-0 top-0 rounded-l ${sev === "high" ? "bg-red-400" : "bg-amber-400"}`}
                       />
                       <span className="font-medium text-slate-500 dark:text-slate-400">
-                        {(currentPage - 1) * 10 + idx + 1}
+                        {(currentPage - 1) * ITEMS_PER_PAGE + idx + 1}
                       </span>
                     </td>
                     {/* Bệnh nhân */}
@@ -821,7 +920,7 @@ const ThresholdAlert = () => {
                     {/* Vi phạm */}
                     <td className="px-4 py-3 max-w-xs">
                       <ul className="space-y-0.5">
-                        {alert.violations.slice(0, 2).map((v, i) => (
+                        {filterRedundantViolations(alert.violations).slice(0, 2).map((v, i) => (
                           <li
                             key={i}
                             className="text-xs text-slate-700 dark:text-slate-300"
@@ -829,21 +928,24 @@ const ThresholdAlert = () => {
                             • {formatViolation(v)}
                           </li>
                         ))}
-                        {alert.violations.length > 2 && (
+                        {filterRedundantViolations(alert.violations).length > 2 && (
                           <li className="text-xs text-slate-500 italic">
-                            +{alert.violations.length - 2} chỉ số khác...
+                            +{filterRedundantViolations(alert.violations).length - 2} chỉ số khác...
                           </li>
                         )}
                       </ul>
                     </td>
-                    {/* Mức độ */}
+                    {/* Loại & Mức độ */}
                     <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${getSeverityBadge(alert.severity)}`}
-                      >
-                        {getSeverityIcon(alert.severity)}
-                        {getSeverityLabel(alert.severity)}
-                      </span>
+                      <div className="flex flex-col gap-1">
+                        {getAlertTypeBadge(alert)}
+                        <span
+                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${getSeverityBadge(alert.severity)}`}
+                        >
+                          {getSeverityIcon(alert.severity)}
+                          {getSeverityLabel(alert.severity)}
+                        </span>
+                      </div>
                     </td>
                     {/* Trạng thái */}
                     <td className="px-4 py-3">
@@ -996,8 +1098,8 @@ const ThresholdAlert = () => {
                 <p className="text-sm text-slate-500 dark:text-slate-400">
                   {t("common.showing")}{" "}
                   <span className="font-medium text-slate-700 dark:text-slate-200">
-                    {(currentPage - 1) * 10 + 1}–
-                    {Math.min(currentPage * 10, totalItems)}
+                    {(currentPage - 1) * ITEMS_PER_PAGE + 1}–
+                    {Math.min(currentPage * ITEMS_PER_PAGE, totalItems)}
                   </span>{" "}
                   {t("common.of")}{" "}
                   <span className="font-medium text-slate-700 dark:text-slate-200">

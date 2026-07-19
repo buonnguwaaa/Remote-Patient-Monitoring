@@ -156,6 +156,7 @@ export interface Assignment {
   patientId: string;
   patientName?: string;
   patientCode?: string;
+  patientPublicId?: string;
   doctorId?: string;
   doctorName?: string;
   nurseId?: string;
