@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, type ChangeEvent, type FormEvent } from "react";
-import { FaPlus, FaSyncAlt, FaEdit, FaStopCircle, FaTimes, FaSave, FaSearch } from "react-icons/fa";
+import { FaPlus, FaSyncAlt, FaEdit, FaStopCircle, FaTimes, FaSave, FaSearch, FaUserFriends, FaCheckCircle, FaExclamationTriangle } from "react-icons/fa";
 import { useTranslation } from "react-i18next";
+import StatCard from "../components/ui/StatCard";
 
 import Toast from "../components/ui/Toast";
 import { useAuth } from "../context/AuthContext";
@@ -356,7 +357,6 @@ export default function ThresholdSettingsPage() {
             </div>
             <div className="mt-1 text-sm text-slate-500 dark:text-slate-400 flex flex-wrap gap-x-4">
                <span>Cập nhật: {formatDateTime(threshold.updatedAt)}</span>
-               <span>Từ: {formatDateTime(threshold.effectiveFrom)}</span>
             </div>
 
             <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -486,20 +486,27 @@ export default function ThresholdSettingsPage() {
 
       {/* Stats Bar */}
       <div className="mb-8 grid gap-4 grid-cols-3">
-        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-sm">
-          <div className="text-sm font-medium text-slate-500 dark:text-slate-400">Bệnh nhân đang quản lý</div>
-          <div className="mt-2 text-3xl font-semibold text-slate-900 dark:text-slate-100">{patientOptions.length}</div>
-        </div>
-        <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5 shadow-sm">
-          <div className="text-sm font-medium text-slate-500 dark:text-slate-400">Đã có ngưỡng</div>
-          <div className="mt-2 text-3xl font-semibold text-emerald-600 dark:text-emerald-400">{activePatients.length}</div>
-        </div>
-        <div className={`rounded-xl border p-5 shadow-sm transition-colors ${missingPatients.length > 0 ? 'border-amber-200 bg-amber-50 dark:border-amber-900/40 dark:bg-amber-900/10' : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800'}`}>
-          <div className={`text-sm font-medium ${missingPatients.length > 0 ? 'text-amber-800 dark:text-amber-400' : 'text-slate-500 dark:text-slate-400'}`}>Chưa có ngưỡng</div>
-          <div className={`mt-2 text-3xl font-semibold ${missingPatients.length > 0 ? 'text-amber-600 dark:text-amber-500' : 'text-slate-900 dark:text-slate-100'}`}>
-            {missingPatients.length}
-          </div>
-        </div>
+        <StatCard
+          label="Bệnh nhân đang quản lý"
+          value={patientOptions.length}
+          icon={FaUserFriends}
+          variant="default"
+          loading={loadingPatients}
+        />
+        <StatCard
+          label="Đã có ngưỡng"
+          value={activePatients.length}
+          icon={FaCheckCircle}
+          variant="success"
+          loading={loadingThresholds}
+        />
+        <StatCard
+          label="Chưa có ngưỡng"
+          value={missingPatients.length}
+          icon={FaExclamationTriangle}
+          variant={missingPatients.length > 0 ? "warning" : "default"}
+          loading={loadingPatients || loadingThresholds}
+        />
       </div>
 
       {/* Tabs */}

@@ -324,7 +324,7 @@ export default function MeasurementDraftForm({
 
       <Text style={styles.sectionTitle}>Thông tin đã chuẩn bị</Text>
       <View style={styles.card}>
-        <Text style={styles.progressTitle}>{savedCount}/6 nhóm đã ghi nhận</Text>
+        <Text style={styles.progressTitle}>{savedCount}/{MEASUREMENT_SECTIONS.length} nhóm đã ghi nhận</Text>
         <Text style={styles.progressSub}>
           Cần ít nhất 1 nhóm để gửi bản đo. Nhóm không nhập sẽ không được ghi vào hồ sơ.
         </Text>
