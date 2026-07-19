@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/constant"
-	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
 	domainUser "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository"
@@ -381,32 +380,6 @@ func parseActivityDateRange(c *gin.Context, startDateStr, endDateStr string) (ti
 	}
 
 	return startDate, endDate, true
-}
-
-func toAdminActivityLogResponse(logEntry *domain.ActivityLog) dto.ActivityLogResponse {
-	resp := dto.ActivityLogResponse{
-		ID:         logEntry.ID.Hex(),
-		UserID:     logEntry.UserID.Hex(),
-		UserName:   logEntry.UserName,
-		UserRole:   logEntry.UserRole,
-		Type:       string(logEntry.Type),
-		Action:     logEntry.Action,
-		Resource:   logEntry.Resource,
-		ResourceID: logEntry.ResourceID,
-		Method:     logEntry.Method,
-		Path:       logEntry.Path,
-		IPAddress:  logEntry.IPAddress,
-		StatusCode: logEntry.StatusCode,
-		ErrorMsg:   logEntry.ErrorMsg,
-		Metadata:   logEntry.Metadata,
-		CreatedAt:  logEntry.CreatedAt,
-		Timestamp:  logEntry.CreatedAt.Format("15:04"),
-		Date:       logEntry.CreatedAt.Format("2006-01-02"),
-	}
-	if logEntry.PatientID != nil {
-		resp.PatientID = logEntry.PatientID.Hex()
-	}
-	return resp
 }
 
 func totalPages(total int64, pageSize int) int {
