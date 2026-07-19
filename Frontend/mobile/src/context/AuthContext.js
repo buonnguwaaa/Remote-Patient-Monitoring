@@ -1,5 +1,6 @@
 import React, { createContext, useEffect, useState } from "react";
 import * as authApi from "../api/authApi";
+import { onSessionExpired } from "../api/authEvent";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 import * as SecureStore from "../utils/secureStoreHelper";
@@ -58,6 +59,22 @@ export function AuthProvider({ children }) {
     })();
   }, []);
 
+  // Khi httpClient phát hiện refresh token hết hạn → tự động logout
+  useEffect(() => {
+    const unsubscribe = onSessionExpired(async () => {
+      try {
+        if (CookieManager) await CookieManager.clearAll();
+      } catch (e) {}
+      try {
+        await AsyncStorage.removeItem("accessToken");
+        await AsyncStorage.removeItem("refreshToken");
+      } catch (e) {}
+      setUser(null);
+      setSessionPassword(null);
+    });
+    return unsubscribe;
+  }, []);
+
   useEffect(() => {
     if (!user?.id) {
       return;
@@ -83,10 +100,59 @@ export function AuthProvider({ children }) {
     };
   }, [user?.id]);
 
+  const parseBackendError = (res) => {
+    let errorMsg = res.error || res.body?.error || res.body || "Đã xảy ra lỗi";
+    if (typeof errorMsg === "string" && (errorMsg.includes("Field validation") || errorMsg.includes("RegisterRequest") || errorMsg.includes("LoginRequest"))) {
+      if (errorMsg.includes("Email")) {
+        if (errorMsg.includes("required")) {
+          return "Vui lòng nhập email.";
+        } else if (errorMsg.includes("email")) {
+          return "Email không đúng định dạng.";
+        }
+      }
+      if (errorMsg.includes("Password")) {
+        if (errorMsg.includes("required")) {
+          return "Vui lòng nhập mật khẩu.";
+        } else if (errorMsg.includes("min")) {
+          return "Mật khẩu phải có ít nhất 6 ký tự.";
+        }
+      }
+      if (errorMsg.includes("ConfirmedPassword")) {
+        if (errorMsg.includes("required")) {
+          return "Vui lòng nhập mật khẩu xác nhận.";
+        } else if (errorMsg.includes("min")) {
+          return "Mật khẩu xác nhận phải có ít nhất 8 ký tự.";
+        }
+      }
+      if (errorMsg.includes("Name")) {
+        return "Vui lòng nhập họ và tên.";
+      }
+      if (errorMsg.includes("Gender")) {
+        return "Vui lòng chọn giới tính.";
+      }
+      if (errorMsg.includes("Dob")) {
+        return "Vui lòng nhập ngày sinh.";
+      }
+      return "Thông tin gửi đi không hợp lệ.";
+    }
+    return errorMsg;
+  };
+
   const login = async (email, password) => {
     const loginResponse = await authApi.login({ email, password });
     if (!loginResponse.ok) {
-      return { ok: false, error: loginResponse.error || loginResponse.body };
+      return { ok: false, error: parseBackendError(loginResponse) };
+    }
+
+    // Lưu access token vào AsyncStorage để WebSocket và các request sau dùng được
+    const loginData = loginResponse.body?.data || loginResponse.body;
+    if (loginData?.AccessToken || loginData?.accessToken) {
+      const at = loginData.AccessToken || loginData.accessToken;
+      const rt = loginData.RefreshToken || loginData.refreshToken;
+      try {
+        await AsyncStorage.setItem("accessToken", at);
+        if (rt) await AsyncStorage.setItem("refreshToken", rt);
+      } catch (e) {}
     }
 
     const meResponse = await authApi.me();
@@ -117,7 +183,7 @@ export function AuthProvider({ children }) {
   const register = async (payload) => {
     const response = await authApi.register(payload);
     if (!response.ok) {
-      return { ok: false, error: response.error || response.body };
+      return { ok: false, error: parseBackendError(response) };
     }
 
     const meResponse = await authApi.me();

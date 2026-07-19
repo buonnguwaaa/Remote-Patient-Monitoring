@@ -1,7 +1,6 @@
 import Constants from "expo-constants";
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-import { Platform } from "react-native";
+import { emitSessionExpired } from "./authEvent";
 
 const extras =
   Constants?.manifest?.extra || Constants?.expoConfig?.extra || {};
@@ -55,15 +54,26 @@ export async function request(path, options = {}, canRetry = true) {
     clearTimeout(timer);
 
     if (response.status === 401 && canRetry && path !== "/auth/refresh") {
+      // Lấy refreshToken từ AsyncStorage để gửi kèm body (fallback cho cookie)
+      let storedRefreshToken = null;
+      try {
+        storedRefreshToken = await AsyncStorage.getItem("refreshToken");
+      } catch (e) {}
+
       const refreshResponse = await fetch(`${BASE_URL}/auth/refresh`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
+        body: storedRefreshToken ? JSON.stringify({ refreshToken: storedRefreshToken }) : undefined,
       });
 
       if (refreshResponse.ok) {
         return request(path, options, false);
       }
+
+      // Refresh token cũng hết hạn → force logout, chuyển về Login
+      emitSessionExpired();
+      return { ok: false, status: 401, body: null };
     }
 
     return parseResponse(response);

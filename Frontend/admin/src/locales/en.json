@@ -29,6 +29,8 @@
     "noCode": "No Code",
     "total": "Total",
     "viewAll": "View All",
+    "viewDetails": "View Details",
+    "actions": "Actions",
     "all": "All"
   },
   "systemSettings": {
@@ -329,7 +331,14 @@
       "page": "Page",
       "previous": "Previous",
       "next": "Next"
-    }
+    },
+    "logDetails": "Activity Log Details",
+    "action": "Action Performed",
+    "userInfo": "Performed By",
+    "requestInfo": "Request Information",
+    "deviceAndIp": "IP Address & Device",
+    "locationInfo": "Geographic Location",
+    "payloadData": "Changed Data (Payload)"
   },
   "chart": {
     "normalPatients": "Normal Patients",

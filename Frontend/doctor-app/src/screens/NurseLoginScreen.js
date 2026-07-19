@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import ButtonPrimary from '../components/ButtonPrimary';
 import { Feather } from '@expo/vector-icons';
 import styles from '../styles/login';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from "../context/ToastContext";
 
 const biometricStyle = StyleSheet.create({
   btn: {
@@ -37,6 +38,7 @@ const biometricStyle = StyleSheet.create({
 });
 
 export default function NurseLoginScreen() {
+  const { showToast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -60,14 +62,14 @@ export default function NurseLoginScreen() {
     try {
       const bioEnabled = await SecureStore.getItemAsync("staff_biometric_enabled");
       if (bioEnabled !== "true") {
-        Alert.alert("Chưa kích hoạt", "Vui lòng đăng nhập bằng mật khẩu trước và kích hoạt sinh trắc học ở màn hình Cài đặt.");
+        showToast("Vui lòng đăng nhập bằng mật khẩu trước và kích hoạt sinh trắc học ở màn hình Cài đặt.", "warning");
         return;
       }
 
       const hasHardware = await LocalAuthentication.hasHardwareAsync();
       const isEnrolled = await LocalAuthentication.isEnrolledAsync();
       if (!hasHardware || !isEnrolled) {
-        Alert.alert("Lỗi", "Thiết bị không hỗ trợ hoặc chưa đăng ký sinh trắc học.");
+        showToast("Thiết bị không hỗ trợ hoặc chưa đăng ký sinh trắc học.", "error");
         return;
       }
 
@@ -85,25 +87,37 @@ export default function NurseLoginScreen() {
           const res = await login(savedEmail, savedPassword);
           setLoading(false);
           if (!res.ok) {
-            Alert.alert("Đăng nhập thất bại", String(res.error?.error || res.error || "Lỗi xác thực"));
+            showToast(String(res.error?.error || res.error || "Lỗi xác thực"), "error");
           }
         } else {
-          Alert.alert("Lỗi", "Không tìm thấy thông tin đăng nhập đã lưu.");
+          showToast("Không tìm thấy thông tin đăng nhập đã lưu.", "error");
         }
       }
     } catch (e) {
       console.error(e);
-      Alert.alert("Lỗi", "Đã xảy ra lỗi khi xác thực sinh trắc học.");
+      showToast("Đã xảy ra lỗi khi xác thực sinh trắc học.", "error");
     }
   };
 
   const handleSubmit = () => {
+    if (!email.trim() && !password.trim()) {
+      showToast("Vui lòng nhập email và mật khẩu.", "warning");
+      return;
+    }
+    if (!email.trim()) {
+      showToast("Vui lòng nhập email.", "warning");
+      return;
+    }
+    if (!password.trim()) {
+      showToast("Vui lòng nhập mật khẩu.", "warning");
+      return;
+    }
     setLoading(true);
     (async () => {
-      const res = await login(email, password);
+      const res = await login(email.trim(), password);
       setLoading(false);
       if (!res.ok) {
-        Alert.alert('Đăng nhập thất bại', String(res.error));
+        showToast(String(res.error), "error");
       }
     })();
   };

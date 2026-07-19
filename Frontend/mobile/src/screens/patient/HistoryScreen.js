@@ -200,15 +200,38 @@ export default function HistoryScreen({ route, isEmbedded }) {
 
   // Build chart data per series. gifted-charts wants array of { value, label, ... }
   const buildSeriesData = (cfg, pointR) =>
-    recentMeasurements.map((m) => ({
-      value: cfg.getValue(m),
-      label: isSameDay ? formatTime(m.createdAt) : formatShortLabel(m.createdAt),
-      labelTextStyle: { color: "rgba(255,255,255,0.5)", fontSize: 10 },
-      dataPointColor: cfg.color,
-      dataPointRadius: pointR,
-      // attach raw measurement for tooltip
-      _raw: m,
-    }));
+    recentMeasurements.map((m) => {
+      const val = cfg.getValue(m);
+      let isOut = false;
+      if (threshold) {
+        if (tab === "bp") {
+          if (cfg.key === "sys") {
+            isOut = (threshold.sysMax !== undefined && val > threshold.sysMax) || (threshold.sysMin !== undefined && val < threshold.sysMin);
+          } else if (cfg.key === "dia") {
+            isOut = (threshold.diaMax !== undefined && val > threshold.diaMax) || (threshold.diaMin !== undefined && val < threshold.diaMin);
+          }
+        } else if (tab === "glucose") {
+          isOut = (threshold.glucoseMax !== undefined && val > threshold.glucoseMax) || (threshold.glucoseMin !== undefined && val < threshold.glucoseMin);
+        } else if (tab === "spo2") {
+          isOut = (threshold.spo2Min !== undefined && val < threshold.spo2Min);
+        } else if (tab === "temp") {
+          isOut = (threshold.temperatureMax !== undefined && val > threshold.temperatureMax) || (threshold.temperatureMin !== undefined && val < threshold.temperatureMin);
+        } else if (tab === "heartRate") {
+          isOut = (threshold.heartRateMax !== undefined && val > threshold.heartRateMax) || (threshold.heartRateMin !== undefined && val < threshold.heartRateMin);
+        } else if (tab === "respiratoryRate") {
+          isOut = (threshold.respiratoryRateMax !== undefined && val > threshold.respiratoryRateMax) || (threshold.respiratoryRateMin !== undefined && val < threshold.respiratoryRateMin);
+        }
+      }
+      return {
+        value: val,
+        label: isSameDay ? formatTime(m.createdAt) : formatShortLabel(m.createdAt),
+        labelTextStyle: { color: "rgba(255,255,255,0.5)", fontSize: 10 },
+        dataPointColor: isOut ? "#EF4444" : cfg.color,
+        dataPointRadius: isOut ? pointR + 2 : pointR,
+        // attach raw measurement for tooltip
+        _raw: m,
+      };
+    });
 
   // Compute max value across series + thresholds for nice top padding
   const allValues = [];
@@ -218,7 +241,7 @@ export default function HistoryScreen({ route, isEmbedded }) {
   const chartMaxValue = Math.ceil((maxValue * 1.15) / 10) * 10 || 100;
 
   // Spacing cố định để khi nhiều điểm, biểu đồ rộng hơn khung -> tự cuộn ngang
-  const spacing = 60;
+  const spacing = 90;
 
   const visibleMeasurements = activeMeasurements
     .slice()
@@ -232,24 +255,51 @@ export default function HistoryScreen({ route, isEmbedded }) {
     if (!raw) return null;
     const rows = [];
     if (tab === "bp") {
-      rows.push(["Tâm thu", `${raw.bloodPressure?.systolic || raw.systolic} mmHg`]);
-      rows.push(["Tâm trương", `${raw.bloodPressure?.diastolic || raw.diastolic} mmHg`]);
-      rows.push(["Mạch", `${raw.heartRate || raw.pulse || "--"} bpm`]);
+      const sysVal = raw.bloodPressure?.systolic || raw.systolic || 0;
+      const diaVal = raw.bloodPressure?.diastolic || raw.diastolic || 0;
+      const hrVal = raw.heartRate || raw.pulse || 0;
+
+      const sysAlert = threshold && (sysVal > threshold.sysMax || sysVal < threshold.sysMin);
+      const diaAlert = threshold && (diaVal > threshold.diaMax || diaVal < threshold.diaMin);
+      const hrAlert = threshold && (hrVal > threshold.heartRateMax || hrVal < threshold.heartRateMin);
+
+      rows.push(["Tâm thu", `${sysVal} mmHg`, sysAlert]);
+      rows.push(["Tâm trương", `${diaVal} mmHg`, diaAlert]);
+      rows.push(["Mạch", `${hrVal || "--"} bpm`, hrAlert]);
     } else {
       series.forEach((cfg) => {
-        rows.push([cfg.label, `${cfg.getValue(raw)} ${cfg.unit || ""}`]);
+        const val = cfg.getValue(raw);
+        let isAlert = false;
+        if (threshold) {
+          if (tab === "glucose") {
+            isAlert = val > threshold.glucoseMax || val < threshold.glucoseMin;
+          } else if (tab === "spo2") {
+            isAlert = val < threshold.spo2Min;
+          } else if (tab === "temp") {
+            isAlert = val > threshold.temperatureMax || val < threshold.temperatureMin;
+          } else if (tab === "heartRate") {
+            isAlert = val > threshold.heartRateMax || val < threshold.heartRateMin;
+          } else if (tab === "respiratoryRate") {
+            isAlert = val > threshold.respiratoryRateMax || val < threshold.respiratoryRateMin;
+          }
+        }
+        rows.push([cfg.label, `${val} ${cfg.unit || ""}`, isAlert]);
       });
-      if (tab === "glucose" && raw.timing) rows.push(["Thời điểm", raw.timing]);
+      if (tab === "glucose" && raw.timing) {
+        rows.push(["Thời điểm", raw.timing, false]);
+      }
     }
     return (
       <View style={styles.pointerTooltip}>
         <Text style={styles.pointerTooltipDate}>
           {formatDate(raw.createdAt)} · {formatTime(raw.createdAt)}
         </Text>
-        {rows.map(([label, value], i) => (
+        {rows.map(([label, value, isAlert], i) => (
           <View key={i} style={styles.pointerTooltipRow}>
             <Text style={styles.pointerTooltipLabel}>{label}</Text>
-            <Text style={styles.pointerTooltipValue}>{value}</Text>
+            <Text style={[styles.pointerTooltipValue, isAlert && { color: "#EF4444", fontWeight: "700" }]}>
+              {value} {isAlert ? "⚠️" : ""}
+            </Text>
           </View>
         ))}
       </View>
@@ -263,6 +313,13 @@ export default function HistoryScreen({ route, isEmbedded }) {
     const endSpacing = 20;
     const data1 = buildSeriesData(primary, pointR);
     const data2 = series[1] ? buildSeriesData(series[1], pointR) : null;
+
+    // Tính width chính xác để biểu đồ nằm gọn trong container đen
+    // Inline card: screenWidth - container(40) - card(32) - clip(16) = screenWidth - 88
+    // Modal card: screenWidth - modal(40) - modalPad(40) - clip(16) = screenWidth - 96
+    const chartWidth = height > 250
+      ? screenWidth - 96 - 16   // modal
+      : screenWidth - 88 - 16;  // inline (trừ thêm cho yAxis labels)
 
     // Vẽ toàn bộ các đường đo và đường ngưỡng bằng dataSet để tất cả cuộn ngang đồng bộ
     // và được clip chuẩn bên trong container, không bị tràn hay cố định.
@@ -284,29 +341,26 @@ export default function HistoryScreen({ route, isEmbedded }) {
         color: series[1].color,
         thickness: 2.5,
       }] : []),
-      ...thresholdLines.map((line) => ({
-        data: recentMeasurements.map(() => ({
-          value: line.value,
-          hideDataPoint: true,
-          hidePointer: true,
-        })),
-        color: line.color,
-        thickness: 1.5,
-        strokeDashArray: [5, 4],
-        hideDataPoints: true,
-      })),
+      ...thresholdLines.map((line) => {
+        const pointsCount = Math.max(recentMeasurements.length, Math.ceil(chartWidth / spacing) + 1);
+        return {
+          data: Array.from({ length: pointsCount }).map(() => ({
+            value: line.value,
+            hideDataPoint: true,
+            hidePointer: true,
+          })),
+          color: line.color,
+          thickness: 1.5,
+          strokeDashArray: [5, 4],
+          hideDataPoints: true,
+        };
+      }),
     ];
-
-    // Tính width chính xác để biểu đồ nằm gọn trong container đen
-    // Inline card: screenWidth - container(40) - card(32) - clip(16) = screenWidth - 88
-    // Modal card: screenWidth - modal(40) - modalPad(40) - clip(16) = screenWidth - 96
-    const chartWidth = height > 250
-      ? screenWidth - 96 - 16   // modal
-      : screenWidth - 88 - 16;  // inline (trừ thêm cho yAxis labels)
 
     return (
       <LineChart
         dataSet={datasets}
+        data={data1}
         height={height}
         width={chartWidth}
         spacing={spacing}
@@ -323,17 +377,18 @@ export default function HistoryScreen({ route, isEmbedded }) {
         rulesType="dashed"
         rulesColor="rgba(255,255,255,0.08)"
         backgroundColor="transparent"
-        curved
+        curved={recentMeasurements.length > 2}
         disableScroll={false}
-        scrollToEnd={true}
+        scrollToEnd={recentMeasurements.length * spacing > chartWidth}
         hideYAxisText={false}
+        hideDataPoints={false}
         pointerConfig={{
           pointerStripColor: "rgba(255,255,255,0.3)",
           pointerStripWidth: 1,
           pointerColor: primary.color,
           radius: 5,
-          pointerLabelWidth: 170,
-          pointerLabelHeight: 130,
+          pointerLabelWidth: 190,
+          pointerLabelHeight: 140,
           activatePointersOnLongPress: false,
           autoAdjustPointerLabelPosition: true,
           pointerLabelComponent: renderTooltip,
@@ -389,7 +444,11 @@ export default function HistoryScreen({ route, isEmbedded }) {
 
   return (
     <Container style={{ flex: 1, backgroundColor: "#F2F6FF" }}>
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* HEADER */}
         <View style={styles.headerRow}>
           <View style={{ flex: 1 }}>
@@ -729,7 +788,8 @@ export default function HistoryScreen({ route, isEmbedded }) {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 20 },
+  container: { flex: 1 },
+  scrollContent: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 60 },
 
   headerRow: { flexDirection: "row", alignItems: "center", marginBottom: 16 },
   headerTitle: { fontSize: 18, fontWeight: "700", color: "#111827" },
@@ -940,13 +1000,15 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     borderRadius: 10,
     padding: 10,
+    width: 180,
     borderWidth: 1,
     borderColor: "#E5E7EB",
     shadowColor: "#000",
     shadowOpacity: 0.15,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
-    elevation: 4,
+    elevation: 5,
+    zIndex: 999,
   },
   pointerTooltipDate: {
     fontSize: 11,

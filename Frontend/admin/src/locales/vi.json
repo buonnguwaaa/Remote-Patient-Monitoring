@@ -29,6 +29,8 @@
     "noCode": "Chưa có mã",
     "total": "Tổng số",
     "viewAll": "Xem tất cả",
+    "viewDetails": "Chi tiết",
+    "actions": "Hành động",
     "all": "Tất cả"
   },
   "systemSettings": {
@@ -329,7 +331,14 @@
       "page": "Trang",
       "previous": "Trước",
       "next": "Sau"
-    }
+    },
+    "logDetails": "Chi tiết nhật ký hoạt động",
+    "action": "Hành động thực hiện",
+    "userInfo": "Người thực hiện",
+    "requestInfo": "Thông tin yêu cầu",
+    "deviceAndIp": "Địa chỉ IP & Thiết bị",
+    "locationInfo": "Vị trí địa lý",
+    "payloadData": "Dữ liệu thay đổi (Payload)"
   },
   "chart": {
     "normalPatients": "Bệnh nhân bình thường",

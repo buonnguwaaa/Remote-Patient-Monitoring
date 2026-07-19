@@ -438,7 +438,17 @@ export default function DoctorChatScreen() {
       return;
     }
 
-    loadChat();
+    // Lần đầu (chưa có conversation) → load full
+    // Focus lại khi đã có conversation → chỉ fetch tin nhắn mới nhất (silent, không show loading)
+    if (conversation?.id) {
+      fetchConversationMessages(conversation.id, 50)
+        .then((newMessages) => {
+          setMessages((prev) => mergeMessages(prev, newMessages));
+        })
+        .catch(() => {});
+    } else {
+      loadChat();
+    }
   }, [currentUserId, isFocused]);
 
   // Batch pre-fetch alert data for system messages to show violations inline
@@ -943,7 +953,20 @@ export default function DoctorChatScreen() {
                         </View>
 
                         {/* Message card */}
-                        <View style={[styles.systemCard, isHigh ? styles.systemCardHigh : styles.systemCardInfo]}>
+                        <TouchableOpacity
+                          activeOpacity={0.8}
+                          onPress={() => {
+                            if (item.message.relatedAlertId) {
+                              navigation.navigate("PatientAlerts", {
+                                selectedAlertId: item.message.relatedAlertId,
+                              });
+                            }
+                          }}
+                          onLongPress={(event) => {
+                            handleOpenMessageMenu(event, item.message, false);
+                          }}
+                          style={[styles.systemCard, isHigh ? styles.systemCardHigh : styles.systemCardInfo]}
+                        >
                           {/* Violations grid */}
                           {violations.length > 0 ? (
                             <View style={styles.violationsBlock}>
@@ -974,14 +997,30 @@ export default function DoctorChatScreen() {
 
                           {/* Time + ack status */}
                           <View style={styles.systemMsgFooter}>
-                            <Text style={styles.systemMsgTime}>{formatTime(item.message.createdAt)}</Text>
-                            {cachedAlert ? (
-                              <Text style={styles.systemMsgStatus}>
-                                • {cachedAlert.status === "ack" ? "Đã xác nhận" : "Chờ xử lý"}
-                              </Text>
-                            ) : null}
+                            <View style={{ flexDirection: "row", alignItems: "center" }}>
+                              <Text style={styles.systemMsgTime}>{formatTime(item.message.createdAt)}</Text>
+                              {cachedAlert ? (
+                                <Text style={styles.systemMsgStatus}>
+                                  • {cachedAlert.status === "ack" ? "Đã xác nhận" : "Chờ xử lý"}
+                                </Text>
+                              ) : null}
+                            </View>
+
+                            {item.message.relatedAlertId && (
+                              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                                <Text style={{ fontSize: 11, color: isHigh ? "#DC2626" : "#2563EB", fontWeight: "600" }}>
+                                  Chi tiết
+                                </Text>
+                                <Ionicons
+                                  name="chevron-forward"
+                                  size={12}
+                                  color={isHigh ? "#DC2626" : "#2563EB"}
+                                  style={{ marginLeft: 2 }}
+                                />
+                              </View>
+                            )}
                           </View>
-                        </View>
+                        </TouchableOpacity>
                       </View>
                     </View>
                   );

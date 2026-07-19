@@ -4,7 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 export function StaffScreenContainer({ children, style }) {
   return (
-    <SafeAreaView style={[styles.safeArea, style]} edges={["bottom", "left", "right"]}>
+    <SafeAreaView style={[styles.safeArea, style]} edges={["left", "right"]}>
       {children}
     </SafeAreaView>
   );

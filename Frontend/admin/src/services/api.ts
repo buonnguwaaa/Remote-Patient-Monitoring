@@ -10,6 +10,14 @@ const api = axios.create({
 
 api.interceptors.request.use(
     (config) => {
+        const lat = sessionStorage.getItem("user_lat");
+        const lng = sessionStorage.getItem("user_lng");
+        if (lat) {
+            config.headers["X-Location-Lat"] = lat;
+        }
+        if (lng) {
+            config.headers["X-Location-Lng"] = lng;
+        }
         return config;
     },
     (error) => {
@@ -32,6 +40,9 @@ api.interceptors.response.use(
 
                 return api(originalRequest);
             } catch (refreshError) {
+                if (!window.location.pathname.endsWith("/login")) {
+                    window.location.href = "/login";
+                }
                 return Promise.reject(refreshError);
             }
         }

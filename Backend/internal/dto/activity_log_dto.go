@@ -16,6 +16,7 @@ type ActivityLogResponse struct {
 	Method     string         `json:"method,omitempty"`
 	Path       string         `json:"path,omitempty"`
 	IPAddress  string         `json:"ipAddress,omitempty"`
+	UserAgent  string         `json:"userAgent,omitempty"`
 	StatusCode int            `json:"statusCode,omitempty"`
 	ErrorMsg   string         `json:"errorMsg,omitempty"`
 	Metadata   map[string]any `json:"metadata,omitempty"`

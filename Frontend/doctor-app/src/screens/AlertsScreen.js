@@ -198,7 +198,7 @@ export default function AlertsScreen() {
       setAlerts(alertList);
     } catch (err) {
       console.error("Failed to fetch alerts:", err);
-      Alert.alert("Lỗi", "Không thể tải danh sách cảnh báo");
+      showToast("Không thể tải danh sách cảnh báo", "error");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -329,7 +329,7 @@ export default function AlertsScreen() {
       showToast(`Đã xử lý thành công ${resolvedIds.size} cảnh báo`, "success");
     } catch (err) {
       console.error("Resolve error:", err);
-      Alert.alert("Lỗi", "Có lỗi xảy ra khi xử lý cảnh báo");
+      showToast("Có lỗi xảy ra khi xử lý cảnh báo", "error");
     } finally {
       setSubmitting(false);
     }
@@ -506,7 +506,12 @@ export default function AlertsScreen() {
         {isExpanded && (
           <View style={styles.expandedContainer}>
             {group.alerts.map((alert) => (
-              <View key={alert.id} style={styles.alertItem}>
+              <TouchableOpacity
+                key={alert.id}
+                style={styles.alertItem}
+                activeOpacity={0.8}
+                onPress={() => navigation.navigate("AlertDetail", { alertId: alert.id })}
+              >
                 <View style={styles.alertItemHeader}>
                   <View style={[
                     styles.severityBadge,
@@ -554,7 +559,7 @@ export default function AlertsScreen() {
                     <Text style={styles.alertItemTime}>{formatDate(alert.createdAt)}</Text>
                   </View>
                 )}
-              </View>
+              </TouchableOpacity>
             ))}
           </View>
         )}

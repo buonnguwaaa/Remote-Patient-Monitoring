@@ -16,9 +16,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../context/AuthContext";
 import * as SecureStore from "../utils/secureStoreHelper";
 import * as LocalAuthentication from "expo-local-authentication";
+import { useToast } from "../context/ToastContext";
 
 export default function LoginScreen() {
   const { login } = useAuth();
+  const { showToast } = useToast();
   const insets = useSafeAreaInsets();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -49,14 +51,14 @@ export default function LoginScreen() {
         (await SecureStore.getItemAsync("staff_biometric_enabled")) ||
         (await SecureStore.getItemAsync("doctor_biometric_enabled"));
       if (bioEnabled !== "true") {
-        Alert.alert("ChÆ°a kÃ­ch hoáº¡t", "Vui lÃ²ng Ä‘Äƒng nháº­p báº±ng máº­t kháº©u trÆ°á»›c vÃ  báº­t sinh tráº¯c há»c trong pháº§n CÃ i Ä‘áº·t.");
+        showToast("Vui lòng đăng nhập bằng mật khẩu trước và bật sinh trắc học trong phần Cài đặt.", "warning");
         return;
       }
 
       const hasHardware = await LocalAuthentication.hasHardwareAsync();
       const isEnrolled = await LocalAuthentication.isEnrolledAsync();
       if (!hasHardware || !isEnrolled) {
-        Alert.alert("Lá»—i", "Thiáº¿t bá»‹ nÃ y khÃ´ng há»— trá»£ hoáº·c chÆ°a Ä‘Äƒng kÃ½ sinh tráº¯c há»c.");
+        showToast("Thiết bị này không hỗ trợ hoặc chưa đăng ký sinh trắc học.", "error");
         return;
       }
 
@@ -80,21 +82,29 @@ export default function LoginScreen() {
           const result = await login(savedEmail, savedPassword);
           setLoading(false);
           if (!result.ok) {
-            setError(result.error || "ÄÄƒng nháº­p sinh tráº¯c há»c tháº¥t báº¡i.");
+            setError(result.error || "Đăng nhập sinh trắc học thất bại.");
           }
         } else {
-          Alert.alert("Lá»—i", "KhÃ´ng tÃ¬m tháº¥y thÃ´ng tin Ä‘Äƒng nháº­p Ä‘Ã£ lÆ°u.");
+          showToast("Không tìm thấy thông tin đăng nhập đã lưu.", "error");
         }
       }
     } catch (e) {
       console.error(e);
-      Alert.alert("Lá»—i", "ÄÃ£ xáº£y ra lá»—i khi xÃ¡c thá»±c sinh tráº¯c há»c.");
+      showToast("Đã xảy ra lỗi khi xác thực sinh trắc học.", "error");
     }
   };
 
   const handleLogin = async () => {
-    if (!email.trim() || !password.trim()) {
-      setError("Vui lÃ²ng nháº­p email vÃ  máº­t kháº©u");
+    if (!email.trim() && !password.trim()) {
+      setError("Vui lòng nhập email và mật khẩu");
+      return;
+    }
+    if (!email.trim()) {
+      setError("Vui lòng nhập email");
+      return;
+    }
+    if (!password.trim()) {
+      setError("Vui lòng nhập mật khẩu");
       return;
     }
     setError("");
@@ -102,7 +112,7 @@ export default function LoginScreen() {
     const result = await login(email.trim(), password);
     setLoading(false);
     if (!result.ok) {
-      setError(result.error || "ÄÄƒng nháº­p tháº¥t báº¡i");
+      setError(result.error || "Đăng nhập thất bại");
     }
   };
 
