@@ -7,12 +7,23 @@ import Toast from "../components/ui/Toast";
 
 interface Activity {
   id: string;
+  userId?: string;
   type: "login" | "create" | "update" | "delete" | "system";
   userName: string;
+  userRole?: string;
   action: string;
   timestamp: string;
   date: string;
   createdAt: string;
+  ipAddress?: string;
+  userAgent?: string;
+  method?: string;
+  path?: string;
+  metadata?: {
+    latitude?: string;
+    longitude?: string;
+    [key: string]: any;
+  };
 }
 
 interface ActivityStats {
@@ -25,6 +36,25 @@ interface ActivityStats {
     system?: number;
   };
 }
+
+const getShortUserAgent = (userAgent?: string) => {
+  if (!userAgent) return "Không rõ thiết bị";
+  if (userAgent.includes("Mobile") || userAgent.includes("Android") || userAgent.includes("iPhone")) {
+    if (userAgent.includes("Android")) return "Android Mobile";
+    if (userAgent.includes("iPhone")) return "iOS Mobile";
+    return "Mobile Device";
+  }
+  if (userAgent.includes("Windows")) return "Windows PC";
+  if (userAgent.includes("Macintosh")) return "Mac PC";
+  if (userAgent.includes("Linux")) return "Linux PC";
+  return "Máy tính để bàn";
+};
+
+const formatIpAddress = (ip?: string) => {
+  if (!ip) return "Không khả dụng";
+  if (ip === "::1") return "127.0.0.1 (Localhost)";
+  return ip;
+};
 
 const ActivityHistory: React.FC = () => {
   const { t, i18n } = useTranslation();
@@ -40,6 +70,7 @@ const ActivityHistory: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
   const pageSize = 50;
 
   useEffect(() => {
@@ -394,7 +425,8 @@ const ActivityHistory: React.FC = () => {
                   return (
                     <div
                       key={activity.id}
-                      className="px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition relative"
+                      onClick={() => setSelectedActivity(activity)}
+                      className="px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition relative cursor-pointer"
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex items-start space-x-4 flex-1">
@@ -469,6 +501,175 @@ const ActivityHistory: React.FC = () => {
           </>
         )}
       </div>
+
+      {/* Log Detail Modal */}
+      {selectedActivity && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 transition-opacity">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-gray-700">
+            <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <span>{t("activityHistory.logDetails") || "Chi tiết nhật ký hoạt động"}</span>
+              </h3>
+              <button
+                onClick={() => setSelectedActivity(null)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-2xl font-bold focus:outline-none"
+              >
+                &times;
+              </button>
+            </div>
+
+            <div className="p-6 space-y-5">
+              {/* Header/Action Section */}
+              <div className="flex flex-wrap items-center justify-between gap-4 border-b dark:border-gray-700 pb-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+                    {t("activityHistory.action") || "Hành động thực hiện"}
+                  </p>
+                  <p className="text-lg font-bold text-indigo-600 dark:text-indigo-400 mt-1">
+                    {selectedActivity.action}
+                  </p>
+                </div>
+                <span
+                  className={`px-3 py-1 text-sm font-semibold rounded-full ${
+                    selectedActivity.type === "login"
+                      ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+                      : selectedActivity.type === "create"
+                      ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
+                      : selectedActivity.type === "update"
+                      ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300"
+                      : selectedActivity.type === "delete"
+                      ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
+                      : "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300"
+                  }`}
+                >
+                  {getActivityTypeLabel(selectedActivity.type)}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* User Info */}
+                <div className="bg-gray-50 dark:bg-gray-700/40 p-4 rounded-lg">
+                  <h4 className="font-bold text-sm text-gray-800 dark:text-gray-200 mb-3 flex items-center gap-1.5 border-b dark:border-gray-600 pb-1.5">
+                    <span>👤</span> {t("activityHistory.userInfo") || "Người thực hiện"}
+                  </h4>
+                  <div className="space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                    <div>
+                      <span className="font-medium text-gray-400 mr-1.5">Tài khoản:</span>
+                      <span className="font-semibold text-gray-900 dark:text-white">{selectedActivity.userName}</span>
+                    </div>
+                    <div>
+                      <span className="font-medium text-gray-400 mr-1.5">Vai trò:</span>
+                      <span className="capitalize">{selectedActivity.userRole}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* API Request Info */}
+                <div className="bg-gray-50 dark:bg-gray-700/40 p-4 rounded-lg">
+                  <h4 className="font-bold text-sm text-gray-800 dark:text-gray-200 mb-3 flex items-center gap-1.5 border-b dark:border-gray-600 pb-1.5">
+                    <span>🌐</span> {t("activityHistory.requestInfo") || "Thông tin yêu cầu"}
+                  </h4>
+                  <div className="space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                    <div>
+                      <span className="font-medium text-gray-400 mr-1.5">Thời gian:</span>
+                      <span>{selectedActivity.timestamp} - {new Date(selectedActivity.date).toLocaleDateString("vi-VN")}</span>
+                    </div>
+                    {selectedActivity.method && (
+                      <div>
+                        <span className="font-medium text-gray-400 mr-1.5">Phương thức:</span>
+                        <span className="font-bold font-mono text-indigo-600 dark:text-indigo-400">{selectedActivity.method}</span>
+                      </div>
+                    )}
+                    {selectedActivity.path && (
+                      <div>
+                        <span className="font-medium text-gray-400 mr-1.5">Đường dẫn:</span>
+                        <span className="font-mono text-xs break-all">{selectedActivity.path}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Client & Device Details */}
+              <div className="bg-gray-50 dark:bg-gray-700/40 p-4 rounded-lg">
+                <h4 className="font-bold text-sm text-gray-800 dark:text-gray-200 mb-3 flex items-center gap-1.5 border-b dark:border-gray-600 pb-1.5">
+                  <span>💻</span> {t("activityHistory.deviceAndIp") || "Địa chỉ IP & Thiết bị"}
+                </h4>
+                <div className="space-y-3 text-sm text-gray-600 dark:text-gray-300">
+                  <div>
+                    <span className="font-medium text-gray-400 mr-1.5">Địa chỉ IP:</span>
+                    <span className="font-mono font-semibold text-gray-900 dark:text-white">{formatIpAddress(selectedActivity.ipAddress)}</span>
+                  </div>
+                   <div>
+                    <span className="font-medium text-gray-400 mr-1.5">Loại máy:</span>
+                    <span className="font-semibold text-gray-900 dark:text-white">{getShortUserAgent(selectedActivity.userAgent)}</span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-400 mr-1.5">User Agent đầy đủ:</span>
+                    <div className="mt-1.5 p-2.5 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600 text-xs font-mono break-all text-gray-500 dark:text-gray-400">
+                      {selectedActivity.userAgent || "Không khả dụng"}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Location Details */}
+              {selectedActivity.metadata?.latitude && selectedActivity.metadata?.longitude && (
+                <div className="bg-gray-50 dark:bg-gray-700/40 p-4 rounded-lg">
+                  <h4 className="font-bold text-sm text-gray-800 dark:text-gray-200 mb-3 flex items-center gap-1.5 border-b dark:border-gray-600 pb-1.5">
+                    <span>📍</span> {t("activityHistory.locationInfo") || "Vị trí địa lý"}
+                  </h4>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm text-gray-600 dark:text-gray-300">
+                    <div>
+                      <span className="font-medium text-gray-400 mr-1.5">Tọa độ:</span>
+                      <span className="font-mono text-gray-900 dark:text-white">
+                        {parseFloat(selectedActivity.metadata.latitude).toFixed(6)}, {parseFloat(selectedActivity.metadata.longitude).toFixed(6)}
+                      </span>
+                    </div>
+                    <a
+                      href={`https://www.google.com/maps?q=${selectedActivity.metadata.latitude},${selectedActivity.metadata.longitude}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold shadow transition-colors"
+                    >
+                      🗺️ Xem trên Google Maps
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              {/* Data payload / Metadata Section */}
+              {selectedActivity.metadata && Object.keys(selectedActivity.metadata).filter(k => k !== "latitude" && k !== "longitude").length > 0 && (
+                <div className="bg-gray-50 dark:bg-gray-700/40 p-4 rounded-lg">
+                  <h4 className="font-bold text-sm text-gray-800 dark:text-gray-200 mb-3 flex items-center gap-1.5 border-b dark:border-gray-600 pb-1.5">
+                    <span>📊</span> {t("activityHistory.payloadData") || "Dữ liệu thay đổi (Payload)"}
+                  </h4>
+                  <div className="max-h-48 overflow-y-auto p-3 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600">
+                    <pre className="text-xs font-mono text-slate-800 dark:text-slate-300 whitespace-pre-wrap break-all">
+                      {JSON.stringify(
+                        Object.fromEntries(
+                          Object.entries(selectedActivity.metadata).filter(([k]) => k !== "latitude" && k !== "longitude")
+                        ),
+                        null,
+                        2
+                      )}
+                    </pre>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end">
+              <button
+                onClick={() => setSelectedActivity(null)}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-semibold transition"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

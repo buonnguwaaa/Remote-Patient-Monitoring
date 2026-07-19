@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+@theme {
+  --color-btn-clicked: #2563eb;
+  --color-primary-text: #213547;
+}
+
 @custom-variant dark (&:where(.dark, .dark *));
 :root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;

@@ -175,7 +175,29 @@ export function AuthProvider({ children }) {
   const login = async (email, password) => {
     const res = await authApi.login({ email, password });
     if (!res.ok) {
-      return { ok: false, error: res.body?.error || "Đăng nhập thất bại" };
+      let errorMsg = res.body?.error || "Đăng nhập thất bại";
+      if (typeof errorMsg === "string" && (errorMsg.includes("Field validation") || errorMsg.includes("LoginRequest"))) {
+        if (errorMsg.includes("LoginRequest.Email")) {
+          if (errorMsg.includes("required")) {
+            errorMsg = "Vui lòng nhập email.";
+          } else if (errorMsg.includes("email")) {
+            errorMsg = "Email không đúng định dạng.";
+          } else {
+            errorMsg = "Email không hợp lệ.";
+          }
+        } else if (errorMsg.includes("LoginRequest.Password")) {
+          if (errorMsg.includes("required")) {
+            errorMsg = "Vui lòng nhập mật khẩu.";
+          } else if (errorMsg.includes("min")) {
+            errorMsg = "Mật khẩu phải có ít nhất 6 ký tự.";
+          } else {
+            errorMsg = "Mật khẩu không hợp lệ.";
+          }
+        } else {
+          errorMsg = "Thông tin đăng nhập không hợp lệ.";
+        }
+      }
+      return { ok: false, error: errorMsg };
     }
 
     const token = res.body?.data?.accessToken || res.body?.accessToken;

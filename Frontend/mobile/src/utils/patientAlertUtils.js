@@ -163,6 +163,7 @@ export function buildAlertPreviewItems(alerts, limit = 3) {
         ruleText: primaryViolation?.rule || summary.summary,
         additionalSummary,
         createdAt: alert?.createdAt,
+        isHigh: isHighPriority,
         isHighPriority,
         severityKey,
       };

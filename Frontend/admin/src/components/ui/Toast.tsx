@@ -56,7 +56,7 @@ const Toast: React.FC<ToastProps> = ({ toast, onClose }) => {
         const nextValue = current - step;
         if (nextValue <= 0) {
           window.clearInterval(timer);
-          onClose();
+          setTimeout(() => onClose(), 0);
           return 0;
         }
         return nextValue;

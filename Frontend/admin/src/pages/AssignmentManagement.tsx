@@ -11,6 +11,7 @@ import {
 } from "../styles/buttonStyles";
 import { useToast } from "../hooks/useToast";
 import Toast from "../components/ui/Toast";
+import SearchableSelect from "../components/ui/SearchableSelect";
 
 const AssignmentManagement: React.FC = () => {
   const { t } = useTranslation();
@@ -44,9 +45,9 @@ const AssignmentManagement: React.FC = () => {
     try {
       setLoading(true);
       const [resPatients, resDoctors, resNurses, resAssignments] = await Promise.all([
-        api.get("/users/patients?limit=100"),
-        api.get("/users/doctors?limit=100"),
-        api.get("/users/nurses?limit=100"),
+        api.get("/users/patients?limit=1000&sortOrder=desc"),
+        api.get("/users/doctors?limit=1000&sortOrder=desc"),
+        api.get("/users/nurses?limit=1000&sortOrder=desc"),
         api.get("/assignments"),
       ]);
 
@@ -206,20 +207,15 @@ const AssignmentManagement: React.FC = () => {
             )}
           </div>
 
-          <select
-            className="w-full rounded-lg border border-gray-300 p-3 text-lg focus:border-slate-400 focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-70 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-slate-500 dark:focus:ring-slate-700"
+          <SearchableSelect
+            options={patientOptions.map((p) => ({ value: p.id, label: `${p.name} (${p.email})` }))}
             value={selectedPatient}
-            onChange={(event) => setSelectedPatient(event.target.value)}
+            onChange={setSelectedPatient}
+            placeholder={t("assignmentManagement.selectPatientPlaceholder")}
             disabled={Boolean(editingAssignmentId)}
-            required
-          >
-            <option value="">{t("assignmentManagement.selectPatientPlaceholder")}</option>
-            {patientOptions.map((patient) => (
-              <option key={patient.id} value={patient.id}>
-                {patient.name} ({patient.email})
-              </option>
-            ))}
-          </select>
+            searchPlaceholder={t("common.search")}
+            noOptionsText={t("common.noData")}
+          />
 
           <p className="text-sm text-gray-500 dark:text-gray-400">
             {editingAssignmentId
@@ -233,18 +229,17 @@ const AssignmentManagement: React.FC = () => {
                 <FaUserMd className="mr-2" />
                 {t("assignmentManagement.selectDoctor")}
               </label>
-              <select
-                className="w-full rounded-lg border border-slate-300 bg-white p-3 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 dark:border-slate-600 dark:bg-gray-800 dark:text-white dark:focus:border-slate-500 dark:focus:ring-slate-700"
+              <SearchableSelect
+                options={[
+                  { value: "", label: t("assignmentManagement.notSpecified") },
+                  ...doctors.map((d) => ({ value: d.id, label: `BS. ${d.name}` }))
+                ]}
                 value={selectedDoctor}
-                onChange={(event) => setSelectedDoctor(event.target.value)}
-              >
-                <option value="">{t("assignmentManagement.notSpecified")}</option>
-                {doctors.map((doctorOption) => (
-                  <option key={doctorOption.id} value={doctorOption.id}>
-                    BS. {doctorOption.name}
-                  </option>
-                ))}
-              </select>
+                onChange={setSelectedDoctor}
+                placeholder={t("assignmentManagement.notSpecified")}
+                searchPlaceholder={t("common.search")}
+                noOptionsText={t("common.noData")}
+              />
               <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
                 {t("assignmentManagement.doctorResponsibility")}
               </p>
@@ -255,18 +250,17 @@ const AssignmentManagement: React.FC = () => {
                 <FaUserNurse className="mr-2" />
                 {t("assignmentManagement.selectNurse")}
               </label>
-              <select
-                className="w-full rounded-lg border border-slate-300 bg-white p-3 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 dark:border-slate-600 dark:bg-gray-800 dark:text-white dark:focus:border-slate-500 dark:focus:ring-slate-700"
+              <SearchableSelect
+                options={[
+                  { value: "", label: t("assignmentManagement.notSpecified") },
+                  ...nurses.map((n) => ({ value: n.id, label: `YT. ${n.name}` }))
+                ]}
                 value={selectedNurse}
-                onChange={(event) => setSelectedNurse(event.target.value)}
-              >
-                <option value="">{t("assignmentManagement.notSpecified")}</option>
-                {nurses.map((nurseOption) => (
-                  <option key={nurseOption.id} value={nurseOption.id}>
-                    YT. {nurseOption.name}
-                  </option>
-                ))}
-              </select>
+                onChange={setSelectedNurse}
+                placeholder={t("assignmentManagement.notSpecified")}
+                searchPlaceholder={t("common.search")}
+                noOptionsText={t("common.noData")}
+              />
               <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
                 {t("assignmentManagement.nurseResponsibility")}
               </p>

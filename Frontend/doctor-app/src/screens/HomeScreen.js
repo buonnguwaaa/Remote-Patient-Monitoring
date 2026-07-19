@@ -226,7 +226,7 @@ export default function HomeScreen({ onNavigate }) {
                       return `${VIOLATION_LABEL[v.type] ?? v.type}: ${roundedObserved}`;
                     }).join(" · "),
                   }}
-                  onPress={() => handleNavigate("Alerts")}
+                  onPress={() => navigation.navigate("AlertDetail", { alertId: alert.id })}
                 />
               ))}
               {recentAlerts.length > 3 && (

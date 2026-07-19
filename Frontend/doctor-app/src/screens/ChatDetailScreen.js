@@ -894,7 +894,18 @@ export default function ChatDetailScreen() {
                         ) : null}
                       </View>
 
-                      <View style={[styles.systemCard, isHigh ? styles.systemCardHigh : styles.systemCardInfo]}>
+                      <TouchableOpacity
+                        activeOpacity={0.8}
+                        onPress={() => {
+                          if (item.message.relatedAlertId) {
+                            navigation.navigate("AlertDetail", { alertId: item.message.relatedAlertId });
+                          }
+                        }}
+                        onLongPress={(event) => {
+                          handleOpenMessageMenu(event, item.message, false);
+                        }}
+                        style={[styles.systemCard, isHigh ? styles.systemCardHigh : styles.systemCardInfo]}
+                      >
                         {violations.length > 0 && (
                           <View style={styles.violationsBlock}>
                             <Text style={[styles.violationsTitle, isHigh ? styles.violationsTitleHigh : styles.violationsTitleInfo]}>
@@ -925,14 +936,24 @@ export default function ChatDetailScreen() {
                         </Text>
 
                         <View style={styles.systemMsgFooter}>
-                          <Text style={styles.systemMsgTime}>{formatTime(item.message.createdAt)}</Text>
-                          {cachedAlert && (
-                            <Text style={styles.systemMsgStatus}>
-                              • {cachedAlert.status === "ack" ? "Đã xử lý" : "Chờ xử lý"}
-                            </Text>
+                          <View style={{ flexDirection: "row", alignItems: "center" }}>
+                            <Text style={styles.systemMsgTime}>{formatTime(item.message.createdAt)}</Text>
+                            {cachedAlert && (
+                              <Text style={styles.systemMsgStatus}>
+                                • {cachedAlert.status === "ack" ? "Đã xử lý" : "Chờ xử lý"}
+                              </Text>
+                            )}
+                          </View>
+                          {item.message.relatedAlertId && (
+                            <View style={{ flexDirection: "row", alignItems: "center" }}>
+                              <Text style={{ fontSize: 11, color: isHigh ? '#B91C1C' : '#2563EB', fontWeight: '600' }}>
+                                Chi tiết
+                              </Text>
+                              <Ionicons name="chevron-forward" size={12} color={isHigh ? '#B91C1C' : '#2563EB'} style={{ marginLeft: 2 }} />
+                            </View>
                           )}
                         </View>
-                      </View>
+                      </TouchableOpacity>
                     </View>
                   </View>
                 );
@@ -950,9 +971,11 @@ export default function ChatDetailScreen() {
                 : null;
 
               const repliedSenderLabel = repliedMessage
-                ? repliedMessage.senderId === currentUserId
-                  ? "Bạn"
-                  : displayPatientName
+                ? repliedMessage.messageSource === "system"
+                  ? "Hệ thống giám sát"
+                  : repliedMessage.senderId === currentUserId
+                    ? "Bạn"
+                    : displayPatientName
                 : "";
 
               // Check read status
@@ -1006,7 +1029,13 @@ export default function ChatDetailScreen() {
                         {/* Alert metadata embedded */}
                         {hasAlertTag && alertMessage?.hasStructuredAlertSummary ? (
                           <View style={styles.alertContentBlock}>
-                            <View
+                            <TouchableOpacity
+                              activeOpacity={0.85}
+                              onPress={() => {
+                                if (item.message.relatedAlertId) {
+                                  navigation.navigate("AlertDetail", { alertId: item.message.relatedAlertId });
+                                }
+                              }}
                               style={[
                                 styles.alertSummaryCard,
                                 isMine
@@ -1051,7 +1080,7 @@ export default function ChatDetailScreen() {
                               >
                                 Alert #{alertMessage.shortAlertId}
                               </Text>
-                            </View>
+                            </TouchableOpacity>
 
                             {alertMessage.note ? (
                               <View
@@ -1299,7 +1328,11 @@ const ChatInputComposer = React.memo(({
             <View style={styles.replyComposerBody}>
               <Text style={styles.replyComposerLabel}>Đang trả lời</Text>
               <Text style={styles.replyComposerSender}>
-                {replyTarget.senderId === currentUserId ? "Bạn" : displayPatientName}
+                {replyTarget.messageSource === "system"
+                  ? "Hệ thống giám sát"
+                  : replyTarget.senderId === currentUserId
+                    ? "Bạn"
+                    : displayPatientName}
               </Text>
               <Text style={styles.replyComposerText} numberOfLines={2}>
                 {getReplyPreviewContent(replyTarget)}

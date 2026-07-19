@@ -10,7 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -233,6 +233,7 @@ function groupAlertsByDay(alerts) {
 
 export default function AlertScreen({ isEmbedded }) {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const route = useRoute();
   const [alerts, setAlerts] = useState([]);
   const [tab, setTab] = useState("all");
@@ -511,7 +512,7 @@ export default function AlertScreen({ isEmbedded }) {
       <Modal visible={Boolean(selectedAlert)} transparent animationType="slide" onRequestClose={() => setSelectedAlert(null)}>
         <View style={styles.modalOverlay}>
           <Pressable style={styles.modalBackdrop} onPress={() => setSelectedAlert(null)} />
-          <View style={styles.modalSheet}>
+          <View style={[styles.modalSheet, { paddingBottom: Math.max(insets.bottom, 22) }]}>
             <View style={styles.modalHandle} />
             <View style={styles.modalHeader}>
               <View style={styles.modalHeaderText}>
@@ -672,7 +673,7 @@ const styles = StyleSheet.create({
   modalDesc: { marginTop: 4, fontSize: 13, lineHeight: 19, color: "#6B7280" },
   closeButton: { width: 34, height: 34, borderRadius: 999, backgroundColor: "#F3F4F6", alignItems: "center", justifyContent: "center" },
   modalScroll: { marginTop: 16 },
-  modalScrollContent: { paddingBottom: 12, gap: 18 },
+  modalScrollContent: { paddingBottom: 48, gap: 18 },
   section: { gap: 10 },
   sectionTitle: { fontSize: 14, fontWeight: "700", color: "#111827" },
   metaCard: { backgroundColor: "#F8FAFC", borderRadius: 16, padding: 14, gap: 12, borderWidth: 1, borderColor: "#E5E7EB" },

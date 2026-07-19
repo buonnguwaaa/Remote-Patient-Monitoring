@@ -77,9 +77,35 @@ func (h *ActivityLogHandler) GetActivityLogs(c *gin.Context) {
 		return
 	}
 
-	responseLogs := make([]dto.ActivityLogResponse, 0, len(logs))
-	for _, logEntry := range logs {
-		responseLogs = append(responseLogs, toAdminActivityLogResponse(logEntry))
+	// Convert to response DTOs
+	var responseLogs []dto.ActivityLogResponse
+	for _, log := range logs {
+		responseLogs = append(responseLogs, dto.ActivityLogResponse{
+			ID:         log.ID.Hex(),
+			UserID:     log.UserID.Hex(),
+			UserName:   log.UserName,
+			UserRole:   log.UserRole,
+			Type:       string(log.Type),
+			Action:     log.Action,
+			Resource:   log.Resource,
+			ResourceID: log.ResourceID,
+			Method:     log.Method,
+			Path:       log.Path,
+			IPAddress:  log.IPAddress,
+			UserAgent:  log.UserAgent,
+			StatusCode: log.StatusCode,
+			ErrorMsg:   log.ErrorMsg,
+			Metadata:   log.Metadata,
+			CreatedAt:  log.CreatedAt,
+			Timestamp:  log.CreatedAt.Format("15:04"),
+			Date:       log.CreatedAt.Format("2006-01-02"),
+		})
+	}
+
+	// Calculate total pages
+	totalPages := int(total) / params.PageSize
+	if int(total)%params.PageSize > 0 {
+		totalPages++
 	}
 
 	c.JSON(http.StatusOK, dto.ActivityLogListResponse{
