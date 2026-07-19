@@ -28,19 +28,19 @@ const InfoItem = ({
 }) => {
   const { t } = useTranslation();
   return (
-  <div className="flex items-center gap-3 py-3">
-    <div className="p-2 rounded-lg bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-300">
-      <Icon size={18} />
+    <div className="flex items-center gap-3 py-3">
+      <div className="p-2 rounded-lg bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-300">
+        <Icon size={18} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-0.5">
+          {label}
+        </p>
+        <p className="text-sm font-medium text-gray-800 dark:text-slate-100 truncate">
+          {value || t("common.notUpdated")}
+        </p>
+      </div>
     </div>
-    <div className="flex-1 min-w-0">
-      <p className="text-xs text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-0.5">
-        {label}
-      </p>
-      <p className="text-sm font-medium text-gray-800 dark:text-slate-100 truncate">
-        {value || t("common.notUpdated")}
-      </p>
-    </div>
-  </div>
   );
 };
 
@@ -68,17 +68,25 @@ function normalizeObjectId(value: unknown): string {
   return String(value);
 }
 
-function resolveDepartmentName(profile: Doctor, departments: Department[]): string {
-  const directDepartmentName = (profile as any)?.departmentName
-    || (profile as any)?.department?.name
-    || (typeof (profile as any)?.department === "string" ? (profile as any).department : "");
+function resolveDepartmentName(
+  profile: Doctor,
+  departments: Department[],
+): string {
+  const directDepartmentName =
+    (profile as any)?.departmentName ||
+    (profile as any)?.department?.name ||
+    (typeof (profile as any)?.department === "string"
+      ? (profile as any).department
+      : "");
 
   if (directDepartmentName) {
     return String(directDepartmentName);
   }
 
   const departmentId = normalizeObjectId(
-    profile.departmentId || (profile as any)?.department?.id || (profile as any)?.department?._id
+    profile.departmentId ||
+      (profile as any)?.department?.id ||
+      (profile as any)?.department?._id,
   );
 
   if (!departmentId) {
@@ -124,7 +132,10 @@ const DoctorProfile = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh] bg-gray-50 dark:bg-slate-900">
-        <Loader2 className="animate-spin text-gray-400 dark:text-slate-500" size={32} />
+        <Loader2
+          className="animate-spin text-gray-400 dark:text-slate-500"
+          size={32}
+        />
       </div>
     );
   }
@@ -132,7 +143,9 @@ const DoctorProfile = () => {
   if (error || !doctor) {
     return (
       <div className="flex items-center justify-center min-h-[60vh] bg-gray-50 dark:bg-slate-900">
-        <p className="text-gray-500 dark:text-slate-400">{error || t("profile.notFound")}</p>
+        <p className="text-gray-500 dark:text-slate-400">
+          {error || t("profile.notFound")}
+        </p>
       </div>
     );
   }
@@ -149,7 +162,7 @@ const DoctorProfile = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#f5f6fa] font-sans dark:bg-slate-900">
+    <div className="min-h-screen bg-[#f5f6fa] dark:bg-slate-900">
       <div className="w-full space-y-4 px-4 py-8 pb-24 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 p-8 mb-6">
@@ -195,10 +208,22 @@ const DoctorProfile = () => {
               {t("profile.title")}
             </h2>
             <div className="divide-y divide-gray-100 dark:divide-slate-700">
-              <InfoItem icon={User} label={t("profile.gender")} value={formatGender(doctor.gender)} />
-              <InfoItem icon={Calendar} label={t("profile.dateOfBirth")} value={formatDate(doctor.dob)} />
+              <InfoItem
+                icon={User}
+                label={t("profile.gender")}
+                value={formatGender(doctor.gender)}
+              />
+              <InfoItem
+                icon={Calendar}
+                label={t("profile.dateOfBirth")}
+                value={formatDate(doctor.dob)}
+              />
               <InfoItem icon={Mail} label="Email" value={doctor.email} />
-              <InfoItem icon={Phone} label={t("profile.phone")} value={doctor.phone || ""} />
+              <InfoItem
+                icon={Phone}
+                label={t("profile.phone")}
+                value={doctor.phone || ""}
+              />
             </div>
           </div>
 
@@ -208,16 +233,40 @@ const DoctorProfile = () => {
               {t("profile.workInfo")}
             </h2>
             <div className="divide-y divide-gray-100 dark:divide-slate-700">
-              <InfoItem icon={Stethoscope} label={t("profile.specialization")} value={doctor.specialization || ""} />
-              <InfoItem icon={Building2} label={t("profile.department")} value={resolveDepartmentName(doctor, departments)} />
-              <InfoItem icon={MapPin} label={t("profile.workplace")} value={doctor.workplace || ""} />
-              <InfoItem icon={FileBadge} label={t("profile.licenseNumber")} value={doctor.licenseNumber || ""} />
+              <InfoItem
+                icon={Stethoscope}
+                label={t("profile.specialization")}
+                value={doctor.specialization || ""}
+              />
+              <InfoItem
+                icon={Building2}
+                label={t("profile.department")}
+                value={resolveDepartmentName(doctor, departments)}
+              />
+              <InfoItem
+                icon={MapPin}
+                label={t("profile.workplace")}
+                value={doctor.workplace || ""}
+              />
+              <InfoItem
+                icon={FileBadge}
+                label={t("profile.licenseNumber")}
+                value={doctor.licenseNumber || ""}
+              />
               <InfoItem
                 icon={Award}
                 label={t("profile.experience")}
-                value={doctor.yearsOfExperience ? `${doctor.yearsOfExperience} năm` : ""}
+                value={
+                  doctor.yearsOfExperience
+                    ? `${doctor.yearsOfExperience} năm`
+                    : ""
+                }
               />
-              <InfoItem icon={Briefcase} label={t("profile.role")} value={t("profile.doctor")} />
+              <InfoItem
+                icon={Briefcase}
+                label={t("profile.role")}
+                value={t("profile.doctor")}
+              />
             </div>
           </div>
         </div>

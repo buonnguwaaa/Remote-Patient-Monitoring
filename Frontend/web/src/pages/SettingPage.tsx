@@ -23,14 +23,8 @@ import { useToast } from "../hooks/useToast";
 const SettingPage = () => {
   const { t } = useTranslation();
   const { changeLanguage } = useLanguage();
-  const {
-    theme,
-    setTheme,
-    fontFamily,
-    setFontFamily,
-    fontSize,
-    setFontSize,
-  } = useTheme();
+  const { theme, setTheme, fontFamily, setFontFamily, fontSize, setFontSize } =
+    useTheme();
 
   const { toast, showToast, hideToast } = useToast(4000);
 
@@ -80,8 +74,7 @@ const SettingPage = () => {
   };
 
   const handleRestoreDefaults = () => {
-    const defaultTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-    setTheme(defaultTheme);
+    setTheme("light");
     changeLanguage("vi");
     setFontFamily("system");
     setFontSize("medium");
@@ -94,7 +87,7 @@ const SettingPage = () => {
     <>
       <Toast toast={toast} onClose={hideToast} />
 
-      <div className="min-h-screen bg-[#f5f6fa] font-sans dark:bg-slate-900 transition-colors duration-300">
+      <div className="min-h-screen bg-[#f5f6fa] dark:bg-slate-900 transition-colors duration-300">
         <div className="w-full space-y-4 px-4 py-8 pb-24 sm:px-6 lg:px-8">
           <section className="mb-2 px-2 transition-colors duration-300">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -125,7 +118,9 @@ const SettingPage = () => {
             <section className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800 transition-colors duration-300">
               <div className="mb-3 flex items-center gap-2 text-gray-800 dark:text-slate-100">
                 <Palette size={18} />
-                <h2 className="text-base font-semibold">{t("settings.theme")}</h2>
+                <h2 className="text-base font-semibold">
+                  {t("settings.theme")}
+                </h2>
               </div>
 
               <div className="grid gap-3">
@@ -161,7 +156,9 @@ const SettingPage = () => {
             <section className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800 transition-colors duration-300">
               <div className="mb-3 flex items-center gap-2 text-gray-800 dark:text-slate-100">
                 <Type size={18} />
-                <h2 className="text-base font-semibold">{t("settings.fontFamily")}</h2>
+                <h2 className="text-base font-semibold">
+                  {t("settings.fontFamily")}
+                </h2>
               </div>
 
               <div>
@@ -199,7 +196,9 @@ const SettingPage = () => {
             <section className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800 lg:col-span-2 transition-colors duration-300">
               <div className="mb-4 flex items-center gap-2 text-gray-800 dark:text-slate-100">
                 <ZoomIn size={18} />
-                <h2 className="text-lg font-semibold">{t("settings.fontSize")}</h2>
+                <h2 className="text-lg font-semibold">
+                  {t("settings.fontSize")}
+                </h2>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-3">

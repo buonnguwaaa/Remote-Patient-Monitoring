@@ -166,7 +166,12 @@ interface DayScheduleChartProps {
   date: string;
   time: string;
   onTimeChange: (t: string) => void;
-  existingItems: { id: string; time: string; name: string; duration?: number }[];
+  existingItems: {
+    id: string;
+    time: string;
+    name: string;
+    duration?: number;
+  }[];
 }
 
 function DayScheduleChart({
@@ -286,9 +291,10 @@ function DayScheduleChart({
               // We calculate width relative to the visible timeline range
               const visibleStart = Math.max(winStart, start);
               const visibleEnd = Math.min(winStart + RANGE, end);
-              const widthPct = visibleEnd > visibleStart 
-                ? `${(((visibleEnd - visibleStart) / RANGE) * 100).toFixed(2)}%`
-                : "0%";
+              const widthPct =
+                visibleEnd > visibleStart
+                  ? `${(((visibleEnd - visibleStart) / RANGE) * 100).toFixed(2)}%`
+                  : "0%";
 
               return (
                 <div
@@ -600,13 +606,11 @@ function MiniCalendar({ selected, onSelect }: MiniCalendarProps) {
       d.setHours(0, 0, 0, 0);
       setViewMonth(d);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected]);
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-
-
 
   const year = viewMonth.getFullYear();
   const month = viewMonth.getMonth();
@@ -619,15 +623,16 @@ function MiniCalendar({ selected, onSelect }: MiniCalendarProps) {
 
   const cells: (Date | null)[] = [
     ...Array(startOffset).fill(null),
-    ...Array.from({ length: daysInMonth }, (_, i) => new Date(year, month, i + 1)),
+    ...Array.from(
+      { length: daysInMonth },
+      (_, i) => new Date(year, month, i + 1),
+    ),
   ];
   // Pad to full weeks
   while (cells.length % 7 !== 0) cells.push(null);
 
-  const prevMonth = () =>
-    setViewMonth(new Date(year, month - 1, 1));
-  const nextMonth = () =>
-    setViewMonth(new Date(year, month + 1, 1));
+  const prevMonth = () => setViewMonth(new Date(year, month - 1, 1));
+  const nextMonth = () => setViewMonth(new Date(year, month + 1, 1));
   const goThisMonth = () => {
     const d = new Date();
     d.setDate(1);
@@ -667,8 +672,11 @@ function MiniCalendar({ selected, onSelect }: MiniCalendarProps) {
 
       {/* Day-of-week headers */}
       <div className="grid grid-cols-7 mb-2">
-        {["T2","T3","T4","T5","T6","T7","CN"].map((d) => (
-          <div key={d} className="text-center text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase py-1">
+        {["T2", "T3", "T4", "T5", "T6", "T7", "CN"].map((d) => (
+          <div
+            key={d}
+            className="text-center text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase py-1"
+          >
             {d}
           </div>
         ))}
@@ -710,7 +718,10 @@ interface CalendarViewProps {
   appointments: FollowUpAppointment[];
   patientMap: Map<string, AssignmentResponse>;
   onEdit: (appt: FollowUpAppointment) => void;
-  onStatusChange: (appt: FollowUpAppointment, status: AppointmentStatus) => void;
+  onStatusChange: (
+    appt: FollowUpAppointment,
+    status: AppointmentStatus,
+  ) => void;
   saving: boolean;
   onCreateAtDate?: (date: string, time: string) => void;
 }
@@ -725,7 +736,9 @@ function CalendarView({
 }: CalendarViewProps) {
   const [mode, setMode] = useState<CalendarMode>("week");
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
-  const [selectedAppt, setSelectedAppt] = useState<FollowUpAppointment | null>(null);
+  const [selectedAppt, setSelectedAppt] = useState<FollowUpAppointment | null>(
+    null,
+  );
   const popupRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -779,7 +792,11 @@ function CalendarView({
   const getEventStyle = (scheduledAt: string) => {
     const d = new Date(scheduledAt);
     const localH = parseInt(
-      d.toLocaleString("vi-VN", { hour: "2-digit", hour12: false, timeZone: TIMEZONE }),
+      d.toLocaleString("vi-VN", {
+        hour: "2-digit",
+        hour12: false,
+        timeZone: TIMEZONE,
+      }),
     );
     const localM = d.getMinutes();
     const startMins = localH * 60 + localM;
@@ -833,287 +850,302 @@ function CalendarView({
   return (
     <>
       <div className="flex gap-4 items-start">
-      {/* ── Mini calendar sidebar ── */}
-      <div className="hidden lg:block shrink-0 w-[280px] rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm p-3">
-        <MiniCalendar
-          selected={currentDate}
-          onSelect={(d) => {
-            setCurrentDate(d);
-            setMode("day");
-          }}
-        />
-
-        {/* Quick jump buttons */}
-        <div className="mt-4 space-y-1">
-          <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-1 mb-2">
-            Chuyển nhanh
-          </p>
-          <button
-            onClick={() => { setCurrentDate(new Date()); setMode("day"); }}
-            className="w-full text-left rounded-lg px-3 py-1.5 text-xs text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-700 dark:hover:text-indigo-300 transition font-medium"
-          >
-            📅 Hôm nay
-          </button>
-          <button
-            onClick={() => { setCurrentDate(new Date()); setMode("week"); }}
-            className="w-full text-left rounded-lg px-3 py-1.5 text-xs text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-700 dark:hover:text-indigo-300 transition font-medium"
-          >
-            📆 Tuần này
-          </button>
-          <button
-            onClick={() => {
-              const next = addDays(new Date(), 7);
-              setCurrentDate(next);
-              setMode("week");
+        {/* ── Mini calendar sidebar ── */}
+        <div className="hidden lg:block shrink-0 w-[280px] rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-sm p-3">
+          <MiniCalendar
+            selected={currentDate}
+            onSelect={(d) => {
+              setCurrentDate(d);
+              setMode("day");
             }}
-            className="w-full text-left rounded-lg px-3 py-1.5 text-xs text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-700 dark:hover:text-indigo-300 transition font-medium"
-          >
-            ⏭ Tuần tới
-          </button>
-        </div>
+          />
 
-        {/* Appointment count summary */}
-        {appointments.length > 0 && (
-          <div className="mt-4 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 px-3 py-2.5">
-            <p className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">
-              Tổng lịch hẹn
+          {/* Quick jump buttons */}
+          <div className="mt-4 space-y-1">
+            <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-1 mb-2">
+              Chuyển nhanh
             </p>
-            <p className="text-xl font-bold text-indigo-700 dark:text-indigo-300 mt-0.5">
-              {appointments.length}
-            </p>
-            <div className="mt-1.5 space-y-0.5">
-              {(["scheduled", "completed", "canceled"] as AppointmentStatus[]).map((s) => {
-                const count = appointments.filter((a) => a.status === s).length;
-                if (count === 0) return null;
+            <button
+              onClick={() => {
+                setCurrentDate(new Date());
+                setMode("day");
+              }}
+              className="w-full text-left rounded-lg px-3 py-1.5 text-xs text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-700 dark:hover:text-indigo-300 transition font-medium"
+            >
+              📅 Hôm nay
+            </button>
+            <button
+              onClick={() => {
+                setCurrentDate(new Date());
+                setMode("week");
+              }}
+              className="w-full text-left rounded-lg px-3 py-1.5 text-xs text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-700 dark:hover:text-indigo-300 transition font-medium"
+            >
+              📆 Tuần này
+            </button>
+            <button
+              onClick={() => {
+                const next = addDays(new Date(), 7);
+                setCurrentDate(next);
+                setMode("week");
+              }}
+              className="w-full text-left rounded-lg px-3 py-1.5 text-xs text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 hover:text-indigo-700 dark:hover:text-indigo-300 transition font-medium"
+            >
+              ⏭ Tuần tới
+            </button>
+          </div>
+
+          {/* Appointment count summary */}
+          {appointments.length > 0 && (
+            <div className="mt-4 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 px-3 py-2.5">
+              <p className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">
+                Tổng lịch hẹn
+              </p>
+              <p className="text-xl font-bold text-indigo-700 dark:text-indigo-300 mt-0.5">
+                {appointments.length}
+              </p>
+              <div className="mt-1.5 space-y-0.5">
+                {(
+                  ["scheduled", "completed", "canceled"] as AppointmentStatus[]
+                ).map((s) => {
+                  const count = appointments.filter(
+                    (a) => a.status === s,
+                  ).length;
+                  if (count === 0) return null;
+                  return (
+                    <div key={s} className="flex items-center justify-between">
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                        {getStatusLabel(s)}
+                      </span>
+                      <span
+                        className={`text-[10px] font-bold ${
+                          s === "scheduled"
+                            ? "text-blue-600 dark:text-blue-400"
+                            : s === "completed"
+                              ? "text-emerald-600 dark:text-emerald-400"
+                              : "text-rose-500 dark:text-rose-400"
+                        }`}
+                      >
+                        {count}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+        {/* ── Main calendar panel ── */}
+        <div className="flex-1 min-w-0 flex flex-col rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden shadow-sm">
+          {/* Calendar header */}
+          <div className="flex items-center justify-between gap-3 border-b border-gray-200 dark:border-slate-700 px-4 py-3">
+            {/* Left: today + nav */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={goToday}
+                className="rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition"
+              >
+                Hôm nay
+              </button>
+              <button
+                onClick={prevPeriod}
+                className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition text-slate-600 dark:text-slate-300"
+              >
+                <FaChevronLeft size={12} />
+              </button>
+              <button
+                onClick={nextPeriod}
+                className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition text-slate-600 dark:text-slate-300"
+              >
+                <FaChevronRight size={12} />
+              </button>
+              <h2 className="ml-1 text-sm font-semibold text-slate-800 dark:text-slate-100">
+                {periodLabel}
+              </h2>
+            </div>
+
+            {/* Right: mode toggle */}
+            <div className="flex items-center rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+              <button
+                onClick={() => setMode("week")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition ${
+                  mode === "week"
+                    ? "bg-indigo-600 text-white"
+                    : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                }`}
+              >
+                <FaCalendarWeek size={11} />
+                Tuần
+              </button>
+              <button
+                onClick={() => setMode("day")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition ${
+                  mode === "day"
+                    ? "bg-indigo-600 text-white"
+                    : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                }`}
+              >
+                <FaCalendarDay size={11} />
+                Ngày
+              </button>
+            </div>
+          </div>
+
+          {/* Day headers */}
+          <div
+            className="grid border-b border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50"
+            style={{
+              gridTemplateColumns: `56px repeat(${displayDays.length}, 1fr)`,
+            }}
+          >
+            <div className="py-2" /> {/* GMT offset placeholder */}
+            {displayDays.map((day, idx) => {
+              const isToday = isSameDay(day, today);
+              const isSelected = mode === "day" && isSameDay(day, currentDate);
+              return (
+                <div
+                  key={idx}
+                  className="flex flex-col items-center py-2 cursor-pointer select-none"
+                  onClick={() => {
+                    setCurrentDate(day);
+                    if (mode === "week") setMode("day");
+                  }}
+                >
+                  <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 uppercase">
+                    {VI_DAYS[day.getDay()]}
+                  </span>
+                  <div
+                    className={`mt-1 flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold transition ${
+                      isToday || isSelected
+                        ? "bg-indigo-600 text-white"
+                        : "text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700"
+                    }`}
+                  >
+                    {day.getDate()}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Scrollable time grid */}
+          <div
+            ref={scrollRef}
+            className="overflow-y-auto"
+            style={{ maxHeight: "600px" }}
+          >
+            <div
+              className="relative grid"
+              style={{
+                gridTemplateColumns: `56px repeat(${displayDays.length}, 1fr)`,
+                height: `${totalCalendarHeight}px`,
+              }}
+            >
+              {/* Hour labels column */}
+              <div className="relative">
+                {hours.map((h) => (
+                  <div
+                    key={h}
+                    className="absolute right-2 text-[10px] text-slate-400 dark:text-slate-500 select-none -translate-y-2"
+                    style={{
+                      top: `${(h - CALENDAR_START_HOUR) * HOUR_HEIGHT}px`,
+                    }}
+                  >
+                    {h}:00
+                  </div>
+                ))}
+              </div>
+
+              {/* Day columns */}
+              {displayDays.map((day, colIdx) => {
+                const dayAppts = getApptForDay(day);
+                const isDayToday = isSameDay(day, today);
+
                 return (
-                  <div key={s} className="flex items-center justify-between">
-                    <span className="text-[10px] text-slate-500 dark:text-slate-400">
-                      {getStatusLabel(s)}
-                    </span>
-                    <span className={`text-[10px] font-bold ${
-                      s === "scheduled" ? "text-blue-600 dark:text-blue-400"
-                      : s === "completed" ? "text-emerald-600 dark:text-emerald-400"
-                      : "text-rose-500 dark:text-rose-400"
-                    }`}>
-                      {count}
-                    </span>
+                  <div
+                    key={colIdx}
+                    className="relative border-l border-slate-200 dark:border-slate-700/60"
+                    style={{ height: `${totalCalendarHeight}px` }}
+                  >
+                    {/* Hour grid lines */}
+                    {hours.map((h) => (
+                      <div
+                        key={h}
+                        className="absolute inset-x-0 border-t border-slate-100 dark:border-slate-800"
+                        style={{
+                          top: `${(h - CALENDAR_START_HOUR) * HOUR_HEIGHT}px`,
+                        }}
+                      />
+                    ))}
+
+                    {/* Half-hour lines */}
+                    {hours.map((h) => (
+                      <div
+                        key={`${h}-half`}
+                        className="absolute inset-x-0 border-t border-dashed border-slate-100 dark:border-slate-800/60"
+                        style={{
+                          top: `${(h - CALENDAR_START_HOUR) * HOUR_HEIGHT + HOUR_HEIGHT / 2}px`,
+                        }}
+                      />
+                    ))}
+
+                    {/* Current time line */}
+                    {showNowLine && isDayToday && (
+                      <div
+                        className="absolute inset-x-0 z-20 flex items-center"
+                        style={{ top: `${nowTop}px` }}
+                      >
+                        <div className="h-2.5 w-2.5 rounded-full bg-red-500 -ml-1.5 shrink-0" />
+                        <div className="flex-1 h-px bg-red-500" />
+                      </div>
+                    )}
+
+                    {/* Appointment events */}
+                    {dayAppts.map((appt) => {
+                      const { top, height } = getEventStyle(appt.scheduledAt);
+                      const patient = patientMap.get(appt.patientId);
+                      const name = patient?.patientName || "Bệnh nhân";
+                      const time = toLocalTimeString(appt.scheduledAt);
+                      const style = getCalendarEventStyle(appt.status);
+
+                      return (
+                        <div
+                          key={appt.id}
+                          className={`absolute inset-x-1 z-10 rounded-md px-1.5 py-1 cursor-pointer overflow-hidden select-none transition-all shadow-sm ${style.bg} ${style.border} ${style.text}`}
+                          style={{ top: `${top}px`, height: `${height}px` }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedAppt(appt);
+                          }}
+                        >
+                          <p className="text-[10px] font-bold leading-tight truncate">
+                            {time}
+                          </p>
+                          <p className="text-[11px] font-medium leading-tight truncate mt-0.5">
+                            {name}
+                          </p>
+                        </div>
+                      );
+                    })}
+
+                    {/* Click on empty slot → create */}
+                    <div
+                      className="absolute inset-0 z-0 cursor-pointer"
+                      onClick={() => {
+                        if (onCreateAtDate) {
+                          onCreateAtDate(dateToYMD(day), "09:00");
+                        }
+                      }}
+                    />
                   </div>
                 );
               })}
             </div>
           </div>
-        )}
-      </div>
-
-      {/* ── Main calendar panel ── */}
-      <div className="flex-1 min-w-0 flex flex-col rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden shadow-sm">
-      {/* Calendar header */}
-      <div className="flex items-center justify-between gap-3 border-b border-gray-200 dark:border-slate-700 px-4 py-3">
-        {/* Left: today + nav */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={goToday}
-            className="rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition"
-          >
-            Hôm nay
-          </button>
-          <button
-            onClick={prevPeriod}
-            className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition text-slate-600 dark:text-slate-300"
-          >
-            <FaChevronLeft size={12} />
-          </button>
-          <button
-            onClick={nextPeriod}
-            className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition text-slate-600 dark:text-slate-300"
-          >
-            <FaChevronRight size={12} />
-          </button>
-          <h2 className="ml-1 text-sm font-semibold text-slate-800 dark:text-slate-100">
-            {periodLabel}
-          </h2>
-        </div>
-
-        {/* Right: mode toggle */}
-        <div className="flex items-center rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
-          <button
-            onClick={() => setMode("week")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition ${
-              mode === "week"
-                ? "bg-indigo-600 text-white"
-                : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
-            }`}
-          >
-            <FaCalendarWeek size={11} />
-            Tuần
-          </button>
-          <button
-            onClick={() => setMode("day")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition ${
-              mode === "day"
-                ? "bg-indigo-600 text-white"
-                : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
-            }`}
-          >
-            <FaCalendarDay size={11} />
-            Ngày
-          </button>
-        </div>
-      </div>
-
-      {/* Day headers */}
-      <div
-        className="grid border-b border-gray-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50"
-        style={{
-          gridTemplateColumns: `56px repeat(${displayDays.length}, 1fr)`,
-        }}
-      >
-        <div className="py-2" /> {/* GMT offset placeholder */}
-        {displayDays.map((day, idx) => {
-          const isToday = isSameDay(day, today);
-          const isSelected = mode === "day" && isSameDay(day, currentDate);
-          return (
-            <div
-              key={idx}
-              className="flex flex-col items-center py-2 cursor-pointer select-none"
-              onClick={() => {
-                setCurrentDate(day);
-                if (mode === "week") setMode("day");
-              }}
-            >
-              <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 uppercase">
-                {VI_DAYS[day.getDay()]}
-              </span>
-              <div
-                className={`mt-1 flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold transition ${
-                  isToday || isSelected
-                    ? "bg-indigo-600 text-white"
-                    : "text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700"
-                }`}
-              >
-                {day.getDate()}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Scrollable time grid */}
-      <div
-        ref={scrollRef}
-        className="overflow-y-auto"
-        style={{ maxHeight: "600px" }}
-      >
-        <div
-          className="relative grid"
-          style={{
-            gridTemplateColumns: `56px repeat(${displayDays.length}, 1fr)`,
-            height: `${totalCalendarHeight}px`,
-          }}
-        >
-          {/* Hour labels column */}
-          <div className="relative">
-            {hours.map((h) => (
-              <div
-                key={h}
-                className="absolute right-2 text-[10px] text-slate-400 dark:text-slate-500 select-none -translate-y-2"
-                style={{ top: `${(h - CALENDAR_START_HOUR) * HOUR_HEIGHT}px` }}
-              >
-                {h}:00
-              </div>
-            ))}
-          </div>
-
-          {/* Day columns */}
-          {displayDays.map((day, colIdx) => {
-            const dayAppts = getApptForDay(day);
-            const isDayToday = isSameDay(day, today);
-
-            return (
-              <div
-                key={colIdx}
-                className="relative border-l border-slate-200 dark:border-slate-700/60"
-                style={{ height: `${totalCalendarHeight}px` }}
-              >
-                {/* Hour grid lines */}
-                {hours.map((h) => (
-                  <div
-                    key={h}
-                    className="absolute inset-x-0 border-t border-slate-100 dark:border-slate-800"
-                    style={{
-                      top: `${(h - CALENDAR_START_HOUR) * HOUR_HEIGHT}px`,
-                    }}
-                  />
-                ))}
-
-                {/* Half-hour lines */}
-                {hours.map((h) => (
-                  <div
-                    key={`${h}-half`}
-                    className="absolute inset-x-0 border-t border-dashed border-slate-100 dark:border-slate-800/60"
-                    style={{
-                      top: `${(h - CALENDAR_START_HOUR) * HOUR_HEIGHT + HOUR_HEIGHT / 2}px`,
-                    }}
-                  />
-                ))}
-
-                {/* Current time line */}
-                {showNowLine && isDayToday && (
-                  <div
-                    className="absolute inset-x-0 z-20 flex items-center"
-                    style={{ top: `${nowTop}px` }}
-                  >
-                    <div className="h-2.5 w-2.5 rounded-full bg-red-500 -ml-1.5 shrink-0" />
-                    <div className="flex-1 h-px bg-red-500" />
-                  </div>
-                )}
-
-                {/* Appointment events */}
-                {dayAppts.map((appt) => {
-                  const { top, height } = getEventStyle(appt.scheduledAt);
-                  const patient = patientMap.get(appt.patientId);
-                  const name = patient?.patientName || "Bệnh nhân";
-                  const time = toLocalTimeString(appt.scheduledAt);
-                  const style = getCalendarEventStyle(appt.status);
-
-                  return (
-                    <div
-                      key={appt.id}
-                      className={`absolute inset-x-1 z-10 rounded-md px-1.5 py-1 cursor-pointer overflow-hidden select-none transition-all shadow-sm ${style.bg} ${style.border} ${style.text}`}
-                      style={{ top: `${top}px`, height: `${height}px` }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedAppt(appt);
-                      }}
-                    >
-                      <p className="text-[10px] font-bold leading-tight truncate">
-                        {time}
-                      </p>
-                      <p className="text-[11px] font-medium leading-tight truncate mt-0.5">
-                        {name}
-                      </p>
-                    </div>
-                  );
-                })}
-
-                {/* Click on empty slot → create */}
-                <div
-                  className="absolute inset-0 z-0 cursor-pointer"
-                  onClick={() => {
-                    if (onCreateAtDate) {
-                      onCreateAtDate(dateToYMD(day), "09:00");
-                    }
-                  }}
-                />
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      </div> {/* end main calendar panel */}
-      </div> {/* end flex sidebar+calendar wrapper */}
-
+        </div>{" "}
+        {/* end main calendar panel */}
+      </div>{" "}
+      {/* end flex sidebar+calendar wrapper */}
       {/* Appointment detail popup */}
       {selectedAppt && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4">
@@ -1136,14 +1168,16 @@ function CalendarView({
                   Lịch tái khám
                 </p>
                 <p className="text-white font-bold text-base mt-0.5">
-                  {toLocalTimeString(selectedAppt.scheduledAt)}{" "}
-                  ·{" "}
-                  {new Date(selectedAppt.scheduledAt).toLocaleDateString("vi-VN", {
-                    weekday: "short",
-                    day: "2-digit",
-                    month: "2-digit",
-                    timeZone: TIMEZONE,
-                  })}
+                  {toLocalTimeString(selectedAppt.scheduledAt)} ·{" "}
+                  {new Date(selectedAppt.scheduledAt).toLocaleDateString(
+                    "vi-VN",
+                    {
+                      weekday: "short",
+                      day: "2-digit",
+                      month: "2-digit",
+                      timeZone: TIMEZONE,
+                    },
+                  )}
                 </p>
               </div>
               <button
@@ -1159,15 +1193,18 @@ function CalendarView({
               {/* Patient name */}
               <div className="flex items-center gap-2">
                 <div className="h-8 w-8 rounded-full bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center text-indigo-600 dark:text-indigo-300 text-sm font-bold shrink-0">
-                  {(patientMap.get(selectedAppt.patientId)?.patientName || "B")[0].toUpperCase()}
+                  {(patientMap.get(selectedAppt.patientId)?.patientName ||
+                    "B")[0].toUpperCase()}
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-                    {patientMap.get(selectedAppt.patientId)?.patientName || selectedAppt.patientId}
+                    {patientMap.get(selectedAppt.patientId)?.patientName ||
+                      selectedAppt.patientId}
                   </p>
                   <p className="text-xs text-slate-400">
                     {patientMap.get(selectedAppt.patientId)?.patientCode ||
-                      patientMap.get(selectedAppt.patientId)?.patientPublicId || ""}
+                      patientMap.get(selectedAppt.patientId)?.patientPublicId ||
+                      ""}
                   </p>
                 </div>
               </div>
@@ -1380,7 +1417,11 @@ export default function AppointmentPage() {
   // ── Form actions ──────────────────────────────────────────────────────────
 
   const openCreate = (date?: string, time?: string) => {
-    setForm({ ...defaultForm(filterPatientId), ...(date ? { date } : {}), ...(time ? { time } : {}) });
+    setForm({
+      ...defaultForm(filterPatientId),
+      ...(date ? { date } : {}),
+      ...(time ? { time } : {}),
+    });
     setEditingId(null);
     setIsFormOpen(true);
   };
@@ -1488,7 +1529,7 @@ export default function AppointmentPage() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-[#f5f6fa] font-sans dark:bg-slate-900">
+    <div className="min-h-screen bg-[#f5f6fa] dark:bg-slate-900">
       <div className="w-full space-y-4 px-4 py-8 pb-24 sm:px-6 lg:px-8">
         <Toast toast={toast} onClose={hideToast} />
 
@@ -1496,469 +1537,476 @@ export default function AppointmentPage() {
         <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <h1 className="flex items-center gap-3 text-3xl font-bold text-gray-800 dark:text-slate-100">
-           
-            Lịch tái khám
-          </h1>
-          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-            Quản lý và đặt lịch tái khám cho bệnh nhân. Hệ thống sẽ tự động nhắc
-            nhở bệnh nhân 24 giờ trước.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          {/* View mode switch */}
-          <div className="flex items-center rounded-xl border border-slate-300 dark:border-slate-600 overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setViewMode("calendar")}
-              title="Xem lịch"
-              className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition ${
-                viewMode === "calendar"
-                  ? "bg-indigo-600 text-white"
-                  : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
-              }`}
-            >
-              <FaCalendarWeek size={13} />
-              <span className="hidden sm:inline">Lịch</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode("list")}
-              title="Xem danh sách"
-              className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition ${
-                viewMode === "list"
-                  ? "bg-indigo-600 text-white"
-                  : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
-              }`}
-            >
-              <FaThList size={13} />
-              <span className="hidden sm:inline">Danh sách</span>
-            </button>
+              Lịch tái khám
+            </h1>
+            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+              Quản lý và đặt lịch tái khám cho bệnh nhân. Hệ thống sẽ tự động
+              nhắc nhở bệnh nhân 24 giờ trước.
+            </p>
           </div>
-
-          <button
-            type="button"
-            onClick={() => openCreate()}
-            className="inline-flex items-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700"
-          >
-            <FaPlus className="mr-2" />
-            Tạo lịch mới
-          </button>
-          <button
-            type="button"
-            onClick={() => void loadAppointments()}
-            disabled={loadingList}
-            className="inline-flex items-center rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-60"
-          >
-            <FaSyncAlt
-              className={`mr-2 ${loadingList ? "animate-spin" : ""}`}
-            />
-            Làm mới
-          </button>
-        </div>
-      </div>
-
-      {/* ── Calendar view ── */}
-      {viewMode === "calendar" ? (
-        <CalendarView
-          appointments={filteredAppointments.filter((a) => a.status !== "canceled")}
-          patientMap={patientMap}
-          onEdit={openEdit}
-          onStatusChange={handleStatusChange}
-          saving={saving}
-          onCreateAtDate={(date, time) => openCreate(date, time)}
-        />
-      ) : (
-        <>
-          {/* Filters (list mode only) */}
-          <div className="mb-6 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
-              <div className="flex-1">
-                <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
-                  Lọc theo bệnh nhân
-                </label>
-                <PatientSelect
-                  value={filterPatientId}
-                  onChange={(id) => {
-                    setFilterPatientId(id);
-                    setCurrentPage(1);
-                  }}
-                  patients={patientOptions}
-                  disabled={loadingPatients}
-                  placeholder={loadingPatients ? "Đang tải..." : "Tất cả bệnh nhân"}
-                />
-              </div>
-
-              <div className="lg:w-48">
-                <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
-                  Trạng thái
-                </label>
-                <select
-                  value={statusFilter}
-                  onChange={(e) =>
-                    setStatusFilter(e.target.value as AppointmentStatus | "")
-                  }
-                  className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-sm text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                >
-                  {STATUS_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="lg:w-44">
-                <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
-                  Từ ngày
-                </label>
-                <input
-                  type="date"
-                  value={fromDate}
-                  onChange={(e) => setFromDate(e.target.value)}
-                  className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-sm text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-
-              <div className="lg:w-44">
-                <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
-                  Đến ngày
-                </label>
-                <input
-                  type="date"
-                  value={toDate}
-                  onChange={(e) => setToDate(e.target.value)}
-                  className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-sm text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Appointment List */}
-          <div className="rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-semibold text-gray-800 dark:text-slate-100">
-                  Danh sách lịch tái khám
-                </h2>
-                <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
-                  {filteredAppointments.length} lịch hẹn
-                </p>
-              </div>
-            </div>
-
-            {loadingList ? (
-              <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 px-4 py-8 text-center text-sm text-slate-500 dark:text-slate-400">
-                Đang tải...
-              </div>
-            ) : filteredAppointments.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 px-4 py-10 text-center">
-                <FaCalendarAlt className="mx-auto mb-3 text-3xl text-slate-300" />
-                <p className="text-sm text-slate-500 dark:text-slate-400">
-                  Chưa có lịch tái khám nào.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => openCreate()}
-                  className="mt-3 inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-                >
-                  <FaPlus className="mr-2" />
-                  Tạo lịch đầu tiên
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {pagedAppointments.map((appt) => {
-                  const patient = patientMap.get(appt.patientId);
-                  const isExpanded = expandedIds.has(appt.id);
-                  const patientName = patient?.patientName || appt.patientId;
-                  const patientCode =
-                    patient?.patientCode || patient?.patientPublicId || "";
-
-                  return (
-                    <div
-                      key={appt.id}
-                      className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden"
-                    >
-                      {/* Card row */}
-                      <div
-                        className="grid cursor-pointer grid-cols-1 gap-4 p-4 transition-all hover:bg-slate-50 dark:hover:bg-slate-800/60 md:grid-cols-12 md:items-center"
-                        onClick={() => toggleExpand(appt.id)}
-                      >
-                        {/* Patient */}
-                        <div className="md:col-span-4">
-                          <p className="font-semibold text-slate-800 dark:text-slate-100">
-                            {patientName}
-                          </p>
-                          {patientCode && (
-                            <p className="text-xs text-slate-400 mt-0.5">
-                              {patientCode}
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Date/time */}
-                        <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300 md:col-span-4">
-                          <FaCalendarAlt className="shrink-0 text-indigo-400" />
-                          <span>{formatDateTime(appt.scheduledAt)}</span>
-                        </div>
-
-                        {/* Status + chevron */}
-                        <div className="flex items-center justify-between gap-3 md:col-span-4 md:justify-end">
-                          <span
-                            className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${getStatusStyle(appt.status)}`}
-                          >
-                            {getStatusLabel(appt.status)}
-                          </span>
-                          {isExpanded ? (
-                            <FaChevronDown className="text-slate-400 shrink-0" />
-                          ) : (
-                            <FaChevronRight className="text-slate-400 shrink-0" />
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Expanded detail */}
-                      {isExpanded && (
-                        <div className="border-t border-slate-100 dark:border-slate-700 p-4 space-y-3">
-                          {appt.location && (
-                            <div className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-300">
-                              <FaMapMarkerAlt className="mt-0.5 shrink-0 text-slate-400" />
-                              <span>{appt.location}</span>
-                            </div>
-                          )}
-                          {appt.notes && (
-                            <div className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-300">
-                              <FaStickyNote className="mt-0.5 shrink-0 text-slate-400" />
-                              <span>{appt.notes}</span>
-                            </div>
-                          )}
-
-                          {/* Actions */}
-                          <div className="flex flex-wrap gap-2 pt-1">
-                            {appt.status === "scheduled" && (
-                              <button
-                                type="button"
-                                onClick={() => openEdit(appt)}
-                                disabled={saving}
-                                className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
-                              >
-                                <FaEdit className="mr-1" />
-                                Chỉnh sửa
-                              </button>
-                            )}
-                            {appt.status === "scheduled" && (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  void handleStatusChange(appt, "completed")
-                                }
-                                disabled={saving}
-                                className="inline-flex items-center rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 px-3 py-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40"
-                              >
-                                <FaCheckCircle className="mr-1" />
-                                Hoàn thành
-                              </button>
-                            )}
-                            {appt.status === "scheduled" && (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  void handleStatusChange(appt, "canceled")
-                                }
-                                disabled={saving}
-                                className="inline-flex items-center rounded-lg bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 px-3 py-1.5 text-xs font-medium text-rose-600 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/40"
-                              >
-                                <FaTimesCircle className="mr-1" />
-                                Hủy lịch
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="mt-5 flex items-center justify-end border-t border-slate-200 dark:border-slate-700 pt-4">
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setCurrentPage((p) => p - 1)}
-                    disabled={currentPage === 1}
-                    className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm disabled:opacity-50"
-                  >
-                    <FaChevronLeft className="mr-1" />
-                    Trước
-                  </button>
-                  <span className="text-sm text-slate-600 dark:text-slate-300">
-                    {currentPage} / {totalPages}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setCurrentPage((p) => p + 1)}
-                    disabled={currentPage === totalPages}
-                    className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm disabled:opacity-50"
-                  >
-                    Sau
-                    <FaChevronRight className="ml-1" />
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </>
-      )}
-
-      {/* Modal Form */}
-      {isFormOpen && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4 backdrop-blur-sm">
-          <div className="my-8 w-full max-w-lg rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xl">
-            {/* Modal header */}
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 px-6 py-4">
-              <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-800 dark:text-slate-100">
-                <FaCalendarAlt className="text-indigo-500" />
-                {editingId ? "Chỉnh sửa lịch tái khám" : "Đặt lịch tái khám"}
-              </h2>
+          <div className="flex flex-wrap items-center gap-3">
+            {/* View mode switch */}
+            <div className="flex items-center rounded-xl border border-slate-300 dark:border-slate-600 overflow-hidden">
               <button
                 type="button"
-                onClick={closeForm}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                onClick={() => setViewMode("calendar")}
+                title="Xem lịch"
+                className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition ${
+                  viewMode === "calendar"
+                    ? "bg-indigo-600 text-white"
+                    : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                }`}
               >
-                <FaTimes size={18} />
+                <FaCalendarWeek size={13} />
+                <span className="hidden sm:inline">Lịch</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("list")}
+                title="Xem danh sách"
+                className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition ${
+                  viewMode === "list"
+                    ? "bg-indigo-600 text-white"
+                    : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                }`}
+              >
+                <FaThList size={13} />
+                <span className="hidden sm:inline">Danh sách</span>
               </button>
             </div>
 
-            {/* Form */}
-            <form
-              onSubmit={(e) => void handleSubmit(e)}
-              className="space-y-5 p-6"
+            <button
+              type="button"
+              onClick={() => openCreate()}
+              className="inline-flex items-center rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700"
             >
-              {/* Patient */}
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-slate-300">
-                  Bệnh nhân <span className="text-rose-500">*</span>
-                </label>
-                <PatientSelect
-                  value={form.patientId}
-                  onChange={(id) => setForm((f) => ({ ...f, patientId: id }))}
-                  patients={patientOptions}
-                  disabled={!!editingId}
-                />
-                {!!editingId && (
-                  <p className="mt-1 text-xs text-slate-400">
-                    Không thể đổi bệnh nhân khi chỉnh sửa.
-                  </p>
-                )}
-              </div>
+              <FaPlus className="mr-2" />
+              Tạo lịch mới
+            </button>
+            <button
+              type="button"
+              onClick={() => void loadAppointments()}
+              disabled={loadingList}
+              className="inline-flex items-center rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-60"
+            >
+              <FaSyncAlt
+                className={`mr-2 ${loadingList ? "animate-spin" : ""}`}
+              />
+              Làm mới
+            </button>
+          </div>
+        </div>
 
-              {/* Date + Time */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-slate-300">
-                    Ngày tái khám <span className="text-rose-500">*</span>
+        {/* ── Calendar view ── */}
+        {viewMode === "calendar" ? (
+          <CalendarView
+            appointments={filteredAppointments.filter(
+              (a) => a.status !== "canceled",
+            )}
+            patientMap={patientMap}
+            onEdit={openEdit}
+            onStatusChange={handleStatusChange}
+            saving={saving}
+            onCreateAtDate={(date, time) => openCreate(date, time)}
+          />
+        ) : (
+          <>
+            {/* Filters (list mode only) */}
+            <div className="mb-6 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
+                <div className="flex-1">
+                  <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
+                    Lọc theo bệnh nhân
+                  </label>
+                  <PatientSelect
+                    value={filterPatientId}
+                    onChange={(id) => {
+                      setFilterPatientId(id);
+                      setCurrentPage(1);
+                    }}
+                    patients={patientOptions}
+                    disabled={loadingPatients}
+                    placeholder={
+                      loadingPatients ? "Đang tải..." : "Tất cả bệnh nhân"
+                    }
+                  />
+                </div>
+
+                <div className="lg:w-48">
+                  <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
+                    Trạng thái
+                  </label>
+                  <select
+                    value={statusFilter}
+                    onChange={(e) =>
+                      setStatusFilter(e.target.value as AppointmentStatus | "")
+                    }
+                    className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-sm text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    {STATUS_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="lg:w-44">
+                  <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
+                    Từ ngày
                   </label>
                   <input
                     type="date"
-                    required
-                    value={form.date}
-                    min={new Date().toISOString().split("T")[0]}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, date: e.target.value }))
-                    }
+                    value={fromDate}
+                    onChange={(e) => setFromDate(e.target.value)}
                     className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-sm text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-slate-300">
-                    Giờ tái khám <span className="text-rose-500">*</span>
+
+                <div className="lg:w-44">
+                  <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
+                    Đến ngày
                   </label>
                   <input
-                    type="time"
-                    required
-                    value={form.time}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, time: e.target.value }))
-                    }
+                    type="date"
+                    value={toDate}
+                    onChange={(e) => setToDate(e.target.value)}
                     className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-sm text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
               </div>
+            </div>
 
-              {/* Day schedule chart */}
-              {form.date && (
-                <DayScheduleChart
-                  date={form.date}
-                  time={form.time}
-                  onTimeChange={(t) => setForm((f) => ({ ...f, time: t }))}
-                  existingItems={appointmentsOnFormDate.map((a) => ({
-                    id: a.id,
-                    time: toLocalTimeString(a.scheduledAt),
-                    name:
-                      patientMap.get(a.patientId)?.patientName || "Bệnh nhân",
-                    duration: a.durationMinutes,
-                  }))}
-                />
+            {/* Appointment List */}
+            <div className="rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-5">
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-800 dark:text-slate-100">
+                    Danh sách lịch tái khám
+                  </h2>
+                  <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
+                    {filteredAppointments.length} lịch hẹn
+                  </p>
+                </div>
+              </div>
+
+              {loadingList ? (
+                <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 px-4 py-8 text-center text-sm text-slate-500 dark:text-slate-400">
+                  Đang tải...
+                </div>
+              ) : filteredAppointments.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 px-4 py-10 text-center">
+                  <FaCalendarAlt className="mx-auto mb-3 text-3xl text-slate-300" />
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    Chưa có lịch tái khám nào.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => openCreate()}
+                    className="mt-3 inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+                  >
+                    <FaPlus className="mr-2" />
+                    Tạo lịch đầu tiên
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {pagedAppointments.map((appt) => {
+                    const patient = patientMap.get(appt.patientId);
+                    const isExpanded = expandedIds.has(appt.id);
+                    const patientName = patient?.patientName || appt.patientId;
+                    const patientCode =
+                      patient?.patientCode || patient?.patientPublicId || "";
+
+                    return (
+                      <div
+                        key={appt.id}
+                        className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden"
+                      >
+                        {/* Card row */}
+                        <div
+                          className="grid cursor-pointer grid-cols-1 gap-4 p-4 transition-all hover:bg-slate-50 dark:hover:bg-slate-800/60 md:grid-cols-12 md:items-center"
+                          onClick={() => toggleExpand(appt.id)}
+                        >
+                          {/* Patient */}
+                          <div className="md:col-span-4">
+                            <p className="font-semibold text-slate-800 dark:text-slate-100">
+                              {patientName}
+                            </p>
+                            {patientCode && (
+                              <p className="text-xs text-slate-400 mt-0.5">
+                                {patientCode}
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Date/time */}
+                          <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300 md:col-span-4">
+                            <FaCalendarAlt className="shrink-0 text-indigo-400" />
+                            <span>{formatDateTime(appt.scheduledAt)}</span>
+                          </div>
+
+                          {/* Status + chevron */}
+                          <div className="flex items-center justify-between gap-3 md:col-span-4 md:justify-end">
+                            <span
+                              className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${getStatusStyle(appt.status)}`}
+                            >
+                              {getStatusLabel(appt.status)}
+                            </span>
+                            {isExpanded ? (
+                              <FaChevronDown className="text-slate-400 shrink-0" />
+                            ) : (
+                              <FaChevronRight className="text-slate-400 shrink-0" />
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Expanded detail */}
+                        {isExpanded && (
+                          <div className="border-t border-slate-100 dark:border-slate-700 p-4 space-y-3">
+                            {appt.location && (
+                              <div className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-300">
+                                <FaMapMarkerAlt className="mt-0.5 shrink-0 text-slate-400" />
+                                <span>{appt.location}</span>
+                              </div>
+                            )}
+                            {appt.notes && (
+                              <div className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-300">
+                                <FaStickyNote className="mt-0.5 shrink-0 text-slate-400" />
+                                <span>{appt.notes}</span>
+                              </div>
+                            )}
+
+                            {/* Actions */}
+                            <div className="flex flex-wrap gap-2 pt-1">
+                              {appt.status === "scheduled" && (
+                                <button
+                                  type="button"
+                                  onClick={() => openEdit(appt)}
+                                  disabled={saving}
+                                  className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
+                                >
+                                  <FaEdit className="mr-1" />
+                                  Chỉnh sửa
+                                </button>
+                              )}
+                              {appt.status === "scheduled" && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    void handleStatusChange(appt, "completed")
+                                  }
+                                  disabled={saving}
+                                  className="inline-flex items-center rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 px-3 py-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40"
+                                >
+                                  <FaCheckCircle className="mr-1" />
+                                  Hoàn thành
+                                </button>
+                              )}
+                              {appt.status === "scheduled" && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    void handleStatusChange(appt, "canceled")
+                                  }
+                                  disabled={saving}
+                                  className="inline-flex items-center rounded-lg bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 px-3 py-1.5 text-xs font-medium text-rose-600 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/40"
+                                >
+                                  <FaTimesCircle className="mr-1" />
+                                  Hủy lịch
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               )}
 
-              {/* Location */}
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-slate-300">
-                  Địa điểm
-                </label>
-                <LocationCombobox
-                  value={form.location}
-                  onChange={(v) => setForm((f) => ({ ...f, location: v }))}
-                />
-              </div>
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="mt-5 flex items-center justify-end border-t border-slate-200 dark:border-slate-700 pt-4">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage((p) => p - 1)}
+                      disabled={currentPage === 1}
+                      className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm disabled:opacity-50"
+                    >
+                      <FaChevronLeft className="mr-1" />
+                      Trước
+                    </button>
+                    <span className="text-sm text-slate-600 dark:text-slate-300">
+                      {currentPage} / {totalPages}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage((p) => p + 1)}
+                      disabled={currentPage === totalPages}
+                      className="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm disabled:opacity-50"
+                    >
+                      Sau
+                      <FaChevronRight className="ml-1" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </>
+        )}
 
-              {/* Notes */}
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-slate-300">
-                  Ghi chú
-                </label>
-                <textarea
-                  rows={3}
-                  value={form.notes}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, notes: e.target.value }))
-                  }
-                  placeholder="VD: Mang theo kết quả xét nghiệm, nhịn ăn trước 6 giờ"
-                  className="w-full resize-none rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-sm text-gray-900 dark:text-slate-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-
-              {/* Reminder notice */}
-              <div className="rounded-xl bg-indigo-50 dark:bg-indigo-900/20 px-4 py-3 text-xs text-indigo-700 dark:text-indigo-300">
-                Bệnh nhân sẽ nhận thông báo nhắc nhở tự động{" "}
-                <strong>24 giờ trước</strong> giờ tái khám.
-              </div>
-
-              {/* Buttons */}
-              <div className="flex justify-end gap-3 pt-1">
+        {/* Modal Form */}
+        {isFormOpen && (
+          <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4 backdrop-blur-sm">
+            <div className="my-8 w-full max-w-lg rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xl">
+              {/* Modal header */}
+              <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 px-6 py-4">
+                <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-800 dark:text-slate-100">
+                  <FaCalendarAlt className="text-indigo-500" />
+                  {editingId ? "Chỉnh sửa lịch tái khám" : "Đặt lịch tái khám"}
+                </h2>
                 <button
                   type="button"
                   onClick={closeForm}
-                  disabled={saving}
-                  className="rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-5 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-60"
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                 >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving || isConflict}
-                  className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  {saving ? "Đang lưu..." : editingId ? "Cập nhật" : "Đặt lịch"}
+                  <FaTimes size={18} />
                 </button>
               </div>
-            </form>
+
+              {/* Form */}
+              <form
+                onSubmit={(e) => void handleSubmit(e)}
+                className="space-y-5 p-6"
+              >
+                {/* Patient */}
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-slate-300">
+                    Bệnh nhân <span className="text-rose-500">*</span>
+                  </label>
+                  <PatientSelect
+                    value={form.patientId}
+                    onChange={(id) => setForm((f) => ({ ...f, patientId: id }))}
+                    patients={patientOptions}
+                    disabled={!!editingId}
+                  />
+                  {!!editingId && (
+                    <p className="mt-1 text-xs text-slate-400">
+                      Không thể đổi bệnh nhân khi chỉnh sửa.
+                    </p>
+                  )}
+                </div>
+
+                {/* Date + Time */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-slate-300">
+                      Ngày tái khám <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={form.date}
+                      min={new Date().toISOString().split("T")[0]}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, date: e.target.value }))
+                      }
+                      className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-sm text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-slate-300">
+                      Giờ tái khám <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="time"
+                      required
+                      value={form.time}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, time: e.target.value }))
+                      }
+                      className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-sm text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Day schedule chart */}
+                {form.date && (
+                  <DayScheduleChart
+                    date={form.date}
+                    time={form.time}
+                    onTimeChange={(t) => setForm((f) => ({ ...f, time: t }))}
+                    existingItems={appointmentsOnFormDate.map((a) => ({
+                      id: a.id,
+                      time: toLocalTimeString(a.scheduledAt),
+                      name:
+                        patientMap.get(a.patientId)?.patientName || "Bệnh nhân",
+                      duration: a.durationMinutes,
+                    }))}
+                  />
+                )}
+
+                {/* Location */}
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-slate-300">
+                    Địa điểm
+                  </label>
+                  <LocationCombobox
+                    value={form.location}
+                    onChange={(v) => setForm((f) => ({ ...f, location: v }))}
+                  />
+                </div>
+
+                {/* Notes */}
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-slate-300">
+                    Ghi chú
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={form.notes}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, notes: e.target.value }))
+                    }
+                    placeholder="VD: Mang theo kết quả xét nghiệm, nhịn ăn trước 6 giờ"
+                    className="w-full resize-none rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-sm text-gray-900 dark:text-slate-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+
+                {/* Reminder notice */}
+                <div className="rounded-xl bg-indigo-50 dark:bg-indigo-900/20 px-4 py-3 text-xs text-indigo-700 dark:text-indigo-300">
+                  Bệnh nhân sẽ nhận thông báo nhắc nhở tự động{" "}
+                  <strong>24 giờ trước</strong> giờ tái khám.
+                </div>
+
+                {/* Buttons */}
+                <div className="flex justify-end gap-3 pt-1">
+                  <button
+                    type="button"
+                    onClick={closeForm}
+                    disabled={saving}
+                    className="rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-5 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-60"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={saving || isConflict}
+                    className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {saving
+                      ? "Đang lưu..."
+                      : editingId
+                        ? "Cập nhật"
+                        : "Đặt lịch"}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        )}
       </div>
     </div>
   );

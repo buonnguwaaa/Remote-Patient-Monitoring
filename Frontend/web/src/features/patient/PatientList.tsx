@@ -22,7 +22,11 @@ const PatientList = () => {
   // Server-side pagination state
   const [currentPage, setCurrentPage] = useState(1);
 
-  const { data, isLoading: loading, error } = useQuery({
+  const {
+    data,
+    isLoading: loading,
+    error,
+  } = useQuery({
     queryKey: ["patients"],
     staleTime: 0,
     queryFn: async () => {
@@ -31,7 +35,7 @@ const PatientList = () => {
 
       const [assignments, alertsResult] = await Promise.all([
         getMyPatients(),
-        getAlerts({ limit: 1000, page: 1, sortOrder: "desc" })
+        getAlerts({ limit: 1000, page: 1, sortOrder: "desc" }),
       ]);
       const alerts = alertsResult.alerts;
 
@@ -112,7 +116,11 @@ const PatientList = () => {
   const columns: Column<PatientItem>[] = [
     {
       header: t("patients.index"),
-      render: (patient) => <span className="font-bold">{filteredPatients.indexOf(patient) + 1}</span>,
+      render: (patient) => (
+        <span className="font-bold">
+          {filteredPatients.indexOf(patient) + 1}
+        </span>
+      ),
       className: "w-10 px-3",
     },
     {
@@ -192,11 +200,13 @@ const PatientList = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#f5f6fa] font-sans dark:bg-slate-900">
+      <div className="min-h-screen bg-[#f5f6fa] dark:bg-slate-900">
         <div className="w-full px-4 py-8 sm:px-6 lg:px-8">
           <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 p-4 text-red-700 dark:text-red-400">
             <p className="font-semibold">{t("common.error")}</p>
-            <p>{error instanceof Error ? error.message : t("patients.loadError")}</p>
+            <p>
+              {error instanceof Error ? error.message : t("patients.loadError")}
+            </p>
           </div>
         </div>
       </div>
@@ -204,7 +214,7 @@ const PatientList = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#f5f6fa] font-sans dark:bg-slate-900">
+    <div className="min-h-screen bg-[#f5f6fa] dark:bg-slate-900">
       <div className="w-full space-y-4 px-4 py-8 pb-24 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold text-gray-800 dark:text-slate-100">
@@ -212,166 +222,182 @@ const PatientList = () => {
           </h1>
         </div>
 
-      <div className="mb-4 flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900 md:flex-row md:items-center md:justify-between md:gap-4 md:p-4">
-        <div className="w-full flex-1">
-          <input
-            type="text"
-            placeholder={t("patients.searchPlaceholder")}
-            className="w-full rounded-md border-2 border-gray-300 bg-white p-2 text-gray-700 outline-none dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
-            value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-          />
+        <div className="mb-4 flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900 md:flex-row md:items-center md:justify-between md:gap-4 md:p-4">
+          <div className="w-full flex-1">
+            <input
+              type="text"
+              placeholder={t("patients.searchPlaceholder")}
+              className="w-full rounded-md border-2 border-gray-300 bg-white p-2 text-gray-700 outline-none dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+            />
+          </div>
+
+          <div className="w-full md:w-auto">
+            <select
+              className="w-full rounded-md border-2 border-gray-300 bg-white p-2 text-gray-700 outline-none dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+              value={filterStatus}
+              onChange={(event) => setFilterStatus(event.target.value)}
+            >
+              <option value="">{t("patients.allStatuses")}</option>
+              <option value={t("patients.normal")}>
+                {t("patients.normal")}
+              </option>
+              <option value={t("patients.warning")}>
+                {t("patients.warning")}
+              </option>
+            </select>
+          </div>
         </div>
 
-        <div className="w-full md:w-auto">
-          <select
-            className="w-full rounded-md border-2 border-gray-300 bg-white p-2 text-gray-700 outline-none dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
-            value={filterStatus}
-            onChange={(event) => setFilterStatus(event.target.value)}
-          >
-            <option value="">{t("patients.allStatuses")}</option>
-            <option value={t("patients.normal")}>{t("patients.normal")}</option>
-            <option value={t("patients.warning")}>{t("patients.warning")}</option>
-          </select>
-        </div>
-      </div>
-
-      <div className="space-y-3 md:hidden">
-        {loading ? (
-          Array.from({ length: 5 }).map((_, index) => (
-            <div
-              key={`skeleton-${index}`}
-              className="animate-pulse rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"
-            >
-              <div className="mb-2 flex items-start justify-between gap-2">
-                <div className="w-2/3 space-y-2">
-                  <div className="h-3 w-1/4 rounded bg-slate-200 dark:bg-slate-700" />
-                  <div className="h-4 w-3/4 rounded bg-slate-200 dark:bg-slate-700" />
-                  <div className="h-3 w-1/2 rounded bg-slate-200 dark:bg-slate-700" />
+        <div className="space-y-3 md:hidden">
+          {loading ? (
+            Array.from({ length: 5 }).map((_, index) => (
+              <div
+                key={`skeleton-${index}`}
+                className="animate-pulse rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"
+              >
+                <div className="mb-2 flex items-start justify-between gap-2">
+                  <div className="w-2/3 space-y-2">
+                    <div className="h-3 w-1/4 rounded bg-slate-200 dark:bg-slate-700" />
+                    <div className="h-4 w-3/4 rounded bg-slate-200 dark:bg-slate-700" />
+                    <div className="h-3 w-1/2 rounded bg-slate-200 dark:bg-slate-700" />
+                  </div>
+                  <div className="h-6 w-16 rounded-full bg-slate-200 dark:bg-slate-700" />
                 </div>
-                <div className="h-6 w-16 rounded-full bg-slate-200 dark:bg-slate-700" />
-              </div>
-              <div className="mb-3 h-3 w-1/3 rounded bg-slate-200 dark:bg-slate-700" />
-              <div className="grid grid-cols-2 gap-2">
-                <div className="h-9 rounded-lg bg-slate-200 dark:bg-slate-700" />
-                <div className="h-9 rounded-lg bg-slate-200 dark:bg-slate-700" />
-              </div>
-            </div>
-          ))
-        ) : filteredPatients.length === 0 ? (
-          <div className="rounded-xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
-            {t("common.noData")}
-          </div>
-        ) : (
-          paginatedPatients.map((patient: any, index: number) => (
-            <div
-              key={patient.id}
-              className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"
-            >
-              <div className="mb-2 flex items-start justify-between gap-2">
-                <div>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">{t("patients.index")} {(currentPage - 1) * ITEMS_PER_PAGE + index + 1}</p>
-                  <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">{patient.name}</h3>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">{t("patients.patientCode")}: {patient.patientCode}</p>
+                <div className="mb-3 h-3 w-1/3 rounded bg-slate-200 dark:bg-slate-700" />
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="h-9 rounded-lg bg-slate-200 dark:bg-slate-700" />
+                  <div className="h-9 rounded-lg bg-slate-200 dark:bg-slate-700" />
                 </div>
-                {renderStatusBadge(patient.status)}
               </div>
-
-              <div className="mb-3 text-sm text-slate-600 dark:text-slate-300">
-                {t("patients.updatedAt")}: {patient.updatedAt || "-"}
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => navigate(`/patient/chat/${patient.id}`)}
-                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
-                >
-                  <Chat iconSize={18} />
-                  {t("chat.title")}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => navigate(`/patient/${patient.id}`)}
-                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
-                >
-                  <Edit iconSize={16} />
-                  {t("patients.viewDetails")}
-                </button>
-              </div>
+            ))
+          ) : filteredPatients.length === 0 ? (
+            <div className="rounded-xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
+              {t("common.noData")}
             </div>
-          ))
-        )}
+          ) : (
+            paginatedPatients.map((patient: any, index: number) => (
+              <div
+                key={patient.id}
+                className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"
+              >
+                <div className="mb-2 flex items-start justify-between gap-2">
+                  <div>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                      {t("patients.index")}{" "}
+                      {(currentPage - 1) * ITEMS_PER_PAGE + index + 1}
+                    </p>
+                    <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                      {patient.name}
+                    </h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                      {t("patients.patientCode")}: {patient.patientCode}
+                    </p>
+                  </div>
+                  {renderStatusBadge(patient.status)}
+                </div>
 
-        {/* Mobile pagination */}
-        {(totalPages > 1 || loading) && (
-          <div className={`flex justify-center pt-2 ${loading ? "opacity-60 pointer-events-none" : ""}`}>
-            {loading && totalItems === 0 ? (
-              <div className="flex h-8 items-center gap-1">
-                <div className="h-8 w-8 rounded border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800 animate-pulse" />
-                <div className="h-8 w-8 rounded border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800 animate-pulse" />
-                <div className="h-8 w-8 rounded border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800 animate-pulse" />
-                <div className="h-8 w-8 rounded border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800 animate-pulse" />
+                <div className="mb-3 text-sm text-slate-600 dark:text-slate-300">
+                  {t("patients.updatedAt")}: {patient.updatedAt || "-"}
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/patient/chat/${patient.id}`)}
+                    className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+                  >
+                    <Chat iconSize={18} />
+                    {t("chat.title")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/patient/${patient.id}`)}
+                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
+                  >
+                    <Edit iconSize={16} />
+                    {t("patients.viewDetails")}
+                  </button>
+                </div>
               </div>
-            ) : (
-              <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={(page) => !loading && handlePageChange(page)}
-              />
-            )}
-          </div>
-        )}
-      </div>
+            ))
+          )}
 
-      <div className="hidden md:block">
-        <Table
-          data={paginatedPatients}
-          columns={columns}
-          onRowClick={clickedRow}
-          paginated={false}
-          loading={loading}
-          loadingRows={ITEMS_PER_PAGE}
-        />
-
-        {/* Server-side pagination */}
-        {(totalPages > 1 || loading) && (
-          <div className={`mt-4 flex flex-col items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:flex-row ${loading ? "opacity-60 pointer-events-none" : ""}`}>
-            {loading && totalItems === 0 ? (
-              <>
-                <div className="h-4 w-40 rounded bg-slate-100 dark:bg-slate-800 animate-pulse" />
+          {/* Mobile pagination */}
+          {(totalPages > 1 || loading) && (
+            <div
+              className={`flex justify-center pt-2 ${loading ? "opacity-60 pointer-events-none" : ""}`}
+            >
+              {loading && totalItems === 0 ? (
                 <div className="flex h-8 items-center gap-1">
                   <div className="h-8 w-8 rounded border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800 animate-pulse" />
                   <div className="h-8 w-8 rounded border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800 animate-pulse" />
                   <div className="h-8 w-8 rounded border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800 animate-pulse" />
                   <div className="h-8 w-8 rounded border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800 animate-pulse" />
                 </div>
-              </>
-            ) : (
-              <>
-                <p className="text-sm text-slate-500 dark:text-slate-400">
-                  {t("common.showing")}{" "}
-                  <span className="font-medium text-slate-700 dark:text-slate-200">
-                    {(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, totalItems)}
-                  </span>{" "}
-                  {t("common.of")}{" "}
-                  <span className="font-medium text-slate-700 dark:text-slate-200">
-                    {totalItems}
-                  </span>
-                </p>
+              ) : (
                 <Pagination
                   currentPage={currentPage}
                   totalPages={totalPages}
                   onPageChange={(page) => !loading && handlePageChange(page)}
                 />
-              </>
-            )}
-          </div>
-        )}
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="hidden md:block">
+          <Table
+            data={paginatedPatients}
+            columns={columns}
+            onRowClick={clickedRow}
+            paginated={false}
+            loading={loading}
+            loadingRows={ITEMS_PER_PAGE}
+          />
+
+          {/* Server-side pagination */}
+          {(totalPages > 1 || loading) && (
+            <div
+              className={`mt-4 flex flex-col items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:flex-row ${loading ? "opacity-60 pointer-events-none" : ""}`}
+            >
+              {loading && totalItems === 0 ? (
+                <>
+                  <div className="h-4 w-40 rounded bg-slate-100 dark:bg-slate-800 animate-pulse" />
+                  <div className="flex h-8 items-center gap-1">
+                    <div className="h-8 w-8 rounded border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800 animate-pulse" />
+                    <div className="h-8 w-8 rounded border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800 animate-pulse" />
+                    <div className="h-8 w-8 rounded border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800 animate-pulse" />
+                    <div className="h-8 w-8 rounded border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800 animate-pulse" />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    {t("common.showing")}{" "}
+                    <span className="font-medium text-slate-700 dark:text-slate-200">
+                      {(currentPage - 1) * ITEMS_PER_PAGE + 1}–
+                      {Math.min(currentPage * ITEMS_PER_PAGE, totalItems)}
+                    </span>{" "}
+                    {t("common.of")}{" "}
+                    <span className="font-medium text-slate-700 dark:text-slate-200">
+                      {totalItems}
+                    </span>
+                  </p>
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={(page) => !loading && handlePageChange(page)}
+                  />
+                </>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
 };
 
 export default PatientList;
