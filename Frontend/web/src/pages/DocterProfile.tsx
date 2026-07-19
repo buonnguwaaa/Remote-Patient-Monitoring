@@ -253,7 +253,6 @@ const ActivityHistoryTab = () => {
 
       setItems((prev) => (append ? [...prev, ...body.data] : body.data));
       setTotalPages(body.totalPages);
-      setTotal(body.total);
       setPage(body.page);
       setError(null);
     } catch {
