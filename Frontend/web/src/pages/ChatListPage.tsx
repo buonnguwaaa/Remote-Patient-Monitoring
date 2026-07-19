@@ -236,10 +236,10 @@ const ChatListPage = () => {
   };
 
   return (
-    <div className="h-full min-h-screen bg-gray-50 p-2 dark:bg-slate-950 sm:p-4">
-      <div className="grid h-full gap-2 lg:grid-cols-[360px_1fr]">
-        <section className="h-full rounded border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-          <div className="border-b border-slate-200 p-3 dark:border-slate-800">
+    <div className="flex flex-col h-[calc(100vh)] min-h-0 bg-gray-50 p-2 dark:bg-slate-950 sm:p-4 overflow-hidden">
+      <div className="grid flex-1 min-h-0 gap-2 lg:grid-cols-[360px_1fr]">
+        <section className="flex flex-col h-full min-h-0 rounded border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
+          <div className="flex-shrink-0 border-b border-slate-200 p-3 dark:border-slate-800">
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
                 <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400" />
@@ -261,7 +261,7 @@ const ChatListPage = () => {
             </div>
           </div>
 
-          <div className="max-h-[calc(100vh-260px)] overflow-y-auto">
+          <div className="flex-1 min-h-0 overflow-y-auto">
             {loading ? (
               <div className="p-4 text-center text-sm text-slate-500 dark:text-slate-400">
                 {t("chat.loadingConversations")}
@@ -327,11 +327,11 @@ const ChatListPage = () => {
           </div>
         </section>
 
-        <section className="hidden lg:block">
+        <section className="hidden lg:flex lg:flex-col lg:h-full lg:min-h-0 rounded border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
           {selectedPatientId ? (
-            <ChatPage />
+            <ChatPage embedded />
           ) : (
-            <div className="flex h-full flex-col items-center justify-center rounded-lg border border-slate-200 bg-white p-6 text-center text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
+            <div className="flex h-full flex-col items-center justify-center p-6 text-center text-sm text-slate-500 dark:text-slate-400">
               <FaCommentDots className="mb-3 text-3xl text-slate-300 dark:text-slate-600" />
                 {t("chat.selectConversation")}
             </div>

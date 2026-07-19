@@ -1010,7 +1010,7 @@ const ChatPage = ({
   const patientSummary = patient ? getPatientSummary(patient) : "";
   const containerClassName = embedded
     ? "flex h-full min-h-0 flex-col overflow-hidden bg-[#F0F2F5] dark:bg-slate-950"
-    : "flex h-[calc(100vh-2rem)] flex-col overflow-hidden rounded bg-[#F0F2F5] dark:bg-slate-950 dark:ring-1 dark:ring-slate-800/80";
+    : "flex h-[calc(100vh)] min-h-0 flex-col overflow-hidden rounded bg-[#F0F2F5] dark:bg-slate-950 dark:ring-1 dark:ring-slate-800/80";
 
   return (
     <div className={containerClassName}>
@@ -1225,7 +1225,7 @@ const ChatPage = ({
                   <div
                     key={item.key}
                     ref={(node) => { messageRefs.current[item.message.id] = node; }}
-                    className="flex items-start gap-3 px-2"
+                    className="group flex items-start gap-3 px-2"
                   >
                     {/* System avatar */}
                     <div className={`flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center shadow-sm ${
@@ -1236,74 +1236,112 @@ const ChatPage = ({
                       <ShieldAlert size={18} className={isHighSeverity ? "text-red-600 dark:text-red-300" : "text-blue-600 dark:text-blue-300"} />
                     </div>
 
-                    <div className="flex-1 min-w-0 max-w-[80%]">
-                      {/* System sender label */}
-                      <div className="mb-1 flex items-center gap-2">
-                        <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">{t("chat.systemMonitoring")}</span>
-                        {cachedAlert && (
-                          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${isHighSeverity
-                            ? "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300"
-                            : "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300"
-                            }`}>
-                            <AlertTriangle size={9} />
-                            {isHighSeverity ? t("chat.severe") : t("alerts.low", "Cần theo dõi")}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Message card */}
-                      <div className={`rounded-2xl rounded-tl-sm border px-4 py-3 shadow-sm ${
-                        isHighSeverity
-                          ? "border-red-200 bg-red-50 dark:border-red-500/20 dark:bg-red-500/8"
-                          : "border-blue-200 bg-blue-50 dark:border-blue-500/20 dark:bg-blue-500/8"
-                        }`}>
-
-                        {/* Violations grid — shown when alert data is available */}
-                        {violations.length > 0 ? (
-                          <div className="mb-3">
-                            <div className={`mb-2 text-[11px] font-semibold uppercase tracking-wider ${isHighSeverity ? "text-red-600 dark:text-red-300" : "text-blue-600 dark:text-blue-300"
-                              }`}>
-                              {violations.length} chỉ số vượt ngưỡng
-                            </div>
-                            <div className="grid grid-cols-2 gap-2">
-                              {violations.map((v, idx) => (
-                                <div
-                                  key={idx}
-                                  className={`rounded-lg border px-3 py-2 ${
-                                    normalizeAlertSeverity(v.severity) === "high"
-                                      ? "border-red-200/70 bg-red-100/60 dark:border-red-500/20 dark:bg-red-500/10"
-                                      : "border-blue-200/70 bg-blue-100/60 dark:border-blue-500/20 dark:bg-blue-500/10"
-                                    }`}
-                                >
-                                  <div className="text-[11px] font-medium text-slate-600 dark:text-slate-300">{getViolationLabel(v.type, t)}</div>
-                                  <div className={`text-base font-bold ${
-                                    normalizeAlertSeverity(v.severity) === "high"
-                                      ? "text-red-600 dark:text-red-300"
-                                      : "text-blue-600 dark:text-blue-300"
-                                    }`}>{typeof v.observed === 'number' ? Number(v.observed.toFixed(1)) : v.observed}</div>
-                                  <div className="text-[10px] text-slate-500 dark:text-slate-400">Ngưỡng: {typeof v.threshold === 'number' ? Number(v.threshold.toFixed(1)) : v.threshold}</div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        ) : null}
-
-                        {/* Message text */}
-                        <p className={`text-sm leading-relaxed ${
-                          isHighSeverity ? "text-red-900 dark:text-red-100" : "text-blue-900 dark:text-blue-100"
-                          }`}>
-                          {item.message.content}
-                        </p>
-
-                        {/* Time + status */}
-                        <div className="mt-2 text-[10px] text-slate-400 dark:text-slate-500">
-                          {formatDateTime(item.message.createdAt)}
+                    <div className="flex flex-1 items-center gap-2 min-w-0 max-w-[80%]">
+                      <div className="flex-1 min-w-0">
+                        {/* System sender label */}
+                        <div className="mb-1 flex items-center gap-2">
+                          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">{t("chat.systemMonitoring")}</span>
                           {cachedAlert && (
-                            <span className="ml-2">
-                              • {cachedAlert.status === "ack" ? t("chat.acknowledged") : t("chat.pending")}
+                            <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${isHighSeverity
+                              ? "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300"
+                              : "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300"
+                              }`}>
+                              <AlertTriangle size={9} />
+                              {isHighSeverity ? t("chat.severe") : t("alerts.low", "Cần theo dõi")}
                             </span>
                           )}
                         </div>
+
+                        {/* Message card */}
+                        <div
+                          onClick={() => {
+                            if (item.message.relatedAlertId) {
+                              if (onClose) {
+                                onClose();
+                              }
+                              navigate(`/alert/${item.message.relatedAlertId}`);
+                            }
+                          }}
+                          className={`group/alert-card rounded-2xl rounded-tl-sm border px-4 py-3 shadow-sm ${
+                            item.message.relatedAlertId
+                              ? "cursor-pointer transition hover:ring-2 hover:ring-blue-400/50 hover:shadow-md"
+                              : ""
+                          } ${
+                            isHighSeverity
+                              ? "border-red-200 bg-red-50 dark:border-red-500/20 dark:bg-red-500/8"
+                              : "border-blue-200 bg-blue-50 dark:border-blue-500/20 dark:bg-blue-500/8"
+                          }`}
+                        >
+
+                          {/* Violations grid — shown when alert data is available */}
+                          {violations.length > 0 ? (
+                            <div className="mb-3">
+                              <div className={`mb-2 text-[11px] font-semibold uppercase tracking-wider ${isHighSeverity ? "text-red-600 dark:text-red-300" : "text-blue-600 dark:text-blue-300"
+                                }`}>
+                                {violations.length} chỉ số vượt ngưỡng
+                              </div>
+                              <div className="grid grid-cols-2 gap-2">
+                                {violations.map((v, idx) => (
+                                  <div
+                                    key={idx}
+                                    className={`rounded-lg border px-3 py-2 ${
+                                      normalizeAlertSeverity(v.severity) === "high"
+                                        ? "border-red-200/70 bg-red-100/60 dark:border-red-500/20 dark:bg-red-500/10"
+                                        : "border-blue-200/70 bg-blue-100/60 dark:border-blue-500/20 dark:bg-blue-500/10"
+                                      }`}
+                                  >
+                                    <div className="text-[11px] font-medium text-slate-600 dark:text-slate-300">{getViolationLabel(v.type, t)}</div>
+                                    <div className={`text-base font-bold ${
+                                      normalizeAlertSeverity(v.severity) === "high"
+                                        ? "text-red-600 dark:text-red-300"
+                                        : "text-blue-600 dark:text-blue-300"
+                                      }`}>{typeof v.observed === 'number' ? Number(v.observed.toFixed(1)) : v.observed}</div>
+                                    <div className="text-[10px] text-slate-500 dark:text-slate-400">Ngưỡng: {typeof v.threshold === 'number' ? Number(v.threshold.toFixed(1)) : v.threshold}</div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ) : null}
+
+                          {/* Message text */}
+                          <p className={`text-sm leading-relaxed ${
+                            isHighSeverity ? "text-red-900 dark:text-red-100" : "text-blue-900 dark:text-blue-100"
+                            }`}>
+                            {item.message.content}
+                          </p>
+
+                          {/* Time + status */}
+                          <div className="mt-2 flex items-center justify-between text-[10px] text-slate-400 dark:text-slate-500">
+                            <div>
+                              {formatDateTime(item.message.createdAt)}
+                              {cachedAlert && (
+                                <span className="ml-2">
+                                  • {cachedAlert.status === "ack" ? t("chat.acknowledged") : t("chat.pending")}
+                                </span>
+                              )}
+                            </div>
+                            {item.message.relatedAlertId && (
+                              <span className="font-medium text-blue-600 dark:text-blue-400 flex items-center gap-1 group-hover/alert-card:underline">
+                                {t("patients.viewDetails", "Xem chi tiết")} →
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Reply action button (shown on hover) */}
+                      <div className="pointer-events-none flex items-center opacity-0 transition duration-150 group-hover:pointer-events-auto group-hover:opacity-100">
+                        <button
+                          type="button"
+                          title={t("chat.reply", "Trả lời")}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleReplyFromMessage(item.message);
+                          }}
+                          className="rounded-full p-2 text-slate-500 transition hover:bg-slate-200 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                        >
+                          <CornerUpLeft size={16} />
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -1323,8 +1361,10 @@ const ChatPage = ({
                 ? messageLookup.get(item.message.replyToMessageId)
                 : null;
               const repliedSenderLabel = repliedMessage
-                ? repliedMessage.senderId === currentUserId
-                  ? t("chat.you") : patient?.name || [t("chat.patient")] : "";
+                ? repliedMessage.messageSource === "system"
+                  ? t("chat.systemMonitoring")
+                  : repliedMessage.senderId === currentUserId
+                    ? t("chat.you") : patient?.name || [t("chat.patient")] : "";
               const isReadByOtherParticipant =
                 isMe &&
                 hasParticipantReachedMessage(
@@ -1610,8 +1650,10 @@ const ChatPage = ({
                     {t("chat.replyingTo")}
                   </div>
                   <div className="mt-1 text-xs font-medium text-slate-700 dark:text-slate-200">
-                    {replyTarget.senderId === currentUserId
-                      ? t("chat.you") : patient?.name || t("chat.patient")}
+                    {replyTarget.messageSource === "system"
+                      ? t("chat.systemMonitoring")
+                      : replyTarget.senderId === currentUserId
+                        ? t("chat.you") : patient?.name || t("chat.patient")}
                   </div>
                   <div className="mt-1 truncate text-sm text-slate-500 dark:text-slate-400">
                     {getReplyPreviewContent(replyTarget, t)}
