@@ -17,7 +17,7 @@ const FONT_FAMILY_VALUES: Record<FontFamily, string> = {
   system:
     'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   sans: '"Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-  serif: 'Georgia, "Times New Roman", Times, serif',
+  serif: '"Noto Sans", "Source Sans Pro", "Inter", "Open Sans", sans-serif',
   mono: '"Consolas", "Courier New", monospace',
 };
 
@@ -30,7 +30,7 @@ const FONT_SIZE_VALUES: Record<FontSize, string> = {
 // Helper function to get font family options with translations
 export const useFontFamilyOptions = () => {
   const { t } = useTranslation();
-  
+
   return [
     {
       value: "system" as FontFamily,
@@ -62,22 +62,22 @@ export const useFontFamilyOptions = () => {
 // Helper function to get font size options with translations
 export const useFontSizeOptions = () => {
   const { t } = useTranslation();
-  
+
   return [
-    { 
-      value: "small" as FontSize, 
-      label: t("settings.fontSizeOptions.small"), 
-      description: t("settings.fontSizeDescriptions.small") 
+    {
+      value: "small" as FontSize,
+      label: t("settings.fontSizeOptions.small"),
+      description: t("settings.fontSizeDescriptions.small"),
     },
-    { 
-      value: "medium" as FontSize, 
-      label: t("settings.fontSizeOptions.medium"), 
-      description: t("settings.fontSizeDescriptions.medium") 
+    {
+      value: "medium" as FontSize,
+      label: t("settings.fontSizeOptions.medium"),
+      description: t("settings.fontSizeDescriptions.medium"),
     },
-    { 
-      value: "large" as FontSize, 
-      label: t("settings.fontSizeOptions.large"), 
-      description: t("settings.fontSizeDescriptions.large") 
+    {
+      value: "large" as FontSize,
+      label: t("settings.fontSizeOptions.large"),
+      description: t("settings.fontSizeDescriptions.large"),
     },
   ];
 };
@@ -115,7 +115,7 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   const getInitialTheme = (): Theme => {
     const stored = localStorage.getItem(STORAGE_KEYS.theme);
     if (isTheme(stored)) return stored;
-    return getSystemTheme();
+    return "light";
   };
 
   const getInitialFontFamily = (): FontFamily => {
@@ -156,7 +156,7 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
     setTheme((prev) => (prev === "dark" ? "light" : "dark"));
 
   const resetAppearance = () => {
-    setTheme(getSystemTheme());
+    setTheme("light");
     setFontFamily("system");
     setFontSize("medium");
   };

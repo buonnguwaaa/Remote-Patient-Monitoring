@@ -358,7 +358,9 @@ Remote-Patient-Monitoring/
 │   │   ├── temporal/                 # Workflows, activities, worker setup
 │   │   └── fcm/                      # Firebase push client
 │   ├── config/                       # MongoDB, Redis, OAuth, Cloudinary
-│   ├── migration/seed/               # Seed data generators
+│   ├── migration/
+│   │   ├── cmd/                      # Seed & one-off migration CLIs
+│   │   └── seed/                     # Seed data generators
 │   ├── docker-compose.yml            # Dev: Temporal + Redis
 │   ├── docker-compose.prod.yml       # Prod: full stack with nginx
 │   └── Makefile                      # run, seed, up-dev, gen_swagger, …

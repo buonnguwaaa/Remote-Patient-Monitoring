@@ -20,12 +20,20 @@ const (
 	StatusAck  Status = "ack"
 )
 
+type ViolationSource string
+
+const (
+	ViolationSourceThreshold ViolationSource = "threshold"
+	ViolationSourceTrend     ViolationSource = "trend"
+)
+
 type ThresholdViolation struct {
-	Type      string   `json:"type" bson:"type"`           // "temperature" | "spo2" | "heartRate"...
-	Rule      string   `json:"rule" bson:"rule"`           // "temperature_max"
-	Observed  float64  `json:"observed" bson:"observed"`   // 40
-	Threshold float64  `json:"threshold" bson:"threshold"` // 38
-	Severity  Severity `json:"severity" bson:"severity"`   // high
+	Type      string          `json:"type" bson:"type"`           // "temperature" | "spo2" | "heartRate"...
+	Rule      string          `json:"rule" bson:"rule"`           // "temperature_max"
+	Observed  float64         `json:"observed" bson:"observed"`   // 40
+	Threshold float64         `json:"threshold" bson:"threshold"` // 38
+	Severity  Severity        `json:"severity" bson:"severity"`   // high
+	Source    ViolationSource `json:"source" bson:"source"`       // threshold | trend
 }
 
 type Alert struct {

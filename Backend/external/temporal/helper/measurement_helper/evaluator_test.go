@@ -144,6 +144,9 @@ func TestEvaluateMeasurementPersonalBreachInfoWhenBelowClinicalDistance(t *testi
 	if violations[0].Severity != domain.SeverityInfo {
 		t.Fatalf("got %q want info", violations[0].Severity)
 	}
+	if violations[0].Source != domain.ViolationSourceThreshold {
+		t.Fatalf("got source %q want threshold", violations[0].Source)
+	}
 }
 
 func TestEvaluateMeasurementMaxOfDeviationAndClinical(t *testing.T) {
@@ -183,6 +186,9 @@ func TestEvaluateMeasurementPersonalBreachHighWhenClinicalCutoffHit(t *testing.T
 	for _, violation := range violations {
 		if violation.Severity != domain.SeverityHigh {
 			t.Fatalf("%s: got %q want high", violation.Type, violation.Severity)
+		}
+		if violation.Source != domain.ViolationSourceThreshold {
+			t.Fatalf("%s: got source %q want threshold", violation.Type, violation.Source)
 		}
 	}
 }

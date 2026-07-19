@@ -201,7 +201,7 @@ func NewMainServerContainer() *MainServerContainer {
 	c.ChatHandler = handler.NewChatHandler(c.ChatService)
 	c.NotificationTokenHandler = handler.NewNotificationTokenHandler(c.NotificationService)
 	c.NotificationHandler = handler.NewNotificationHandler(c.NotificationService)
-	c.ActivityLogHandler = handler.NewActivityLogHandler(c.ActivityLogRepo)
+	c.ActivityLogHandler = handler.NewActivityLogHandler(c.ActivityLogRepo, c.AssignmentRepo)
 
 	// Wire RealtimePublisher into VideoSessionService after it is created below.
 	c.Hub = ws.NewHub()

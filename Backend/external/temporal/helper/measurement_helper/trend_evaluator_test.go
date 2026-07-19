@@ -229,6 +229,9 @@ func TestEvaluateRisingTrendsEdgeTrigger(t *testing.T) {
 	if vs[0].Rule != "trend_rising_watch" {
 		t.Fatalf("rule=%s", vs[0].Rule)
 	}
+	if vs[0].Source != domain.ViolationSourceTrend {
+		t.Fatalf("source=%q want trend", vs[0].Source)
+	}
 	if vs[0].Threshold != absSysMax {
 		t.Fatalf("no personal → threshold should be clinical %v, got %v", absSysMax, vs[0].Threshold)
 	}
@@ -359,6 +362,9 @@ func TestEvaluateFallingGlucoseTrendsEdgeAndPersonalFloor(t *testing.T) {
 	vs := EvaluateFallingGlucoseTrends(ms[:entryIdx+1], &ms[entryIdx], nil, true)
 	if len(vs) != 1 || vs[0].Rule != "trend_falling_watch" {
 		t.Fatalf("expected falling watch edge, got %+v", vs)
+	}
+	if vs[0].Source != domain.ViolationSourceTrend {
+		t.Fatalf("source=%q want trend", vs[0].Source)
 	}
 	if vs[0].Threshold != absGlucoseHypo {
 		t.Fatalf("threshold=%v want clinical hypo %v", vs[0].Threshold, absGlucoseHypo)

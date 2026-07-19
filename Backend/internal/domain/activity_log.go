@@ -27,6 +27,8 @@ type ActivityLog struct {
 	Action     string             `bson:"action" json:"action"`
 	Resource   string             `bson:"resource,omitempty" json:"resource,omitempty"`     // e.g., "doctor", "patient", "department"
 	ResourceID string             `bson:"resourceId,omitempty" json:"resourceId,omitempty"` // ID of the affected resource
+	// PatientID links the event to a patient chart when known (clinical / account history).
+	PatientID  *primitive.ObjectID `bson:"patientId,omitempty" json:"patientId,omitempty"`
 	Method     string             `bson:"method,omitempty" json:"method,omitempty"`         // HTTP method
 	Path       string             `bson:"path,omitempty" json:"path,omitempty"`             // API path
 	IPAddress  string             `bson:"ipAddress,omitempty" json:"ipAddress,omitempty"`   // Client IP

@@ -26,8 +26,8 @@ import (
 //
 // Usage (from Backend/):
 //
-//	go run ./cmd/migrate_phi_encrypt
-//	go run ./cmd/migrate_phi_encrypt --dry-run
+//	go run ./migration/cmd/migrate_phi_encrypt
+//	go run ./migration/cmd/migrate_phi_encrypt --dry-run
 func main() {
 	dryRun := false
 	for _, arg := range os.Args[1:] {

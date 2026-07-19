@@ -89,7 +89,9 @@ const StatsHeader: React.FC<StatsHeaderProps> = ({
               }}
               className="text-xl font-semibold transition-colors"
             >
-              {typeof stat.value === "number" ? stat.value.toLocaleString() : stat.value}
+              {typeof stat.value === "number"
+                ? stat.value.toLocaleString()
+                : stat.value}
             </span>
           </button>
         );
@@ -106,40 +108,62 @@ const makeCustomTooltip = (isDark: boolean, t: any) => {
 
     return (
       <div
-        className={`rounded-lg border p-3 text-sm shadow-lg ${isDark
+        className={`rounded-lg border p-3 text-sm shadow-lg ${
+          isDark
             ? "border-slate-600 bg-slate-800 text-slate-100"
             : "border-gray-200 bg-white text-gray-800"
-          }`}
+        }`}
       >
         <p
-          className={`mb-1 font-semibold ${isDark ? "text-slate-100" : "text-gray-800"
-            }`}
+          className={`mb-1 font-semibold ${
+            isDark ? "text-slate-100" : "text-gray-800"
+          }`}
         >
           {label}
         </p>
         <div className="space-y-1">
           <p className="text-emerald-500">
-            <span className="font-medium">{t("dashboard.stablePatients") || "Ổn định"}:</span>{" "}
-            {payload.find((p: any) => p.dataKey === "stablePatients")?.value?.toLocaleString() || 0}
+            <span className="font-medium">
+              {t("dashboard.stablePatients") || "Ổn định"}:
+            </span>{" "}
+            {payload
+              .find((p: any) => p.dataKey === "stablePatients")
+              ?.value?.toLocaleString() || 0}
           </p>
           <p className="text-amber-500">
-            <span className="font-medium">{t("dashboard.needAttention") || "Cần theo dõi"}:</span>{" "}
-            {payload.find((p: any) => p.dataKey === "needsMonitoringPatients")?.value?.toLocaleString() || 0}
+            <span className="font-medium">
+              {t("dashboard.needAttention") || "Cần theo dõi"}:
+            </span>{" "}
+            {payload
+              .find((p: any) => p.dataKey === "needsMonitoringPatients")
+              ?.value?.toLocaleString() || 0}
           </p>
           <p className="text-red-500">
-            <span className="font-medium">{t("dashboard.highPriority") || "Ưu tiên cao"}:</span>{" "}
-            {payload.find((p: any) => p.dataKey === "highPriorityPatients")?.value?.toLocaleString() || 0}
+            <span className="font-medium">
+              {t("dashboard.highPriority") || "Ưu tiên cao"}:
+            </span>{" "}
+            {payload
+              .find((p: any) => p.dataKey === "highPriorityPatients")
+              ?.value?.toLocaleString() || 0}
           </p>
           <p
-            className={`mt-1 border-t pt-1 ${isDark
+            className={`mt-1 border-t pt-1 ${
+              isDark
                 ? "border-slate-600 text-slate-300"
                 : "border-gray-100 text-gray-600"
-              }`}
+            }`}
           >
-            <span className="font-medium">{t("dashboard.total") || "Tổng:"}</span>{" "}
-            {((payload.find((p: any) => p.dataKey === "stablePatients")?.value ?? 0) +
-              (payload.find((p: any) => p.dataKey === "needsMonitoringPatients")?.value ?? 0) +
-              (payload.find((p: any) => p.dataKey === "highPriorityPatients")?.value ?? 0)).toLocaleString()}
+            <span className="font-medium">
+              {t("dashboard.total") || "Tổng:"}
+            </span>{" "}
+            {(
+              (payload.find((p: any) => p.dataKey === "stablePatients")
+                ?.value ?? 0) +
+              (payload.find((p: any) => p.dataKey === "needsMonitoringPatients")
+                ?.value ?? 0) +
+              (payload.find((p: any) => p.dataKey === "highPriorityPatients")
+                ?.value ?? 0)
+            ).toLocaleString()}
           </p>
         </div>
       </div>
@@ -173,7 +197,7 @@ export const Chart: React.FC<ChartProps> = ({
   };
 
   return (
-    <div className="w-full font-sans transition-colors">
+    <div className="w-full transition-colors">
       <StatsHeader
         stats={stats}
         activeTabId={activeTab}
@@ -186,12 +210,15 @@ export const Chart: React.FC<ChartProps> = ({
           <div className="flex h-[256px] flex-col justify-end space-y-4 px-4 pb-4 animate-pulse">
             <div className="flex h-full items-end justify-between space-x-6">
               {[...Array(6)].map((_, i) => (
-                <div key={i} className="flex flex-1 items-end space-x-2 h-full pt-4">
-                  <div 
+                <div
+                  key={i}
+                  className="flex flex-1 items-end space-x-2 h-full pt-4"
+                >
+                  <div
                     className="w-full bg-slate-200 dark:bg-slate-700 rounded-t"
                     style={{ height: `${25 + (i % 3) * 20}%` }}
                   />
-                  <div 
+                  <div
                     className="w-full bg-slate-100 dark:bg-slate-800 rounded-t"
                     style={{ height: `${15 + (i % 2) * 15}%` }}
                   />
@@ -201,13 +228,17 @@ export const Chart: React.FC<ChartProps> = ({
             <div className="h-px bg-slate-200 dark:bg-slate-700 w-full" />
             <div className="flex justify-between px-2">
               {[...Array(6)].map((_, i) => (
-                <div key={i} className="h-3 w-8 bg-slate-200 dark:bg-slate-700 rounded" />
+                <div
+                  key={i}
+                  className="h-3 w-8 bg-slate-200 dark:bg-slate-700 rounded"
+                />
               ))}
             </div>
           </div>
         ) : chartData.length === 0 ? (
           <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-gray-200 text-sm text-gray-400 dark:border-slate-700 dark:text-slate-500">
-            {t("dashboard.noChartData") || "Chưa có dữ liệu để hiển thị biểu đồ."}
+            {t("dashboard.noChartData") ||
+              "Chưa có dữ liệu để hiển thị biểu đồ."}
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
@@ -274,7 +305,10 @@ export const Chart: React.FC<ChartProps> = ({
           className="mt-4 flex items-center justify-between gap-4 pt-3"
         >
           <div style={{ color: footerText }} className="text-xs">
-            {t("dashboard.showing") || "Hiển thị"} {activeTab === "week" ? t("dashboard.last4Weeks") || "4 tuần gần đây" : t("dashboard.last4Months") || "4 tháng gần đây"}
+            {t("dashboard.showing") || "Hiển thị"}{" "}
+            {activeTab === "week"
+              ? t("dashboard.last4Weeks") || "4 tuần gần đây"
+              : t("dashboard.last4Months") || "4 tháng gần đây"}
           </div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-1.5">

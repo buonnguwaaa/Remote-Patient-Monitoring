@@ -234,6 +234,7 @@ func evaluateDirectedTrends(history []domain.Measurement, current *domain.Measur
 			Observed:  observed,
 			Threshold: displayLimit,
 			Severity:  sev,
+			Source:    domain.ViolationSourceTrend,
 		})
 	}
 

@@ -10,11 +10,29 @@ import (
 func RegisterActivityLogRoutes(r *gin.Engine, c *container.MainServerContainer) {
 	activityLogGroup := r.Group("/activity-logs")
 	activityLogGroup.Use(middleware.JWTAuthMiddleware(c.JWTManager, c.TokenBlacklistRepo))
-	activityLogGroup.Use(middleware.RequireRoles(domain.RoleAdmin))
 	{
-		activityLogGroup.GET("", c.ActivityLogHandler.GetActivityLogs)
-		activityLogGroup.GET("/stats", c.ActivityLogHandler.GetActivityLogStats)
-		activityLogGroup.DELETE("/cleanup-access", c.ActivityLogHandler.CleanupAccessLogs)
-		activityLogGroup.DELETE("/:id", c.ActivityLogHandler.DeleteActivityLog)
+		// Admin: full raw activity log browser (append-only, no DELETE).
+		activityLogGroup.GET("",
+			middleware.RequireRoles(domain.RoleAdmin),
+			c.ActivityLogHandler.GetActivityLogs,
+		)
+		activityLogGroup.GET("/stats",
+			middleware.RequireRoles(domain.RoleAdmin),
+			c.ActivityLogHandler.GetActivityLogStats,
+		)
+
+		// Doctor/nurse: clinical history for an assigned patient chart
+		// (includes everyone's actions on that chart, including their own).
+		activityLogGroup.GET("/clinical",
+			middleware.RequireRoles(domain.RoleDoctor, domain.RoleNurse),
+			c.ActivityLogHandler.GetClinicalHistory,
+		)
+
+		// Patient: who updated my chart.
+		// Doctor/nurse: my own clinical write actions (across patients).
+		activityLogGroup.GET("/me",
+			middleware.RequireRoles(domain.RolePatient, domain.RoleDoctor, domain.RoleNurse),
+			c.ActivityLogHandler.GetMyAccountActivity,
+		)
 	}
 }

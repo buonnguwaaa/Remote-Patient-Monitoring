@@ -29,7 +29,8 @@ func NewActivityLoggerMiddleware(repo *repository.ActivityLogRepository, baseUse
 	}
 }
 
-// LogActivity logs admin activities
+// LogActivity logs write activities (POST/PUT/PATCH/DELETE) for admin, doctor,
+// nurse, and patient. GET requests are intentionally not logged.
 func (m *ActivityLoggerMiddleware) LogActivity() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Capture request body for POST/PUT/PATCH before processing
@@ -59,7 +60,6 @@ func (m *ActivityLoggerMiddleware) LogActivity() gin.HandlerFunc {
 
 		// Special handling for login endpoint (no JWT required)
 		if strings.Contains(c.Request.URL.Path, "/auth/login") && c.Request.Method == "POST" {
-			log.Printf("[ActivityLogger] Detected login request")
 			m.logLoginActivity(c, requestBody)
 			return
 		}
@@ -69,17 +69,13 @@ func (m *ActivityLoggerMiddleware) LogActivity() gin.HandlerFunc {
 		roleVal, roleExists := c.Get("role")
 
 		if !roleExists || !userIDExists {
-			log.Printf("[ActivityLogger] Skipping - no userId or role in context for path: %s", c.Request.URL.Path)
 			return
 		}
 
 		role, ok := roleVal.(domainUser.Role)
-		if !ok || role != domainUser.RoleAdmin {
-			log.Printf("[ActivityLogger] Skipping - user is not admin (role: %v) for path: %s", roleVal, c.Request.URL.Path)
+		if !ok || !isAuditableRole(role) {
 			return
 		}
-
-		log.Printf("[ActivityLogger] Logging activity for admin user: %s, path: %s", userIDStr, c.Request.URL.Path)
 
 		userID, err := primitive.ObjectIDFromHex(userIDStr.(string))
 		if err != nil {
@@ -87,8 +83,7 @@ func (m *ActivityLoggerMiddleware) LogActivity() gin.HandlerFunc {
 			return
 		}
 
-		// Get user name from database
-		userName := "Admin"
+		userName := defaultDisplayName(role)
 		if user, err := m.baseUserRepo.FindByID(c.Request.Context(), userID); err == nil && user != nil {
 			userName = user.Name
 		}
@@ -97,34 +92,22 @@ func (m *ActivityLoggerMiddleware) LogActivity() gin.HandlerFunc {
 		activityType, action := determineActivityTypeAndAction(c.Request.Method, c.Request.URL.Path, c.Writer.Status())
 
 		// Add metadata for certain operations
-		metadata := make(map[string]any)
-		if len(requestBody) > 0 {
-			var bodyMap map[string]interface{}
-			if err := json.Unmarshal(requestBody, &bodyMap); err == nil {
-				// Only store non-sensitive data
-				for key, value := range bodyMap {
-					// Skip sensitive fields
-					if !isSensitiveField(key) {
-						metadata[key] = value
-					}
-				}
-			}
-		}
+		metadata := sanitizeActivityMetadata(requestBody)
 
 		// Skip if request only contains status field (status updates are logged with main update)
 		if len(metadata) == 1 {
 			if _, hasStatus := metadata["status"]; hasStatus {
-				log.Printf("[ActivityLogger] Skipping status-only update for path: %s", c.Request.URL.Path)
 				return
 			}
 		}
 
-		// Enhance action message with metadata
 		if len(metadata) > 0 {
 			action = enhanceActionMessage(action, metadata)
 		}
 
-		// Create activity log
+		resource := extractResource(c.Request.URL.Path)
+		resourceID := extractResourceID(c.Request.URL.Path)
+
 		activityLog := &domain.ActivityLog{
 			ID:         primitive.NewObjectID(),
 			UserID:     userID,
@@ -132,8 +115,8 @@ func (m *ActivityLoggerMiddleware) LogActivity() gin.HandlerFunc {
 			UserRole:   string(role),
 			Type:       activityType,
 			Action:     action,
-			Resource:   extractResource(c.Request.URL.Path),
-			ResourceID: extractResourceID(c.Request.URL.Path),
+			Resource:   resource,
+			ResourceID: resourceID,
 			Method:     c.Request.Method,
 			Path:       c.Request.URL.Path,
 			IPAddress:  c.ClientIP(),
@@ -142,18 +125,17 @@ func (m *ActivityLoggerMiddleware) LogActivity() gin.HandlerFunc {
 			CreatedAt:  time.Now(),
 		}
 
-		// Add metadata if not empty
+		if patientID := resolvePatientID(c.Request.URL.Path, resource, resourceID, metadata, role, userID); patientID != nil {
+			activityLog.PatientID = patientID
+		}
+
 		if len(metadata) > 0 {
 			activityLog.Metadata = metadata
 		}
 
-		// Save log synchronously to ensure it's saved
 		if err := m.repo.Create(c.Request.Context(), activityLog); err != nil {
-			// Log error but don't fail the request
 			log.Printf("[ActivityLogger] Error saving activity log: %v", err)
 			_ = c.Error(err)
-		} else {
-			log.Printf("[ActivityLogger] Successfully saved activity log: %s - %s", userName, action)
 		}
 	}
 }
@@ -165,28 +147,18 @@ func (m *ActivityLoggerMiddleware) logLoginActivity(c *gin.Context, requestBody 
 		Email string `json:"email"`
 	}
 	if err := json.Unmarshal(requestBody, &loginReq); err != nil || loginReq.Email == "" {
-		log.Printf("[ActivityLogger] Login - failed to parse email from request body: %v", err)
 		return
 	}
 
-	log.Printf("[ActivityLogger] Login - looking up user by email: %s", loginReq.Email)
-
-	// Find user by email to get user info
 	user, err := m.baseUserRepo.FindByEmail(c.Request.Context(), loginReq.Email)
 	if err != nil || user == nil {
-		log.Printf("[ActivityLogger] Login - user not found: %v", err)
 		return
 	}
 
-	log.Printf("[ActivityLogger] Login - found user: %s, role: %s", user.Name, user.Role)
-
-	// Only log admin logins
-	if user.Role != domainUser.RoleAdmin {
-		log.Printf("[ActivityLogger] Login - user is not admin, skipping")
+	if !isAuditableRole(user.Role) {
 		return
 	}
 
-	// Create activity log
 	activityLog := &domain.ActivityLog{
 		ID:         primitive.NewObjectID(),
 		UserID:     user.ID,
@@ -203,13 +175,33 @@ func (m *ActivityLoggerMiddleware) logLoginActivity(c *gin.Context, requestBody 
 		CreatedAt:  time.Now(),
 	}
 
-	// Save log synchronously for login to ensure it's saved
 	if err := m.repo.Create(c.Request.Context(), activityLog); err != nil {
-		// Log error but don't fail the request
 		log.Printf("[ActivityLogger] Login - error saving activity log: %v", err)
 		_ = c.Error(err)
-	} else {
-		log.Printf("[ActivityLogger] Login - successfully saved activity log for: %s", user.Name)
+	}
+}
+
+func isAuditableRole(role domainUser.Role) bool {
+	switch role {
+	case domainUser.RoleAdmin, domainUser.RoleDoctor, domainUser.RoleNurse, domainUser.RolePatient:
+		return true
+	default:
+		return false
+	}
+}
+
+func defaultDisplayName(role domainUser.Role) string {
+	switch role {
+	case domainUser.RoleAdmin:
+		return "Admin"
+	case domainUser.RoleDoctor:
+		return "Bác sĩ"
+	case domainUser.RoleNurse:
+		return "Y tá"
+	case domainUser.RolePatient:
+		return "Bệnh nhân"
+	default:
+		return "User"
 	}
 }
 
@@ -218,9 +210,12 @@ func shouldSkipLogging(path string) bool {
 	skipPaths := []string{
 		"/activity-logs",
 		"/auth/me",
+		"/auth/refresh",
 		"/health",
 		"/metrics",
 		"/swagger",
+		"/notification-tokens",
+		"/realtime",
 	}
 
 	for _, skipPath := range skipPaths {
@@ -267,66 +262,123 @@ func determineActivityTypeAndAction(method, path string, statusCode int) (domain
 
 // generateCreateAction generates a human-readable create action
 func generateCreateAction(path string) string {
-	if strings.Contains(path, "/doctors") {
+	switch {
+	case strings.Contains(path, "/doctors"):
 		return "Thêm bác sĩ mới"
-	} else if strings.Contains(path, "/nurses") {
-		return "Thêm y tá mới"
-	} else if strings.Contains(path, "/patients") {
+	case strings.Contains(path, "/nurses"):
+		return "Thêm điều dưỡng mới"
+	case strings.Contains(path, "/patients"):
 		return "Thêm bệnh nhân mới"
-	} else if strings.Contains(path, "/departments") {
-		if strings.Contains(path, "/members") {
-			return "Thêm thành viên vào khoa/phòng"
-		}
+	case strings.Contains(path, "/departments") && strings.Contains(path, "/members"):
+		return "Thêm thành viên vào khoa/phòng"
+	case strings.Contains(path, "/departments"):
 		return "Tạo khoa/phòng mới"
-	} else if strings.Contains(path, "/assignments") {
+	case strings.Contains(path, "/assignments"):
 		return "Tạo phân công mới"
-	} else if strings.Contains(path, "/thresholds") {
+	case strings.Contains(path, "/thresholds"):
 		return "Tạo ngưỡng cảnh báo mới"
+	case strings.Contains(path, "/measurements"):
+		return "Ghi nhận chỉ số sức khỏe"
+	case strings.Contains(path, "/prescriptions"):
+		return "Tạo đơn thuốc mới"
+	case strings.Contains(path, "/medication-intakes"):
+		return "Ghi nhận uống thuốc"
+	case strings.Contains(path, "/reminders"):
+		return "Tạo nhắc nhở mới"
+	case strings.Contains(path, "/follow-up-appointments"):
+		return "Tạo lịch tái khám mới"
+	case strings.Contains(path, "/alerts"):
+		return "Tạo cảnh báo mới"
+	case strings.Contains(path, "/messages") || strings.Contains(path, "/chat"):
+		return "Gửi tin nhắn"
+	case strings.Contains(path, "/video-sessions"):
+		return "Tạo phiên gọi video"
+	case strings.Contains(path, "/auth/logout"):
+		return "Đăng xuất khỏi hệ thống"
+	default:
+		return "Tạo mới: " + extractResource(path)
 	}
-	return "Tạo mới: " + extractResource(path)
 }
 
 // generateUpdateAction generates a human-readable update action
 func generateUpdateAction(path string) string {
-	if strings.Contains(path, "/doctors") {
+	switch {
+	case strings.Contains(path, "/doctors"):
 		return "Cập nhật thông tin bác sĩ"
-	} else if strings.Contains(path, "/nurses") {
-		return "Cập nhật thông tin y tá"
-	} else if strings.Contains(path, "/patients") {
+	case strings.Contains(path, "/nurses"):
+		return "Cập nhật thông tin điều dưỡng"
+	case strings.Contains(path, "/patients"):
 		return "Cập nhật thông tin bệnh nhân"
-	} else if strings.Contains(path, "/departments") {
+	case strings.Contains(path, "/departments"):
 		return "Cập nhật thông tin khoa/phòng"
-	} else if strings.Contains(path, "/assignments") {
+	case strings.Contains(path, "/assignments"):
 		return "Cập nhật phân công"
-	} else if strings.Contains(path, "/thresholds") {
+	case strings.Contains(path, "/thresholds"):
 		return "Cập nhật ngưỡng cảnh báo"
-	} else if strings.Contains(path, "/status") {
+	case strings.Contains(path, "/measurements"):
+		return "Cập nhật chỉ số sức khỏe"
+	case strings.Contains(path, "/prescriptions"):
+		return "Cập nhật đơn thuốc"
+	case strings.Contains(path, "/reminders"):
+		return "Cập nhật nhắc nhở"
+	case strings.Contains(path, "/follow-up-appointments"):
+		return "Cập nhật lịch tái khám"
+	case strings.Contains(path, "/alerts"):
+		return "Cập nhật cảnh báo"
+	case strings.Contains(path, "/status"):
 		return "Cập nhật trạng thái"
+	default:
+		return "Cập nhật: " + extractResource(path)
 	}
-	return "Cập nhật: " + extractResource(path)
 }
 
 // generateDeleteAction generates a human-readable delete action
 func generateDeleteAction(path string) string {
-	if strings.Contains(path, "/doctors") {
+	switch {
+	case strings.Contains(path, "/doctors"):
 		return "Xóa bác sĩ"
-	} else if strings.Contains(path, "/nurses") {
-		return "Xóa y tá"
-	} else if strings.Contains(path, "/patients") {
+	case strings.Contains(path, "/nurses"):
+		return "Xóa điều dưỡng"
+	case strings.Contains(path, "/patients"):
 		return "Xóa bệnh nhân"
-	} else if strings.Contains(path, "/departments") {
+	case strings.Contains(path, "/departments"):
 		return "Xóa khoa/phòng"
-	} else if strings.Contains(path, "/assignments") {
+	case strings.Contains(path, "/assignments"):
 		return "Xóa phân công"
-	} else if strings.Contains(path, "/thresholds") {
+	case strings.Contains(path, "/thresholds"):
 		return "Xóa ngưỡng cảnh báo"
+	case strings.Contains(path, "/measurements"):
+		return "Xóa chỉ số sức khỏe"
+	case strings.Contains(path, "/prescriptions"):
+		return "Xóa đơn thuốc"
+	case strings.Contains(path, "/reminders"):
+		return "Xóa nhắc nhở"
+	case strings.Contains(path, "/follow-up-appointments"):
+		return "Xóa lịch tái khám"
+	case strings.Contains(path, "/alerts"):
+		return "Xóa cảnh báo"
+	default:
+		return "Xóa: " + extractResource(path)
 	}
-	return "Xóa: " + extractResource(path)
 }
 
-// extractResource extracts the resource name from the path
+// extractResource extracts the resource name from the path.
+// Prefers clinical resource segments when nested under /users/...
 func extractResource(path string) string {
 	parts := strings.Split(strings.Trim(path, "/"), "/")
+	preferred := []string{
+		"measurements", "prescriptions", "medication-intakes", "alerts",
+		"thresholds", "reminders", "follow-up-appointments", "messages",
+		"chat", "video-sessions", "patients", "assignments", "departments",
+		"doctors", "nurses",
+	}
+	for _, part := range parts {
+		for _, name := range preferred {
+			if part == name {
+				return name
+			}
+		}
+	}
 	if len(parts) > 0 {
 		return parts[0]
 	}
@@ -347,81 +399,128 @@ func extractResourceID(path string) string {
 	return ""
 }
 
-// isSensitiveField checks if a field name is sensitive
-func isSensitiveField(fieldName string) bool {
-	sensitiveFields := []string{
-		"password",
-		"confirmedPassword",
-		"token",
-		"refreshToken",
-		"secret",
-		"apiKey",
-		"accessToken",
-		"phone",
-		"cccd",
-		"insuranceNumber",
-		"medicalHistory",
-		"emergencyContact",
-		"licenseNumber",
-		"content",
-	}
-
-	fieldLower := strings.ToLower(fieldName)
-	for _, sensitive := range sensitiveFields {
-		if strings.Contains(fieldLower, strings.ToLower(sensitive)) {
-			return true
+func resolvePatientID(
+	path, resource, resourceID string,
+	metadata map[string]any,
+	role domainUser.Role,
+	actorID primitive.ObjectID,
+) *primitive.ObjectID {
+	if raw, ok := metadata["patientId"]; ok {
+		if s, ok := raw.(string); ok {
+			if id, err := primitive.ObjectIDFromHex(s); err == nil {
+				return &id
+			}
 		}
 	}
 
-	return false
+	// Patient self-service profile updates: /users/patients/me
+	if role == domainUser.RolePatient && strings.Contains(path, "/patients/me") {
+		id := actorID
+		return &id
+	}
+
+	if resource == "patients" && resourceID != "" {
+		if id, err := primitive.ObjectIDFromHex(resourceID); err == nil {
+			return &id
+		}
+	}
+
+	// /users/patients/:id/...
+	parts := strings.Split(strings.Trim(path, "/"), "/")
+	for i := 0; i+1 < len(parts); i++ {
+		if parts[i] == "patients" && len(parts[i+1]) == 24 {
+			if id, err := primitive.ObjectIDFromHex(parts[i+1]); err == nil {
+				return &id
+			}
+		}
+	}
+
+	return nil
 }
 
-// enhanceActionMessage enhances action message with metadata information
+// metadataAllowlist is the only set of request-body keys retained in activity
+// log metadata. Prefer IDs / status / scheduling flags over any PHI/PII values
+// (name, email, vitals, medications, free-text notes, etc.).
+var metadataAllowlist = map[string]struct{}{
+	"status":           {},
+	"role":             {},
+	"name":             {},
+	"patientId":        {},
+	"doctorId":         {},
+	"nurseId":          {},
+	"departmentId":     {},
+	"prescriptionId":   {},
+	"conversationId":   {},
+	"alertId":          {},
+	"measurementId":    {},
+	"assignmentId":     {},
+	"reminderId":       {},
+	"sessionId":        {},
+	"kind":             {},
+	"timezone":         {},
+	"daysOfWeek":       {},
+	"durationMinutes":  {},
+	"platform":         {},
+	"effectiveFrom":    {},
+	"effectiveTo":      {},
+	"startDate":        {},
+	"endDate":          {},
+	"scheduledAt":      {},
+}
+
+func sanitizeActivityMetadata(requestBody []byte) map[string]any {
+	metadata := make(map[string]any)
+	if len(requestBody) == 0 {
+		return metadata
+	}
+
+	var bodyMap map[string]interface{}
+	if err := json.Unmarshal(requestBody, &bodyMap); err != nil {
+		return metadata
+	}
+
+	for key, value := range bodyMap {
+		if _, ok := metadataAllowlist[key]; !ok {
+			continue
+		}
+		// Nested objects/arrays may still carry PHI (e.g. medications[]) — drop them.
+		switch value.(type) {
+		case map[string]interface{}, []interface{}:
+			continue
+		default:
+			metadata[key] = value
+		}
+	}
+	return metadata
+}
+
+// enhanceActionMessage enhances action message with safe metadata only.
 func enhanceActionMessage(action string, metadata map[string]any) string {
-	// Add name to action if available
-	if name, ok := metadata["name"].(string); ok && name != "" {
-		if strings.Contains(action, "Thêm bác sĩ") {
-			return fmt.Sprintf("Thêm bác sĩ: %s", name)
-		} else if strings.Contains(action, "Thêm y tá") {
-			return fmt.Sprintf("Thêm y tá: %s", name)
-		} else if strings.Contains(action, "Thêm bệnh nhân") {
-			return fmt.Sprintf("Thêm bệnh nhân: %s", name)
-		} else if strings.Contains(action, "Cập nhật thông tin bác sĩ") {
-			return fmt.Sprintf("Cập nhật thông tin bác sĩ: %s", name)
-		} else if strings.Contains(action, "Cập nhật thông tin y tá") {
-			return fmt.Sprintf("Cập nhật thông tin y tá: %s", name)
-		} else if strings.Contains(action, "Cập nhật thông tin bệnh nhân") {
-			return fmt.Sprintf("Cập nhật thông tin bệnh nhân: %s", name)
-		}
+	status, ok := metadata["status"].(string)
+	if !ok || status == "" || !strings.Contains(action, "Cập nhật") {
+		return action
 	}
 
-	// Check for status update
-	if status, ok := metadata["status"].(string); ok && status != "" {
-		if strings.Contains(action, "Cập nhật") {
-			statusVN := status
-			if status == "active" {
-				statusVN = "Kích hoạt"
-			} else if status == "inactive" {
-				statusVN = "Vô hiệu hóa"
-			}
-
-			resource := ""
-			if strings.Contains(action, "bác sĩ") {
-				resource = "bác sĩ"
-			} else if strings.Contains(action, "y tá") {
-				resource = "y tá"
-			} else if strings.Contains(action, "bệnh nhân") {
-				resource = "bệnh nhân"
-			}
-
-			if resource != "" {
-				if name, ok := metadata["name"].(string); ok && name != "" {
-					return fmt.Sprintf("%s %s: %s", statusVN, resource, name)
-				}
-				return fmt.Sprintf("%s %s", statusVN, resource)
-			}
-		}
+	statusVN := status
+	switch status {
+	case "active":
+		statusVN = "Kích hoạt"
+	case "inactive":
+		statusVN = "Vô hiệu hóa"
 	}
 
-	return action
+	resource := ""
+	switch {
+	case strings.Contains(action, "bác sĩ"):
+		resource = "bác sĩ"
+	case strings.Contains(action, "điều dưỡng"):
+		resource = "điều dưỡng"
+	case strings.Contains(action, "bệnh nhân"):
+		resource = "bệnh nhân"
+	}
+	if resource == "" {
+		return action
+	}
+	return fmt.Sprintf("%s %s", statusVN, resource)
 }
+

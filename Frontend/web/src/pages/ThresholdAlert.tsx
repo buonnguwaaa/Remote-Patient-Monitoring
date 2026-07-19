@@ -19,18 +19,20 @@ import {
 import Toast from "../components/ui/Toast";
 import Pagination from "../components/ui/Pagination";
 import StatCard from "../components/ui/StatCard";
-import PatientListCard, { CardActionBtn, StatusBadge } from "../components/ui/PatientListCard";
+import PatientListCard, {
+  CardActionBtn,
+  StatusBadge,
+} from "../components/ui/PatientListCard";
 import { useToast } from "../hooks/useToast";
-import {
-  acknowledgeAlert,
-  getAlerts,
-} from "../services/patientService";
+import { acknowledgeAlert, getAlerts } from "../services/patientService";
 import type { AlertResponse } from "../types/patient";
 import type { AlertSeverity } from "../types/index";
 import { normalizeAlertSeverity } from "../utils/alertSeverity";
 
 export const getSeverityLabel = (value: unknown): string => {
-  return normalizeAlertSeverity(value) === "high" ? "Ưu tiên cao" : "Cần theo dõi";
+  return normalizeAlertSeverity(value) === "high"
+    ? "Ưu tiên cao"
+    : "Cần theo dõi";
 };
 
 export const getSeverityBadge = (value: unknown): string => {
@@ -44,7 +46,9 @@ export const getSeverityBadge = (value: unknown): string => {
 export const getSeverityIcon = (value: unknown) => {
   const severity = normalizeAlertSeverity(value);
   if (severity === "high") {
-    return <FaExclamationTriangle className="w-4 h-4 text-red-600 dark:text-red-400" />;
+    return (
+      <FaExclamationTriangle className="w-4 h-4 text-red-600 dark:text-red-400" />
+    );
   }
   return <FaInfoCircle className="w-4 h-4 text-blue-600 dark:text-blue-400" />;
 };
@@ -56,24 +60,29 @@ const ThresholdAlert = () => {
   const [searchParams] = useSearchParams();
   const filterPatientId = searchParams.get("patientId");
   const { t } = useTranslation();
-  
+
   const [activeTab, setActiveTab] = useState<TabType>("PENDING");
   const [searchQuery, setSearchQuery] = useState("");
   const [severityFilter, setSeverityFilter] = useState<string>("ALL");
   const [viewMode, setViewMode] = useState<"card" | "table">(
-    () => (localStorage.getItem("alert_view_mode") as "card" | "table") || "card"
+    () =>
+      (localStorage.getItem("alert_view_mode") as "card" | "table") || "card",
   );
 
   const handleSetViewMode = (mode: "card" | "table") => {
     setViewMode(mode);
     localStorage.setItem("alert_view_mode", mode);
   };
-  
-  const [expandedPatients, setExpandedPatients] = useState<Set<string>>(new Set());
-  
+
+  const [expandedPatients, setExpandedPatients] = useState<Set<string>>(
+    new Set(),
+  );
+
   // Resolve modal state
   const [showResolveModal, setShowResolveModal] = useState(false);
-  const [currentAlertsToResolve, setCurrentAlertsToResolve] = useState<AlertResponse[]>([]);
+  const [currentAlertsToResolve, setCurrentAlertsToResolve] = useState<
+    AlertResponse[]
+  >([]);
   const [isResolving, setIsResolving] = useState(false);
 
   const { toast, showToast, hideToast } = useToast();
@@ -86,7 +95,8 @@ const ThresholdAlert = () => {
     setCurrentPage(1);
   }, [activeTab, severityFilter, searchQuery]);
 
-  const activeStatus = activeTab === "PENDING" ? "open" : activeTab === "RESOLVED" ? "ack" : "";
+  const activeStatus =
+    activeTab === "PENDING" ? "open" : activeTab === "RESOLVED" ? "ack" : "";
 
   // Query 1: Fetch all open alerts (lightweight) to compute statistics
   const { data: openAlertsResult } = useQuery({
@@ -100,14 +110,22 @@ const ThresholdAlert = () => {
   const openAlertsData = openAlertsResult?.alerts || [];
 
   // Query 2: Fetch paginated alerts
-  const { data: alertsResult, isLoading: loading, isFetching: refreshing, refetch } = useQuery({
-    queryKey: ["alerts", { 
-      page: currentPage, 
-      limit: 10, 
-      status: activeStatus,
-      severity: severityFilter === "ALL" ? "" : severityFilter.toLowerCase(),
-      patientId: filterPatientId || ""
-    }],
+  const {
+    data: alertsResult,
+    isLoading: loading,
+    isFetching: refreshing,
+    refetch,
+  } = useQuery({
+    queryKey: [
+      "alerts",
+      {
+        page: currentPage,
+        limit: 10,
+        status: activeStatus,
+        severity: severityFilter === "ALL" ? "" : severityFilter.toLowerCase(),
+        patientId: filterPatientId || "",
+      },
+    ],
     queryFn: async () => {
       await new Promise((resolve) => setTimeout(resolve, 200));
       // normalize severity filter: ALL → undefined, other → AlertSeverity
@@ -115,13 +133,13 @@ const ThresholdAlert = () => {
         severityFilter === "ALL"
           ? undefined
           : (severityFilter.toLowerCase() as AlertSeverity);
-      return getAlerts({ 
-        page: currentPage, 
-        limit: 10, 
+      return getAlerts({
+        page: currentPage,
+        limit: 10,
         status: activeStatus || undefined,
         severity: severityParam,
         patientId: filterPatientId || undefined,
-        sortOrder: "desc"
+        sortOrder: "desc",
       });
     },
     staleTime: 5 * 60 * 1000,
@@ -135,8 +153,6 @@ const ThresholdAlert = () => {
     return alertsData;
   }, [alertsData]);
 
-
-
   const togglePatientExpanded = (patientId: string) => {
     setExpandedPatients((prev) => {
       const next = new Set(prev);
@@ -148,13 +164,16 @@ const ThresholdAlert = () => {
 
   const handleResolveConfirm = async () => {
     if (currentAlertsToResolve.length === 0) return;
-    
+
     setIsResolving(true);
     try {
       for (const alert of currentAlertsToResolve) {
         await acknowledgeAlert(alert.id);
       }
-      showToast(`Đã xử lý thành công ${currentAlertsToResolve.length} cảnh báo`, "success");
+      showToast(
+        `Đã xử lý thành công ${currentAlertsToResolve.length} cảnh báo`,
+        "success",
+      );
       setShowResolveModal(false);
       setCurrentAlertsToResolve([]);
       void queryClient.invalidateQueries({ queryKey: ["alerts", "open"] });
@@ -166,7 +185,9 @@ const ThresholdAlert = () => {
     }
   };
 
-  const openResolveModal = (alertsToResolve: AlertResponse | AlertResponse[]) => {
+  const openResolveModal = (
+    alertsToResolve: AlertResponse | AlertResponse[],
+  ) => {
     if (Array.isArray(alertsToResolve)) {
       setCurrentAlertsToResolve(alertsToResolve);
     } else {
@@ -192,17 +213,22 @@ const ThresholdAlert = () => {
       glucose: "Đường huyết",
       spo2: "SpO2",
       spO2: "SpO2",
-      weight: "Cân nặng"
+      weight: "Cân nặng",
     };
 
-    const typeName = (viNames[v.type] || t(`measurements.types.${v.type}`, v.type)) as string;
+    const typeName = (viNames[v.type] ||
+      t(`measurements.types.${v.type}`, v.type)) as string;
     let unit = "";
-    
+
     if (v.type === "glucose") {
       unit = "mg/dL";
     } else if (v.type === "temperature") {
       unit = "°C";
-    } else if (v.type === "blood_pressure" || v.type === "bloodPressureSystolic" || v.type === "bloodPressureDiastolic") {
+    } else if (
+      v.type === "blood_pressure" ||
+      v.type === "bloodPressureSystolic" ||
+      v.type === "bloodPressureDiastolic"
+    ) {
       unit = "mmHg";
     } else if (v.type === "spo2" || v.type === "spO2") {
       unit = "%";
@@ -214,8 +240,10 @@ const ThresholdAlert = () => {
       unit = "kg";
     }
 
-    const value = typeof v.observed === 'number' ? v.observed.toFixed(1) : v.observed;
-    const threshold = typeof v.threshold === 'number' ? v.threshold.toFixed(1) : v.threshold;
+    const value =
+      typeof v.observed === "number" ? v.observed.toFixed(1) : v.observed;
+    const threshold =
+      typeof v.threshold === "number" ? v.threshold.toFixed(1) : v.threshold;
 
     if (v.rule.includes("max")) {
       return `${typeName} cao: ${value} ${unit} (ngưỡng: >${threshold})`;
@@ -241,17 +269,22 @@ const ThresholdAlert = () => {
       glucose: "Đường huyết",
       spo2: "SpO2",
       spO2: "SpO2",
-      weight: "Cân nặng"
+      weight: "Cân nặng",
     };
 
-    const typeName = (viNames[v.type] || t(`measurements.types.${v.type}`, v.type)) as string;
+    const typeName = (viNames[v.type] ||
+      t(`measurements.types.${v.type}`, v.type)) as string;
     let unit = "";
-    
+
     if (v.type === "glucose") {
       unit = "mg/dL";
     } else if (v.type === "temperature") {
       unit = "°C";
-    } else if (v.type === "blood_pressure" || v.type === "bloodPressureSystolic" || v.type === "bloodPressureDiastolic") {
+    } else if (
+      v.type === "blood_pressure" ||
+      v.type === "bloodPressureSystolic" ||
+      v.type === "bloodPressureDiastolic"
+    ) {
       unit = "mmHg";
     } else if (v.type === "spo2" || v.type === "spO2") {
       unit = "%";
@@ -263,15 +296,28 @@ const ThresholdAlert = () => {
       unit = "kg";
     }
 
-    const value = typeof v.observed === 'number' ? v.observed.toFixed(1) : v.observed;
-    const threshold = typeof v.threshold === 'number' ? v.threshold.toFixed(1) : v.threshold;
-    const ruleLabel = v.rule.includes("max") ? "cao" : v.rule.includes("min") ? "thấp" : "";
+    const value =
+      typeof v.observed === "number" ? v.observed.toFixed(1) : v.observed;
+    const threshold =
+      typeof v.threshold === "number" ? v.threshold.toFixed(1) : v.threshold;
+    const ruleLabel = v.rule.includes("max")
+      ? "cao"
+      : v.rule.includes("min")
+        ? "thấp"
+        : "";
 
     return (
       <span className="text-slate-900 dark:text-slate-100">
         {typeName} {ruleLabel && `${ruleLabel}: `}
-        <span className="text-red-600 dark:text-red-400 font-bold">{value} {unit}</span>
-        <span className="text-slate-500 dark:text-slate-400 font-normal"> (ngưỡng: {v.rule.includes("max") ? ">" : v.rule.includes("min") ? "<" : ""}{threshold} {unit})</span>
+        <span className="text-red-600 dark:text-red-400 font-bold">
+          {value} {unit}
+        </span>
+        <span className="text-slate-500 dark:text-slate-400 font-normal">
+          {" "}
+          (ngưỡng:{" "}
+          {v.rule.includes("max") ? ">" : v.rule.includes("min") ? "<" : ""}
+          {threshold} {unit})
+        </span>
       </span>
     );
   };
@@ -283,9 +329,10 @@ const ThresholdAlert = () => {
     // Search query (filtered locally on current page results)
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      result = result.filter((a: AlertResponse) => 
-        (a.patientName && a.patientName.toLowerCase().includes(q)) ||
-        a.patientId.toLowerCase().includes(q)
+      result = result.filter(
+        (a: AlertResponse) =>
+          (a.patientName && a.patientName.toLowerCase().includes(q)) ||
+          a.patientId.toLowerCase().includes(q),
       );
     }
 
@@ -294,17 +341,20 @@ const ThresholdAlert = () => {
 
   // Group alerts for the active tab
   const groupedAlerts = useMemo(() => {
-    const groups = new Map<string, {
-      patientId: string;
-      patientName: string;
-      patientCode: string;
-      alerts: AlertResponse[];
-      openCount: number;
-      resolvedCount: number;
-      highCount: number;
-      infoCount: number;
-      latestAlert: AlertResponse | null;
-    }>();
+    const groups = new Map<
+      string,
+      {
+        patientId: string;
+        patientName: string;
+        patientCode: string;
+        alerts: AlertResponse[];
+        openCount: number;
+        resolvedCount: number;
+        highCount: number;
+        infoCount: number;
+        latestAlert: AlertResponse | null;
+      }
+    >();
 
     filteredAlerts.forEach((alert: AlertResponse) => {
       const pId = alert.patientId;
@@ -318,12 +368,12 @@ const ThresholdAlert = () => {
           resolvedCount: 0,
           highCount: 0,
           infoCount: 0,
-          latestAlert: null
+          latestAlert: null,
         });
       }
       const group = groups.get(pId)!;
       group.alerts.push(alert);
-      
+
       if (alert.status === "open") {
         group.openCount++;
       } else {
@@ -335,7 +385,10 @@ const ThresholdAlert = () => {
       if (sev === "high") group.highCount++;
       else group.infoCount++;
 
-      if (!group.latestAlert || new Date(alert.createdAt) > new Date(group.latestAlert.createdAt)) {
+      if (
+        !group.latestAlert ||
+        new Date(alert.createdAt) > new Date(group.latestAlert.createdAt)
+      ) {
         group.latestAlert = alert;
       }
     });
@@ -344,19 +397,26 @@ const ThresholdAlert = () => {
     return Array.from(groups.values()).sort((a, b) => {
       if (a.openCount !== b.openCount) return b.openCount - a.openCount;
       if (a.highCount !== b.highCount) return b.highCount - a.highCount;
-      const aTime = a.latestAlert ? new Date(a.latestAlert.createdAt).getTime() : 0;
-      const bTime = b.latestAlert ? new Date(b.latestAlert.createdAt).getTime() : 0;
+      const aTime = a.latestAlert
+        ? new Date(a.latestAlert.createdAt).getTime()
+        : 0;
+      const bTime = b.latestAlert
+        ? new Date(b.latestAlert.createdAt).getTime()
+        : 0;
       return bTime - aTime;
     });
   }, [filteredAlerts]);
 
   const stats = useMemo(() => {
-    const pending = filterPatientId 
-      ? openAlertsData.filter((a: AlertResponse) => a.patientId === filterPatientId)
+    const pending = filterPatientId
+      ? openAlertsData.filter(
+          (a: AlertResponse) => a.patientId === filterPatientId,
+        )
       : openAlertsData;
     return {
       pendingTotal: pending.length,
-      pendingHigh: pending.filter((a: AlertResponse) => a.severity === "high").length,
+      pendingHigh: pending.filter((a: AlertResponse) => a.severity === "high")
+        .length,
     };
   }, [openAlertsData, filterPatientId]);
 
@@ -392,16 +452,18 @@ const ThresholdAlert = () => {
     <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 mb-6">
       <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
         <div className="flex bg-slate-100 dark:bg-slate-700/50 p-1 rounded-lg w-full md:w-auto overflow-x-auto">
-          {(["PENDING", "ALL", "RESOLVED"] as TabType[]).map(tab => {
+          {(["PENDING", "ALL", "RESOLVED"] as TabType[]).map((tab) => {
             const labels = {
               PENDING: "Cần xử lý",
               ALL: "Tất cả cảnh báo",
-              RESOLVED: "Đã xử lý"
+              RESOLVED: "Đã xử lý",
             };
             return (
               <button
                 key={tab}
-                onClick={() => { setActiveTab(tab);  }}
+                onClick={() => {
+                  setActiveTab(tab);
+                }}
                 className={`px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors ${
                   activeTab === tab
                     ? "bg-white dark:bg-slate-600 text-blue-600 dark:text-blue-400 shadow-sm"
@@ -410,7 +472,7 @@ const ThresholdAlert = () => {
               >
                 {labels[tab]}
               </button>
-            )
+            );
           })}
         </div>
 
@@ -479,8 +541,8 @@ const ThresholdAlert = () => {
             {activeTab === "PENDING"
               ? "Không có cảnh báo nào cần xử lý"
               : activeTab === "RESOLVED"
-              ? "Chưa có cảnh báo nào được xử lý"
-              : "Không tìm thấy cảnh báo nào"}
+                ? "Chưa có cảnh báo nào được xử lý"
+                : "Không tìm thấy cảnh báo nào"}
           </p>
         </div>
       );
@@ -488,7 +550,7 @@ const ThresholdAlert = () => {
 
     return (
       <div className="space-y-4">
-        {groupedAlerts.map(group => {
+        {groupedAlerts.map((group) => {
           const isExpanded = expandedPatients.has(group.patientId);
           const hasOpen = group.openCount > 0;
 
@@ -497,7 +559,17 @@ const ThresholdAlert = () => {
               key={group.patientId}
               name={group.patientName}
               code={group.patientCode}
-              accentColor={hasOpen ? (group.alerts.some(a => normalizeAlertSeverity(a.severity) === "high" && a.status === "open") ? "red" : "amber") : "emerald"}
+              accentColor={
+                hasOpen
+                  ? group.alerts.some(
+                      (a) =>
+                        normalizeAlertSeverity(a.severity) === "high" &&
+                        a.status === "open",
+                    )
+                    ? "red"
+                    : "amber"
+                  : "emerald"
+              }
               badge={
                 hasOpen ? (
                   <StatusBadge color="red">
@@ -523,7 +595,10 @@ const ThresholdAlert = () => {
                 group.latestAlert ? (
                   <span className="flex items-center gap-1">
                     <FaRegClock />
-                    Mới nhất: {new Date(group.latestAlert.createdAt).toLocaleString("vi-VN")}
+                    Mới nhất:{" "}
+                    {new Date(group.latestAlert.createdAt).toLocaleString(
+                      "vi-VN",
+                    )}
                   </span>
                 ) : undefined
               }
@@ -534,7 +609,11 @@ const ThresholdAlert = () => {
                   {hasOpen ? (
                     <CardActionBtn
                       variant="primary"
-                      onClick={() => openResolveModal(group.alerts.filter(a => a.status === "open"))}
+                      onClick={() =>
+                        openResolveModal(
+                          group.alerts.filter((a) => a.status === "open"),
+                        )
+                      }
                     >
                       Xử lý tất cả
                     </CardActionBtn>
@@ -557,7 +636,7 @@ const ThresholdAlert = () => {
               }
               expanded={
                 <div className="p-4 space-y-3">
-                  {group.alerts.map(alert => (
+                  {group.alerts.map((alert) => (
                     <div
                       key={alert.id}
                       className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer hover:border-blue-300 dark:hover:border-blue-700 transition-colors"
@@ -565,17 +644,23 @@ const ThresholdAlert = () => {
                     >
                       <div>
                         <div className="flex items-center gap-2 mb-2">
-                          <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium flex items-center gap-1 ${getSeverityBadge(alert.severity)}`}>
+                          <span
+                            className={`px-2.5 py-0.5 rounded-full text-xs font-medium flex items-center gap-1 ${getSeverityBadge(alert.severity)}`}
+                          >
                             {getSeverityIcon(alert.severity)}
                             {getSeverityLabel(alert.severity)}
                           </span>
                           <span className="text-xs text-slate-500 flex items-center gap-1">
-                            <FaRegClock /> {new Date(alert.createdAt).toLocaleString("vi-VN")}
+                            <FaRegClock />{" "}
+                            {new Date(alert.createdAt).toLocaleString("vi-VN")}
                           </span>
                         </div>
                         <ul className="space-y-1">
                           {alert.violations.map((v, i) => (
-                            <li key={i} className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                            <li
+                              key={i}
+                              className="text-sm font-medium text-slate-900 dark:text-slate-100"
+                            >
                               • {formatViolation(v)}
                             </li>
                           ))}
@@ -586,14 +671,19 @@ const ThresholdAlert = () => {
                       </div>
                       {alert.status === "open" ? (
                         <button
-                          onClick={(e) => { e.stopPropagation(); openResolveModal(alert); }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openResolveModal(alert);
+                          }}
                           className="whitespace-nowrap px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
                         >
                           Xác nhận xử lý
                         </button>
                       ) : (
                         <div className="text-sm text-green-600 dark:text-green-400 font-semibold flex items-center gap-1">
-                          <FaCheckCircle className="text-green-500" /> Đã xử lý {alert.acknowledgedByName && `• ${alert.acknowledgedByName}`}
+                          <FaCheckCircle className="text-green-500" /> Đã xử lý{" "}
+                          {alert.acknowledgedByName &&
+                            `• ${alert.acknowledgedByName}`}
                         </div>
                       )}
                     </div>
@@ -614,8 +704,21 @@ const ThresholdAlert = () => {
           <table className="w-full text-sm">
             <thead className="bg-slate-50 dark:bg-slate-700/50">
               <tr>
-                {["STT", "Bệnh nhân", "Chỉ số vi phạm", "Mức độ", "Trạng thái", "Thời gian", "Hành động"].map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{h}</th>
+                {[
+                  "STT",
+                  "Bệnh nhân",
+                  "Chỉ số vi phạm",
+                  "Mức độ",
+                  "Trạng thái",
+                  "Thời gian",
+                  "Hành động",
+                ].map((h) => (
+                  <th
+                    key={h}
+                    className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider"
+                  >
+                    {h}
+                  </th>
                 ))}
               </tr>
             </thead>
@@ -640,7 +743,9 @@ const ThresholdAlert = () => {
         <div className="text-center py-12 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
           <FaCheckCircle className="mx-auto h-12 w-12 text-green-500 opacity-50 mb-4" />
           <p className="text-slate-500 dark:text-slate-400">
-            {activeTab === "PENDING" ? "Không có cảnh báo nào cần xử lý" : "Không tìm thấy cảnh báo nào"}
+            {activeTab === "PENDING"
+              ? "Không có cảnh báo nào cần xử lý"
+              : "Không tìm thấy cảnh báo nào"}
           </p>
         </div>
       );
@@ -652,13 +757,27 @@ const ThresholdAlert = () => {
           <table className="w-full text-sm">
             <thead className="bg-slate-50 dark:bg-slate-700/50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-10">STT</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Bệnh nhân</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Chỉ số vi phạm</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Mức độ</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Trạng thái</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Thời gian</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Hành động</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-10">
+                  STT
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  Bệnh nhân
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  Chỉ số vi phạm
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  Mức độ
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  Trạng thái
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  Thời gian
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  Hành động
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
@@ -676,8 +795,12 @@ const ThresholdAlert = () => {
                   >
                     {/* STT */}
                     <td className="px-4 py-3">
-                      <div className={`w-1 h-full absolute left-0 top-0 rounded-l ${ sev === "high" ? "bg-red-400" : "bg-amber-400" }`} />
-                      <span className="font-medium text-slate-500 dark:text-slate-400">{(currentPage - 1) * 10 + idx + 1}</span>
+                      <div
+                        className={`w-1 h-full absolute left-0 top-0 rounded-l ${sev === "high" ? "bg-red-400" : "bg-amber-400"}`}
+                      />
+                      <span className="font-medium text-slate-500 dark:text-slate-400">
+                        {(currentPage - 1) * 10 + idx + 1}
+                      </span>
                     </td>
                     {/* Bệnh nhân */}
                     <td className="px-4 py-3">
@@ -686,8 +809,12 @@ const ThresholdAlert = () => {
                           <FaUserInjured className="text-sm text-blue-600 dark:text-blue-400" />
                         </div>
                         <div>
-                          <p className="font-semibold text-slate-900 dark:text-slate-100">{alert.patientName || "Bệnh nhân"}</p>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">{patientCode}</p>
+                          <p className="font-semibold text-slate-900 dark:text-slate-100">
+                            {alert.patientName || "Bệnh nhân"}
+                          </p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            {patientCode}
+                          </p>
                         </div>
                       </div>
                     </td>
@@ -695,18 +822,25 @@ const ThresholdAlert = () => {
                     <td className="px-4 py-3 max-w-xs">
                       <ul className="space-y-0.5">
                         {alert.violations.slice(0, 2).map((v, i) => (
-                          <li key={i} className="text-xs text-slate-700 dark:text-slate-300">
+                          <li
+                            key={i}
+                            className="text-xs text-slate-700 dark:text-slate-300"
+                          >
                             • {formatViolation(v)}
                           </li>
                         ))}
                         {alert.violations.length > 2 && (
-                          <li className="text-xs text-slate-500 italic">+{alert.violations.length - 2} chỉ số khác...</li>
+                          <li className="text-xs text-slate-500 italic">
+                            +{alert.violations.length - 2} chỉ số khác...
+                          </li>
                         )}
                       </ul>
                     </td>
                     {/* Mức độ */}
                     <td className="px-4 py-3">
-                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${getSeverityBadge(alert.severity)}`}>
+                      <span
+                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${getSeverityBadge(alert.severity)}`}
+                      >
                         {getSeverityIcon(alert.severity)}
                         {getSeverityLabel(alert.severity)}
                       </span>
@@ -731,7 +865,10 @@ const ThresholdAlert = () => {
                       </span>
                     </td>
                     {/* Hành động */}
-                    <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+                    <td
+                      className="px-4 py-3"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <div className="flex items-center gap-1.5">
                         {isOpen ? (
                           <button
@@ -742,18 +879,24 @@ const ThresholdAlert = () => {
                           </button>
                         ) : (
                           <span className="text-xs text-green-600 dark:text-green-400 font-medium whitespace-nowrap">
-                            {alert.acknowledgedByName ? `• ${alert.acknowledgedByName}` : "Đã xử lý"}
+                            {alert.acknowledgedByName
+                              ? `• ${alert.acknowledgedByName}`
+                              : "Đã xử lý"}
                           </span>
                         )}
                         <button
-                          onClick={() => navigate(`/patient/chat/${alert.patientId}`)}
+                          onClick={() =>
+                            navigate(`/patient/chat/${alert.patientId}`)
+                          }
                           title="Nhắn tin"
                           className="p-1.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
                         >
                           <FaCommentDots className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => navigate(`/patient/${alert.patientId}`)}
+                          onClick={() =>
+                            navigate(`/patient/${alert.patientId}`)
+                          }
                           title="Hồ sơ"
                           className="p-1.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
                         >
@@ -772,13 +915,15 @@ const ThresholdAlert = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#f5f6fa] font-sans dark:bg-slate-900">
+    <div className="min-h-screen bg-[#f5f6fa] dark:bg-slate-900">
       <div className="w-full space-y-4 px-4 py-8 pb-24 sm:px-6 lg:px-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
           <div>
             <h1 className="text-3xl font-bold text-gray-800 dark:text-slate-100 flex items-center gap-3">
               Quản Lý Cảnh Báo
-              {loading && <FaSyncAlt className="w-5 h-5 text-blue-500 animate-spin" />}
+              {loading && (
+                <FaSyncAlt className="w-5 h-5 text-blue-500 animate-spin" />
+              )}
             </h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
               Theo dõi và xử lý các chỉ số sinh tồn vượt ngưỡng của bệnh nhân.
@@ -817,7 +962,9 @@ const ThresholdAlert = () => {
               disabled={loading || refreshing}
               className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
             >
-              <FaSyncAlt className={(loading || refreshing) ? "animate-spin" : ""} />
+              <FaSyncAlt
+                className={loading || refreshing ? "animate-spin" : ""}
+              />
               Làm mới
             </button>
           </div>
@@ -832,7 +979,9 @@ const ThresholdAlert = () => {
 
         {/* Pagination */}
         {(totalPages > 1 || loading) && (
-          <div className={`mt-4 flex flex-col items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:flex-row ${loading ? "opacity-60 pointer-events-none" : ""}`}>
+          <div
+            className={`mt-4 flex flex-col items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:flex-row ${loading ? "opacity-60 pointer-events-none" : ""}`}
+          >
             {loading && totalItems === 0 ? (
               <>
                 <div className="h-4 w-40 rounded bg-slate-100 dark:bg-slate-800 animate-pulse" />
@@ -847,7 +996,8 @@ const ThresholdAlert = () => {
                 <p className="text-sm text-slate-500 dark:text-slate-400">
                   {t("common.showing")}{" "}
                   <span className="font-medium text-slate-700 dark:text-slate-200">
-                    {(currentPage - 1) * 10 + 1}–{Math.min(currentPage * 10, totalItems)}
+                    {(currentPage - 1) * 10 + 1}–
+                    {Math.min(currentPage * 10, totalItems)}
                   </span>{" "}
                   {t("common.of")}{" "}
                   <span className="font-medium text-slate-700 dark:text-slate-200">
@@ -869,28 +1019,41 @@ const ThresholdAlert = () => {
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
             <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
               <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Xác nhận xử lý cảnh báo</h3>
-                <button 
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                  Xác nhận xử lý cảnh báo
+                </h3>
+                <button
                   onClick={() => !isResolving && setShowResolveModal(false)}
                   className="text-slate-400 hover:text-slate-500 transition-colors"
                 >
                   ✕
                 </button>
               </div>
-              
+
               <div className="p-6 space-y-4">
                 <p className="text-sm text-slate-600 dark:text-slate-300">
-                  Bạn đang xác nhận xử lý <strong>{currentAlertsToResolve.length}</strong> cảnh báo. Hệ thống sẽ ghi nhận bạn là người xử lý các cảnh báo này.
+                  Bạn đang xác nhận xử lý{" "}
+                  <strong>{currentAlertsToResolve.length}</strong> cảnh báo. Hệ
+                  thống sẽ ghi nhận bạn là người xử lý các cảnh báo này.
                 </p>
-                
+
                 <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-lg max-h-40 overflow-y-auto border border-slate-200 dark:border-slate-700">
                   <ul className="space-y-2">
-                    {currentAlertsToResolve.map(a => (
-                      <li key={a.id} className="text-xs text-slate-700 dark:text-slate-300 flex items-start gap-2">
+                    {currentAlertsToResolve.map((a) => (
+                      <li
+                        key={a.id}
+                        className="text-xs text-slate-700 dark:text-slate-300 flex items-start gap-2"
+                      >
                         <FaCheckCircle className="text-green-500 mt-0.5 flex-shrink-0" />
                         <span>
-                          <strong>{a.patientName || "PAT-"+a.patientId.substring(0,6)}:</strong>{" "}
-                          {a.violations.map(v => formatViolationText(v)).join(", ")}
+                          <strong>
+                            {a.patientName ||
+                              "PAT-" + a.patientId.substring(0, 6)}
+                            :
+                          </strong>{" "}
+                          {a.violations
+                            .map((v) => formatViolationText(v))
+                            .join(", ")}
                         </span>
                       </li>
                     ))}
