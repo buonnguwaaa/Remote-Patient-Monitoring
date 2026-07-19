@@ -102,12 +102,6 @@ func (h *ActivityLogHandler) GetActivityLogs(c *gin.Context) {
 		})
 	}
 
-	// Calculate total pages
-	totalPages := int(total) / params.PageSize
-	if int(total)%params.PageSize > 0 {
-		totalPages++
-	}
-
 	c.JSON(http.StatusOK, dto.ActivityLogListResponse{
 		Data:       responseLogs,
 		Total:      total,
