@@ -10,7 +10,6 @@ import {
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { createPortal } from "react-dom";
 import {
-  FaChevronDown,
   FaChevronRight,
   FaChevronLeft,
   FaEdit,
@@ -25,6 +24,7 @@ import {
 
 import Toast from "../components/ui/Toast";
 import { useToast } from "../hooks/useToast";
+import PatientListCard, { CardActionBtn, StatusBadge } from "../components/ui/PatientListCard";
 import { getMyPatients } from "../services/patientService";
 import {
   getPrescriptions,
@@ -751,59 +751,33 @@ export default function PrescriptionPage() {
                 const isExpanded = expandedCards.has(patientId);
                 const activeCount = list.filter(p => p.status === "active").length;
                 
-                // Get sample active drugs
-                const sampleDrugs = Array.from(new Set(
-                  list.filter(p => p.status === "active")
-                      .flatMap(p => p.medications.map(m => m.drugName))
-                ));
 
                 return (
-                  <div key={patientId} className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-                    <div 
-                      className={`p-5 flex items-center justify-between cursor-pointer transition ${isExpanded ? 'bg-slate-50 dark:bg-slate-700/50' : 'hover:bg-slate-50 dark:hover:bg-slate-700/50'}`}
-                      onClick={() => toggleCardExpansion(patientId)}
-                    >
-                      <div className="flex-1 flex flex-col md:flex-row md:items-center gap-4">
-                        <div className="min-w-[200px]">
-                          <h3 className="text-lg font-bold text-blue-700 dark:text-blue-400">{pt?.name || patientId}</h3>
-                          <p className="text-sm text-slate-500">Mã BN: {pt?.code}</p>
-                        </div>
-                        <div className="flex flex-wrap gap-2 items-center">
-                          <span className={`px-2.5 py-1 text-xs font-semibold rounded-md ${activeCount > 0 ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400'}`}>
-                            {activeCount} đơn đang hiệu lực
-                          </span>
-                          <span className="px-2.5 py-1 text-xs font-semibold rounded-md bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400">
-                            Tổng {list.length} đơn
-                          </span>
-                        </div>
-                        {sampleDrugs.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5 ml-auto md:ml-4">
-                            {sampleDrugs.slice(0, 3).map((d, i) => (
-                              <span key={i} className="text-xs px-2 py-0.5 rounded border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20">
-                                {d}
-                              </span>
-                            ))}
-                            {sampleDrugs.length > 3 && (
-                              <span className="text-xs px-2 py-0.5 text-slate-500">+{sampleDrugs.length - 3}</span>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      <div className="ml-4 flex items-center gap-3">
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); handleOpenCreate(patientId); }}
-                          className="hidden md:inline-flex px-3 py-1.5 text-sm font-medium text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50"
-                        >
-                          <FaPlus className="mr-1 mt-0.5" /> Tạo đơn
-                        </button>
-                        <div className="text-slate-400 bg-slate-100 dark:bg-slate-700 p-1.5 rounded-full">
-                          {isExpanded ? <FaChevronDown /> : <FaChevronRight />}
-                        </div>
-                      </div>
-                    </div>
-
-                    {isExpanded && (
-                      <div className="border-t border-slate-200 dark:border-slate-700 p-0 overflow-x-auto">
+                  <PatientListCard
+                    key={patientId}
+                    name={pt?.name || patientId}
+                    code={pt?.code}
+                    accentColor={activeCount > 0 ? "emerald" : "slate"}
+                    badge={
+                      <StatusBadge color={activeCount > 0 ? "emerald" : "slate"}>
+                        {activeCount} đơn đang hiệu lực
+                      </StatusBadge>
+                    }
+                    infoRow={
+                      <StatusBadge color="slate">Tổng {list.length} đơn</StatusBadge>
+                    }
+                    isExpanded={isExpanded}
+                    onClick={() => toggleCardExpansion(patientId)}
+                    actions={
+                      <CardActionBtn
+                        variant="ghost"
+                        onClick={(e) => { e.stopPropagation(); handleOpenCreate(patientId); }}
+                      >
+                        <FaPlus className="h-3 w-3" /> Tạo đơn
+                      </CardActionBtn>
+                    }
+                    expanded={
+                      <div className="overflow-x-auto">
                         <table className="w-full text-left text-sm text-slate-600 dark:text-slate-300">
                           <thead className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700">
                             <tr>
@@ -818,12 +792,12 @@ export default function PrescriptionPage() {
                               const drugsStr = p.medications.slice(0, 2).map(m => m.drugName).join(", ");
                               const hasMore = p.medications.length > 2;
                               return (
-                                <tr 
-                                  key={p.id} 
+                                <tr
+                                  key={p.id}
                                   className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition cursor-pointer relative"
                                   onClick={() => navigate(`/prescriptions/${p.id}`)}
                                 >
-                                  <td 
+                                  <td
                                     className="px-5 py-4 relative"
                                     onMouseEnter={(e) => handleTooltipMouseEnter(e, p)}
                                     onMouseLeave={handleTooltipMouseLeave}
@@ -833,7 +807,7 @@ export default function PrescriptionPage() {
                                     </div>
                                     <div className="text-xs text-slate-500 mt-1">{p.medications.length} loại thuốc</div>
                                   </td>
-                                  <td 
+                                  <td
                                     className="px-5 py-4"
                                     onMouseEnter={(e) => handleTooltipMouseEnter(e, p)}
                                     onMouseLeave={handleTooltipMouseLeave}
@@ -843,7 +817,7 @@ export default function PrescriptionPage() {
                                       Lặp lại: {p.daysOfWeek.length===7 ? "Mỗi ngày" : p.daysOfWeek.map(d => WEEKDAY_OPTIONS.find(o=>o.value===d)?.label).join(", ")}
                                     </div>
                                   </td>
-                                  <td 
+                                  <td
                                     className="px-5 py-4"
                                     onMouseEnter={(e) => handleTooltipMouseEnter(e, p)}
                                     onMouseLeave={handleTooltipMouseLeave}
@@ -854,7 +828,7 @@ export default function PrescriptionPage() {
                                   </td>
                                   <td className="px-5 py-4 text-right">
                                     <div className="flex justify-end gap-2">
-                                      <Link 
+                                      <Link
                                         to={`/prescriptions/${p.id}`}
                                         className="p-1.5 text-blue-600 bg-blue-50 rounded hover:bg-blue-100 dark:text-blue-400 dark:bg-blue-900/30 transition"
                                         title="Xem chi tiết"
@@ -863,14 +837,14 @@ export default function PrescriptionPage() {
                                       </Link>
                                       {p.status === "active" && (
                                         <>
-                                          <button 
+                                          <button
                                             onClick={(e) => { e.stopPropagation(); handleOpenEdit(p); }}
                                             className="p-1.5 text-amber-600 bg-amber-50 rounded hover:bg-amber-100 dark:text-amber-400 dark:bg-amber-900/30 transition"
                                             title="Sửa đơn thuốc"
                                           >
                                             <FaEdit />
                                           </button>
-                                          <button 
+                                          <button
                                             onClick={(e) => { e.stopPropagation(); handleStopPrescription(p); }}
                                             className="p-1.5 text-rose-600 bg-rose-50 rounded hover:bg-rose-100 dark:text-rose-400 dark:bg-rose-900/30 transition"
                                             title="Dừng đơn thuốc"
@@ -887,8 +861,8 @@ export default function PrescriptionPage() {
                           </tbody>
                         </table>
                       </div>
-                    )}
-                  </div>
+                    }
+                  />
                 );
               })
             )}

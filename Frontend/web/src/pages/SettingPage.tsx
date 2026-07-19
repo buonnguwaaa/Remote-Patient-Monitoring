@@ -96,7 +96,7 @@ const SettingPage = () => {
 
       <div className="min-h-screen bg-[#f5f6fa] font-sans dark:bg-slate-900 transition-colors duration-300">
         <div className="w-full space-y-4 px-4 py-8 pb-24 sm:px-6 lg:px-8">
-          <section className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800 transition-colors duration-300">
+          <section className="mb-2 px-2 transition-colors duration-300">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
                 <h1 className="text-3xl font-bold text-gray-800 dark:text-slate-100">
@@ -111,7 +111,7 @@ const SettingPage = () => {
                 <button
                   type="button"
                   onClick={handleRestoreDefaults}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 cursor-pointer"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 cursor-pointer shadow-sm"
                 >
                   <RefreshCcw size={15} />
                   {t("settings.restoreDefaults")}
