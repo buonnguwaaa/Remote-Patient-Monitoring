@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"math"
 	"strings"
 	"time"
 
@@ -155,19 +154,19 @@ func buildSeedMeasurement(patientID primitive.ObjectID, i int) domain.Measuremen
 			systolic = 148 + float64(i%15) // hypertension
 		}
 
-		systolic = math.Round(systolic)
-		diastolic = math.Round(diastolic)
+		systolic = round1(systolic)
+		diastolic = round1(diastolic)
 
 		return domain.Measurement{
 			PatientID:       patientID,
-			Temperature:     fp(temperature),
-			HeartRate:       fp(heartRate),
-			RespiratoryRate: fp(respiratoryRate),
-			SpO2:            fp(spo2),
+			Temperature:     fp(round1(temperature)),
+			HeartRate:       fp(round1(heartRate)),
+			RespiratoryRate: fp(round1(respiratoryRate)),
+			SpO2:            fp(round1(spo2)),
 			BloodPressure: domain.BloodPressure{
 				Systolic:  fp(systolic),
 				Diastolic: fp(diastolic),
-				MAP:       fp(math.Round(calculateMAP(systolic, diastolic))),
+				MAP:       fp(round1(calculateMAP(systolic, diastolic))),
 			},
 			Device: &device,
 			Note:   &note,
@@ -191,7 +190,7 @@ func buildSeedMeasurement(patientID primitive.ObjectID, i int) domain.Measuremen
 		return domain.Measurement{
 			PatientID: patientID,
 			Glucose: domain.Glucose{
-				BloodGlucose: fp(glucose),
+				BloodGlucose: fp(round1(glucose)),
 			},
 			MealTiming: &preMeal,
 			Device:     &device,
@@ -208,7 +207,7 @@ func buildSeedMeasurement(patientID primitive.ObjectID, i int) domain.Measuremen
 		return domain.Measurement{
 			PatientID: patientID,
 			Glucose: domain.Glucose{
-				BloodGlucose: fp(glucose),
+				BloodGlucose: fp(round1(glucose)),
 			},
 			MealTiming: &postMeal,
 			Device:     &device,
