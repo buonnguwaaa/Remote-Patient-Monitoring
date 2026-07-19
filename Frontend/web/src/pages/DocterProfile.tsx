@@ -17,6 +17,7 @@ import {
   Loader2,
   History,
   Activity,
+  LogIn,
   Pill,
   Bell,
   CalendarDays,
