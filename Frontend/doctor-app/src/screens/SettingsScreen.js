@@ -26,7 +26,7 @@ export default function SettingsScreen() {
     if (isBiometricEnabled) {
       const res = await disableBiometric();
       if (!res.ok) {
-        Alert.alert("Lỗi", res.error);
+        showToast(res.error, "error");
       }
     } else {
       if (!sessionPassword) {
@@ -40,14 +40,14 @@ export default function SettingsScreen() {
                 text: "Xác nhận",
                 onPress: async (pwd) => {
                   if (!pwd) {
-                    Alert.alert("Lỗi", "Mật khẩu không được để trống.");
+                    showToast("Mật khẩu không được để trống.", "error");
                     return;
                   }
                   setBiometricLoading(true);
                   const res = await enableBiometric(pwd);
                   setBiometricLoading(false);
                   if (!res.ok) {
-                    Alert.alert("Lỗi", res.error);
+                    showToast(res.error, "error");
                   } else {
                     showToast("Đã bật đăng nhập sinh trắc học.");
                   }
@@ -67,7 +67,7 @@ export default function SettingsScreen() {
         const res = await enableBiometric();
         setBiometricLoading(false);
         if (!res.ok) {
-          Alert.alert("Lỗi", res.error);
+          showToast(res.error, "error");
         } else {
           showToast("Đã bật đăng nhập sinh trắc học.");
         }

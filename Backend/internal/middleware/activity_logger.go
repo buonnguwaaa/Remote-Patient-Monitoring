@@ -94,6 +94,14 @@ func (m *ActivityLoggerMiddleware) LogActivity() gin.HandlerFunc {
 		// Add metadata for certain operations
 		metadata := sanitizeActivityMetadata(requestBody)
 
+		// Add latitude/longitude from request headers if present
+		lat := c.GetHeader("X-Location-Lat")
+		lng := c.GetHeader("X-Location-Lng")
+		if lat != "" && lng != "" {
+			metadata["latitude"] = lat
+			metadata["longitude"] = lng
+		}
+
 		// Skip if request only contains status field (status updates are logged with main update)
 		if len(metadata) == 1 {
 			if _, hasStatus := metadata["status"]; hasStatus {
@@ -159,6 +167,15 @@ func (m *ActivityLoggerMiddleware) logLoginActivity(c *gin.Context, requestBody 
 		return
 	}
 
+	// Create activity log
+	metadata := make(map[string]any)
+	lat := c.GetHeader("X-Location-Lat")
+	lng := c.GetHeader("X-Location-Lng")
+	if lat != "" && lng != "" {
+		metadata["latitude"] = lat
+		metadata["longitude"] = lng
+	}
+
 	activityLog := &domain.ActivityLog{
 		ID:         primitive.NewObjectID(),
 		UserID:     user.ID,
@@ -175,6 +192,11 @@ func (m *ActivityLoggerMiddleware) logLoginActivity(c *gin.Context, requestBody 
 		CreatedAt:  time.Now(),
 	}
 
+	if len(metadata) > 0 {
+		activityLog.Metadata = metadata
+	}
+
+	// Save log synchronously for login to ensure it's saved
 	if err := m.repo.Create(c.Request.Context(), activityLog); err != nil {
 		log.Printf("[ActivityLogger] Login - error saving activity log: %v", err)
 		_ = c.Error(err)

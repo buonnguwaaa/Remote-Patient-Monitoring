@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/constant"
-	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
 	domainUser "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository"
@@ -77,9 +76,29 @@ func (h *ActivityLogHandler) GetActivityLogs(c *gin.Context) {
 		return
 	}
 
-	responseLogs := make([]dto.ActivityLogResponse, 0, len(logs))
-	for _, logEntry := range logs {
-		responseLogs = append(responseLogs, toAdminActivityLogResponse(logEntry))
+	// Convert to response DTOs
+	var responseLogs []dto.ActivityLogResponse
+	for _, log := range logs {
+		responseLogs = append(responseLogs, dto.ActivityLogResponse{
+			ID:         log.ID.Hex(),
+			UserID:     log.UserID.Hex(),
+			UserName:   log.UserName,
+			UserRole:   log.UserRole,
+			Type:       string(log.Type),
+			Action:     log.Action,
+			Resource:   log.Resource,
+			ResourceID: log.ResourceID,
+			Method:     log.Method,
+			Path:       log.Path,
+			IPAddress:  log.IPAddress,
+			UserAgent:  log.UserAgent,
+			StatusCode: log.StatusCode,
+			ErrorMsg:   log.ErrorMsg,
+			Metadata:   log.Metadata,
+			CreatedAt:  log.CreatedAt,
+			Timestamp:  log.CreatedAt.Format("15:04"),
+			Date:       log.CreatedAt.Format("2006-01-02"),
+		})
 	}
 
 	c.JSON(http.StatusOK, dto.ActivityLogListResponse{
@@ -361,32 +380,6 @@ func parseActivityDateRange(c *gin.Context, startDateStr, endDateStr string) (ti
 	}
 
 	return startDate, endDate, true
-}
-
-func toAdminActivityLogResponse(logEntry *domain.ActivityLog) dto.ActivityLogResponse {
-	resp := dto.ActivityLogResponse{
-		ID:         logEntry.ID.Hex(),
-		UserID:     logEntry.UserID.Hex(),
-		UserName:   logEntry.UserName,
-		UserRole:   logEntry.UserRole,
-		Type:       string(logEntry.Type),
-		Action:     logEntry.Action,
-		Resource:   logEntry.Resource,
-		ResourceID: logEntry.ResourceID,
-		Method:     logEntry.Method,
-		Path:       logEntry.Path,
-		IPAddress:  logEntry.IPAddress,
-		StatusCode: logEntry.StatusCode,
-		ErrorMsg:   logEntry.ErrorMsg,
-		Metadata:   logEntry.Metadata,
-		CreatedAt:  logEntry.CreatedAt,
-		Timestamp:  logEntry.CreatedAt.Format("15:04"),
-		Date:       logEntry.CreatedAt.Format("2006-01-02"),
-	}
-	if logEntry.PatientID != nil {
-		resp.PatientID = logEntry.PatientID.Hex()
-	}
-	return resp
 }
 
 func totalPages(total int64, pageSize int) int {

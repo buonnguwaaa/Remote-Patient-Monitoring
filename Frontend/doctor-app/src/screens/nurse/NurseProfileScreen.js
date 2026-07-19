@@ -18,6 +18,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { useAuth } from "../../hooks/useAuth";
 import { getDepartments } from "../../api/departmentApi";
 import { getMyNurseProfile } from "../../api/profileApi";
+import { useToast } from "../../context/ToastContext";
 
 const EMPTY_PROFILE = {
   id: "",
@@ -215,6 +216,7 @@ function InfoRow({ icon, label, value, hint, iconLib = "ionicons" }) {
 }
 
 export default function NurseProfileScreen() {
+  const { showToast } = useToast();
   const { logout, isBiometricEnabled, enableBiometric, disableBiometric, sessionPassword } = useAuth();
   const [profile, setProfile] = useState(EMPTY_PROFILE);
   const [biometricLoading, setBiometricLoading] = useState(false);
@@ -280,7 +282,7 @@ export default function NurseProfileScreen() {
     if (isBiometricEnabled) {
       const res = await disableBiometric();
       if (!res.ok) {
-        Alert.alert("Lỗi", res.error);
+        showToast(res.error, "error");
       }
     } else {
       if (!sessionPassword) {
@@ -294,16 +296,16 @@ export default function NurseProfileScreen() {
                 text: "Xác nhận",
                 onPress: async (pwd) => {
                   if (!pwd) {
-                    Alert.alert("Lỗi", "Mật khẩu không được để trống.");
+                    showToast("Mật khẩu không được để trống.", "error");
                     return;
                   }
                   setBiometricLoading(true);
                   const res = await enableBiometric(pwd);
                   setBiometricLoading(false);
                   if (!res.ok) {
-                    Alert.alert("Lỗi", res.error);
+                    showToast(res.error, "error");
                   } else {
-                    Alert.alert("Thành công", "Đã bật đăng nhập sinh trắc học.");
+                    showToast("Đã bật đăng nhập sinh trắc học.", "success");
                   }
                 },
               },
@@ -321,9 +323,9 @@ export default function NurseProfileScreen() {
         const res = await enableBiometric();
         setBiometricLoading(false);
         if (!res.ok) {
-          Alert.alert("Lỗi", res.error);
+          showToast(res.error, "error");
         } else {
-          Alert.alert("Thành công", "Đã bật đăng nhập sinh trắc học.");
+          showToast("Đã bật đăng nhập sinh trắc học.", "success");
         }
       }
     }

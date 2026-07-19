@@ -291,10 +291,10 @@ export default function ThresholdsScreen() {
                 showToast("Đã ngưng áp dụng thành công.");
                 loadData();
               } else {
-                Alert.alert("Lỗi", res.body?.error || "Không thể ngưng áp dụng.");
+                showToast(res.body?.error || "Không thể ngưng áp dụng.", "error");
               }
             } catch (err) {
-              Alert.alert("Lỗi", "Có lỗi hệ thống xảy ra.");
+              showToast("Có lỗi hệ thống xảy ra.", "error");
             } finally {
               setSaving(false);
             }
