@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import * as SecureStore from '../utils/secureStoreHelper';
 import * as LocalAuthentication from 'expo-local-authentication';
+import { Image } from 'react-native';
 import ButtonPrimary from '../components/ButtonPrimary';
 import { Feather } from '@expo/vector-icons';
 import styles from '../styles/login';
@@ -129,9 +130,11 @@ export default function NurseLoginScreen() {
     >
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
-          <View style={styles.logoWrap}>
-            <Text style={styles.logoText}>RPM</Text>
-          </View>
+          <Image 
+            source={require('../../assets/icon.png')} 
+            style={{ width: 80, height: 80, borderRadius: 16, marginBottom: 16, alignSelf: 'center' }} 
+            resizeMode="contain"
+          />
           <Text style={styles.title}>Remote Patient Monitoring</Text>
           <Text style={styles.subtitle}>Cổng đăng nhập dành cho Y Tá</Text>
         </View>
