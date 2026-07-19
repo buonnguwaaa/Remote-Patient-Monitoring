@@ -12,12 +12,17 @@ import {
 import { BsCalendar3 } from "react-icons/bs";
 import StatCard from "../components/ui/StatCard";
 
-import Chart, {
-  type ChartStatItem,
-} from "../components/ui/Chart";
-import { getAlerts, getMyPatients, getMeasurements } from "../services/patientService";
+import Chart, { type ChartStatItem } from "../components/ui/Chart";
+import {
+  getAlerts,
+  getMyPatients,
+  getMeasurements,
+} from "../services/patientService";
 import { getThresholds } from "../services/thresholdService";
-import { getMyAppointments, type FollowUpAppointment } from "../services/appointmentService";
+import {
+  getMyAppointments,
+  type FollowUpAppointment,
+} from "../services/appointmentService";
 import type { AlertResponse, AssignmentResponse } from "../types/patient";
 import { exportAlertsToExcel } from "../utils/export/alertExporter";
 import { normalizeAlertSeverity } from "../utils/alertSeverity";
@@ -26,7 +31,10 @@ import {
   calculateHealthStatistics,
   type PatientReportData,
 } from "../utils/export/healthReportExporter";
-import { exportComplianceToExcel, exportMultiComplianceToExcel } from "../utils/export/complianceExporter";
+import {
+  exportComplianceToExcel,
+  exportMultiComplianceToExcel,
+} from "../utils/export/complianceExporter";
 import type { MultiCompliancePatientData } from "../utils/export/complianceExporter";
 import { getAdherence } from "../services/patientService";
 import { useTranslation } from "react-i18next";
@@ -43,7 +51,10 @@ interface KpiDef {
 
 const CHART_BUCKETS = 4;
 
-const TrendBadge: React.FC<{ value: number; up: boolean }> = ({ value, up }) => (
+const TrendBadge: React.FC<{ value: number; up: boolean }> = ({
+  value,
+  up,
+}) => (
   <span
     className={`inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[11px] font-semibold ${
       up
@@ -88,15 +99,7 @@ function ago(ds: string, t: any) {
 }
 
 function endOfMonth(date: Date) {
-  return new Date(
-    date.getFullYear(),
-    date.getMonth() + 1,
-    0,
-    23,
-    59,
-    59,
-    999,
-  );
+  return new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999);
 }
 
 function startOfWeek(date: Date) {
@@ -123,7 +126,8 @@ function buildAlertsByPatient(
   alerts
     .filter((alert) => assignedPatientIds.has(alert.patientId))
     .sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     )
     .forEach((alert) => {
       const current = grouped.get(alert.patientId) || [];
@@ -151,15 +155,17 @@ function getPatientCountsAtDate(
     }
 
     // Xét toàn bộ alert open tại thời điểm snapshot, không chỉ alert mới nhất
-    const patientAlerts = (alertsByPatient.get(assignment.patientId) || []).filter(
-      (alert) => new Date(alert.createdAt).getTime() <= snapshotTime,
-    );
+    const patientAlerts = (
+      alertsByPatient.get(assignment.patientId) || []
+    ).filter((alert) => new Date(alert.createdAt).getTime() <= snapshotTime);
 
     const hasHighOpen = patientAlerts.some(
-      (a) => a.status === "open" && normalizeAlertSeverity(a.severity) === "high"
+      (a) =>
+        a.status === "open" && normalizeAlertSeverity(a.severity) === "high",
     );
     const hasInfoOpen = patientAlerts.some(
-      (a) => a.status === "open" && normalizeAlertSeverity(a.severity) === "info"
+      (a) =>
+        a.status === "open" && normalizeAlertSeverity(a.severity) === "info",
     );
 
     if (hasHighOpen) {
@@ -177,7 +183,7 @@ function getPatientCountsAtDate(
 function buildDashboardChartData(
   assignments: AssignmentResponse[],
   alerts: AlertResponse[],
-  t: (key: string) => string
+  t: (key: string) => string,
 ) {
   const assignedPatientIds = new Set(assignments.map((item) => item.patientId));
   const alertsByPatient = buildAlertsByPatient(alerts, assignedPatientIds);
@@ -186,10 +192,18 @@ function buildDashboardChartData(
   const monthlyChartData: any[] = Array.from(
     { length: CHART_BUCKETS },
     (_, index) => {
-      const monthDate = new Date(now.getFullYear(), now.getMonth() - (CHART_BUCKETS - 1 - index), 1);
+      const monthDate = new Date(
+        now.getFullYear(),
+        now.getMonth() - (CHART_BUCKETS - 1 - index),
+        1,
+      );
       const monthEnd = endOfMonth(monthDate);
       const snapshotAt = monthEnd.getTime() > now.getTime() ? now : monthEnd;
-      const counts = getPatientCountsAtDate(assignments, alertsByPatient, snapshotAt);
+      const counts = getPatientCountsAtDate(
+        assignments,
+        alertsByPatient,
+        snapshotAt,
+      );
 
       return {
         period: `T${monthDate.getMonth() + 1}`,
@@ -205,7 +219,11 @@ function buildDashboardChartData(
       weekSeed.setDate(now.getDate() - (CHART_BUCKETS - 1 - index) * 7);
       const weekEnd = endOfWeek(weekSeed);
       const snapshotAt = weekEnd.getTime() > now.getTime() ? now : weekEnd;
-      const counts = getPatientCountsAtDate(assignments, alertsByPatient, snapshotAt);
+      const counts = getPatientCountsAtDate(
+        assignments,
+        alertsByPatient,
+        snapshotAt,
+      );
 
       return {
         period: `Tuần ${index + 1}`,
@@ -219,15 +237,19 @@ function buildDashboardChartData(
       id: "month",
       label: t("dashboard.chartThisMonth"),
       value:
-        (monthlyChartData[monthlyChartData.length - 1]?.needsMonitoringPatients ?? 0) +
-        (monthlyChartData[monthlyChartData.length - 1]?.highPriorityPatients ?? 0),
+        (monthlyChartData[monthlyChartData.length - 1]
+          ?.needsMonitoringPatients ?? 0) +
+        (monthlyChartData[monthlyChartData.length - 1]?.highPriorityPatients ??
+          0),
     },
     {
       id: "week",
       label: t("dashboard.chartThisWeek"),
       value:
-        (weeklyChartData[weeklyChartData.length - 1]?.needsMonitoringPatients ?? 0) +
-        (weeklyChartData[weeklyChartData.length - 1]?.highPriorityPatients ?? 0),
+        (weeklyChartData[weeklyChartData.length - 1]?.needsMonitoringPatients ??
+          0) +
+        (weeklyChartData[weeklyChartData.length - 1]?.highPriorityPatients ??
+          0),
     },
   ];
 
@@ -246,7 +268,10 @@ const TodoList: React.FC<{
 }> = ({ alerts, appointments, assignments, loading }) => {
   const navigate = useNavigate();
 
-  const pendingAlerts = useMemo(() => alerts.filter(a => a.status === "open").slice(0, 5), [alerts]);
+  const pendingAlerts = useMemo(
+    () => alerts.filter((a) => a.status === "open").slice(0, 5),
+    [alerts],
+  );
 
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white dark:border-slate-700/60 dark:bg-slate-800">
@@ -264,7 +289,10 @@ const TodoList: React.FC<{
               <div className="mb-2 h-3.5 w-32 rounded bg-slate-200 dark:bg-slate-700" />
               <div className="space-y-2">
                 {[...Array(2)].map((_, i) => (
-                  <div key={i} className="flex items-center justify-between rounded-lg border border-gray-50 bg-gray-50/50 p-3 dark:border-slate-700/30 dark:bg-slate-700/20">
+                  <div
+                    key={i}
+                    className="flex items-center justify-between rounded-lg border border-gray-50 bg-gray-50/50 p-3 dark:border-slate-700/30 dark:bg-slate-700/20"
+                  >
                     <div className="space-y-1.5 flex-1">
                       <div className="h-3.5 w-28 rounded bg-slate-200 dark:bg-slate-700" />
                       <div className="h-3 w-20 rounded bg-slate-100 dark:bg-slate-800" />
@@ -276,20 +304,37 @@ const TodoList: React.FC<{
             </div>
           </div>
         ) : pendingAlerts.length === 0 && appointments.length === 0 ? (
-          <p className="py-8 text-center text-xs text-gray-400">Không có việc cần xử lý hôm nay.</p>
+          <p className="py-8 text-center text-xs text-gray-400">
+            Không có việc cần xử lý hôm nay.
+          </p>
         ) : (
           <div className="space-y-4 p-4">
             {pendingAlerts.length > 0 && (
               <div>
-                <h4 className="mb-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider dark:text-slate-400">Cảnh báo chưa xử lý</h4>
+                <h4 className="mb-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider dark:text-slate-400">
+                  Cảnh báo chưa xử lý
+                </h4>
                 <div className="space-y-2">
                   {pendingAlerts.map((alert) => (
-                    <div key={alert.id} className="flex items-center justify-between rounded-lg bg-red-50 p-3 dark:bg-red-900/10">
+                    <div
+                      key={alert.id}
+                      className="flex items-center justify-between rounded-lg bg-red-50 p-3 dark:bg-red-900/10"
+                    >
                       <div>
-                        <p className="text-xs font-semibold text-gray-800 dark:text-slate-200">{alert.patientName || "Chưa rõ"}</p>
-                        <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-0.5">Mức độ: {normalizeAlertSeverity(alert.severity) === 'high' ? 'Ưu tiên cao' : 'Cần theo dõi'}</p>
+                        <p className="text-xs font-semibold text-gray-800 dark:text-slate-200">
+                          {alert.patientName || "Chưa rõ"}
+                        </p>
+                        <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-0.5">
+                          Mức độ:{" "}
+                          {normalizeAlertSeverity(alert.severity) === "high"
+                            ? "Ưu tiên cao"
+                            : "Cần theo dõi"}
+                        </p>
                       </div>
-                      <button onClick={() => navigate("/threshold-alerts")} className="rounded bg-red-100 px-2 py-1 text-[10px] font-medium text-red-600 hover:bg-red-200 dark:bg-red-500/20 dark:text-red-400 dark:hover:bg-red-500/30">
+                      <button
+                        onClick={() => navigate("/threshold-alerts")}
+                        className="rounded bg-red-100 px-2 py-1 text-[10px] font-medium text-red-600 hover:bg-red-200 dark:bg-red-500/20 dark:text-red-400 dark:hover:bg-red-500/30"
+                      >
                         Xử lý
                       </button>
                     </div>
@@ -297,18 +342,32 @@ const TodoList: React.FC<{
                 </div>
               </div>
             )}
-            
+
             {appointments.length > 0 && (
               <div>
-                <h4 className="mb-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider dark:text-slate-400">Lịch khám hôm nay</h4>
+                <h4 className="mb-2 text-[11px] font-semibold text-gray-500 uppercase tracking-wider dark:text-slate-400">
+                  Lịch khám hôm nay
+                </h4>
                 <div className="space-y-2">
                   {appointments.map((appt) => (
-                    <div key={appt.id} className="flex items-center justify-between rounded-lg bg-blue-50 p-3 dark:bg-blue-900/10">
+                    <div
+                      key={appt.id}
+                      className="flex items-center justify-between rounded-lg bg-blue-50 p-3 dark:bg-blue-900/10"
+                    >
                       <div>
                         <p className="text-xs font-semibold text-gray-800 dark:text-slate-200">
-                          {new Date(appt.scheduledAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })} - {assignments.find(a => a.patientId === appt.patientId)?.patientName || "Bệnh nhân không rõ"}
+                          {new Date(appt.scheduledAt).toLocaleTimeString(
+                            "vi-VN",
+                            { hour: "2-digit", minute: "2-digit" },
+                          )}{" "}
+                          -{" "}
+                          {assignments.find(
+                            (a) => a.patientId === appt.patientId,
+                          )?.patientName || "Bệnh nhân không rõ"}
                         </p>
-                        <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-0.5">{appt.notes || "Khám định kỳ"}</p>
+                        <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-0.5">
+                          {appt.notes || "Khám định kỳ"}
+                        </p>
                       </div>
                       <div className="rounded bg-blue-100 px-2 py-1 text-[10px] font-medium text-blue-600 dark:bg-blue-500/20 dark:text-blue-400">
                         Sắp diễn ra
@@ -394,17 +453,19 @@ const RecentAlerts: React.FC<{
             return (
               <div
                 key={alert.id}
-                className={`flex cursor-pointer items-start gap-3 px-5 py-3 transition-colors hover:bg-gray-50 dark:hover:bg-slate-700/40 ${index > 0
-                  ? "border-t border-gray-50 dark:border-slate-700/30"
-                  : ""
-                  }`}
+                className={`flex cursor-pointer items-start gap-3 px-5 py-3 transition-colors hover:bg-gray-50 dark:hover:bg-slate-700/40 ${
+                  index > 0
+                    ? "border-t border-gray-50 dark:border-slate-700/30"
+                    : ""
+                }`}
                 onClick={() => navigate(`/alert/${alert.id}`)}
               >
                 <div
-                  className={`mt-0.5 shrink-0 rounded-lg p-1.5 ${normalizeAlertSeverity(alert.severity) === "high"
-                    ? "bg-red-50 text-red-400 dark:bg-red-900/30"
-                    : "bg-blue-50 text-blue-400 dark:bg-blue-900/30"
-                    }`}
+                  className={`mt-0.5 shrink-0 rounded-lg p-1.5 ${
+                    normalizeAlertSeverity(alert.severity) === "high"
+                      ? "bg-red-50 text-red-400 dark:bg-red-900/30"
+                      : "bg-blue-50 text-blue-400 dark:bg-blue-900/30"
+                  }`}
                 >
                   {normalizeAlertSeverity(alert.severity) === "high" ? (
                     <FaExclamationTriangle size={10} />
@@ -424,21 +485,31 @@ const RecentAlerts: React.FC<{
                   </div>
                   <p className="mt-0.5 truncate text-[11px] text-gray-400 dark:text-slate-500">
                     {alert.violations
-                      .map(
-                        (violation) => {
-                          const cleanType = violation.type.replace(/_(max|min|high|low)$/, "");
-                          const label = violationLabel[cleanType] || violationLabel[violation.type] || violation.type;
-                          const val = typeof violation.observed === 'number' ? Number(violation.observed.toFixed(1)) : violation.observed;
-                          return `${label}: ${val}`;
-                        }
-                      )
+                      .map((violation) => {
+                        const cleanType = violation.type.replace(
+                          /_(max|min|high|low)$/,
+                          "",
+                        );
+                        const label =
+                          violationLabel[cleanType] ||
+                          violationLabel[violation.type] ||
+                          violation.type;
+                        const val =
+                          typeof violation.observed === "number"
+                            ? Number(violation.observed.toFixed(1))
+                            : violation.observed;
+                        return `${label}: ${val}`;
+                      })
                       .join(" · ")}
                   </p>
                 </div>
 
                 <div
-                  className={`shrink-0 rounded px-2 py-0.5 text-[10px] font-semibold ${alert.status === "ack" ? "bg-teal-100 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400" : "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"
-                    }`}
+                  className={`shrink-0 rounded px-2 py-0.5 text-[10px] font-semibold ${
+                    alert.status === "ack"
+                      ? "bg-teal-100 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400"
+                      : "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"
+                  }`}
                 >
                   {alert.status === "ack" ? "Đã xử lý" : "Chờ xử lý"}
                 </div>
@@ -464,7 +535,10 @@ const DashBoard = () => {
   const openAlerts = openAlertsResult?.alerts || [];
 
   const { data: recentAlertsResult } = useQuery({
-    queryKey: ["alerts", { page: 1, limit: 10, status: "", severity: "", patientId: "" }],
+    queryKey: [
+      "alerts",
+      { page: 1, limit: 10, status: "", severity: "", patientId: "" },
+    ],
     queryFn: () => getAlerts({ page: 1, limit: 10, sortOrder: "desc" }),
     staleTime: 5 * 60 * 1000,
   });
@@ -484,34 +558,44 @@ const DashBoard = () => {
   const [startDate, setStartDate] = useState<string>(() => {
     const date = new Date();
     date.setDate(1); // First day of current month
-    return date.toISOString().split('T')[0];
+    return date.toISOString().split("T")[0];
   });
   const [endDate, setEndDate] = useState<string>(() => {
-    return new Date().toISOString().split('T')[0];
+    return new Date().toISOString().split("T")[0];
   });
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   // Export menu and health report modal state
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showHealthReportModal, setShowHealthReportModal] = useState(false);
-  const [selectedPatients, setSelectedPatients] = useState<Set<string>>(new Set());
+  const [selectedPatients, setSelectedPatients] = useState<Set<string>>(
+    new Set(),
+  );
   const [reportStartDate, setReportStartDate] = useState<string>(() => {
     const date = new Date();
     date.setDate(1);
-    return date.toISOString().split('T')[0];
+    return date.toISOString().split("T")[0];
   });
   const [reportEndDate, setReportEndDate] = useState<string>(() => {
-    return new Date().toISOString().split('T')[0];
+    return new Date().toISOString().split("T")[0];
   });
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
-  const [reportProgress, setReportProgress] = useState({ current: 0, total: 0 });
+  const [reportProgress, setReportProgress] = useState({
+    current: 0,
+    total: 0,
+  });
 
   // Compliance report modal state
   const [showComplianceModal, setShowComplianceModal] = useState(false);
-  const [complianceSelectedPatients, setComplianceSelectedPatients] = useState<Set<string>>(new Set());
+  const [complianceSelectedPatients, setComplianceSelectedPatients] = useState<
+    Set<string>
+  >(new Set());
   const [complianceDays, setComplianceDays] = useState<number>(30);
   const [isGeneratingCompliance, setIsGeneratingCompliance] = useState(false);
-  const [complianceProgress, setComplianceProgress] = useState({ current: 0, total: 0 });
+  const [complianceProgress, setComplianceProgress] = useState({
+    current: 0,
+    total: 0,
+  });
   const [complianceSearch, setComplianceSearch] = useState("");
 
   const dateRange = `${new Date(startDate).toLocaleDateString("vi-VN", {
@@ -548,8 +632,8 @@ const DashBoard = () => {
         console.error("Failed to load doctor dashboard", loadError);
         setError(
           loadError?.response?.data?.error ||
-          loadError?.message ||
-          "Không thể tải dữ liệu dashboard.",
+            loadError?.message ||
+            "Không thể tải dữ liệu dashboard.",
         );
         setAssignments([]);
         setAlerts([]);
@@ -566,14 +650,15 @@ const DashBoard = () => {
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
-      if (showExportMenu && !target.closest('.export-menu-container')) {
+      if (showExportMenu && !target.closest(".export-menu-container")) {
         setShowExportMenu(false);
       }
     };
 
     if (showExportMenu) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
+      document.addEventListener("mousedown", handleClickOutside);
+      return () =>
+        document.removeEventListener("mousedown", handleClickOutside);
     }
   }, [showExportMenu]);
 
@@ -582,24 +667,21 @@ const DashBoard = () => {
     [assignments],
   );
 
-  const filteredAlerts = useMemo(
-    () => {
-      let filtered = alerts.filter((alert) => assignedPatientIds.has(alert.patientId));
+  const filteredAlerts = useMemo(() => {
+    let filtered = alerts.filter((alert) =>
+      assignedPatientIds.has(alert.patientId),
+    );
 
-      filtered = filtered.filter((alert) => {
-        const alertDate = new Date(alert.createdAt);
-        const start = new Date(startDate);
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        return alertDate >= start && alertDate <= end;
-      });
+    filtered = filtered.filter((alert) => {
+      const alertDate = new Date(alert.createdAt);
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      return alertDate >= start && alertDate <= end;
+    });
 
-      return filtered;
-    },
-    [alerts, assignedPatientIds, startDate, endDate],
-  );
-
-
+    return filtered;
+  }, [alerts, assignedPatientIds, startDate, endDate]);
 
   const dashboardStats = useMemo(() => {
     if (loading) {
@@ -624,7 +706,9 @@ const DashBoard = () => {
 
     // Tính theo toàn bộ alert open, không chỉ alert mới nhất
     const patientHighestSeverity = new Map<string, "high" | "info">();
-    const allAssignedAlerts = alerts.filter(a => assignedPatientIds.has(a.patientId));
+    const allAssignedAlerts = alerts.filter((a) =>
+      assignedPatientIds.has(a.patientId),
+    );
 
     allAssignedAlerts.forEach((alert) => {
       if (alert.status === "open") {
@@ -666,9 +750,9 @@ const DashBoard = () => {
     () =>
       loading
         ? [
-          { id: "month", label: t("patientDetail.month"), value: "..." },
-          { id: "week", label: t("patientDetail.week"), value: "..." },
-        ]
+            { id: "month", label: t("patientDetail.month"), value: "..." },
+            { id: "week", label: t("patientDetail.week"), value: "..." },
+          ]
         : chartPayload.chartStats,
     [chartPayload.chartStats, loading],
   );
@@ -710,10 +794,12 @@ const DashBoard = () => {
     exportAlertsToExcel({
       allAlerts: filteredAlerts,
       assignments,
-      dashboardStats: { 
-        total: dashboardStats.total, 
-        stable: dashboardStats.stable, 
-        attention: (dashboardStats.highPriority || 0) + (dashboardStats.needsMonitoring || 0) 
+      dashboardStats: {
+        total: dashboardStats.total,
+        stable: dashboardStats.stable,
+        attention:
+          (dashboardStats.highPriority || 0) +
+          (dashboardStats.needsMonitoring || 0),
       },
       dateRange,
     });
@@ -742,7 +828,7 @@ const DashBoard = () => {
     if (selectedPatients.size === assignments.length) {
       setSelectedPatients(new Set());
     } else {
-      setSelectedPatients(new Set(assignments.map(a => a.patientId)));
+      setSelectedPatients(new Set(assignments.map((a) => a.patientId)));
     }
   };
 
@@ -757,7 +843,9 @@ const DashBoard = () => {
     setReportProgress({ current: 0, total: selectedPatients.size });
 
     try {
-      const selectedAssignments = assignments.filter(a => selectedPatients.has(a.patientId));
+      const selectedAssignments = assignments.filter((a) =>
+        selectedPatients.has(a.patientId),
+      );
       let current = 0;
 
       // Fetch data for each selected patient in parallel
@@ -782,7 +870,10 @@ const DashBoard = () => {
           const threshold = thresholds.length > 0 ? thresholds[0] : null;
 
           // Calculate statistics
-          const stats = calculateHealthStatistics(filteredMeasurements, threshold);
+          const stats = calculateHealthStatistics(
+            filteredMeasurements,
+            threshold,
+          );
 
           current++;
           setReportProgress({ current, total: selectedPatients.size });
@@ -794,7 +885,10 @@ const DashBoard = () => {
             stats,
           };
         } catch (error) {
-          console.error(`Error fetching data for patient ${assignment.patientId}:`, error);
+          console.error(
+            `Error fetching data for patient ${assignment.patientId}:`,
+            error,
+          );
           current++;
           setReportProgress({ current, total: selectedPatients.size });
           return null;
@@ -802,7 +896,9 @@ const DashBoard = () => {
       });
 
       const results = await Promise.all(reportPromises);
-      const reportData = results.filter((item): item is PatientReportData => item !== null);
+      const reportData = results.filter(
+        (item): item is PatientReportData => item !== null,
+      );
 
       // Generate Excel file
       exportHealthReportToExcel(reportData, reportStartDate, reportEndDate);
@@ -810,8 +906,8 @@ const DashBoard = () => {
       setShowHealthReportModal(false);
       setIsGeneratingReport(false);
     } catch (error) {
-      console.error('Error generating health report:', error);
-      alert('Có lỗi xảy ra khi tạo báo cáo. Vui lòng thử lại.');
+      console.error("Error generating health report:", error);
+      alert("Có lỗi xảy ra khi tạo báo cáo. Vui lòng thử lại.");
       setIsGeneratingReport(false);
     }
   };
@@ -844,7 +940,9 @@ const DashBoard = () => {
     if (complianceSelectedPatients.size === assignments.length) {
       setComplianceSelectedPatients(new Set());
     } else {
-      setComplianceSelectedPatients(new Set(assignments.map(a => a.patientId)));
+      setComplianceSelectedPatients(
+        new Set(assignments.map((a) => a.patientId)),
+      );
     }
   };
 
@@ -852,9 +950,10 @@ const DashBoard = () => {
   const complianceFilteredAssignments = useMemo(() => {
     if (!complianceSearch.trim()) return assignments;
     const q = complianceSearch.toLowerCase();
-    return assignments.filter(a =>
-      (a.patientName || '').toLowerCase().includes(q) ||
-      (a.patientCode || a.patientPublicId || '').toLowerCase().includes(q)
+    return assignments.filter(
+      (a) =>
+        (a.patientName || "").toLowerCase().includes(q) ||
+        (a.patientCode || a.patientPublicId || "").toLowerCase().includes(q),
     );
   }, [assignments, complianceSearch]);
 
@@ -863,15 +962,23 @@ const DashBoard = () => {
     if (complianceSelectedPatients.size === 0) return;
 
     setIsGeneratingCompliance(true);
-    setComplianceProgress({ current: 0, total: complianceSelectedPatients.size });
+    setComplianceProgress({
+      current: 0,
+      total: complianceSelectedPatients.size,
+    });
 
     try {
-      const selectedAssignments = assignments.filter(a => complianceSelectedPatients.has(a.patientId));
+      const selectedAssignments = assignments.filter((a) =>
+        complianceSelectedPatients.has(a.patientId),
+      );
 
       // Single patient → use original single-file export
       if (selectedAssignments.length === 1) {
         const patient = selectedAssignments[0];
-        const adherence = await getAdherence({ patientId: patient.patientId, days: complianceDays });
+        const adherence = await getAdherence({
+          patientId: patient.patientId,
+          days: complianceDays,
+        });
         setComplianceProgress({ current: 1, total: 1 });
         await exportComplianceToExcel({
           adherence,
@@ -884,25 +991,40 @@ const DashBoard = () => {
         let current = 0;
         const compliancePromises = selectedAssignments.map(async (patient) => {
           try {
-            const adherence = await getAdherence({ patientId: patient.patientId, days: complianceDays });
+            const adherence = await getAdherence({
+              patientId: patient.patientId,
+              days: complianceDays,
+            });
             current++;
-            setComplianceProgress({ current, total: selectedAssignments.length });
+            setComplianceProgress({
+              current,
+              total: selectedAssignments.length,
+            });
             return {
               adherence,
               patientName: patient.patientName || "Bệnh nhân",
-              patientCode: patient.patientCode || patient.patientPublicId || "-",
+              patientCode:
+                patient.patientCode || patient.patientPublicId || "-",
               daysCount: complianceDays,
             };
           } catch (err) {
-            console.error(`Compliance fetch failed for ${patient.patientId}`, err);
+            console.error(
+              `Compliance fetch failed for ${patient.patientId}`,
+              err,
+            );
             current++;
-            setComplianceProgress({ current, total: selectedAssignments.length });
+            setComplianceProgress({
+              current,
+              total: selectedAssignments.length,
+            });
             return null;
           }
         });
 
         const results = await Promise.all(compliancePromises);
-        const patientsData = results.filter((item): item is MultiCompliancePatientData => item !== null);
+        const patientsData = results.filter(
+          (item): item is MultiCompliancePatientData => item !== null,
+        );
 
         if (patientsData.length > 0) {
           await exportMultiComplianceToExcel({ patients: patientsData });
@@ -919,7 +1041,7 @@ const DashBoard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#f5f6fa] font-sans dark:bg-slate-900">
+    <div className="min-h-screen bg-[#f5f6fa] dark:bg-slate-900">
       <div className="w-full space-y-4 px-4 py-8 pb-24 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold text-gray-800 dark:text-slate-100">
@@ -1002,8 +1124,8 @@ const DashBoard = () => {
                         onClick={() => {
                           const date = new Date();
                           date.setDate(1);
-                          setStartDate(date.toISOString().split('T')[0]);
-                          setEndDate(new Date().toISOString().split('T')[0]);
+                          setStartDate(date.toISOString().split("T")[0]);
+                          setEndDate(new Date().toISOString().split("T")[0]);
                         }}
                         className="rounded-lg border border-gray-200 px-3 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
                       >
@@ -1071,9 +1193,10 @@ const DashBoard = () => {
               variant={kpi.variant}
               loading={loading}
               badge={
-                typeof kpi.change === "number" && typeof kpi.up === "boolean"
-                  ? <TrendBadge value={kpi.change} up={kpi.up} />
-                  : undefined
+                typeof kpi.change === "number" &&
+                typeof kpi.up === "boolean" ? (
+                  <TrendBadge value={kpi.change} up={kpi.up} />
+                ) : undefined
               }
             />
           ))}
@@ -1095,7 +1218,12 @@ const DashBoard = () => {
 
           <div className="flex flex-col gap-3 lg:col-span-2 h-full">
             <div className="h-[300px]">
-              <TodoList alerts={alerts} appointments={appointments} assignments={assignments} loading={loading} />
+              <TodoList
+                alerts={alerts}
+                appointments={appointments}
+                assignments={assignments}
+                loading={loading}
+              />
             </div>
             <div className="flex-1 min-h-[300px]">
               <RecentAlerts alerts={recentAlerts} loading={loading} />
@@ -1123,7 +1251,10 @@ const DashBoard = () => {
             </div>
 
             {/* Modal Body */}
-            <div className="overflow-y-auto p-6" style={{ maxHeight: 'calc(90vh - 140px)' }}>
+            <div
+              className="overflow-y-auto p-6"
+              style={{ maxHeight: "calc(90vh - 140px)" }}
+            >
               {/* Date Range */}
               <div className="mb-6">
                 <h3 className="mb-3 text-sm font-semibold text-gray-900 dark:text-white">
@@ -1177,14 +1308,17 @@ const DashBoard = () => {
               <div>
                 <div className="mb-3 flex items-center justify-between">
                   <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
-                    Chọn bệnh nhân ({selectedPatients.size}/{assignments.length})
+                    Chọn bệnh nhân ({selectedPatients.size}/{assignments.length}
+                    )
                   </h3>
                   <button
                     onClick={handleSelectAllPatients}
                     disabled={isGeneratingReport}
                     className="text-xs font-medium text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 disabled:opacity-50"
                   >
-                    {selectedPatients.size === assignments.length ? t("dashboard.deselectAll") : t("dashboard.selectAll")}
+                    {selectedPatients.size === assignments.length
+                      ? t("dashboard.deselectAll")
+                      : t("dashboard.selectAll")}
                   </button>
                 </div>
 
@@ -1202,16 +1336,20 @@ const DashBoard = () => {
                         <input
                           type="checkbox"
                           checked={selectedPatients.has(assignment.patientId)}
-                          onChange={() => handleTogglePatient(assignment.patientId)}
+                          onChange={() =>
+                            handleTogglePatient(assignment.patientId)
+                          }
                           disabled={isGeneratingReport}
                           className="h-4 w-4 rounded border-gray-300 text-indigo-500 focus:ring-indigo-500 disabled:opacity-50"
                         />
                         <div className="flex-1">
                           <p className="text-sm font-medium text-gray-900 dark:text-white">
-                            {assignment.patientName || 'Không rõ'}
+                            {assignment.patientName || "Không rõ"}
                           </p>
                           <p className="text-xs text-gray-500 dark:text-slate-400">
-                            {assignment.patientCode || assignment.patientPublicId || 'Không có mã'}
+                            {assignment.patientCode ||
+                              assignment.patientPublicId ||
+                              "Không có mã"}
                           </p>
                         </div>
                       </label>
@@ -1260,7 +1398,9 @@ const DashBoard = () => {
                 disabled={isGeneratingReport || selectedPatients.size === 0}
                 className="rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-600 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {isGeneratingReport ? t("dashboard.generating") : `Xuất báo cáo (${selectedPatients.size})`}
+                {isGeneratingReport
+                  ? t("dashboard.generating")
+                  : `Xuất báo cáo (${selectedPatients.size})`}
               </button>
             </div>
           </div>
@@ -1278,7 +1418,8 @@ const DashBoard = () => {
                   {t("dashboard.exportComplianceReport")}
                 </h2>
                 <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
-                  Chọn một hoặc nhiều bệnh nhân để xuất báo cáo tuân thủ dùng thuốc
+                  Chọn một hoặc nhiều bệnh nhân để xuất báo cáo tuân thủ dùng
+                  thuốc
                 </p>
               </div>
               <button
@@ -1291,14 +1432,17 @@ const DashBoard = () => {
             </div>
 
             {/* Body */}
-            <div className="overflow-y-auto p-6 space-y-5" style={{ maxHeight: 'calc(90vh - 140px)' }}>
+            <div
+              className="overflow-y-auto p-6 space-y-5"
+              style={{ maxHeight: "calc(90vh - 140px)" }}
+            >
               {/* Days range */}
               <div>
                 <label className="mb-2 block text-sm font-semibold text-gray-900 dark:text-white">
                   Khoảng thời gian
                 </label>
                 <div className="flex gap-2">
-                  {[7, 14, 30, 60].map(d => (
+                  {[7, 14, 30, 60].map((d) => (
                     <button
                       key={d}
                       onClick={() => setComplianceDays(d)}
@@ -1319,14 +1463,17 @@ const DashBoard = () => {
               <div>
                 <div className="mb-3 flex items-center justify-between">
                   <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
-                    Chọn bệnh nhân ({complianceSelectedPatients.size}/{assignments.length})
+                    Chọn bệnh nhân ({complianceSelectedPatients.size}/
+                    {assignments.length})
                   </h3>
                   <button
                     onClick={handleSelectAllCompliancePatients}
                     disabled={isGeneratingCompliance}
                     className="text-xs font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 disabled:opacity-50"
                   >
-                    {complianceSelectedPatients.size === assignments.length ? "Bỏ chọn tất cả" : "Chọn tất cả"}
+                    {complianceSelectedPatients.size === assignments.length
+                      ? "Bỏ chọn tất cả"
+                      : "Chọn tất cả"}
                   </button>
                 </div>
 
@@ -1336,7 +1483,7 @@ const DashBoard = () => {
                     type="text"
                     placeholder="Tìm bệnh nhân..."
                     value={complianceSearch}
-                    onChange={e => setComplianceSearch(e.target.value)}
+                    onChange={(e) => setComplianceSearch(e.target.value)}
                     disabled={isGeneratingCompliance}
                     className="w-full rounded-lg border border-gray-200 dark:border-slate-600 bg-gray-50 dark:bg-slate-900 px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 disabled:opacity-50"
                   />
@@ -1345,10 +1492,12 @@ const DashBoard = () => {
                 <div className="space-y-1 rounded-lg border border-gray-200 dark:border-slate-700 p-3 max-h-64 overflow-y-auto">
                   {complianceFilteredAssignments.length === 0 ? (
                     <p className="text-center text-sm text-gray-400 py-4">
-                      {assignments.length === 0 ? "Không có bệnh nhân" : "Không tìm thấy bệnh nhân"}
+                      {assignments.length === 0
+                        ? "Không có bệnh nhân"
+                        : "Không tìm thấy bệnh nhân"}
                     </p>
                   ) : (
-                    complianceFilteredAssignments.map(a => (
+                    complianceFilteredAssignments.map((a) => (
                       <label
                         key={a.patientId}
                         className="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 hover:bg-gray-50 dark:hover:bg-slate-700"
@@ -1356,16 +1505,20 @@ const DashBoard = () => {
                         <input
                           type="checkbox"
                           checked={complianceSelectedPatients.has(a.patientId)}
-                          onChange={() => handleToggleCompliancePatient(a.patientId)}
+                          onChange={() =>
+                            handleToggleCompliancePatient(a.patientId)
+                          }
                           disabled={isGeneratingCompliance}
                           className="h-4 w-4 rounded border-gray-300 text-emerald-500 focus:ring-emerald-500 disabled:opacity-50"
                         />
                         <div className="flex-1">
                           <p className="text-sm font-medium text-gray-900 dark:text-white">
-                            {a.patientName || 'Không rõ'}
+                            {a.patientName || "Không rõ"}
                           </p>
                           <p className="text-xs text-gray-500 dark:text-slate-400">
-                            {a.patientCode || a.patientPublicId || 'Không có mã'}
+                            {a.patientCode ||
+                              a.patientPublicId ||
+                              "Không có mã"}
                           </p>
                         </div>
                       </label>
@@ -1384,7 +1537,9 @@ const DashBoard = () => {
                 <ul className="mt-1 text-xs text-emerald-600 dark:text-emerald-500 space-y-0.5 list-disc list-inside">
                   {complianceSelectedPatients.size <= 1 ? (
                     <>
-                      <li>Tổng quan — tỷ lệ tuân thủ từng ngày + thông tin báo cáo</li>
+                      <li>
+                        Tổng quan — tỷ lệ tuân thủ từng ngày + thông tin báo cáo
+                      </li>
                       <li>Chi tiết — từng liều thuốc đã uống/bỏ lỡ</li>
                       <li>Thống kê theo thuốc — tổng hợp từng loại</li>
                     </>
@@ -1434,7 +1589,10 @@ const DashBoard = () => {
               </button>
               <button
                 onClick={handleGenerateComplianceReport}
-                disabled={isGeneratingCompliance || complianceSelectedPatients.size === 0}
+                disabled={
+                  isGeneratingCompliance ||
+                  complianceSelectedPatients.size === 0
+                }
                 className="rounded-lg bg-emerald-600 hover:bg-emerald-700 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isGeneratingCompliance
