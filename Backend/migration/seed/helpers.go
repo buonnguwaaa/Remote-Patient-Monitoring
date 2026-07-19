@@ -3,6 +3,7 @@ package seed
 import (
 	"context"
 	"fmt"
+	"math"
 	"time"
 
 	userDomain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
@@ -16,6 +17,11 @@ func fp(v float64) *float64 {
 
 func ip(v int) *int {
 	return &v
+}
+
+// round1 rounds to one decimal place (e.g. 88.333 → 88.3).
+func round1(v float64) float64 {
+	return math.Round(v*10) / 10
 }
 
 func seedEmail(role string, index int) string {

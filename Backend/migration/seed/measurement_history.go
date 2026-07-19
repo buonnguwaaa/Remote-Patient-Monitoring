@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"math"
 	"sort"
 	"time"
 
@@ -281,7 +280,7 @@ func buildHistoryMeasurement(
 		}
 		return domain.Measurement{
 			PatientID:  patientID,
-			Glucose:    domain.Glucose{BloodGlucose: fp(g)},
+			Glucose:    domain.Glucose{BloodGlucose: fp(round1(g))},
 			MealTiming: &preMeal,
 			Device:     &device,
 			Note:       &note,
@@ -296,7 +295,7 @@ func buildHistoryMeasurement(
 		}
 		return domain.Measurement{
 			PatientID:  patientID,
-			Glucose:    domain.Glucose{BloodGlucose: fp(g)},
+			Glucose:    domain.Glucose{BloodGlucose: fp(round1(g))},
 			MealTiming: &preMeal,
 			Device:     &device,
 			Note:       &note,
@@ -328,7 +327,7 @@ func buildHistoryMeasurement(
 		}
 		return domain.Measurement{
 			PatientID:  patientID,
-			Glucose:    domain.Glucose{BloodGlucose: fp(g)},
+			Glucose:    domain.Glucose{BloodGlucose: fp(round1(g))},
 			MealTiming: timing,
 			Device:     &device,
 			Note:       &note,
@@ -341,18 +340,18 @@ func vitalsMeasurement(
 	sys, dia, temp, hr, rr, spo2 float64,
 	device, note *string,
 ) domain.Measurement {
-	sys = math.Round(sys)
-	dia = math.Round(dia)
+	sys = round1(sys)
+	dia = round1(dia)
 	return domain.Measurement{
 		PatientID:       patientID,
-		Temperature:     fp(temp),
-		HeartRate:       fp(hr),
-		RespiratoryRate: fp(rr),
-		SpO2:            fp(spo2),
+		Temperature:     fp(round1(temp)),
+		HeartRate:       fp(round1(hr)),
+		RespiratoryRate: fp(round1(rr)),
+		SpO2:            fp(round1(spo2)),
 		BloodPressure: domain.BloodPressure{
 			Systolic:  fp(sys),
 			Diastolic: fp(dia),
-			MAP:       fp(math.Round(calculateMAP(sys, dia))),
+			MAP:       fp(round1(calculateMAP(sys, dia))),
 		},
 		Device: device,
 		Note:   note,
