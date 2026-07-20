@@ -239,6 +239,23 @@ func (s *userService) UpdateDoctor(ctx context.Context, input *usecase.UpdateUse
 		return err
 	}
 
+	existing, err := s.doctorRepo.FindStaffByID(ctx, objID)
+	if err != nil {
+		return err
+	}
+
+	mergedDegree := existing.AcademicDegree
+	if input.AcademicDegree != "" {
+		mergedDegree = input.AcademicDegree
+	}
+	mergedTitle := existing.AcademicTitle
+	if input.AcademicTitle != "" {
+		mergedTitle = input.AcademicTitle
+	}
+	if err := validateDoctorCredentials(mergedDegree, mergedTitle); err != nil {
+		return err
+	}
+
 	updateData := buildBaseUpdateData(input)
 
 	staffData, err := buildStaffUpdateData(&input.StaffFieldsInput)
@@ -397,6 +414,15 @@ func buildDoctorUpdateData(input *usecase.DoctorFieldsInput) map[string]interfac
 	if input.YearsOfExperience > 0 {
 		updateData["yearsOfExperience"] = input.YearsOfExperience
 	}
+	if input.AcademicDegree != "" {
+		updateData["academicDegree"] = input.AcademicDegree
+	}
+	if input.ProfessionalQualification != "" {
+		updateData["professionalQualification"] = input.ProfessionalQualification
+	}
+	if input.AcademicTitle != "" {
+		updateData["academicTitle"] = input.AcademicTitle
+	}
 
 	return updateData
 }
@@ -438,7 +464,14 @@ func mapDoctor(user *domain.Doctor) *dto.DoctorInfoResponse {
 			LicenseNumber:        user.LicenseNumber,
 			YearsOfExperience:    user.YearsOfExperience,
 		},
-		Specialization: user.Specialization,
+		Specialization:                 user.Specialization,
+		AcademicDegree:                 user.AcademicDegree,
+		AcademicDegreeLabel:            user.AcademicDegree.Label(),
+		ProfessionalQualification:      user.ProfessionalQualification,
+		ProfessionalQualificationLabel: user.ProfessionalQualification.Label(),
+		AcademicTitle:                  user.AcademicTitle,
+		AcademicTitleLabel:             user.AcademicTitle.Label(),
+		DisplayName:                    user.DisplayName(),
 	}
 }
 

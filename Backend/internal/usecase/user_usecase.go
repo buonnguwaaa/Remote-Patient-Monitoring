@@ -28,8 +28,11 @@ type StaffFieldsInput struct {
 }
 
 type DoctorFieldsInput struct {
-	Specialization    string
-	YearsOfExperience int
+	Specialization            string
+	YearsOfExperience         int
+	AcademicDegree            domain.AcademicDegree
+	ProfessionalQualification domain.ProfessionalQualification
+	AcademicTitle             domain.AcademicTitle
 }
 
 type NurseFieldsInput struct {

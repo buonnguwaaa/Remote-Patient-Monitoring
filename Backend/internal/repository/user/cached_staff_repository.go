@@ -16,11 +16,14 @@ import (
 // and is simply left empty when caching a Nurse.
 type cachedMedicalStaff struct {
 	cachedBaseUser
-	DepartmentID      primitive.ObjectID `json:"departmentId,omitempty"`
-	Workplace         string             `json:"workplace,omitempty"`
-	LicenseNumber     string             `json:"licenseNumber,omitempty"`
-	YearsOfExperience int                `json:"yearsOfExperience,omitempty"`
-	Specialization    string             `json:"specialization,omitempty"`
+	DepartmentID              primitive.ObjectID                `json:"departmentId,omitempty"`
+	Workplace                 string                            `json:"workplace,omitempty"`
+	LicenseNumber             string                            `json:"licenseNumber,omitempty"`
+	YearsOfExperience         int                               `json:"yearsOfExperience,omitempty"`
+	Specialization            string                            `json:"specialization,omitempty"`
+	AcademicDegree            domain.AcademicDegree             `json:"academicDegree,omitempty"`
+	ProfessionalQualification domain.ProfessionalQualification  `json:"professionalQualification,omitempty"`
+	AcademicTitle             domain.AcademicTitle              `json:"academicTitle,omitempty"`
 }
 
 // toCachedStaff and fromCachedStaff use the same type-switch approach as
@@ -30,12 +33,15 @@ func toCachedStaff[T StaffEntity](u *T) cachedMedicalStaff {
 	switch v := any(u).(type) {
 	case *domain.Doctor:
 		return cachedMedicalStaff{
-			cachedBaseUser:    toCachedBaseUser(&v.BaseUser),
-			DepartmentID:      v.DepartmentID,
-			Workplace:         v.Workplace,
-			LicenseNumber:     v.LicenseNumber,
-			YearsOfExperience: v.YearsOfExperience,
-			Specialization:    v.Specialization,
+			cachedBaseUser:            toCachedBaseUser(&v.BaseUser),
+			DepartmentID:              v.DepartmentID,
+			Workplace:                 v.Workplace,
+			LicenseNumber:             v.LicenseNumber,
+			YearsOfExperience:         v.YearsOfExperience,
+			Specialization:            v.Specialization,
+			AcademicDegree:            v.AcademicDegree,
+			ProfessionalQualification: v.ProfessionalQualification,
+			AcademicTitle:             v.AcademicTitle,
 		}
 	case *domain.Nurse:
 		return cachedMedicalStaff{
@@ -62,7 +68,10 @@ func fromCachedStaff[T StaffEntity](c cachedMedicalStaff) T {
 				LicenseNumber:     c.LicenseNumber,
 				YearsOfExperience: c.YearsOfExperience,
 			},
-			Specialization: c.Specialization,
+			Specialization:            c.Specialization,
+			AcademicDegree:            c.AcademicDegree,
+			ProfessionalQualification: c.ProfessionalQualification,
+			AcademicTitle:             c.AcademicTitle,
 		}
 		return any(d).(T)
 	case *domain.Nurse:
