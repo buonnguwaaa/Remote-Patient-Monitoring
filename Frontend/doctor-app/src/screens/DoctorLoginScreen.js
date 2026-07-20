@@ -12,8 +12,9 @@ import {
   Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../context/AuthContext";
+import { Ionicons } from "@expo/vector-icons";
+import { Image } from "react-native";
 import * as SecureStore from "../utils/secureStoreHelper";
 import * as LocalAuthentication from "expo-local-authentication";
 import { useToast } from "../context/ToastContext";
@@ -128,9 +129,11 @@ export default function LoginScreen() {
         >
           {/* Logo / Header */}
           <View style={styles.header}>
-            <View style={styles.logoCircle}>
-              <Ionicons name="medical" size={40} color="#fff" />
-            </View>
+          <Image 
+            source={require('../../assets/icon.png')} 
+            style={{ width: 80, height: 80, borderRadius: 16, marginBottom: 16, alignSelf: 'center' }} 
+            resizeMode="contain"
+          />
             <Text style={styles.appName}>RPM Staff</Text>
             <Text style={styles.appSub}>Há»‡ thá»‘ng theo dÃµi bá»‡nh nhÃ¢n tá»« xa</Text>
           </View>

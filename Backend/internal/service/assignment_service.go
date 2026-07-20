@@ -3,6 +3,9 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
+	"log"
+	"strings"
 	"time"
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
@@ -24,14 +27,16 @@ type AssignmentService interface {
 }
 
 type assignmentService struct {
-	assignmentRepo repository.AssignmentRepository
-	userRepo       userRepository.BaseUserRepository
+	assignmentRepo      repository.AssignmentRepository
+	userRepo            userRepository.BaseUserRepository
+	notificationService NotificationService
 }
 
-func NewAssignmentService(assignmentRepo repository.AssignmentRepository, userRepo userRepository.BaseUserRepository) AssignmentService {
+func NewAssignmentService(assignmentRepo repository.AssignmentRepository, userRepo userRepository.BaseUserRepository, notificationService NotificationService) AssignmentService {
 	return &assignmentService{
-		assignmentRepo: assignmentRepo,
-		userRepo:       userRepo,
+		assignmentRepo:      assignmentRepo,
+		userRepo:            userRepo,
+		notificationService: notificationService,
 	}
 }
 
@@ -76,6 +81,8 @@ func (s *assignmentService) AssignPatient(ctx context.Context, input *usecase.As
 		return nil, errors.New("Phải phân công ít nhất một bác sĩ hoặc y tá")
 	}
 
+	previousAssignment, _ := s.assignmentRepo.FindByPatientID(ctx, patientID)
+
 	assignment := &domain.Assignment{
 		ID:         primitive.NewObjectID(),
 		PatientID:  patientID,
@@ -90,6 +97,8 @@ func (s *assignmentService) AssignPatient(ctx context.Context, input *usecase.As
 	if err != nil {
 		return nil, err
 	}
+
+	s.notifyAssignmentCreated(ctx, created, previousAssignment)
 
 	return s.mapToResponse(ctx, created), nil
 }
@@ -164,7 +173,17 @@ func (s *assignmentService) DeleteAssignmentByID(ctx context.Context, input *use
 		return err
 	}
 
-	return s.assignmentRepo.DeleteByID(ctx, assignmentID)
+	assignment, err := s.assignmentRepo.FindByID(ctx, assignmentID)
+	if err != nil {
+		return err
+	}
+
+	if err := s.assignmentRepo.DeleteByID(ctx, assignmentID); err != nil {
+		return err
+	}
+
+	s.notifyAssignmentRemoved(ctx, assignment)
+	return nil
 }
 
 func (s *assignmentService) mapListToResponse(assignments []*domain.Assignment, userInfoMap map[primitive.ObjectID]repository.UserDisplayInfo) []*dto.AssignmentResponse {
@@ -227,4 +246,188 @@ func (s *assignmentService) mapToResponse(ctx context.Context, a *domain.Assignm
 	}
 
 	return resp
+}
+
+func (s *assignmentService) notifyAssignmentCreated(ctx context.Context, assignment *domain.Assignment, previous *domain.Assignment) {
+	if s.notificationService == nil || assignment == nil {
+		return
+	}
+
+	names := s.resolveAssignmentNames(ctx, assignment)
+	patientName := names[assignment.PatientID]
+	if patientName == "" {
+		patientName = "bệnh nhân"
+	}
+
+	basePayload := map[string]string{
+		"type":         "assignment",
+		"assignmentId": assignment.ID.Hex(),
+		"patientId":    assignment.PatientID.Hex(),
+	}
+
+	s.publishAssignmentNotification(ctx, assignment.PatientID, domain.NotificationTypeAssignment,
+		"Phân công chăm sóc mới",
+		buildPatientAssignmentBody(names, assignment),
+		cloneAssignmentPayload(basePayload, "PatientNotifications"),
+		fmt.Sprintf("assignment:patient:%s:%s", assignment.ID.Hex(), assignment.PatientID.Hex()),
+	)
+
+	if !assignment.DoctorID.IsZero() {
+		s.publishAssignmentNotification(ctx, assignment.DoctorID, domain.NotificationTypeAssignment,
+			"Phân công bệnh nhân mới",
+			fmt.Sprintf("Bạn được phân công chăm sóc bệnh nhân %s.", patientName),
+			cloneAssignmentPayload(basePayload, "Patients"),
+			fmt.Sprintf("assignment:doctor:%s:%s", assignment.ID.Hex(), assignment.DoctorID.Hex()),
+		)
+	}
+
+	if !assignment.NurseID.IsZero() {
+		s.publishAssignmentNotification(ctx, assignment.NurseID, domain.NotificationTypeAssignment,
+			"Phân công bệnh nhân mới",
+			fmt.Sprintf("Bạn được phân công chăm sóc bệnh nhân %s.", patientName),
+			cloneAssignmentPayload(basePayload, "NursePatientDetail"),
+			fmt.Sprintf("assignment:nurse:%s:%s", assignment.ID.Hex(), assignment.NurseID.Hex()),
+		)
+	}
+
+	if previous == nil {
+		return
+	}
+
+	if !previous.DoctorID.IsZero() && previous.DoctorID != assignment.DoctorID {
+		s.publishAssignmentNotification(ctx, previous.DoctorID, domain.NotificationTypeAssignment,
+			"Phân công đã thay đổi",
+			fmt.Sprintf("Bạn không còn được phân công chăm sóc bệnh nhân %s.", patientName),
+			cloneAssignmentPayload(basePayload, "Patients"),
+			fmt.Sprintf("assignment:removed-doctor:%s:%s", assignment.ID.Hex(), previous.DoctorID.Hex()),
+		)
+	}
+
+	if !previous.NurseID.IsZero() && previous.NurseID != assignment.NurseID {
+		s.publishAssignmentNotification(ctx, previous.NurseID, domain.NotificationTypeAssignment,
+			"Phân công đã thay đổi",
+			fmt.Sprintf("Bạn không còn được phân công chăm sóc bệnh nhân %s.", patientName),
+			cloneAssignmentPayload(basePayload, "NursePatients"),
+			fmt.Sprintf("assignment:removed-nurse:%s:%s", assignment.ID.Hex(), previous.NurseID.Hex()),
+		)
+	}
+}
+
+func (s *assignmentService) notifyAssignmentRemoved(ctx context.Context, assignment *domain.Assignment) {
+	if s.notificationService == nil || assignment == nil {
+		return
+	}
+
+	names := s.resolveAssignmentNames(ctx, assignment)
+	patientName := names[assignment.PatientID]
+	if patientName == "" {
+		patientName = "bệnh nhân"
+	}
+
+	basePayload := map[string]string{
+		"type":         "assignment",
+		"assignmentId": assignment.ID.Hex(),
+		"patientId":    assignment.PatientID.Hex(),
+	}
+
+	s.publishAssignmentNotification(ctx, assignment.PatientID, domain.NotificationTypeAssignment,
+		"Phân công chăm sóc đã hủy",
+		"Phân công chăm sóc của bạn đã được hủy.",
+		cloneAssignmentPayload(basePayload, "PatientNotifications"),
+		fmt.Sprintf("assignment:removed:patient:%s", assignment.ID.Hex()),
+	)
+
+	if !assignment.DoctorID.IsZero() {
+		s.publishAssignmentNotification(ctx, assignment.DoctorID, domain.NotificationTypeAssignment,
+			"Phân công đã hủy",
+			fmt.Sprintf("Phân công chăm sóc bệnh nhân %s đã được hủy.", patientName),
+			cloneAssignmentPayload(basePayload, "Patients"),
+			fmt.Sprintf("assignment:removed:doctor:%s:%s", assignment.ID.Hex(), assignment.DoctorID.Hex()),
+		)
+	}
+
+	if !assignment.NurseID.IsZero() {
+		s.publishAssignmentNotification(ctx, assignment.NurseID, domain.NotificationTypeAssignment,
+			"Phân công đã hủy",
+			fmt.Sprintf("Phân công chăm sóc bệnh nhân %s đã được hủy.", patientName),
+			cloneAssignmentPayload(basePayload, "NursePatients"),
+			fmt.Sprintf("assignment:removed:nurse:%s:%s", assignment.ID.Hex(), assignment.NurseID.Hex()),
+		)
+	}
+}
+
+func (s *assignmentService) publishAssignmentNotification(
+	ctx context.Context,
+	userID primitive.ObjectID,
+	notificationType domain.NotificationType,
+	title string,
+	body string,
+	data map[string]string,
+	dedupKey string,
+) {
+	if userID.IsZero() {
+		return
+	}
+
+	_, err := s.notificationService.PublishToUser(ctx, &usecase.InternalPublishNotificationInput{
+		UserID:   userID,
+		Type:     notificationType,
+		Title:    title,
+		Body:     body,
+		Data:     data,
+		DedupKey: dedupKey,
+	})
+	if err != nil {
+		log.Printf("[WARN] failed to send assignment notification (non-fatal) user=%s dedup=%s: %v", userID.Hex(), dedupKey, err)
+	}
+}
+
+func (s *assignmentService) resolveAssignmentNames(ctx context.Context, assignment *domain.Assignment) map[primitive.ObjectID]string {
+	names := make(map[primitive.ObjectID]string)
+	if assignment == nil {
+		return names
+	}
+
+	ids := []primitive.ObjectID{assignment.PatientID}
+	if !assignment.DoctorID.IsZero() {
+		ids = append(ids, assignment.DoctorID)
+	}
+	if !assignment.NurseID.IsZero() {
+		ids = append(ids, assignment.NurseID)
+	}
+
+	for _, id := range ids {
+		if u, err := s.userRepo.FindByID(ctx, id); err == nil && u != nil {
+			names[id] = u.Name
+		}
+	}
+	return names
+}
+
+func buildPatientAssignmentBody(names map[primitive.ObjectID]string, assignment *domain.Assignment) string {
+	var careTeam []string
+	if !assignment.DoctorID.IsZero() {
+		if name := strings.TrimSpace(names[assignment.DoctorID]); name != "" {
+			careTeam = append(careTeam, "BS. "+name)
+		}
+	}
+	if !assignment.NurseID.IsZero() {
+		if name := strings.TrimSpace(names[assignment.NurseID]); name != "" {
+			careTeam = append(careTeam, "YT. "+name)
+		}
+	}
+
+	if len(careTeam) == 0 {
+		return "Bạn đã được phân công đội chăm sóc mới."
+	}
+	return "Bạn đã được phân công cho " + strings.Join(careTeam, " và ") + "."
+}
+
+func cloneAssignmentPayload(base map[string]string, targetScreen string) map[string]string {
+	payload := make(map[string]string, len(base)+1)
+	for key, value := range base {
+		payload[key] = value
+	}
+	payload["targetScreen"] = targetScreen
+	return payload
 }

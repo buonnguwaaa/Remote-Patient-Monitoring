@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as SecureStore from '../utils/secureStoreHelper';
 import * as LocalAuthentication from 'expo-local-authentication';
 import ButtonPrimary from '../components/ButtonPrimary';
+import { Image } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import styles from '../styles/login';
 import { useAuth } from '../context/AuthContext';
@@ -131,9 +132,11 @@ export default function LoginScreen() {
     >
       <ScrollView contentContainerStyle={[styles.container, { paddingTop: Math.max(insets.top + 20, 60) }]} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
-          <View style={styles.logoWrap}>
-            <Text style={styles.logoText}>RPM</Text>
-          </View>
+          <Image 
+            source={require('../../assets/icon.png')} 
+            style={{ width: 80, height: 80, borderRadius: 16, marginBottom: 16, alignSelf: 'center' }} 
+            resizeMode="contain"
+          />
           <Text style={styles.title}>Remote Patient Monitoring</Text>
         </View>
 
