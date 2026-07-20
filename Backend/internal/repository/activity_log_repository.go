@@ -209,8 +209,6 @@ var ClinicalResources = []string{
 	"thresholds",
 	"reminders",
 	"follow-up-appointments",
-	"messages",
-	"chat",
 	"video-sessions",
 }
 
