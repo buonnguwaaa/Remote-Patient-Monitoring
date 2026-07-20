@@ -12,6 +12,7 @@ const (
 	NotificationTypeAlert       NotificationType = "alert"
 	NotificationTypeReminder    NotificationType = "reminder"
 	NotificationTypeAppointment NotificationType = "appointment"
+	NotificationTypeAssignment  NotificationType = "assignment"
 )
 
 type NotificationDeliveryStatus string

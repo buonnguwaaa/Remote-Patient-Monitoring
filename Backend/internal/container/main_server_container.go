@@ -177,14 +177,14 @@ func NewMainServerContainer() *MainServerContainer {
 	c.ThresholdService = service.NewThresholdService(c.PatientRepo, c.DoctorRepo, c.ThresholdRepo)
 	c.AlertService = service.NewAlertService(c.AlertRepo)
 	c.DepartmentService = service.NewDepartmentService(c.DepartmentRepo, c.DoctorRepo, c.NurseRepo)
-	c.AssignmentService = service.NewAssignmentService(c.AssignmentRepo, c.BaseUserRepo)
+	c.NotificationService = service.NewNotificationService(c.NotificationTokenRepo, c.NotificationRepo, fcmClient)
+	c.AssignmentService = service.NewAssignmentService(c.AssignmentRepo, c.BaseUserRepo, c.NotificationService)
 	c.PatientOverviewService = service.NewPatientOverviewService(c.AssignmentRepo, c.PatientRepo, c.MeasurementRepo, c.ThresholdRepo, c.AlertRepo)
 	c.ReminderService = service.NewReminderService(c.PatientRepo, c.ReminderRepo, c.AssignmentRepo)
 	c.PrescriptionService = service.NewPrescriptionService(c.PatientRepo, c.PrescriptionRepo, c.ReminderRepo, c.ReminderService)
 	c.MedicationIntakeService = service.NewMedicationIntakeService(c.PatientRepo, c.PrescriptionRepo, c.MedicationIntakeRepo, c.ReminderRepo)
 	c.FollowUpAppointmentService = service.NewFollowUpAppointmentService(c.PatientRepo, c.AssignmentRepo, c.FollowUpAppointmentRepo)
 	c.ChatService = service.NewChatService(c.ConversationRepo, c.MessageRepo, c.AssignmentRepo)
-	c.NotificationService = service.NewNotificationService(c.NotificationTokenRepo, c.NotificationRepo, fcmClient)
 	c.VideoSessionService = service.NewVideoSessionService(c.VideoSessionRepo, c.AssignmentRepo, c.ChatService, nil) // RealtimePublisher wired below
 
 	c.AuthHandler = handler.NewAuthHandler(c.AuthService)

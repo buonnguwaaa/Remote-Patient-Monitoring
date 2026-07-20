@@ -15,6 +15,7 @@ import (
 type AssignmentRepository interface {
 	Create(ctx context.Context, assignment *domain.Assignment) (*domain.Assignment, error)
 	FindAll(ctx context.Context) ([]*domain.Assignment, map[primitive.ObjectID]UserDisplayInfo, error)
+	FindByID(ctx context.Context, assignmentID primitive.ObjectID) (*domain.Assignment, error)
 	FindByPatientID(ctx context.Context, patientID primitive.ObjectID) (*domain.Assignment, error)
 	HasAssignmentRecordForPair(ctx context.Context, firstID primitive.ObjectID, secondID primitive.ObjectID) (bool, error)
 	FindByDoctorID(ctx context.Context, doctorID primitive.ObjectID) ([]*domain.Assignment, error)
@@ -55,6 +56,15 @@ func (r *assignmentRepository) Create(ctx context.Context, assignment *domain.As
 		return nil, err
 	}
 	return assignment, nil
+}
+
+func (r *assignmentRepository) FindByID(ctx context.Context, assignmentID primitive.ObjectID) (*domain.Assignment, error) {
+	var assignment domain.Assignment
+	err := r.collection.FindOne(ctx, bson.M{"_id": assignmentID}).Decode(&assignment)
+	if err != nil {
+		return nil, err
+	}
+	return &assignment, nil
 }
 
 func (r *assignmentRepository) FindByPatientID(ctx context.Context, patientID primitive.ObjectID) (*domain.Assignment, error) {
