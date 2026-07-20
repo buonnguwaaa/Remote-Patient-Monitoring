@@ -633,12 +633,20 @@ func (h *UserHandler) UpdateDoctorByID(c *gin.Context) {
 			Workplace:     req.Workplace,
 		},
 		DoctorFieldsInput: usecase.DoctorFieldsInput{
-			Specialization:    req.Specialization,
-			YearsOfExperience: req.YearsOfExperience,
+			Specialization:            req.Specialization,
+			YearsOfExperience:         req.YearsOfExperience,
+			AcademicDegree:            domain.AcademicDegree(req.AcademicDegree),
+			ProfessionalQualification: domain.ProfessionalQualification(req.ProfessionalQualification),
+			AcademicTitle:             domain.AcademicTitle(req.AcademicTitle),
 		},
 	}
 
 	if err := h.service.UpdateDoctor(ctx, input); err != nil {
+		var validationErr *service.ValidationError
+		if errors.As(err, &validationErr) {
+			c.JSON(http.StatusBadRequest, gin.H{"field": validationErr.Field, "error": validationErr.Message})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

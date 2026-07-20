@@ -89,12 +89,13 @@ func (s *Seeder) seedDoctors(ctx context.Context, departments []*domain.Departme
 		}
 
 		dept := departments[i%len(departments)]
-		name := "Dr. " + seedPersonName(i, 7)
+		name := seedPersonName(i, 7)
 		hashed := hashedShared
 		if i == 0 {
 			hashed = hashedDefault
 		}
 
+		degree := DoctorAcademicDegree(i)
 		doctor := &userDomain.Doctor{
 			MedicalStaff: userDomain.MedicalStaff{
 				BaseUser: userDomain.BaseUser{
@@ -113,7 +114,10 @@ func (s *Seeder) seedDoctors(ctx context.Context, departments []*domain.Departme
 				LicenseNumber:     fmt.Sprintf("DOC-2024-%03d", i+1),
 				YearsOfExperience: 3 + (i % 20),
 			},
-			Specialization: pick(doctorSpecializations, i),
+			Specialization:            pick(doctorSpecializations, i),
+			AcademicDegree:            degree,
+			ProfessionalQualification: DoctorProfessionalQualification(i),
+			AcademicTitle:             DoctorAcademicTitle(i, degree),
 		}
 
 		createdDoctor, err := s.doctorRepo.Create(ctx, doctor)

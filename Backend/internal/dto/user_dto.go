@@ -40,7 +40,14 @@ type StaffInfoResponse struct {
 
 type DoctorInfoResponse struct {
 	StaffInfoResponse
-	Specialization string `json:"specialization,omitempty"`
+	Specialization                      string                           `json:"specialization,omitempty"`
+	AcademicDegree                      domain.AcademicDegree            `json:"academicDegree,omitempty"`
+	AcademicDegreeLabel                 string                           `json:"academicDegreeLabel,omitempty"`
+	ProfessionalQualification           domain.ProfessionalQualification `json:"professionalQualification,omitempty"`
+	ProfessionalQualificationLabel      string                           `json:"professionalQualificationLabel,omitempty"`
+	AcademicTitle                       domain.AcademicTitle             `json:"academicTitle,omitempty"`
+	AcademicTitleLabel                  string                           `json:"academicTitleLabel,omitempty"`
+	DisplayName                         string                           `json:"displayName,omitempty"`
 }
 
 type NurseInfoResponse struct {
@@ -95,7 +102,10 @@ type UpdateMedicalStaffRequest struct {
 
 type UpdateDoctorRequest struct {
 	UpdateMedicalStaffRequest
-	Specialization string `json:"specialization"`
+	Specialization            string `json:"specialization"`
+	AcademicDegree            string `json:"academicDegree"`
+	ProfessionalQualification string `json:"professionalQualification"`
+	AcademicTitle             string `json:"academicTitle"`
 }
 
 type UpdateNurseRequest struct {
