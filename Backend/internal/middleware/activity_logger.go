@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -18,14 +19,23 @@ import (
 )
 
 type ActivityLoggerMiddleware struct {
-	repo         *repository.ActivityLogRepository
-	baseUserRepo userRepository.BaseUserRepository
+	repo              *repository.ActivityLogRepository
+	baseUserRepo      userRepository.BaseUserRepository
+	measurementRepo   repository.MeasurementRepository
+	prescriptionRepo  repository.PrescriptionRepository
 }
 
-func NewActivityLoggerMiddleware(repo *repository.ActivityLogRepository, baseUserRepo userRepository.BaseUserRepository) *ActivityLoggerMiddleware {
+func NewActivityLoggerMiddleware(
+	repo *repository.ActivityLogRepository,
+	measurementRepo repository.MeasurementRepository,
+	prescriptionRepo repository.PrescriptionRepository,
+	baseUserRepo userRepository.BaseUserRepository,
+) *ActivityLoggerMiddleware {
 	return &ActivityLoggerMiddleware{
-		repo:         repo,
-		baseUserRepo: baseUserRepo,
+		repo:             repo,
+		baseUserRepo:    baseUserRepo,
+		measurementRepo: measurementRepo,
+		prescriptionRepo: prescriptionRepo,
 	}
 }
 
@@ -133,7 +143,7 @@ func (m *ActivityLoggerMiddleware) LogActivity() gin.HandlerFunc {
 			CreatedAt:  time.Now(),
 		}
 
-		if patientID := resolvePatientID(c.Request.URL.Path, resource, resourceID, metadata, role, userID); patientID != nil {
+		if patientID := m.resolvePatientID(c.Request.Context(), c.Request.URL.Path, resource, resourceID, metadata, role, userID); patientID != nil {
 			activityLog.PatientID = patientID
 		}
 
@@ -238,6 +248,7 @@ func shouldSkipLogging(path string) bool {
 		"/swagger",
 		"/notification-tokens",
 		"/realtime",
+		"/chat",
 	}
 
 	for _, skipPath := range skipPaths {
@@ -311,8 +322,6 @@ func generateCreateAction(path string) string {
 		return "Tạo lịch tái khám mới"
 	case strings.Contains(path, "/alerts"):
 		return "Tạo cảnh báo mới"
-	case strings.Contains(path, "/messages") || strings.Contains(path, "/chat"):
-		return "Gửi tin nhắn"
 	case strings.Contains(path, "/video-sessions"):
 		return "Tạo phiên gọi video"
 	case strings.Contains(path, "/auth/logout"):
@@ -390,8 +399,8 @@ func extractResource(path string) string {
 	parts := strings.Split(strings.Trim(path, "/"), "/")
 	preferred := []string{
 		"measurements", "prescriptions", "medication-intakes", "alerts",
-		"thresholds", "reminders", "follow-up-appointments", "messages",
-		"chat", "video-sessions", "patients", "assignments", "departments",
+		"thresholds", "reminders", "follow-up-appointments",
+		"video-sessions", "patients", "assignments", "departments",
 		"doctors", "nurses",
 	}
 	for _, part := range parts {
@@ -421,7 +430,8 @@ func extractResourceID(path string) string {
 	return ""
 }
 
-func resolvePatientID(
+func (m *ActivityLoggerMiddleware) resolvePatientID(
+	ctx context.Context,
 	path, resource, resourceID string,
 	metadata map[string]any,
 	role domainUser.Role,
@@ -453,6 +463,26 @@ func resolvePatientID(
 		if parts[i] == "patients" && len(parts[i+1]) == 24 {
 			if id, err := primitive.ObjectIDFromHex(parts[i+1]); err == nil {
 				return &id
+			}
+		}
+	}
+
+	// PATCH /measurements/:id and PATCH /prescriptions/:id don't include patientId in body,
+	// so resolve from the affected resource ID to avoid "missing" clinical timeline entries.
+	if resource == "measurements" && resourceID != "" && m.measurementRepo != nil {
+		if measurementID, err := primitive.ObjectIDFromHex(resourceID); err == nil {
+			if measurement, err := m.measurementRepo.FindByID(ctx, measurementID); err == nil && measurement != nil {
+				pid := measurement.PatientID
+				return &pid
+			}
+		}
+	}
+
+	if resource == "prescriptions" && resourceID != "" && m.prescriptionRepo != nil {
+		if prescriptionID, err := primitive.ObjectIDFromHex(resourceID); err == nil {
+			if prescription, err := m.prescriptionRepo.FindByID(ctx, prescriptionID); err == nil && prescription != nil {
+				pid := prescription.PatientID
+				return &pid
 			}
 		}
 	}

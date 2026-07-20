@@ -102,7 +102,12 @@ func main() {
 	c := container.NewMainServerContainer()
 
 	// Add activity logger middleware for admin users
-	activityLogger := middleware.NewActivityLoggerMiddleware(c.ActivityLogRepo, c.BaseUserRepo)
+	activityLogger := middleware.NewActivityLoggerMiddleware(
+		c.ActivityLogRepo,
+		c.MeasurementRepo,
+		c.PrescriptionRepo,
+		c.BaseUserRepo,
+	)
 	r.Use(activityLogger.LogActivity())
 
 	router.RegisterRoutes(r, c)
