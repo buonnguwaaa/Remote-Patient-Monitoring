@@ -14,6 +14,7 @@ interface NotificationResponse {
   data: Record<string, string>;
   isRead: boolean;
   createdAt: string;
+  readAt?: string;
 }
 
 const NotificationWidget = () => {
