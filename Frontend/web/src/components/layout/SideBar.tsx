@@ -9,6 +9,7 @@ import { getNavData } from "../../data/NavData.ts";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useRealtimeNotification } from "../../context/RealtimeNotificationContext";
+import api from "../../services/api";
 
 interface SideBarProps {
   navigationItems?: NavigationItem[];
@@ -27,6 +28,22 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
   const isSettingsActive = location.pathname === "/settings";
 
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [openAlertsCount, setOpenAlertsCount] = useState(0);
+
+  useEffect(() => {
+    const fetchOpenAlerts = async () => {
+      if (!user?.id) return;
+      try {
+        const endpoint = user.role === "doctor" ? "/alerts/doctors/me" : user.role === "nurse" ? "/alerts/nurses/me" : null;
+        if (!endpoint) return;
+        const res = await api.get(`${endpoint}?status=open&limit=1`);
+        setOpenAlertsCount(res.data?.total || 0);
+      } catch (err) {
+        console.error("Failed to fetch open alerts:", err);
+      }
+    };
+    fetchOpenAlerts();
+  }, [user?.id, user?.role, unreadTotal]); // Also re-fetch when unreadTotal changes (as a proxy for new chat events)
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth < 768) {
@@ -69,9 +86,12 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
           }`}
         >
           {!isCollapsed && (
-            <h2 className="font-bold text-2xl text-primary-text dark:text-slate-100">
-              RPM
-            </h2>
+            <div className="flex items-center gap-3">
+              <img src="/doctor-logo.png" alt="Doctor App Logo" className="w-10 h-10 rounded-xl shadow-sm object-cover bg-white" />
+              <h2 className="font-bold text-2xl text-primary-text dark:text-slate-100 tracking-tight">
+                RPM
+              </h2>
+            </div>
           )}
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
@@ -123,6 +143,16 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
                         `}
                       >
                         {unreadTotal > 99 ? "99+" : unreadTotal}
+                      </span>
+                    )}
+                    {item.path === "/threshold-alerts" && openAlertsCount > 0 && (
+                      <span
+                        className={`
+                          flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold
+                          ${isCollapsed ? "absolute -top-1 -right-1 h-4 w-4 min-w-0" : "ml-auto h-5 min-w-[20px] px-1"}
+                        `}
+                      >
+                        {openAlertsCount > 99 ? "99+" : openAlertsCount}
                       </span>
                     )}
                   </Link>
@@ -180,7 +210,7 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
             </div>
             {!isCollapsed && (
               <div className="flex-1 min-w-0">
-                <p className="font-bold text-xl text-primary-text dark:text-slate-100 truncate">
+                <p className="font-bold text-lg text-primary-text dark:text-slate-100 leading-tight line-clamp-2">
                   {user?.username || "Doctor Name"}
                 </p>
               </div>

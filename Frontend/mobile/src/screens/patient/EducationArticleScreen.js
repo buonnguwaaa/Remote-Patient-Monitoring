@@ -83,10 +83,9 @@ export default function EducationArticleScreen() {
 
         {/* ─── COLORED HERO HEADER ─── */}
         <View style={[s.hero, { backgroundColor: colors.from }]}>
-          {/* Back */}
           <TouchableOpacity style={s.backRow} onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back" size={20} color="rgba(255,255,255,0.9)" />
-            <Text style={s.backText}>Danh sách bài học</Text>
+            <Text style={s.backText}>Quay lại</Text>
           </TouchableOpacity>
 
           {/* Meta row */}

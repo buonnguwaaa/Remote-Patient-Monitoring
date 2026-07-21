@@ -22,7 +22,6 @@ type PrescriptionRepository interface {
 	FindByID(ctx context.Context, id primitive.ObjectID) (*domain.Prescription, error)
 	Update(ctx context.Context, p *domain.Prescription) (*domain.Prescription, error)
 	UpdateStatusByID(ctx context.Context, id primitive.ObjectID, status domain.PrescriptionStatus) (*domain.Prescription, error)
-	DiscontinueActiveForPatient(ctx context.Context, patientID primitive.ObjectID, excludeID *primitive.ObjectID) ([]primitive.ObjectID, error)
 	DeleteByID(ctx context.Context, id primitive.ObjectID) error
 }
 
@@ -300,51 +299,6 @@ func (r *prescriptionRepository) Update(ctx context.Context, prescription *domai
 func (r *prescriptionRepository) DeleteByID(ctx context.Context, id primitive.ObjectID) error {
 	_, err := r.col.DeleteOne(ctx, bson.M{"_id": id})
 	return err
-}
-
-func (r *prescriptionRepository) DiscontinueActiveForPatient(ctx context.Context, patientID primitive.ObjectID, excludeID *primitive.ObjectID) ([]primitive.ObjectID, error) {
-	now := time.Now().UTC()
-	filter := bson.M{
-		"patientId": patientID,
-		"status":    domain.PrescriptionStatusActive,
-		"startDate": bson.M{"$lte": now},
-	}
-	if excludeID != nil {
-		filter["_id"] = bson.M{"$ne": *excludeID}
-	}
-
-	cursor, err := r.col.Find(ctx, filter, options.Find().SetSort(bson.D{{Key: "startDate", Value: -1}}))
-	if err != nil {
-		return nil, err
-	}
-	defer cursor.Close(ctx)
-
-	var candidates []domain.Prescription
-	if err := cursor.All(ctx, &candidates); err != nil {
-		return nil, err
-	}
-
-	open := filterOpenPrescriptions(candidates, now)
-	if len(open) == 0 {
-		return nil, nil
-	}
-
-	discontinued := make([]primitive.ObjectID, 0, len(open))
-	for _, prescription := range open {
-		discontinued = append(discontinued, prescription.ID)
-	}
-
-	_, err = r.col.UpdateMany(ctx, bson.M{"_id": bson.M{"$in": discontinued}}, bson.M{
-		"$set": bson.M{
-			"status":    domain.PrescriptionStatusDiscontinued,
-			"updatedAt": now,
-		},
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return discontinued, nil
 }
 
 func (r *prescriptionRepository) UpdateStatusByID(ctx context.Context, id primitive.ObjectID, status domain.PrescriptionStatus) (*domain.Prescription, error) {

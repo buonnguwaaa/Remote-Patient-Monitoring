@@ -51,6 +51,7 @@ const DoctorManagement: React.FC = () => {
   const itemsPerPage = 10;
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [selectedAcademicDegree, setSelectedAcademicDegree] = useState<string>("");
   const { toast, showToast, hideToast } = useToast();
 
   const fetchPageData = async () => {
@@ -65,6 +66,13 @@ const DoctorManagement: React.FC = () => {
         const apiDoctors = doctorResponse.data.data.map((u: any) => ({
           id: u.id,
           name: u.name,
+          displayName: u.displayName || u.name,
+          academicDegree: u.academicDegree,
+          academicDegreeLabel: u.academicDegreeLabel,
+          professionalQualification: u.professionalQualification,
+          professionalQualificationLabel: u.professionalQualificationLabel,
+          academicTitle: u.academicTitle,
+          academicTitleLabel: u.academicTitleLabel,
           email: u.email,
           gender: mapGenderToDisplay(u.gender),
           dateOfBirth: u.dob,
@@ -106,6 +114,7 @@ const DoctorManagement: React.FC = () => {
     setEditingDoctor(null);
     setAvatarFile(null);
     setModalMode("add");
+    setSelectedAcademicDegree("");
     setShowModal(true);
   };
 
@@ -113,6 +122,7 @@ const DoctorManagement: React.FC = () => {
     setEditingDoctor(doctor);
     setAvatarFile(null);
     setModalMode("edit");
+    setSelectedAcademicDegree(doctor.academicDegree || "");
     setShowModal(true);
   };
 
@@ -120,6 +130,7 @@ const DoctorManagement: React.FC = () => {
     setEditingDoctor(doctor);
     setAvatarFile(null);
     setModalMode("view");
+    setSelectedAcademicDegree(doctor.academicDegree || "");
     setShowModal(true);
   };
 
@@ -160,7 +171,7 @@ const DoctorManagement: React.FC = () => {
 
           <div className="min-w-0 flex-1">
             <div className="truncate text-base font-semibold text-gray-900 dark:text-gray-100">
-              {doctor.name}
+              {doctor.displayName || doctor.name}
             </div>
             <div className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
               {doctor.gender} - {doctor.dateOfBirth}
@@ -243,6 +254,9 @@ const DoctorManagement: React.FC = () => {
     const workplace = formData.get("workplace") as string;
     const yearsOfExperience = parseInt(formData.get("yearsOfExperience") as string) || 0;
     const status = formData.get("status") as "active" | "inactive";
+    const academicDegree = formData.get("academicDegree") as string;
+    const professionalQualification = formData.get("professionalQualification") as string;
+    const academicTitle = formData.get("academicTitle") as string;
 
     const apiGender = mapGenderToApi(gender);
     try {
@@ -252,6 +266,7 @@ const DoctorManagement: React.FC = () => {
         await api.patch(`/users/doctors/${editingDoctor.id}`, {
           name, email, gender: apiGender, phone, specialization,
           licenseNumber, workplace, yearsOfExperience,
+          academicDegree, professionalQualification, academicTitle,
         });
         await api.patch(`/users/${editingDoctor.id}/status`, { status });
       } else {
@@ -270,6 +285,7 @@ const DoctorManagement: React.FC = () => {
         if (savedUserId) {
           await api.patch(`/users/doctors/${savedUserId}`, {
             phone, specialization, licenseNumber, workplace, yearsOfExperience,
+            academicDegree, professionalQualification, academicTitle,
           });
           await api.patch(`/users/${savedUserId}/status`, { status });
         }
@@ -379,7 +395,7 @@ const DoctorManagement: React.FC = () => {
                     />
                     <div className="ml-4">
                       <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                        {doctor.name}
+                        {doctor.displayName || doctor.name}
                       </div>
                       <div className="text-sm text-gray-500 dark:text-gray-400">
                         {doctor.gender} - {doctor.dateOfBirth}
@@ -486,6 +502,63 @@ const DoctorManagement: React.FC = () => {
                     className="w-full px-3 py-2 border border-gray-200 bg-gray-100 text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 rounded-lg cursor-not-allowed"
                     readOnly
                   />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {t("doctorManagement.fields.academicDegree") || "Học vị"}
+                  </label>
+                  <select
+                    name="academicDegree"
+                    disabled={modalMode === "view"}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-70"
+                    value={selectedAcademicDegree}
+                    onChange={(e) => {
+                      setSelectedAcademicDegree(e.target.value);
+                      if (e.target.value !== "phd") {
+                        const titleSelect = document.querySelector('select[name="academicTitle"]') as HTMLSelectElement;
+                        if (titleSelect) titleSelect.value = "";
+                      }
+                    }}
+                  >
+                    <option value="">-- Không có --</option>
+                    <option value="bachelor">Cử nhân (BS)</option>
+                    <option value="master">Thạc sĩ (ThS)</option>
+                    <option value="phd">Tiến sĩ (TS)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {t("doctorManagement.fields.professionalQualification") || "Trình độ chuyên môn"}
+                  </label>
+                  <select
+                    name="professionalQualification"
+                    disabled={modalMode === "view"}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-70"
+                    defaultValue={editingDoctor?.professionalQualification || ""}
+                  >
+                    <option value="">-- Không có --</option>
+                    <option value="resident">Nội trú</option>
+                    <option value="cki">Chuyên khoa I (CKI)</option>
+                    <option value="ckii">Chuyên khoa II (CKII)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {t("doctorManagement.fields.academicTitle") || "Chức danh"}
+                  </label>
+                  <select
+                    name="academicTitle"
+                    disabled={modalMode === "view" || selectedAcademicDegree !== "phd"}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-70"
+                    defaultValue={editingDoctor?.academicTitle || ""}
+                  >
+                    <option value="">-- Không có --</option>
+                    <option value="associate_professor">Phó Giáo sư (PGS)</option>
+                    <option value="professor">Giáo sư (GS)</option>
+                  </select>
+                  {selectedAcademicDegree !== "phd" && modalMode !== "view" && (
+                    <p className="text-xs text-red-500 mt-1">Yêu cầu học vị Tiến sĩ</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">

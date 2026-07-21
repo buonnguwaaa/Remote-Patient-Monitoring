@@ -29,6 +29,7 @@ const (
 	MsgAppointmentNotFound     = "Không tìm thấy lịch tái khám"
 	MsgNotificationNotFound    = "Không tìm thấy thông báo"
 	MsgOnlyDoctorOrNurse       = "Chỉ bác sĩ hoặc điều dưỡng mới xem được danh sách bệnh nhân được phân công"
+	MsgOnlyPatient             = "Chỉ bệnh nhân mới có quyền thực hiện thao tác này"
 	MsgMissingAssignmentID     = "Thiếu ID phân công"
 	MsgFailedFetchActivityLogs = "Không thể lấy nhật ký hoạt động"
 	MsgFailedCountActivityLogs = "Không thể đếm nhật ký hoạt động"

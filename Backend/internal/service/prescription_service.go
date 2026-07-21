@@ -70,10 +70,6 @@ func (s *prescriptionService) CreatePrescription(ctx context.Context, input *use
 		return nil, err
 	}
 
-	if err := s.discontinueOtherActivePrescriptions(ctx, patientID, nil); err != nil {
-		return nil, fmt.Errorf("không thể ngừng các đơn thuốc đang hoạt động trước đó: %w", err)
-	}
-
 	created, err := s.prescriptionRepo.Create(ctx, &domain.Prescription{
 		PatientID:    patientID,
 		PrescribedBy: prescribedByID,
@@ -165,12 +161,6 @@ func (s *prescriptionService) UpdatePrescriptionByID(ctx context.Context, input 
 		return nil, ErrPrescriptionNotFound
 	}
 
-	if updated.Status == domain.PrescriptionStatusActive {
-		if err := s.discontinueOtherActivePrescriptions(ctx, updated.PatientID, &updated.ID); err != nil {
-			return nil, fmt.Errorf("đã cập nhật đơn thuốc nhưng không thể vô hiệu hóa các đơn thuốc đang hoạt động khác: %w", err)
-		}
-	}
-
 	if updated.Status != previousStatus {
 		if err := s.applyPrescriptionStatusToLinkedReminders(ctx, prescriptionID, updated.Status); err != nil {
 			return nil, fmt.Errorf("đã cập nhật trạng thái đơn thuốc nhưng không thể cập nhật nhắc nhở liên kết: %w", err)
@@ -210,12 +200,6 @@ func (s *prescriptionService) UpdatePrescriptionStatus(ctx context.Context, inpu
 		return nil, ErrPrescriptionNotFound
 	}
 
-	if updated.Status == domain.PrescriptionStatusActive {
-		if err := s.discontinueOtherActivePrescriptions(ctx, updated.PatientID, &updated.ID); err != nil {
-			return nil, fmt.Errorf("đã cập nhật trạng thái đơn thuốc nhưng không thể vô hiệu hóa các đơn thuốc đang hoạt động khác: %w", err)
-		}
-	}
-
 	if updated.Status != previousStatus {
 		if err := s.applyPrescriptionStatusToLinkedReminders(ctx, prescriptionID, updated.Status); err != nil {
 			return nil, fmt.Errorf("đã cập nhật trạng thái đơn thuốc nhưng không thể cập nhật nhắc nhở liên kết: %w", err)
@@ -223,21 +207,6 @@ func (s *prescriptionService) UpdatePrescriptionStatus(ctx context.Context, inpu
 	}
 
 	return toPrescriptionResponse(updated), nil
-}
-
-func (s *prescriptionService) discontinueOtherActivePrescriptions(ctx context.Context, patientID primitive.ObjectID, excludeID *primitive.ObjectID) error {
-	discontinuedIDs, err := s.prescriptionRepo.DiscontinueActiveForPatient(ctx, patientID, excludeID)
-	if err != nil {
-		return err
-	}
-
-	for _, id := range discontinuedIDs {
-		if err := s.applyPrescriptionStatusToLinkedReminders(ctx, id, domain.PrescriptionStatusDiscontinued); err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 func (s *prescriptionService) ensurePatient(ctx context.Context, patientID primitive.ObjectID) error {

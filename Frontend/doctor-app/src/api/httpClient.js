@@ -30,7 +30,7 @@ export async function request(path, options = {}, canRetry = true) {
     // Try new staff key first, fallback to old doctor key for migration
     token = await SecureStore.getItemAsync("staff_accessToken");
     if (!token) token = await SecureStore.getItemAsync("doctor_accessToken");
-  } catch {}
+  } catch { }
 
   const headers = {
     ...(isFormData ? {} : { "Content-Type": "application/json" }),
@@ -43,7 +43,6 @@ export async function request(path, options = {}, canRetry = true) {
 
   try {
     const response = await fetch(`${BASE_URL}${path}`, {
-      credentials: "include",
       ...options,
       headers,
       signal: controller.signal,
@@ -51,14 +50,30 @@ export async function request(path, options = {}, canRetry = true) {
     clearTimeout(timer);
 
     if (response.status === 401 && canRetry && path !== "/auth/refresh") {
-      // Try to silently refresh the session
+      // Try to silently refresh the session using stored refresh token
+      let storedRefreshToken = null;
+      try {
+        storedRefreshToken = await SecureStore.getItemAsync("staff_refreshToken");
+        if (!storedRefreshToken) storedRefreshToken = await SecureStore.getItemAsync("doctor_refreshToken");
+      } catch { }
+
       const refreshResponse = await fetch(`${BASE_URL}/auth/refresh`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
+        body: storedRefreshToken ? JSON.stringify({ refreshToken: storedRefreshToken }) : undefined,
       });
 
       if (refreshResponse.ok) {
+        // Extract new access token from response body and save it
+        try {
+          const refreshData = await refreshResponse.json();
+          const newAccessToken = refreshData?.accessToken;
+          if (newAccessToken) {
+            await SecureStore.setItemAsync("staff_accessToken", newAccessToken);
+          }
+        } catch { }
+
+        // Retry original request with new token
         return request(path, options, false);
       }
 
@@ -68,7 +83,7 @@ export async function request(path, options = {}, canRetry = true) {
         await SecureStore.deleteItemAsync("staff_refreshToken");
         await SecureStore.deleteItemAsync("doctor_accessToken");
         await SecureStore.deleteItemAsync("doctor_refreshToken");
-      } catch {}
+      } catch { }
 
       if (_onAuthFailure) {
         _onAuthFailure();

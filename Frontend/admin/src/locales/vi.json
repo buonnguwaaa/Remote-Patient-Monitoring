@@ -134,7 +134,10 @@
       "yearsOfExperience": "Kinh nghiệm (năm)",
       "status": "Trạng thái",
       "password": "Mật khẩu",
-      "contact": "Liên hệ"
+      "contact": "Liên hệ",
+      "academicDegree": "Học vị",
+      "professionalQualification": "Trình độ chuyên môn",
+      "academicTitle": "Chức danh"
     },
     "labels": {
       "specialization": "Chuyên khoa:",

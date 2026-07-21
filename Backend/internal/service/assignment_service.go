@@ -23,19 +23,29 @@ type AssignmentService interface {
 	GetAllAssignments(ctx context.Context) ([]*dto.AssignmentResponse, error)
 	GetAssignmentsByRole(ctx context.Context, input *usecase.GetAssignmentsByRoleInput) ([]*dto.AssignmentResponse, error)
 	GetAssignmentsByRolePaginated(ctx context.Context, input *usecase.GetAssignmentsByRoleInput) ([]*dto.AssignmentResponse, int64, error)
+	GetMyCareTeam(ctx context.Context, patientID primitive.ObjectID) (*dto.MyCareTeamResponse, error)
 	DeleteAssignmentByID(ctx context.Context, input *usecase.DeleteAssignmentInput) error
 }
 
 type assignmentService struct {
 	assignmentRepo      repository.AssignmentRepository
 	userRepo            userRepository.BaseUserRepository
+	doctorRepo          userRepository.StaffRepository[userDomain.Doctor]
+	nurseRepo           userRepository.StaffRepository[userDomain.Nurse]
 	notificationService NotificationService
 }
 
-func NewAssignmentService(assignmentRepo repository.AssignmentRepository, userRepo userRepository.BaseUserRepository, notificationService NotificationService) AssignmentService {
+func NewAssignmentService(
+	assignmentRepo repository.AssignmentRepository,
+	userRepo userRepository.BaseUserRepository,
+	doctorRepo userRepository.StaffRepository[userDomain.Doctor],
+	nurseRepo userRepository.StaffRepository[userDomain.Nurse],
+	notificationService NotificationService) AssignmentService {
 	return &assignmentService{
 		assignmentRepo:      assignmentRepo,
 		userRepo:            userRepo,
+		doctorRepo:          doctorRepo,
+		nurseRepo:           nurseRepo,
 		notificationService: notificationService,
 	}
 }
@@ -165,6 +175,67 @@ func (s *assignmentService) GetAllAssignments(ctx context.Context) ([]*dto.Assig
 	}
 
 	return s.mapListToResponse(assignments, userInfoMap), nil
+}
+
+func (s *assignmentService) GetMyCareTeam(ctx context.Context, patientID primitive.ObjectID) (*dto.MyCareTeamResponse, error) {
+	assignment, err := s.assignmentRepo.FindByPatientID(ctx, patientID)
+	if err != nil {
+		return nil, err
+	}
+
+	res := &dto.MyCareTeamResponse{}
+
+	if assignment.DoctorID != primitive.NilObjectID {
+		if doctorBase, err := s.doctorRepo.FindStaffByID(ctx, assignment.DoctorID); err == nil {
+			res.Doctor = &dto.DoctorInfoResponse{
+				StaffInfoResponse: dto.StaffInfoResponse{
+					BaseUserInfoResponse: dto.BaseUserInfoResponse{
+						ID:        doctorBase.ID.Hex(),
+						Name:      doctorBase.Name,
+						AvatarUrl: doctorBase.AvatarUrl,
+						Phone:     doctorBase.Phone,
+						Role:      doctorBase.Role,
+						Gender:    doctorBase.Gender,
+					},
+					DepartmentID:      doctorBase.DepartmentID.Hex(),
+					Workplace:         doctorBase.Workplace,
+					LicenseNumber:     doctorBase.LicenseNumber,
+					YearsOfExperience: doctorBase.YearsOfExperience,
+				},
+				Specialization:                 doctorBase.Specialization,
+				AcademicDegree:                 doctorBase.AcademicDegree,
+				AcademicDegreeLabel:            doctorBase.AcademicDegree.Label(),
+				ProfessionalQualification:      doctorBase.ProfessionalQualification,
+				ProfessionalQualificationLabel: doctorBase.ProfessionalQualification.Label(),
+				AcademicTitle:                  doctorBase.AcademicTitle,
+				AcademicTitleLabel:             doctorBase.AcademicTitle.Label(),
+				DisplayName:                    doctorBase.DisplayName(),
+			}
+		}
+	}
+
+	if assignment.NurseID != primitive.NilObjectID {
+		if nurseBase, err := s.nurseRepo.FindStaffByID(ctx, assignment.NurseID); err == nil {
+			res.Nurse = &dto.NurseInfoResponse{
+				StaffInfoResponse: dto.StaffInfoResponse{
+					BaseUserInfoResponse: dto.BaseUserInfoResponse{
+						ID:        nurseBase.ID.Hex(),
+						Name:      nurseBase.Name,
+						AvatarUrl: nurseBase.AvatarUrl,
+						Phone:     nurseBase.Phone,
+						Role:      nurseBase.Role,
+						Gender:    nurseBase.Gender,
+					},
+					DepartmentID:      nurseBase.DepartmentID.Hex(),
+					Workplace:         nurseBase.Workplace,
+					LicenseNumber:     nurseBase.LicenseNumber,
+					YearsOfExperience: nurseBase.YearsOfExperience,
+				},
+			}
+		}
+	}
+
+	return res, nil
 }
 
 func (s *assignmentService) DeleteAssignmentByID(ctx context.Context, input *usecase.DeleteAssignmentInput) error {

@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import {
   ActivityIndicator,
   Alert,
@@ -16,11 +17,19 @@ import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 
 export default function SettingsScreen() {
-  const { user, logout, isBiometricEnabled, enableBiometric, disableBiometric, sessionPassword } = useAuth();
+  const { user, logout, isBiometricEnabled, enableBiometric, disableBiometric, refreshBiometricStatus, sessionPassword } = useAuth();
   const { showToast } = useToast();
   const [language, setLanguage] = useState("vi"); // 'vi' | 'en'
   const [darkMode, setDarkMode] = useState(false);
   const [biometricLoading, setBiometricLoading] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (refreshBiometricStatus) {
+        refreshBiometricStatus();
+      }
+    }, [refreshBiometricStatus])
+  );
 
   const handleToggleBiometric = async () => {
     if (isBiometricEnabled) {

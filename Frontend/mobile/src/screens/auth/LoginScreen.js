@@ -9,6 +9,7 @@ import {
   Platform,
   StyleSheet,
   Alert,
+  Image,
 } from 'react-native';
 import * as SecureStore from '../../utils/secureStoreHelper';
 import * as LocalAuthentication from 'expo-local-authentication';
@@ -30,13 +31,76 @@ const biometricStyle = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#e6e6e8',
-    backgroundColor: '#f3f3f5',
+    borderColor: '#BFDBFE',
+    backgroundColor: '#EFF6FF',
   },
   text: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#030213',
+    color: '#2563EB',
+  },
+});
+
+const portalBadgeStyle = StyleSheet.create({
+  tag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginTop: 10,
+    gap: 6,
+  },
+  tagText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#2563EB',
+    letterSpacing: 0.5,
+  },
+});
+
+const savedAccountStyle = StyleSheet.create({
+  fixedWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    height: 52,
+  },
+  leftInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 10,
+    gap: 8,
+  },
+  emailText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111827',
+    flex: 1,
+  },
+  changeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    backgroundColor: '#EFF6FF',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  changeBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#2563EB',
   },
 });
 
@@ -47,16 +111,27 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
   const [loading, setLoading] = useState(false);
   const { login, saveGoogleTokens, updateUser } = useAuth();
   const [hasBiometric, setHasBiometric] = useState(false);
+  const [isSavedAccount, setIsSavedAccount] = useState(false);
   const { showError, showWarning } = useSnackbar();
 
   useEffect(() => {
     (async () => {
-      const bioEnabled = await SecureStore.getItemAsync("patient_biometric_enabled");
-      if (bioEnabled === "true") {
-        setHasBiometric(true);
-        setTimeout(() => {
-          handleBiometricLogin();
-        }, 600);
+      try {
+        const savedEmail = await SecureStore.getItemAsync("patient_email");
+        const bioEnabled = await SecureStore.getItemAsync("patient_biometric_enabled");
+        if (bioEnabled === "true" && savedEmail) {
+          setEmail(savedEmail);
+          setHasBiometric(true);
+          setIsSavedAccount(true);
+          setTimeout(() => {
+            handleBiometricLogin();
+          }, 600);
+        } else {
+          setHasBiometric(false);
+          setIsSavedAccount(false);
+        }
+      } catch (e) {
+        console.error("Lỗi khi kiểm tra thông tin sinh trắc học:", e);
       }
     })();
   }, []);
@@ -111,6 +186,33 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
     }
   };
 
+  const handleSwitchAccount = () => {
+    Alert.alert(
+      "Thay đổi tài khoản",
+      "Hành động này sẽ xóa dữ liệu sinh trắc học của tài khoản hiện tại trên thiết bị này. Bạn có muốn tiếp tục?",
+      [
+        { text: "Hủy", style: "cancel" },
+        {
+          text: "Thay đổi",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await SecureStore.deleteItemAsync("patient_email");
+              await SecureStore.deleteItemAsync("patient_password");
+              await SecureStore.setItemAsync("patient_biometric_enabled", "false");
+            } catch (e) {
+              console.error("Lỗi khi xóa sinh trắc học:", e);
+            }
+            setEmail('');
+            setPassword('');
+            setHasBiometric(false);
+            setIsSavedAccount(false);
+          },
+        },
+      ]
+    );
+  };
+
   const handleSubmit = () => {
     if (!email.trim()) {
       showError('Vui lòng nhập địa chỉ email.');
@@ -145,25 +247,48 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
     >
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
-          <View style={styles.logoWrap}>
-            <Text style={styles.logoText}>RPM</Text>
-          </View>
-          <Text style={styles.title}>Remote Patient Monitoring</Text>
-          <Text style={styles.subtitle}>Đăng nhập để tiếp tục</Text>
+          <Image 
+            source={require('../../../assets/icon.png')} 
+            style={{ width: 80, height: 80, borderRadius: 20, marginBottom: 16 }} 
+          />
+          <Text style={styles.title}>Đăng nhập</Text>
+          <Text style={styles.subtitle}>Remote Patient Monitoring</Text>
         </View>
 
         <View style={styles.form}>
-          <View style={styles.field}>
-            <Text style={styles.label}>Email</Text>
-            <TextInput
-              value={email}
-              onChangeText={setEmail}
-              placeholder="Nhập địa chỉ email"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              style={styles.input}
-            />
-          </View>
+          {isSavedAccount ? (
+            <View style={styles.field}>
+              <Text style={styles.label}>Tài khoản đã lưu</Text>
+              <View style={savedAccountStyle.fixedWrap}>
+                <View style={savedAccountStyle.leftInfo}>
+                  <Feather name="user-check" size={18} color="#2563EB" />
+                  <Text style={savedAccountStyle.emailText} numberOfLines={1}>
+                    {email}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={savedAccountStyle.changeBtn}
+                  onPress={handleSwitchAccount}
+                  activeOpacity={0.7}
+                >
+                  <Feather name="edit-2" size={13} color="#2563EB" style={{ marginRight: 4 }} />
+                  <Text style={savedAccountStyle.changeBtnText}>Thay đổi</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
+            <View style={styles.field}>
+              <Text style={styles.label}>Email</Text>
+              <TextInput
+                value={email}
+                onChangeText={setEmail}
+                placeholder="Nhập địa chỉ email"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                style={styles.input}
+              />
+            </View>
+          )}
 
           <View style={styles.field}>
             <Text style={styles.label}>Mật khẩu</Text>
@@ -196,14 +321,16 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
             style={{ marginTop: 10 }}
           />
 
-          <TouchableOpacity
-            style={biometricStyle.btn}
-            onPress={handleBiometricLogin}
-            activeOpacity={0.8}
-          >
-            <Feather name="unlock" size={18} color="#030213" style={{ marginRight: 8 }} />
-            <Text style={biometricStyle.text}>Đăng nhập bằng sinh trắc học</Text>
-          </TouchableOpacity>
+          {hasBiometric && (
+            <TouchableOpacity
+              style={biometricStyle.btn}
+              onPress={handleBiometricLogin}
+              activeOpacity={0.8}
+            >
+              <Feather name="unlock" size={18} color="#2563EB" style={{ marginRight: 8 }} />
+              <Text style={biometricStyle.text}>Đăng nhập bằng sinh trắc học</Text>
+            </TouchableOpacity>
+          )}
 
           <View style={styles.dividerWrap}>
             <View style={styles.divider} />

@@ -15,13 +15,16 @@ import {
 } from "react-icons/md";
 import { FaRegMessage } from "react-icons/fa6";
 import {
-  FaNotesMedical,
-  FaCalendarAlt,
   FaIdCard,
   FaBirthdayCake,
   FaVenusMars,
   FaPhone,
-  FaVideo
+  FaVideo,
+  FaIdBadge,
+  FaShieldAlt,
+  FaHeartbeat,
+  FaNotesMedical,
+  FaCalendarAlt,
 } from "react-icons/fa";
 import { GiHeartBeats } from "react-icons/gi";
 import VideoCallModal from "../components/video/VideoCallModal";
@@ -813,13 +816,6 @@ const PatientDetailPage = () => {
                     {patient.phone}
                   </span>
                 )}
-                {patient.emergencyContactName && (
-                  <span className="flex items-center gap-1.5 border-l border-gray-200 dark:border-slate-700 pl-3">
-                    <span className="text-gray-500 dark:text-slate-400 font-medium text-[11px] uppercase tracking-wider">Khẩn cấp:</span>
-                    <span className="font-medium text-gray-700 dark:text-slate-300">{patient.emergencyContactName}</span>
-                    {patient.emergencyContactPhone && <span>· {patient.emergencyContactPhone}</span>}
-                  </span>
-                )}
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
@@ -854,6 +850,63 @@ const PatientDetailPage = () => {
               >
                 <FaVideo size={16} />
               </button>
+            </div>
+          </div>
+        </div>
+
+        {/* ══════════════════════════════════════════════════════════════
+            1.5 MEDICAL & ADMIN PROFILE
+        ══════════════════════════════════════════════════════════════ */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Thông tin hành chính */}
+          <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-5">
+            <h3 className="text-sm font-bold text-gray-800 dark:text-slate-200 mb-4 flex items-center gap-2">
+              <FaIdCard className="text-blue-500" />
+              Thông tin hành chính
+            </h3>
+            <div className="space-y-3 text-[13px] text-gray-600 dark:text-slate-300">
+              <div className="flex justify-between items-center border-b border-gray-50 dark:border-slate-700/50 pb-2">
+                <span className="text-gray-400 dark:text-slate-500 flex items-center gap-1.5"><FaIdBadge /> CCCD</span>
+                <span className="font-medium text-gray-800 dark:text-slate-200">
+                  {patient.cccd ? (patient.cccd.length > 6 ? `${patient.cccd.slice(0, 3)}******${patient.cccd.slice(-3)}` : '***') : "Chưa cập nhật"}
+                </span>
+              </div>
+              <div className="flex justify-between items-center border-b border-gray-50 dark:border-slate-700/50 pb-2">
+                <span className="text-gray-400 dark:text-slate-500 flex items-center gap-1.5"><FaShieldAlt /> BHYT</span>
+                <span className="font-medium text-gray-800 dark:text-slate-200">
+                  {patient.insuranceNumber ? (patient.insuranceNumber.length > 6 ? `${patient.insuranceNumber.slice(0, 2)}********${patient.insuranceNumber.slice(-4)}` : '***') : "Chưa cập nhật"}
+                </span>
+              </div>
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center pt-1">
+                <span className="text-gray-400 dark:text-slate-500 flex items-center gap-1.5 mb-1 sm:mb-0"><FaPhone /> Liên hệ khẩn cấp</span>
+                <span className="font-medium text-gray-800 dark:text-slate-200">
+                  {patient.emergencyContactName ? `${patient.emergencyContactName} - ${patient.emergencyContactPhone}` : "Chưa cập nhật"}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Hồ sơ lâm sàng */}
+          <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-5">
+            <h3 className="text-sm font-bold text-gray-800 dark:text-slate-200 mb-4 flex items-center gap-2">
+              <FaNotesMedical className="text-rose-500" />
+              Hồ sơ lâm sàng
+            </h3>
+            <div className="space-y-4">
+              <div>
+                <span className="block text-xs text-gray-400 dark:text-slate-500 mb-2">Bệnh lý nền</span>
+                <div className="flex gap-2 flex-wrap">
+                  {patient.diseaseTypes?.bloodPressure && <span className="px-2.5 py-1 bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400 text-xs font-semibold rounded-md border border-rose-100 dark:border-rose-800 flex items-center gap-1"><FaHeartbeat /> Huyết áp</span>}
+                  {patient.diseaseTypes?.glucose && <span className="px-2.5 py-1 bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400 text-xs font-semibold rounded-md border border-amber-100 dark:border-amber-800 flex items-center gap-1"><GiHeartBeats /> Tiểu đường</span>}
+                  {!patient.diseaseTypes?.bloodPressure && !patient.diseaseTypes?.glucose && <span className="text-xs text-gray-500 bg-gray-100 dark:bg-slate-700 px-2.5 py-1 rounded-md">Không có</span>}
+                </div>
+              </div>
+              <div>
+                <span className="block text-xs text-gray-400 dark:text-slate-500 mb-2">Tiền sử bệnh án</span>
+                <div className="text-[13px] text-gray-700 dark:text-slate-300 bg-gray-50 dark:bg-slate-700/30 p-3 rounded-lg border border-gray-100 dark:border-slate-600 min-h-[60px] whitespace-pre-wrap leading-relaxed">
+                  {patient.medicalHistory || "Chưa có thông tin tiền sử bệnh."}
+                </div>
+              </div>
             </div>
           </div>
         </div>

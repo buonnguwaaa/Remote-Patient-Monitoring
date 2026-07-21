@@ -17,6 +17,12 @@ export interface PatientDetailResponse {
   emergencyContactName?: string;
   emergencyContactPhone?: string;
   medicalHistory?: string;
+  insuranceNumber?: string;
+  cccd?: string;
+  diseaseTypes?: {
+    bloodPressure: boolean;
+    glucose: boolean;
+  };
 }
 
 export type MealTiming = "pre_meal" | "post_meal";

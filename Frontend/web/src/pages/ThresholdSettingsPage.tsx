@@ -33,6 +33,7 @@ import {
 } from "../services/thresholdService";
 import type { AssignmentResponse } from "../types/patient";
 import PatientSearchSelect from "../components/common/PatientSearchSelect";
+import PatientClinicalSummary from "../components/common/PatientClinicalSummary";
 import Pagination from "../components/ui/Pagination";
 
 interface ThresholdFormData {
@@ -947,6 +948,7 @@ export default function ThresholdSettingsPage() {
                         tại.
                       </p>
                     )}
+                    <PatientClinicalSummary patientId={formData.patientId} />
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

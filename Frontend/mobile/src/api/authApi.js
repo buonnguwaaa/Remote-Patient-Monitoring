@@ -1,5 +1,5 @@
 import request from "./httpClient";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as SecureStore from "../utils/secureStoreHelper";
 
 export async function register(payload) {
   return request("/auth/register", {
@@ -16,11 +16,11 @@ export async function login(payload) {
 }
 
 export async function refresh() {
-  // Gửi kèm refreshToken trong body để đảm bảo hoạt động trên mobile
-  // (cookie httpOnly không ổn định trên React Native)
+  // Gửi kèm refreshToken trong body từ SecureStore để đảm bảo hoạt động trên mobile
   let refreshToken = null;
   try {
-    refreshToken = await AsyncStorage.getItem("refreshToken");
+    refreshToken = await SecureStore.getItemAsync("patient_refreshToken");
+    if (!refreshToken) refreshToken = await SecureStore.getItemAsync("refreshToken");
   } catch (e) {}
 
   return request("/auth/refresh", {

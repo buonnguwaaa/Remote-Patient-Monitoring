@@ -10,10 +10,11 @@ export interface RealtimeChatEventData {
   severity?: "info" | "high" | null;
   preview: string;
   message?: MessageResponse | null;
+  notification?: any | null; // We can type this later if we define NotificationResponse
 }
 
 export interface RealtimeEvent {
-  type: "chat.new_message" | "chat.alert_message";
+  type: "chat.new_message" | "chat.alert_message" | "notification.created";
   eventId: string;
   createdAt: string;
   data: RealtimeChatEventData;

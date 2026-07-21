@@ -82,6 +82,16 @@ func RegisterUserRoutes(r *gin.Engine, c *container.MainServerContainer) {
 				middleware.RequireRoles(domain.RoleAdmin, domain.RoleDoctor, domain.RoleNurse),
 				c.UserHandler.GetDoctors,
 			)
+			doctorGroup.PATCH("/me",
+				middleware.JWTAuthMiddleware(c.JWTManager, c.TokenBlacklistRepo),
+				middleware.RequireRoles(domain.RoleDoctor),
+				c.UserHandler.UpdateMyDoctorProfile,
+			)
+			doctorGroup.POST("/me/avatar",
+				middleware.JWTAuthMiddleware(c.JWTManager, c.TokenBlacklistRepo),
+				middleware.RequireRoles(domain.RoleDoctor),
+				c.UserHandler.UploadMyDoctorAvatar,
+			)
 			doctorGroup.GET("/:id",
 				middleware.JWTAuthMiddleware(c.JWTManager, c.TokenBlacklistRepo),
 				middleware.RequireRoles(domain.RoleAdmin, domain.RoleDoctor, domain.RoleNurse),

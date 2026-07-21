@@ -35,6 +35,7 @@ import {
   type ReminderStatus,
   type UpdateReminderPayload,
 } from "../services/reminderService";
+import PatientSelect from "../components/common/PatientSelect";
 import type { Prescription } from "../types/index";
 import type { AssignmentResponse } from "../types/patient";
 
@@ -1440,22 +1441,13 @@ const ReminderPage = () => {
                     <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                       Bệnh nhân *
                     </label>
-                    <select
-                      name="patientId"
+                    <PatientSelect
                       value={formData.patientId}
-                      onChange={handleFormChange}
-                      required
+                      onChange={(id) => setFormData({ ...formData, patientId: id })}
+                      patients={patientOptions}
                       disabled={!!editingReminderId}
-                      className="w-full rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 disabled:opacity-60"
-                    >
-                      <option value="">Chọn bệnh nhân</option>
-                      {patientOptions.map((p) => (
-                        <option key={p.patientId} value={p.patientId}>
-                          {(p.patientName || p.patientId) +
-                            (p.patientCode ? ` • ${p.patientCode}` : "")}
-                        </option>
-                      ))}
-                    </select>
+                      placeholder="Chọn bệnh nhân..."
+                    />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
