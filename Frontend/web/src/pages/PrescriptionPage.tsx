@@ -173,6 +173,12 @@ interface PrescriptionFormData {
   endDate: string;
 }
 
+interface ActivePrescriptionPrompt {
+  prescription: Prescription;
+  patientId: string;
+  preserveForm: boolean;
+}
+
 const createDefaultSlot = (enabled = false): SlotFormData => ({
   enabled,
   customTime: "",
@@ -409,11 +415,15 @@ export default function PrescriptionPage() {
   const [loadingPatients, setLoadingPatients] = useState(true);
   const [loadingPrescriptions, setLoadingPrescriptions] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [checkingActivePrescription, setCheckingActivePrescription] =
+    useState(false);
 
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [editingPrescriptionId, setEditingPrescriptionId] = useState<
     string | null
   >(null);
+  const [activePrescriptionPrompt, setActivePrescriptionPrompt] =
+    useState<ActivePrescriptionPrompt | null>(null);
   const [formData, setFormData] = useState<PrescriptionFormData>(
     createDefaultFormData(initialPatientId),
   );
@@ -566,11 +576,55 @@ export default function PrescriptionPage() {
     setHoveredPrescription(null);
   };
 
-  const handleOpenCreate = (patientId = selectedPatientId) => {
+  const openCreateForm = (patientId: string) => {
     setFormData(createDefaultFormData(patientId));
     setEditingPrescriptionId(null);
     setIsFormVisible(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const checkBeforeCreate = async (
+    patientId: string,
+    preserveForm: boolean,
+  ) => {
+    if (!patientId) {
+      openCreateForm("");
+      return;
+    }
+
+    try {
+      setCheckingActivePrescription(true);
+      const [activePrescription] = await getPrescriptions({
+        patientId,
+        latest: true,
+      });
+
+      if (activePrescription) {
+        setActivePrescriptionPrompt({
+          prescription: activePrescription,
+          patientId,
+          preserveForm,
+        });
+        return;
+      }
+
+      if (preserveForm) {
+        setFormData((prev) => ({ ...prev, patientId }));
+      } else {
+        openCreateForm(patientId);
+      }
+    } catch {
+      showToast(
+        "Không thể kiểm tra đơn thuốc đang hiệu lực. Vui lòng thử lại.",
+        "error",
+      );
+    } finally {
+      setCheckingActivePrescription(false);
+    }
+  };
+
+  const handleOpenCreate = (patientId = selectedPatientId) => {
+    void checkBeforeCreate(patientId, false);
   };
 
   const handleOpenEdit = (prescription: Prescription) => {
@@ -578,6 +632,34 @@ export default function PrescriptionPage() {
     setEditingPrescriptionId(prescription.id);
     setIsFormVisible(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleContinueCreate = () => {
+    if (!activePrescriptionPrompt) return;
+
+    const { patientId, preserveForm } = activePrescriptionPrompt;
+    setActivePrescriptionPrompt(null);
+    if (preserveForm) {
+      setFormData((prev) => ({ ...prev, patientId }));
+    } else {
+      openCreateForm(patientId);
+    }
+  };
+
+  const handleEditActivePrescription = () => {
+    if (!activePrescriptionPrompt) return;
+
+    const { prescription } = activePrescriptionPrompt;
+    setActivePrescriptionPrompt(null);
+    handleOpenEdit(prescription);
+  };
+
+  const handleCreatePatientChange = (patientId: string) => {
+    if (!patientId) {
+      setFormData((prev) => ({ ...prev, patientId: "" }));
+      return;
+    }
+    void checkBeforeCreate(patientId, true);
   };
 
   const handleCloseForm = () => {
@@ -870,6 +952,63 @@ export default function PrescriptionPage() {
       <div className="w-full space-y-4 px-4 py-8 pb-24 sm:px-6 lg:px-8">
         {toast && <Toast toast={toast} onClose={hideToast} />}
 
+        {activePrescriptionPrompt && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="active-prescription-title"
+          >
+            <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-700 dark:bg-slate-800">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2
+                    id="active-prescription-title"
+                    className="text-xl font-bold text-slate-900 dark:text-slate-100"
+                  >
+                    Bệnh nhân đang có đơn thuốc hiệu lực
+                  </h2>
+                  <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                    {patientDisplayMap.get(activePrescriptionPrompt.patientId)
+                      ?.name || "Bệnh nhân"}{" "}
+                    đã có đơn thuốc bắt đầu từ{" "}
+                    {formatDate(
+                      activePrescriptionPrompt.prescription.startDate,
+                    )}
+                    . Bạn muốn chỉnh sửa đơn này hay tiếp tục tạo đơn mới?
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActivePrescriptionPrompt(null)}
+                  className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+                  aria-label="Đóng"
+                >
+                  <FaTimes />
+                </button>
+              </div>
+
+              <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={handleContinueCreate}
+                  className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+                >
+                  Tạo đơn mới
+                </button>
+                <button
+                  type="button"
+                  onClick={handleEditActivePrescription}
+                  className="inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
+                >
+                  <FaEdit className="mr-2" />
+                  Chỉnh sửa đơn thuốc
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {!isFormVisible ? (
           <>
             <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
@@ -884,9 +1023,15 @@ export default function PrescriptionPage() {
               <div className="flex flex-wrap gap-3">
                 <button
                   onClick={() => handleOpenCreate()}
+                  disabled={checkingActivePrescription}
                   className="inline-flex items-center rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 shadow-sm"
                 >
-                  <FaPlus className="mr-2" /> Tạo đơn thuốc mới
+                  {checkingActivePrescription ? (
+                    <FaSyncAlt className="mr-2 animate-spin" />
+                  ) : (
+                    <FaPlus className="mr-2" />
+                  )}
+                  Tạo đơn thuốc mới
                 </button>
                 <button
                   onClick={loadPrescriptions}
@@ -996,6 +1141,7 @@ export default function PrescriptionPage() {
                             e.stopPropagation();
                             handleOpenCreate(patientId);
                           }}
+                          disabled={checkingActivePrescription}
                         >
                           <FaPlus className="h-3 w-3" /> Tạo đơn
                         </CardActionBtn>
@@ -1202,9 +1348,11 @@ export default function PrescriptionPage() {
                   </label>
                   <PatientSelect
                     value={formData.patientId}
-                    onChange={(id) => setFormData({ ...formData, patientId: id })}
+                    onChange={handleCreatePatientChange}
                     patients={patientOptions}
-                    disabled={!!editingPrescriptionId}
+                    disabled={
+                      !!editingPrescriptionId || checkingActivePrescription
+                    }
                     placeholder="Chọn bệnh nhân..."
                   />
                 </div>
