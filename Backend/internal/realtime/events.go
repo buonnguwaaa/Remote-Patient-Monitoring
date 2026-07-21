@@ -159,3 +159,15 @@ func SanitizePreview(content string) string {
 	}
 	return s
 }
+
+// BuildNotificationCreatedEvent creates a realtime event for a new generic notification.
+func BuildNotificationCreatedEvent(notif *dto.NotificationResponse) RealtimeEvent {
+	return RealtimeEvent{
+		Type:      EventTypeNotificationCreated,
+		EventID:   fmt.Sprintf("notification:%s", notif.ID),
+		CreatedAt: time.Now().UTC().Format(time.RFC3339),
+		Data: RealtimeEventData{
+			Notification: notif,
+		},
+	}
+}
