@@ -235,15 +235,16 @@ export default function EducationQuizScreen() {
             <View style={s.resultActions}>
               <TouchableOpacity
                 style={[s.outlineBtn, { borderColor: colors.from }]}
-                onPress={() =>
-                  navigation.navigate('EducationArticle', { articleId: article.id })
-                }
+                onPress={() => navigation.goBack()}
               >
                 <Text style={[s.outlineBtnText, { color: colors.from }]}>📖 Đọc lại bài</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[s.primaryBtn, { backgroundColor: colors.from }]}
-                onPress={() => navigation.navigate('EducationHome')}
+                onPress={() => {
+                  // Quay về trang EducationHome (nằm cách 2 màn hình)
+                  navigation.pop(2);
+                }}
               >
                 <Text style={s.primaryBtnText}>🏠 Về trang giáo dục</Text>
               </TouchableOpacity>

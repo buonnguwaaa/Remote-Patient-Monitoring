@@ -7,12 +7,14 @@ import {
   ActivityIndicator,
   RefreshControl,
   TouchableOpacity,
+  Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "../context/AuthContext";
 import request from "../api/httpClient";
 import { colors, radius, spacing, typography, shadows } from "../theme/rpmTheme";
 import ActivityHistorySection from "../components/ActivityHistorySection";
+import EditProfileModal from "../components/EditProfileModal";
 
 
 function formatDate(d) {
@@ -52,6 +54,8 @@ function Section({ title, children }) {
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
   const [doctor, setDoctor] = useState(null);
+  const [departments, setDepartments] = useState([]);
+  const [editModalVisible, setEditModalVisible] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
@@ -60,11 +64,17 @@ export default function ProfileScreen() {
     if (!user?.id) return;
     try {
       setError(null);
-      const res = await request(`/users/doctors/${user.id}`);
+      const [res, depRes] = await Promise.all([
+        request(`/users/doctors/${user.id}`),
+        request("/departments").catch(() => null)
+      ]);
       if (res.ok) {
         setDoctor(res.body?.data || null);
       } else {
         setError("Không thể tải thông tin hồ sơ");
+      }
+      if (depRes && depRes.ok) {
+        setDepartments(depRes.body?.data || []);
       }
     } catch {
       setError("Lỗi kết nối máy chủ");
@@ -78,7 +88,7 @@ export default function ProfileScreen() {
 
   const onRefresh = () => { setRefreshing(true); loadProfile(); };
 
-  const initials = (doctor?.name || user?.name || "BS")
+  const initials = (doctor?.displayName || doctor?.name || user?.name || "BS")
     .split(" ")
     .slice(-2)
     .map((w) => w[0])
@@ -106,6 +116,7 @@ export default function ProfileScreen() {
   }
 
   const d = doctor || {};
+  const departmentName = departments.find(dep => dep.id === d.departmentId)?.name || d.departmentName || d.department?.name;
 
   return (
     <ScrollView
@@ -116,10 +127,22 @@ export default function ProfileScreen() {
     >
       {/* Avatar card */}
       <View style={styles.avatarCard}>
-        <View style={styles.avatarCircle}>
-          <Text style={styles.avatarText}>{initials}</Text>
-        </View>
-        <Text style={styles.doctorName}>{d.name || user?.name || "Bác sĩ"}</Text>
+        <TouchableOpacity
+          style={styles.editBtn}
+          onPress={() => setEditModalVisible(true)}
+        >
+          <Ionicons name="pencil" size={18} color={colors.primary} />
+          <Text style={styles.editBtnText}>Chỉnh sửa</Text>
+        </TouchableOpacity>
+        
+        {d.avatarUrl ? (
+          <Image source={{ uri: d.avatarUrl }} style={styles.avatarImage} />
+        ) : (
+          <View style={styles.avatarCircle}>
+            <Text style={styles.avatarText}>{initials}</Text>
+          </View>
+        )}
+        <Text style={styles.doctorName}>{d.displayName || d.name || user?.name || "Bác sĩ"}</Text>
         {d.specialization ? (
           <View style={styles.specialBadge}>
             <Ionicons name="medkit-outline" size={12} color={colors.primary} />
@@ -143,8 +166,11 @@ export default function ProfileScreen() {
 
       {/* Work info */}
       <Section title="Thông tin công tác">
+        {d.academicDegreeLabel ? <InfoRow icon="school-outline" label="Học vị" value={d.academicDegreeLabel} /> : null}
+        {d.professionalQualificationLabel ? <InfoRow icon="medal-outline" label="Trình độ chuyên môn" value={d.professionalQualificationLabel} /> : null}
+        {d.academicTitleLabel ? <InfoRow icon="school-outline" label="Chức danh" value={d.academicTitleLabel} /> : null}
         <InfoRow icon="fitness-outline"      label="Chuyên khoa"       value={d.specialization} />
-        <InfoRow icon="business-outline"     label="Khoa / Phòng"      value={d.departmentName || d.department?.name} />
+        <InfoRow icon="business-outline"     label="Khoa / Phòng"      value={departmentName} />
         <InfoRow icon="location-outline"     label="Nơi công tác"      value={d.workplace} />
         <InfoRow icon="id-card-outline"      label="Số giấy phép"      value={d.licenseNumber} />
         <InfoRow icon="trophy-outline"       label="Kinh nghiệm"       value={d.yearsOfExperience ? `${d.yearsOfExperience} năm` : null} />
@@ -159,6 +185,16 @@ export default function ProfileScreen() {
         <Ionicons name="log-out-outline" size={20} color={colors.dangerAccent} />
         <Text style={styles.logoutText}>Đăng xuất</Text>
       </TouchableOpacity>
+
+      <EditProfileModal
+        visible={editModalVisible}
+        doctor={doctor}
+        onClose={() => setEditModalVisible(false)}
+        onSuccess={() => {
+          setEditModalVisible(false);
+          loadProfile();
+        }}
+      />
     </ScrollView>
   );
 }
@@ -172,9 +208,16 @@ const styles = StyleSheet.create({
 
   avatarCard: {
     backgroundColor: colors.surface, borderRadius: radius["3xl"], padding: spacing["3xl"],
-    alignItems: "center", marginBottom: spacing.section, ...shadows.cardElevated,
+    alignItems: "center", marginBottom: spacing.section, ...shadows.cardElevated, position: "relative",
   },
+  editBtn: {
+    position: "absolute", top: spacing.lg, right: spacing.lg,
+    flexDirection: "row", alignItems: "center", gap: 4,
+    backgroundColor: colors.primarySoft, paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.pill,
+  },
+  editBtnText: { color: colors.primary, fontSize: 13, fontWeight: "600" },
   avatarCircle: { width: 80, height: 80, borderRadius: radius["4xl"], backgroundColor: colors.primary, alignItems: "center", justifyContent: "center", marginBottom: 14 },
+  avatarImage: { width: 80, height: 80, borderRadius: radius["4xl"], marginBottom: 14, borderWidth: 2, borderColor: colors.surface },
   avatarText: { fontSize: 28, fontWeight: "800", color: colors.surface },
   doctorName: { ...typography.screenTitle, textAlign: "center" },
   specialBadge: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: colors.surfaceSoftBlue, borderRadius: radius.pill, paddingHorizontal: 10, paddingVertical: 4, marginTop: 8 },

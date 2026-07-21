@@ -10,6 +10,7 @@ import (
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/realtime"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecase"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/util"
@@ -36,13 +37,20 @@ type notificationService struct {
 	notificationTokenRepo repository.NotificationTokenRepository
 	notificationRepo      repository.UserNotificationRepository
 	pushProvider          PushProvider
+	realtimePublisher     *realtime.RedisUserEventPublisher
 }
 
-func NewNotificationService(notificationTokenRepo repository.NotificationTokenRepository, notificationRepo repository.UserNotificationRepository, pushProvider PushProvider) NotificationService {
+func NewNotificationService(
+	notificationTokenRepo repository.NotificationTokenRepository, 
+	notificationRepo repository.UserNotificationRepository, 
+	pushProvider PushProvider,
+	realtimePublisher *realtime.RedisUserEventPublisher,
+) NotificationService {
 	return &notificationService{
 		notificationTokenRepo: notificationTokenRepo,
 		notificationRepo:      notificationRepo,
 		pushProvider:          pushProvider,
+		realtimePublisher:     realtimePublisher,
 	}
 }
 
@@ -181,7 +189,18 @@ func (s *notificationService) PublishToUser(ctx context.Context, input *usecase.
 	if sendErr != nil {
 		return mapNotificationResponse(updated), sendErr
 	}
-	return mapNotificationResponse(updated), nil
+
+	response := mapNotificationResponse(updated)
+
+	// Publish via WebSocket/Realtime if available
+	if s.realtimePublisher != nil && response != nil {
+		event := realtime.BuildNotificationCreatedEvent(response)
+		if err := s.realtimePublisher.Publish(ctx, notification.UserID.Hex(), event); err != nil {
+			log.Printf("[WARN] notification: failed to publish realtime event to user %s: %v", notification.UserID.Hex(), err)
+		}
+	}
+
+	return response, nil
 }
 
 func (s *notificationService) ListUserNotifications(ctx context.Context, userID string, input *usecase.ListNotificationsInput) ([]dto.NotificationResponse, error) {

@@ -18,6 +18,9 @@ const (
 	// Video call events — sent to both doctor and patient userIDs.
 	EventTypeVideoCallInvite = "video.call_invite"
 	EventTypeVideoCallEnded  = "video.call_ended"
+
+	// Notification event
+	EventTypeNotificationCreated = "notification.created"
 )
 
 // RealtimeEventData holds the inner data for a realtime event.
@@ -31,6 +34,7 @@ type RealtimeEventData struct {
 	Severity       *string              `json:"severity,omitempty"`
 	Preview        string               `json:"preview"`
 	Message        *dto.MessageResponse `json:"message,omitempty"`
+	Notification   *dto.NotificationResponse `json:"notification,omitempty"`
 }
 
 // RealtimeEvent is the top-level JSON structure sent to clients via the realtime WebSocket.
@@ -154,4 +158,16 @@ func SanitizePreview(content string) string {
 		return string([]rune(s)[:140])
 	}
 	return s
+}
+
+// BuildNotificationCreatedEvent creates a realtime event for a new generic notification.
+func BuildNotificationCreatedEvent(notif *dto.NotificationResponse) RealtimeEvent {
+	return RealtimeEvent{
+		Type:      EventTypeNotificationCreated,
+		EventID:   fmt.Sprintf("notification:%s", notif.ID),
+		CreatedAt: time.Now().UTC().Format(time.RFC3339),
+		Data: RealtimeEventData{
+			Notification: notif,
+		},
+	}
 }

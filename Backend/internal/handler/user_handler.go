@@ -654,6 +654,109 @@ func (h *UserHandler) UpdateDoctorByID(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Cập nhật bác sĩ thành công"})
 }
 
+// UpdateMyDoctorProfile updates the authenticated doctor's profile
+// @Summary Update my doctor profile
+// @Description Update the authenticated doctor's information (excludes email and department)
+// @Tags doctors
+// @Accept json
+// @Produce json
+// @Param body body dto.UpdateDoctorRequest true "Updated doctor information"
+// @Success 200 {object} map[string]interface{} "Doctor updated successfully"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 400 {object} map[string]string "Bad request"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /users/doctors/me [patch]
+func (h *UserHandler) UpdateMyDoctorProfile(c *gin.Context) {
+	userID, exists := c.Get("userId")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": constant.MsgUnauthorized})
+		return
+	}
+
+	var req dto.UpdateDoctorRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	// Get current doctor to preserve email and departmentID
+	currentDoctor, err := h.service.GetDoctorByID(ctx, &usecase.GetUserByIDInput{ID: userID.(string)})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	input := &usecase.UpdateUserInfoInput{
+		ID:     userID.(string),
+		Name:   req.Name,
+		Email:  currentDoctor.Email, // Preserve original email
+		Gender: domain.Gender(req.Gender),
+		Phone:  req.Phone,
+		StaffFieldsInput: usecase.StaffFieldsInput{
+			DepartmentID:  currentDoctor.DepartmentID, // Preserve original department
+			LicenseNumber: req.LicenseNumber,
+			Workplace:     req.Workplace,
+		},
+		DoctorFieldsInput: usecase.DoctorFieldsInput{
+			Specialization:            req.Specialization,
+			YearsOfExperience:         req.YearsOfExperience,
+			AcademicDegree:            domain.AcademicDegree(req.AcademicDegree),
+			ProfessionalQualification: domain.ProfessionalQualification(req.ProfessionalQualification),
+			AcademicTitle:             domain.AcademicTitle(req.AcademicTitle),
+		},
+	}
+
+	if err := h.service.UpdateDoctor(ctx, input); err != nil {
+		var validationErr *service.ValidationError
+		var conflictErr *service.ConflictError
+
+		switch {
+		case errors.As(err, &validationErr):
+			c.JSON(http.StatusBadRequest, gin.H{"field": validationErr.Field, "error": validationErr.Message})
+			return
+		case errors.As(err, &conflictErr):
+			c.JSON(http.StatusConflict, gin.H{"field": conflictErr.Field, "error": conflictErr.Message})
+			return
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+	}
+
+	updatedDoctor, err := h.service.GetDoctorByID(ctx, &usecase.GetUserByIDInput{ID: userID.(string)})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": updatedDoctor, "message": "Cập nhật hồ sơ thành công"})
+}
+
+// UploadMyDoctorAvatar handles avatar upload for the authenticated doctor.
+// @Summary Upload my doctor avatar
+// @Description Upload an avatar image for the authenticated doctor
+// @Tags doctors
+// @Accept multipart/form-data
+// @Produce json
+// @Param file formData file true "Avatar image file"
+// @Success 200 {object} map[string]interface{} "Avatar uploaded successfully"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 400 {object} map[string]string "Bad request"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /users/doctors/me/avatar [post]
+func (h *UserHandler) UploadMyDoctorAvatar(c *gin.Context) {
+	userID, exists := c.Get("userId")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": constant.MsgUnauthorized})
+		return
+	}
+
+	h.uploadAvatarForUser(c, userID.(string))
+}
+
 // GetNurses retrieves a list of nurses
 // @Summary Get list of nurses
 // @Description Get a list of nurses with optional filters and pagination

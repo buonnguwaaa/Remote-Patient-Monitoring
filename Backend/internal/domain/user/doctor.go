@@ -150,12 +150,16 @@ func (d Doctor) DisplayName() string {
 		dotParts = append(dotParts, abbr)
 	}
 
-	hasAnyCredential := len(dotParts) > 0 ||
-		d.AcademicDegree == AcademicDegreeBachelor ||
-		d.ProfessionalQualification != ""
+	isHighAcademic := d.AcademicTitle != "" || d.AcademicDegree == AcademicDegreePhD
 
-	if hasAnyCredential {
-		dotParts = append(dotParts, "BS")
+	if !isHighAcademic {
+		hasAnyCredential := len(dotParts) > 0 ||
+			d.AcademicDegree == AcademicDegreeBachelor ||
+			d.ProfessionalQualification != ""
+
+		if hasAnyCredential {
+			dotParts = append(dotParts, "BS")
+		}
 	}
 
 	var b strings.Builder
@@ -163,7 +167,7 @@ func (d Doctor) DisplayName() string {
 		b.WriteString(strings.Join(dotParts, "."))
 	}
 
-	if qual := d.ProfessionalQualification.abbrev(); qual != "" {
+	if qual := d.ProfessionalQualification.abbrev(); qual != "" && !isHighAcademic {
 		if b.Len() > 0 {
 			b.WriteByte(' ')
 		}

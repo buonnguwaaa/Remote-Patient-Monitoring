@@ -171,13 +171,15 @@ func NewMainServerContainer() *MainServerContainer {
 		fcmClient = client
 	}
 
+	c.RealtimePublisher = realtime.NewRedisUserEventPublisher(config.Redis.Client)
+
 	c.AuthService = service.NewAuthService(c.BaseUserRepo, c.PatientRepo, c.DoctorRepo, c.NurseRepo, c.TokenRepo, c.TokenBlacklistRepo, c.JWTManager)
 	c.UserService = service.NewUserService(c.BaseUserRepo, c.PatientRepo, c.NurseRepo, c.DoctorRepo)
 	c.MeasurementService = service.NewMeasurementService(c.PatientRepo, c.MeasurementRepo)
 	c.ThresholdService = service.NewThresholdService(c.PatientRepo, c.DoctorRepo, c.ThresholdRepo)
 	c.AlertService = service.NewAlertService(c.AlertRepo)
 	c.DepartmentService = service.NewDepartmentService(c.DepartmentRepo, c.DoctorRepo, c.NurseRepo)
-	c.NotificationService = service.NewNotificationService(c.NotificationTokenRepo, c.NotificationRepo, fcmClient)
+	c.NotificationService = service.NewNotificationService(c.NotificationTokenRepo, c.NotificationRepo, fcmClient, c.RealtimePublisher)
 	c.AssignmentService = service.NewAssignmentService(c.AssignmentRepo, c.BaseUserRepo, c.NotificationService)
 	c.PatientOverviewService = service.NewPatientOverviewService(c.AssignmentRepo, c.PatientRepo, c.MeasurementRepo, c.ThresholdRepo, c.AlertRepo)
 	c.ReminderService = service.NewReminderService(c.PatientRepo, c.ReminderRepo, c.AssignmentRepo)
@@ -217,7 +219,6 @@ func NewMainServerContainer() *MainServerContainer {
 	// Realtime notification hub + Redis subscriber
 	c.RealtimeHub = realtime.NewHub()
 	go c.RealtimeHub.Run()
-	c.RealtimePublisher = realtime.NewRedisUserEventPublisher(config.Redis.Client)
 	if rtSubscriber := realtime.NewRedisUserEventSubscriber(config.Redis.Client, c.RealtimeHub); rtSubscriber != nil {
 		go func() {
 			if err := rtSubscriber.Start(context.Background()); err != nil {

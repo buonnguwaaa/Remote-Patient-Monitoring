@@ -17,6 +17,7 @@ interface AuthContextType {
   isLoading: boolean;
   logout: () => void;
   getUserRole: () => UserRole | null;
+  updateUser: (data: Partial<{ username: string; avatarUrl: string }>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -32,6 +33,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return null;
   };
 
+  const updateUser = (data: Partial<{ username: string; avatarUrl: string }>) => {
+    setUser((prev) => (prev ? { ...prev, ...data } : null));
+  };
+
+  const hydrateUserProfile = async (baseData: any, role: UserRole) => {
+    let fullData = { ...baseData };
+    try {
+      if (role === "doctor") {
+        const res = await api.get(`/users/doctors/${baseData.id}`);
+        if (res.data?.data) {
+          fullData = { ...fullData, ...res.data.data };
+        }
+      } else if (role === "nurse") {
+        const res = await api.get(`/users/nurses/${baseData.id}`);
+        if (res.data?.data) {
+          fullData = { ...fullData, ...res.data.data };
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch full profile", err);
+    }
+    return fullData;
+  };
+
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -40,8 +65,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (userData) {
           const role = mapRole(userData.role);
           if (role) {
+            const fullData = await hydrateUserProfile(userData, role);
             setIsAuthenticated(true);
-            setUser({ id: userData.id, username: userData.name, role });
+            setUser({ id: fullData.id, username: fullData.displayName || fullData.name, role, avatarUrl: fullData.avatarUrl });
           } else {
             setIsAuthenticated(false);
             setUser(null);
@@ -75,8 +101,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       localStorage.removeItem("refreshToken");
       localStorage.removeItem("username");
 
+      const fullData = await hydrateUserProfile(userData, role);
+
       setIsAuthenticated(true);
-      setUser({ id: userData.id, username: userData.name, role });
+      setUser({ id: fullData.id, username: fullData.displayName || fullData.name, role, avatarUrl: fullData.avatarUrl });
       return { success: true, role };
     } catch (error: any) {
       console.error("Login error:", error);
@@ -115,7 +143,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, isLoading, user, login, logout, getUserRole }}>
+    <AuthContext.Provider value={{ isAuthenticated, isLoading, user, login, logout, getUserRole, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

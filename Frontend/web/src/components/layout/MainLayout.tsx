@@ -1,6 +1,7 @@
 import { Outlet, useLocation } from "react-router-dom";
 import SideBar from "./SideBar.tsx";
 import QuickChatWidget from "../chat/QuickChatWidget.tsx";
+import NotificationWidget from "./NotificationWidget.tsx";
 import { RealtimeNotificationProvider } from "../../context/RealtimeNotificationContext.tsx";
 
 const MainLayout = () => {
@@ -17,6 +18,7 @@ const MainLayout = () => {
         </div>
 
         {!isChatRoute ? <QuickChatWidget /> : null}
+        <NotificationWidget />
       </div>
     </RealtimeNotificationProvider>
   );

@@ -9,6 +9,7 @@ import {
   Platform,
   StyleSheet,
   Alert,
+  Image,
 } from 'react-native';
 import * as SecureStore from '../../utils/secureStoreHelper';
 import * as LocalAuthentication from 'expo-local-authentication';
@@ -246,15 +247,12 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
     >
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
-          <View style={styles.logoWrap}>
-            <Text style={styles.logoText}>RPM</Text>
-          </View>
-          <Text style={styles.title}>Remote Patient Monitoring</Text>
-          <View style={portalBadgeStyle.tag}>
-            <Feather name="user" size={14} color="#2563EB" />
-            <Text style={portalBadgeStyle.tagText}>CỔNG ĐĂNG NHẬP BỆNH NHÂN</Text>
-          </View>
-          <Text style={styles.subtitle}>Đăng nhập để tiếp tục</Text>
+          <Image 
+            source={require('../../../assets/icon.png')} 
+            style={{ width: 80, height: 80, borderRadius: 20, marginBottom: 16 }} 
+          />
+          <Text style={styles.title}>Đăng nhập</Text>
+          <Text style={styles.subtitle}>Remote Patient Monitoring</Text>
         </View>
 
         <View style={styles.form}>

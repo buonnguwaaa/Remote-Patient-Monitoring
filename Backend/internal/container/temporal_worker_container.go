@@ -45,7 +45,7 @@ func NewTemporalWorkerContainer(pushProvider service.PushProvider) *TemporalWork
 	c.FollowUpAppointmentRepo = repository.NewFollowUpAppointmentRepository(db)
 	c.NotificationTokenRepo = repository.NewNotificationTokenRepository(db)
 	c.NotificationRepo = repository.NewUserNotificationRepository(db)
-	c.NotificationService = service.NewNotificationService(c.NotificationTokenRepo, c.NotificationRepo, pushProvider)
+	c.NotificationService = service.NewNotificationService(c.NotificationTokenRepo, c.NotificationRepo, pushProvider, nil)
 	c.AssignmentRepo = repository.NewAssignmentRepository(db)
 	c.ConversationRepo = chatRepository.NewConversationRepository(db)
 
