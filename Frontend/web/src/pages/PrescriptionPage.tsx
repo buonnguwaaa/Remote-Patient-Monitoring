@@ -24,6 +24,7 @@ import {
 
 import Toast from "../components/ui/Toast";
 import { useToast } from "../hooks/useToast";
+import PatientSelect from "../components/common/PatientSelect";
 import PatientListCard, {
   CardActionBtn,
   StatusBadge,
@@ -1199,29 +1200,13 @@ export default function PrescriptionPage() {
                   <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                     Bệnh nhân *
                   </label>
-                  {editingPrescriptionId ? (
-                    <div className="w-full rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-100 dark:bg-slate-700/50 px-4 py-2.5 text-sm text-slate-600 dark:text-slate-400 cursor-not-allowed">
-                      {patientDisplayMap.get(formData.patientId)?.name ||
-                        formData.patientId}
-                      {patientDisplayMap.get(formData.patientId)?.code &&
-                        ` • ${patientDisplayMap.get(formData.patientId)?.code}`}
-                    </div>
-                  ) : (
-                    <select
-                      name="patientId"
-                      value={formData.patientId}
-                      onChange={handleFormChange}
-                      className="w-full rounded-lg border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-sm text-gray-900 dark:text-slate-100 focus:ring-blue-500"
-                    >
-                      <option value="">Chọn bệnh nhân</option>
-                      {patientOptions.map((p) => (
-                        <option key={p.patientId} value={p.patientId}>
-                          {(p.patientName || p.patientId) +
-                            (p.patientCode ? ` • ${p.patientCode}` : "")}
-                        </option>
-                      ))}
-                    </select>
-                  )}
+                  <PatientSelect
+                    value={formData.patientId}
+                    onChange={(id) => setFormData({ ...formData, patientId: id })}
+                    patients={patientOptions}
+                    disabled={!!editingPrescriptionId}
+                    placeholder="Chọn bệnh nhân..."
+                  />
                 </div>
 
                 <div>

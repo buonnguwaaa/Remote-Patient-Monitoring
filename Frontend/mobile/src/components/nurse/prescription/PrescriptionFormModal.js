@@ -534,11 +534,13 @@ export function PrescriptionFormModal({ visible, onClose, initialData, onSave, p
                 <MedicationEditorCard 
                   key={idx} med={med} medIdx={idx} errors={errors}
                   onChange={(i, k, v) => {
-                    const next = [...formData.medications];
-                    next[i] = { ...next[i], [k]: v };
-                    setFormData({...formData, medications: next});
+                    setFormData(prev => {
+                      const next = [...prev.medications];
+                      next[i] = { ...next[i], [k]: v };
+                      return { ...prev, medications: next };
+                    });
                   }}
-                  onRemove={(i) => setFormData({...formData, medications: formData.medications.filter((_, index) => index !== i)})}
+                  onRemove={(i) => setFormData(prev => ({...prev, medications: prev.medications.filter((_, index) => index !== i)}))}
                   canRemove={formData.medications.length > 1}
                 />
               ))}

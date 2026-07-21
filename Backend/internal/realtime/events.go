@@ -18,6 +18,9 @@ const (
 	// Video call events — sent to both doctor and patient userIDs.
 	EventTypeVideoCallInvite = "video.call_invite"
 	EventTypeVideoCallEnded  = "video.call_ended"
+
+	// Notification event
+	EventTypeNotificationCreated = "notification.created"
 )
 
 // RealtimeEventData holds the inner data for a realtime event.
@@ -31,6 +34,7 @@ type RealtimeEventData struct {
 	Severity       *string              `json:"severity,omitempty"`
 	Preview        string               `json:"preview"`
 	Message        *dto.MessageResponse `json:"message,omitempty"`
+	Notification   *dto.NotificationResponse `json:"notification,omitempty"`
 }
 
 // RealtimeEvent is the top-level JSON structure sent to clients via the realtime WebSocket.

@@ -31,9 +31,11 @@ const LoginForm: React.FC = () => {
 
   return (
     <div className="flex w-full max-w-md min-h-100 flex-col items-center bg-gray-50 p-8 rounded">
-      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-lg bg-gray-900 text-2xl font-bold text-white">
-        RPM
-      </div>
+      <img
+        src="/doctor-logo.png"
+        alt="RPM Logo"
+        className="mb-4 h-20 w-20 rounded-2xl shadow-sm object-cover bg-white border border-gray-100"
+      />
       <p className="mb-6 text-lg font-medium text-gray-600 text-center">
         Xin chào bạn đến với hệ thống RPM
       </p>

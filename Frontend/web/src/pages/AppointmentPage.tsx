@@ -26,6 +26,7 @@ import {
 
 import Toast from "../components/ui/Toast";
 import { useToast } from "../hooks/useToast";
+import PatientSelect from "../components/common/PatientSelect";
 import { getMyPatients } from "../services/patientService";
 import {
   getMyAppointments,
@@ -439,104 +440,6 @@ function LocationCombobox({ value, onChange }: LocationComboboxProps) {
 
 // ── Sub-components ─────────────────────────────────────────────────────────
 
-interface PatientSelectProps {
-  value: string;
-  onChange: (id: string) => void;
-  patients: AssignmentResponse[];
-  disabled?: boolean;
-  placeholder?: string;
-}
-
-function PatientSelect({
-  value,
-  onChange,
-  patients,
-  disabled,
-  placeholder,
-}: PatientSelectProps) {
-  const [query, setQuery] = useState("");
-  const [open, setOpen] = useState(false);
-
-  const selected = patients.find((p) => p.patientId === value);
-
-  const filtered = useMemo(() => {
-    const q = query.toLowerCase();
-    return patients.filter(
-      (p) =>
-        (p.patientName || "").toLowerCase().includes(q) ||
-        (p.patientCode || p.patientPublicId || "").toLowerCase().includes(q),
-    );
-  }, [patients, query]);
-
-  const label = selected
-    ? `${selected.patientName || selected.patientId} (${selected.patientCode || selected.patientPublicId || ""})`
-    : "";
-
-  return (
-    <div className="relative">
-      <div
-        className={`flex cursor-pointer items-center justify-between rounded-xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-4 py-2.5 text-sm text-gray-900 dark:text-slate-100 ${disabled ? "opacity-60 pointer-events-none" : "hover:border-blue-400"}`}
-        onClick={() => !disabled && setOpen((o) => !o)}
-      >
-        <span className={label ? "" : "text-gray-400 dark:text-slate-400"}>
-          {label || placeholder || "Chọn bệnh nhân..."}
-        </span>
-        <FaChevronDown className="shrink-0 text-gray-400 text-xs" />
-      </div>
-
-      {open && (
-        <div className="absolute z-50 mt-1 w-full rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 shadow-lg">
-          <div className="p-2">
-            <input
-              autoFocus
-              type="text"
-              placeholder="Tìm tên hoặc mã bệnh nhân..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <ul className="max-h-48 overflow-y-auto pb-2">
-            {value && (
-              <li
-                className="cursor-pointer px-4 py-2 text-sm text-gray-400 hover:bg-slate-50 dark:hover:bg-slate-700"
-                onClick={() => {
-                  onChange("");
-                  setQuery("");
-                  setOpen(false);
-                }}
-              >
-                — Bỏ chọn —
-              </li>
-            )}
-            {filtered.length === 0 ? (
-              <li className="px-4 py-2 text-sm text-gray-400">
-                Không tìm thấy
-              </li>
-            ) : (
-              filtered.map((p) => (
-                <li
-                  key={p.patientId}
-                  className={`cursor-pointer px-4 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-700 ${p.patientId === value ? "font-semibold text-blue-600 dark:text-blue-400" : "text-gray-800 dark:text-slate-100"}`}
-                  onClick={() => {
-                    onChange(p.patientId);
-                    setQuery("");
-                    setOpen(false);
-                  }}
-                >
-                  {p.patientName || p.patientId}
-                  <span className="ml-2 text-xs text-gray-400">
-                    {p.patientCode || p.patientPublicId || ""}
-                  </span>
-                </li>
-              ))
-            )}
-          </ul>
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ── Location presets ───────────────────────────────────────────────────────
 
@@ -1544,17 +1447,17 @@ export default function AppointmentPage() {
               nhắc nhở bệnh nhân 24 giờ trước.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
-            {/* View mode switch */}
-            <div className="flex items-center rounded-xl border border-slate-300 dark:border-slate-600 overflow-hidden">
+          <div className="mt-4 flex flex-wrap gap-2 md:mt-0">
+            {/* View Mode Toggle */}
+            <div className="flex overflow-hidden rounded-xl border border-slate-300 dark:border-slate-600 bg-white p-0.5 dark:bg-slate-800">
               <button
                 type="button"
                 onClick={() => setViewMode("calendar")}
                 title="Xem lịch"
-                className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition ${
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition ${
                   viewMode === "calendar"
-                    ? "bg-indigo-600 text-white"
-                    : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                    ? "bg-slate-100 text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white"
+                    : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
                 }`}
               >
                 <FaCalendarWeek size={13} />
@@ -1564,16 +1467,18 @@ export default function AppointmentPage() {
                 type="button"
                 onClick={() => setViewMode("list")}
                 title="Xem danh sách"
-                className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition ${
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition ${
                   viewMode === "list"
-                    ? "bg-indigo-600 text-white"
-                    : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                    ? "bg-slate-100 text-slate-900 shadow-sm dark:bg-slate-700 dark:text-white"
+                    : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
                 }`}
               >
                 <FaThList size={13} />
                 <span className="hidden sm:inline">Danh sách</span>
               </button>
             </div>
+
+            <div className="flex items-center gap-2 border-l border-slate-200 dark:border-slate-700 pl-3">
 
             <button
               type="button"
@@ -1594,6 +1499,7 @@ export default function AppointmentPage() {
               />
               Làm mới
             </button>
+            </div>
           </div>
         </div>
 

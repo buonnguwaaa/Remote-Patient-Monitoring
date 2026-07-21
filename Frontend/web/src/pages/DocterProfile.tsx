@@ -24,7 +24,10 @@ import {
   TriangleAlert,
   Settings2,
   ChevronDown,
+  Edit2,
 } from "lucide-react";
+
+import EditDoctorModal from "../components/profile/EditDoctorModal";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface ClinicalHistoryItem {
@@ -377,6 +380,15 @@ const ProfileInfoTab = ({ doctor, departments }: { doctor: Doctor; departments: 
           {t("profile.workInfo")}
         </h2>
         <div className="divide-y divide-gray-100 dark:divide-slate-700">
+          {doctor.academicDegreeLabel && (
+            <InfoItem icon={Award} label="Học vị" value={doctor.academicDegreeLabel} />
+          )}
+          {doctor.professionalQualificationLabel && (
+            <InfoItem icon={Award} label="Trình độ chuyên môn" value={doctor.professionalQualificationLabel} />
+          )}
+          {doctor.academicTitleLabel && (
+            <InfoItem icon={Award} label="Chức danh" value={doctor.academicTitleLabel} />
+          )}
           <InfoItem icon={Stethoscope} label={t("profile.specialization")} value={doctor.specialization || ""} />
           <InfoItem icon={Building2} label={t("profile.department")} value={resolveDepartmentName(doctor, departments)} />
           <InfoItem icon={MapPin} label={t("profile.workplace")} value={doctor.workplace || ""} />
@@ -404,6 +416,7 @@ const DoctorProfile = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("profile");
+  const [showEditModal, setShowEditModal] = useState(false);
 
   useEffect(() => {
     const fetchDoctor = async () => {
@@ -452,30 +465,40 @@ const DoctorProfile = () => {
 
         {/* ── Header card ─────────────────────────────────────────────────── */}
         <div className="bg-white dark:bg-slate-800 rounded-2xl border border-gray-200 dark:border-slate-700 p-8">
-          <div className="flex items-center gap-6">
-            <div className="w-20 h-20 rounded-full overflow-hidden bg-gray-100 dark:bg-slate-700 border-2 border-gray-200 dark:border-slate-600 flex-shrink-0">
-              {doctor.avatarUrl ? (
-                <img src={doctor.avatarUrl} alt={doctor.name} className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-gray-400 dark:text-slate-500">
-                  <User size={32} />
-                </div>
-              )}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="flex items-center gap-6">
+              <div className="w-20 h-20 rounded-full overflow-hidden bg-gray-100 dark:bg-slate-700 border-2 border-gray-200 dark:border-slate-600 flex-shrink-0">
+                {doctor.avatarUrl ? (
+                  <img src={doctor.avatarUrl} alt={doctor.name} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-gray-400 dark:text-slate-500">
+                    <User size={32} />
+                  </div>
+                )}
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold text-gray-800 dark:text-slate-100">{doctor.displayName || doctor.name}</h1>
+                {doctor.specialization && (
+                  <p className="text-sm text-gray-500 dark:text-slate-400 mt-1 flex items-center gap-1.5">
+                    <Stethoscope size={14} />
+                    {doctor.specialization}
+                  </p>
+                )}
+                {doctor.workplace && (
+                  <p className="text-sm text-gray-400 dark:text-slate-500 mt-0.5 flex items-center gap-1.5">
+                    <MapPin size={14} />
+                    {doctor.workplace}
+                  </p>
+                )}
+              </div>
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-gray-800 dark:text-slate-100">{doctor.name}</h1>
-              {doctor.specialization && (
-                <p className="text-sm text-gray-500 dark:text-slate-400 mt-1 flex items-center gap-1.5">
-                  <Stethoscope size={14} />
-                  {doctor.specialization}
-                </p>
-              )}
-              {doctor.workplace && (
-                <p className="text-sm text-gray-400 dark:text-slate-500 mt-0.5 flex items-center gap-1.5">
-                  <MapPin size={14} />
-                  {doctor.workplace}
-                </p>
-              )}
+              <button
+                onClick={() => setShowEditModal(true)}
+                className="px-5 py-2.5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-sm shadow-blue-200 dark:shadow-none"
+              >
+                <Edit2 size={16} /> Chỉnh sửa hồ sơ
+              </button>
             </div>
           </div>
         </div>
@@ -510,6 +533,17 @@ const DoctorProfile = () => {
           )}
         </div>
       </div>
+
+      {showEditModal && doctor && (
+        <EditDoctorModal
+          doctor={doctor}
+          onClose={() => setShowEditModal(false)}
+          onSuccess={() => {
+            setShowEditModal(false);
+            window.location.reload(); // Simple reload to get fresh data
+          }}
+        />
+      )}
     </div>
   );
 };

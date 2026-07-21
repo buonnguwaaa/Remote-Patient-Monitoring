@@ -23,6 +23,7 @@ interface RealtimeNotificationContextType {
   unreadTotal: number;
   unreadByConversation: Record<string, number>;
   lastChatEvent: RealtimeEvent | null;
+  lastNotificationEvent: RealtimeEvent | null;
   activeConversationId: string | null;
   setActiveConversationId: (id: string | null) => void;
   markConversationRead: (conversationId: string) => void;
@@ -86,6 +87,9 @@ export const RealtimeNotificationProvider = ({
   const [lastChatEvent, setLastChatEvent] = useState<RealtimeEvent | null>(
     null,
   );
+  const [lastNotificationEvent, setLastNotificationEvent] = useState<RealtimeEvent | null>(
+    null,
+  );
   const [activeConversationId, setActiveConversationId] = useState<
     string | null
   >(null);
@@ -146,6 +150,17 @@ export const RealtimeNotificationProvider = ({
 
       // If we're the sender, skip toast/badge/browser notification
       if (event.data.senderId && event.data.senderId === currentUserId) return;
+
+      if (event.type === "notification.created") {
+        setLastNotificationEvent(event);
+        if (!tryAcquireNotificationLock(event.eventId)) return;
+        showToast(event.data.notification?.title || "Thông báo mới", {
+          type: "info",
+          title: "Thông báo hệ thống",
+          duration: 5000,
+        });
+        return; // Early return for notification events
+      }
 
       const convId = event.data.conversationId;
       const isViewingConversation =
@@ -277,6 +292,7 @@ export const RealtimeNotificationProvider = ({
         unreadTotal,
         unreadByConversation,
         lastChatEvent,
+        lastNotificationEvent,
         activeConversationId,
         setActiveConversationId,
         markConversationRead,

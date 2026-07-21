@@ -295,12 +295,6 @@ export default function EducationHomeScreen() {
         ) : (
           <>
             {/* ─── EXPLORE MODE ─── */}
-            <View style={s.exploreHeader}>
-              <TouchableOpacity style={s.backBtn} onPress={() => setShowAllArticles(false)}>
-                <Ionicons name="arrow-back" size={18} color="#2563EB" />
-                <Text style={s.backBtnText}>Quay lại trang chính</Text>
-              </TouchableOpacity>
-            </View>
 
             {/* ─── SEARCH ─── */}
             <View style={[s.searchWrap, { marginTop: 0 }]}>
@@ -325,6 +319,12 @@ export default function EducationHomeScreen() {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={s.filterRow}
             >
+              <TouchableOpacity
+                style={s.chip}
+                onPress={() => setShowAllArticles(false)}
+              >
+                <Text style={s.chipText}>🏠 Trang chủ</Text>
+              </TouchableOpacity>
               {FILTER_TABS.map((tab) => (
                 <TouchableOpacity
                   key={tab.key}

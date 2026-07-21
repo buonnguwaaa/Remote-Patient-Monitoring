@@ -91,6 +91,13 @@ export interface ChatMessage {
 export interface doctor {
   id: string;
   name: string;
+  displayName?: string;
+  academicDegree?: string;
+  academicDegreeLabel?: string;
+  professionalQualification?: string;
+  professionalQualificationLabel?: string;
+  academicTitle?: string;
+  academicTitleLabel?: string;
   specialization: string;
   licenseNumber: string;
   workplace: string;

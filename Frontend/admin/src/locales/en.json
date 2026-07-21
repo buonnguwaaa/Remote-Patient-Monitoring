@@ -134,7 +134,10 @@
       "yearsOfExperience": "Years of Experience",
       "status": "Status",
       "password": "Password",
-      "contact": "Contact"
+      "contact": "Contact",
+      "academicDegree": "Academic Degree",
+      "professionalQualification": "Professional Qualification",
+      "academicTitle": "Academic Title"
     },
     "labels": {
       "specialization": "Specialization:",
