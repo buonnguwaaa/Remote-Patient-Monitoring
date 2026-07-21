@@ -180,7 +180,7 @@ func NewMainServerContainer() *MainServerContainer {
 	c.AlertService = service.NewAlertService(c.AlertRepo)
 	c.DepartmentService = service.NewDepartmentService(c.DepartmentRepo, c.DoctorRepo, c.NurseRepo)
 	c.NotificationService = service.NewNotificationService(c.NotificationTokenRepo, c.NotificationRepo, fcmClient, c.RealtimePublisher)
-	c.AssignmentService = service.NewAssignmentService(c.AssignmentRepo, c.BaseUserRepo, c.NotificationService)
+	c.AssignmentService = service.NewAssignmentService(c.AssignmentRepo, c.BaseUserRepo, c.DoctorRepo, c.NurseRepo, c.NotificationService)
 	c.PatientOverviewService = service.NewPatientOverviewService(c.AssignmentRepo, c.PatientRepo, c.MeasurementRepo, c.ThresholdRepo, c.AlertRepo)
 	c.ReminderService = service.NewReminderService(c.PatientRepo, c.ReminderRepo, c.AssignmentRepo)
 	c.PrescriptionService = service.NewPrescriptionService(c.PatientRepo, c.PrescriptionRepo, c.ReminderRepo, c.ReminderService)

@@ -17,7 +17,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons, MaterialIcons, FontAwesome5 } from "@expo/vector-icons";
 import { useCallback, useState } from "react";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import QRCode from "react-native-qrcode-svg";
 
 import { useAuth } from "../../hooks/useAuth";
@@ -32,6 +32,7 @@ import {
 } from "../../utils/profileValidation";
 import { buildPatientQrValue } from "../../utils/patientQrUtils";
 import { request } from "../../api/httpClient";
+import { getMyCareTeam } from "../../api/assignmentApi";
 import AccountActivitySection from "../../components/AccountActivitySection";
 
 
@@ -193,6 +194,7 @@ function ValidationMessage({ message }) {
 }
 
 export default function ProfileScreen() {
+  const navigation = useNavigation();
   const { logout, updateUser, isBiometricEnabled, enableBiometric, disableBiometric, refreshBiometricStatus, sessionPassword } = useAuth();
   const { showSuccess, showError, showWarning } = useSnackbar();
   const [biometricLoading, setBiometricLoading] = useState(false);
@@ -259,6 +261,8 @@ export default function ProfileScreen() {
 
   const [userForm, setUserForm] = useState(EMPTY_USER_FORM);
   const [patientForm, setPatientForm] = useState(EMPTY_PATIENT_FORM);
+  const [careTeam, setCareTeam] = useState(null);
+  const [selectedStaff, setSelectedStaff] = useState(null);
   const [snapshot, setSnapshot] = useState({
     user: EMPTY_USER_FORM,
     patient: EMPTY_PATIENT_FORM,
@@ -295,15 +299,32 @@ export default function ProfileScreen() {
       }
 
       try {
-        const response = await getMyPatientProfile();
-        if (!response.ok) {
-          // 401 → httpClient đã gọi emitSessionExpired → AuthContext sẽ logout tự động
-          // Không set error để tránh flash "Token đã hết hạn" trước khi navigate về Login
-          if (response.status === 401) return;
-          throw new Error(getErrorMessage(response));
+        const [profileRes, careTeamRes] = await Promise.allSettled([
+          getMyPatientProfile(),
+          getMyCareTeam(),
+        ]);
+
+        if (profileRes.status === "fulfilled" && profileRes.value) {
+          const response = profileRes.value;
+          if (!response.ok) {
+            if (response.status === 401) return;
+            throw new Error(getErrorMessage(response));
+          }
+          applyProfile(response.body?.data || {});
+        } else {
+          throw new Error("Không tải được hồ sơ bệnh nhân.");
         }
 
-        applyProfile(response.body?.data || {});
+        if (careTeamRes.status === "fulfilled" && careTeamRes.value) {
+          const ctResponse = careTeamRes.value;
+          if (ctResponse.ok) {
+            setCareTeam(ctResponse.body?.data || null);
+          } else {
+            setCareTeam(null);
+          }
+        } else {
+          setCareTeam(null);
+        }
       } catch (error) {
         setLoadError(error.message || "Không tải được hồ sơ bệnh nhân.");
       } finally {
@@ -499,6 +520,128 @@ export default function ProfileScreen() {
             <Text style={styles.qrModalCodeValue}>
               {patientForm.patientCode || "Đang cấp mã"}
             </Text>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      <Modal
+        visible={!!selectedStaff}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSelectedStaff(null)}
+      >
+        <TouchableOpacity
+          style={styles.qrModalOverlay}
+          activeOpacity={1}
+          onPress={() => setSelectedStaff(null)}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={() => {}}
+            style={[styles.qrModalCard, { padding: 0, overflow: 'hidden' }]}
+          >
+            <View style={{ backgroundColor: selectedStaff?.role === "user.doctor" ? "#EEF2FF" : "#F7FEE7", padding: 20, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#E5E7EB' }}>
+              <TouchableOpacity
+                style={{ position: 'absolute', top: 12, right: 12, padding: 8 }}
+                onPress={() => setSelectedStaff(null)}
+              >
+                <Ionicons name="close" size={24} color="#374151" />
+              </TouchableOpacity>
+              
+              <View style={[styles.infoIconWrapper, { backgroundColor: '#FFFFFF', width: 80, height: 80, borderRadius: 40, marginBottom: 12, shadowColor: "#000", shadowOpacity: 0.1, shadowRadius: 4, shadowOffset: { width: 0, height: 2 } }]}>
+                {selectedStaff?.avatarUrl ? (
+                  <Image source={{ uri: selectedStaff.avatarUrl }} style={{ width: 80, height: 80, borderRadius: 40 }} />
+                ) : (
+                  <Ionicons name={selectedStaff?.role === "user.doctor" ? "person" : "medkit"} size={40} color={selectedStaff?.role === "user.doctor" ? "#4338CA" : "#65A30D"} />
+                )}
+              </View>
+              <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#111827', textAlign: 'center' }}>
+                {selectedStaff?.displayName || selectedStaff?.name}
+              </Text>
+              <Text style={{ fontSize: 14, color: '#4B5563', marginTop: 4 }}>
+                {selectedStaff?.role === "user.doctor" ? "Bác sĩ phụ trách" : "Điều dưỡng phụ trách"}
+              </Text>
+            </View>
+            
+            <ScrollView style={{ maxHeight: 400 }} contentContainerStyle={{ padding: 20 }}>
+              <View style={{ flexDirection: 'row', marginBottom: 16, alignItems: 'center' }}>
+                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                  <Ionicons name="call" size={18} color="#4B5563" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 12, color: '#6B7280' }}>Số điện thoại</Text>
+                  <Text style={{ fontSize: 15, fontWeight: '500', color: '#111827', marginTop: 2 }}>{selectedStaff?.phone || 'Chưa cập nhật'}</Text>
+                </View>
+              </View>
+              
+              <View style={{ flexDirection: 'row', marginBottom: 16, alignItems: 'center' }}>
+                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                  <Ionicons name="male-female" size={18} color="#4B5563" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 12, color: '#6B7280' }}>Giới tính</Text>
+                  <Text style={{ fontSize: 15, fontWeight: '500', color: '#111827', marginTop: 2 }}>
+                    {selectedStaff?.gender === "MALE" ? "Nam" : selectedStaff?.gender === "FEMALE" ? "Nữ" : "Khác"}
+                  </Text>
+                </View>
+              </View>
+
+              {selectedStaff?.role === "user.doctor" && selectedStaff?.specialization ? (
+                <View style={{ flexDirection: 'row', marginBottom: 16, alignItems: 'center' }}>
+                  <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                    <Ionicons name="medical" size={18} color="#4B5563" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 12, color: '#6B7280' }}>Chuyên khoa</Text>
+                    <Text style={{ fontSize: 15, fontWeight: '500', color: '#111827', marginTop: 2 }}>
+                      {selectedStaff.specialization}
+                    </Text>
+                  </View>
+                </View>
+              ) : null}
+
+              {(selectedStaff?.academicTitleLabel || selectedStaff?.academicDegreeLabel || selectedStaff?.professionalQualificationLabel) ? (
+                <View style={{ flexDirection: 'row', marginBottom: 16, alignItems: 'center' }}>
+                  <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                    <Ionicons name="school" size={18} color="#4B5563" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 12, color: '#6B7280' }}>Học vị / Chuyên môn</Text>
+                    <Text style={{ fontSize: 15, fontWeight: '500', color: '#111827', marginTop: 2 }}>
+                      {[selectedStaff.academicTitleLabel, selectedStaff.academicDegreeLabel, selectedStaff.professionalQualificationLabel].filter(Boolean).join(" - ")}
+                    </Text>
+                  </View>
+                </View>
+              ) : null}
+
+              {selectedStaff?.yearsOfExperience ? (
+                <View style={{ flexDirection: 'row', marginBottom: 16, alignItems: 'center' }}>
+                  <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                    <Ionicons name="briefcase" size={18} color="#4B5563" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 12, color: '#6B7280' }}>Kinh nghiệm</Text>
+                    <Text style={{ fontSize: 15, fontWeight: '500', color: '#111827', marginTop: 2 }}>
+                      {selectedStaff.yearsOfExperience} năm
+                    </Text>
+                  </View>
+                </View>
+              ) : null}
+              
+              {selectedStaff?.workplace ? (
+                <View style={{ flexDirection: 'row', marginBottom: 16, alignItems: 'center' }}>
+                  <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                    <Ionicons name="business" size={18} color="#4B5563" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 12, color: '#6B7280' }}>Nơi công tác</Text>
+                    <Text style={{ fontSize: 15, fontWeight: '500', color: '#111827', marginTop: 2 }}>
+                      {selectedStaff.workplace}
+                    </Text>
+                  </View>
+                </View>
+              ) : null}
+            </ScrollView>
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
@@ -839,6 +982,77 @@ export default function ProfileScreen() {
               </Text>
             )}
           </View>
+
+          <Text style={styles.sectionTitle}>Đội ngũ y tế phụ trách</Text>
+          {careTeam ? (
+            <>
+              {careTeam.doctor ? (
+                <View style={[styles.infoCard, { padding: 12 }]}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                      <View style={[styles.infoIconWrapper, { backgroundColor: '#E0E7FF', width: 44, height: 44, borderRadius: 22, marginRight: 12 }]}>
+                        {careTeam.doctor.avatarUrl ? (
+                          <Image source={{ uri: careTeam.doctor.avatarUrl }} style={{ width: 44, height: 44, borderRadius: 22 }} />
+                        ) : (
+                          <Ionicons name="person" size={20} color="#4338CA" />
+                        )}
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 13, color: '#6B7280', fontWeight: '500' }}>Bác sĩ phụ trách</Text>
+                        <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#111827', marginTop: 2 }}>{careTeam.doctor.name || 'Đang cập nhật'}</Text>
+                        <Text style={{ fontSize: 13, color: '#374151', marginTop: 1 }}>{careTeam.doctor.phone || 'Chưa cập nhật SĐT'}</Text>
+                      </View>
+                    </View>
+                    <TouchableOpacity
+                      style={{ backgroundColor: '#EEF2FF', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}
+                      onPress={() => setSelectedStaff(careTeam.doctor)}
+                    >
+                      <Ionicons name="information-circle-outline" size={16} color="#4F46E5" />
+                      <Text style={{ color: '#4F46E5', fontWeight: '600', fontSize: 13, marginLeft: 6 }}>Chi tiết</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : null}
+
+              {careTeam.nurse ? (
+                <View style={[styles.infoCard, { padding: 12 }]}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                      <View style={[styles.infoIconWrapper, { backgroundColor: '#ECFCCB', width: 44, height: 44, borderRadius: 22, marginRight: 12 }]}>
+                        {careTeam.nurse.avatarUrl ? (
+                          <Image source={{ uri: careTeam.nurse.avatarUrl }} style={{ width: 44, height: 44, borderRadius: 22 }} />
+                        ) : (
+                          <Ionicons name="medkit" size={20} color="#65A30D" />
+                        )}
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 13, color: '#6B7280', fontWeight: '500' }}>Điều dưỡng</Text>
+                        <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#111827', marginTop: 2 }}>{careTeam.nurse.name || 'Đang cập nhật'}</Text>
+                        <Text style={{ fontSize: 13, color: '#374151', marginTop: 1 }}>{careTeam.nurse.phone || 'Chưa cập nhật SĐT'}</Text>
+                      </View>
+                    </View>
+                    <TouchableOpacity
+                      style={{ backgroundColor: '#EEF2FF', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, flexDirection: 'row', alignItems: 'center' }}
+                      onPress={() => setSelectedStaff(careTeam.nurse)}
+                    >
+                      <Ionicons name="information-circle-outline" size={16} color="#4F46E5" />
+                      <Text style={{ color: '#4F46E5', fontWeight: '600', fontSize: 13, marginLeft: 6 }}>Chi tiết</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : null}
+
+              {!careTeam.doctor && !careTeam.nurse ? (
+                <View style={styles.infoCard}>
+                  <Text style={styles.infoHint}>Hồ sơ của bạn đang chờ phân công người phụ trách.</Text>
+                </View>
+              ) : null}
+            </>
+          ) : (
+            <View style={styles.infoCard}>
+              <Text style={styles.infoHint}>Hồ sơ của bạn đang chờ phân công người phụ trách.</Text>
+            </View>
+          )}
 
           <Text style={styles.sectionTitle}>Mã QR hồ sơ</Text>
           <View style={styles.qrCard}>

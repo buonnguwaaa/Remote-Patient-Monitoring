@@ -31,3 +31,9 @@ type AssignmentResponse struct {
 	CreatedAt           time.Time                `json:"createdAt"`
 	UpdatedAt           time.Time                `json:"updatedAt"`
 }
+
+// MyCareTeamResponse represents the response containing the assigned doctor and nurse
+type MyCareTeamResponse struct {
+	Doctor *DoctorInfoResponse `json:"doctor,omitempty"`
+	Nurse  *NurseInfoResponse  `json:"nurse,omitempty"`
+}

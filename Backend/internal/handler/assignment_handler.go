@@ -12,6 +12,7 @@ import (
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/service"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecase"
 	"github.com/gin-gonic/gin"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type AssignmentHandler struct {
@@ -175,5 +176,53 @@ func (h *AssignmentHandler) DeleteAssignment(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Đã xóa phân công thành công"})
+	c.JSON(http.StatusOK, gin.H{"message": "Assignment deleted successfully"})
+}
+// GetMyCareTeam returns the assigned doctor and nurse for the current patient.
+// @Summary Get assigned care team for the current patient
+// @Description Returns the detailed info of the doctor and nurse currently assigned to the patient
+// @Tags assignments
+// @Accept json
+// @Failure 403 {object} map[string]interface{}
+// @Router /api/v1/assignments/my-care-team [get]
+func (h *AssignmentHandler) GetMyCareTeam(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	userRole, exists := c.Get("role")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": constant.MsgUnauthorized})
+		return
+	}
+
+	roleVal, ok := userRole.(domain.Role)
+	if !ok || roleVal != domain.RolePatient {
+		c.JSON(http.StatusForbidden, gin.H{"error": constant.MsgOnlyPatient})
+		return
+	}
+
+	rawUserID, exists := c.Get("userId")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": constant.MsgUnauthorized})
+		return
+	}
+	userIDStr, ok := rawUserID.(string)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": constant.MsgUnauthorized})
+		return
+	}
+
+	userID, err := primitive.ObjectIDFromHex(userIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid User ID"})
+		return
+	}
+
+	careTeam, err := h.service.GetMyCareTeam(ctx, userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": careTeam})
 }
