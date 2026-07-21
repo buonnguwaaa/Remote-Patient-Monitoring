@@ -244,8 +244,6 @@ export default function HomeScreen() {
         setThresholds(null);
       }
 
-      // (removed to accommodate Promise.allSettled logic above)
-
       if (nextError) {
         throw new Error(nextError);
       }
@@ -474,6 +472,7 @@ export default function HomeScreen() {
             )}
           </TouchableOpacity>
         </View>
+
 
         {/* ---- Medication Card ---- */}
         <TouchableOpacity
