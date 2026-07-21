@@ -1,3 +1,19 @@
+export const ROUTE_OPTIONS = [
+  "Đường uống",
+  "Uống",
+  "Tiêm tĩnh mạch",
+  "Tiêm bắp",
+  "Tiêm dưới da",
+  "Bôi ngoài da",
+  "Nhỏ mắt",
+  "Nhỏ tai",
+  "Nhỏ mũi",
+  "Đặt dưới lưỡi",
+  "Hít (Xịt/Khí dung)",
+  "Đặt trực tràng",
+  "Đặt âm đạo",
+];
+
 export const DRUG_SUGGESTIONS = [
   // Giảm đau, hạ sốt, chống viêm
   {

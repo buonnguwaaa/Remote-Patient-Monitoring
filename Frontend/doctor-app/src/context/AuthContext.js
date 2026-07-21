@@ -113,7 +113,16 @@ export function AuthProvider({ children }) {
   // Register global auth failure handler
   useEffect(() => {
     setAuthFailureHandler(() => {
-      setUser(null);
+      setUser((currentUser) => {
+        if (currentUser) {
+          Alert.alert(
+            "Phiên đăng nhập hết hạn",
+            "Phiên làm việc của bạn đã hết hạn. Vui lòng đăng nhập lại.",
+            [{ text: "Đăng nhập lại", style: "default" }]
+          );
+        }
+        return null;
+      });
       setSessionPassword(null);
     });
     return () => setAuthFailureHandler(null);
@@ -172,6 +181,17 @@ export function AuthProvider({ children }) {
     })();
   }, []);
 
+  const refreshBiometricStatus = async () => {
+    try {
+      const bioEnabled =
+        (await SecureStore.getItemAsync("staff_biometric_enabled")) ||
+        (await SecureStore.getItemAsync("doctor_biometric_enabled"));
+      setIsBiometricEnabled(bioEnabled === "true");
+    } catch {
+      setIsBiometricEnabled(false);
+    }
+  };
+
   const login = async (email, password) => {
     const res = await authApi.login({ email, password });
     if (!res.ok) {
@@ -200,9 +220,14 @@ export function AuthProvider({ children }) {
       return { ok: false, error: errorMsg };
     }
 
-    const token = res.body?.data?.accessToken || res.body?.accessToken;
+    const loginData = res.body?.data || res.body;
+    const token = loginData?.accessToken || loginData?.AccessToken;
+    const refreshToken = loginData?.refreshToken || loginData?.RefreshToken;
     if (token) {
       await SecureStore.setItemAsync("staff_accessToken", token);
+    }
+    if (refreshToken) {
+      await SecureStore.setItemAsync("staff_refreshToken", refreshToken);
     }
 
     const meRes = await authApi.me();
@@ -212,7 +237,7 @@ export function AuthProvider({ children }) {
 
     // Reject patients
     if (u.role === "user.patient" || u.role === "patient") {
-      try { await SecureStore.deleteItemAsync("staff_accessToken"); } catch {}
+      try { await SecureStore.deleteItemAsync("staff_accessToken"); } catch { }
       return {
         ok: false,
         error: "Ứng dụng này chỉ dành cho bác sĩ/y tá. Vui lòng dùng app bệnh nhân.",
@@ -221,12 +246,13 @@ export function AuthProvider({ children }) {
 
     // Reject unknown roles
     if (!isStaffRole(u.role)) {
-      try { await SecureStore.deleteItemAsync("staff_accessToken"); } catch {}
+      try { await SecureStore.deleteItemAsync("staff_accessToken"); } catch { }
       return { ok: false, error: "Tài khoản không có quyền truy cập ứng dụng này." };
     }
 
     setUser(u);
     setSessionPassword(password);
+    await refreshBiometricStatus();
     return { ok: true, data: u };
   };
 
@@ -236,16 +262,16 @@ export function AuthProvider({ children }) {
       if (!result?.ok && !result?.skipped) {
         console.warn("[push] failed to deactivate staff device token", result?.error);
       }
-    } catch {}
+    } catch { }
 
-    try { await authApi.logout(); } catch {}
+    try { await authApi.logout(); } catch { }
     try {
       // Clear both old and new keys
       await SecureStore.deleteItemAsync("staff_accessToken");
       await SecureStore.deleteItemAsync("staff_refreshToken");
       await SecureStore.deleteItemAsync("doctor_accessToken");
       await SecureStore.deleteItemAsync("doctor_refreshToken");
-    } catch {}
+    } catch { }
     setUser(null);
     setSessionPassword(null);
   };
@@ -290,9 +316,9 @@ export function AuthProvider({ children }) {
       await SecureStore.deleteItemAsync("staff_password");
       await SecureStore.setItemAsync("staff_biometric_enabled", "false");
       // Also clear old keys
-      try { await SecureStore.deleteItemAsync("doctor_email"); } catch {}
-      try { await SecureStore.deleteItemAsync("doctor_password"); } catch {}
-      try { await SecureStore.setItemAsync("doctor_biometric_enabled", "false"); } catch {}
+      try { await SecureStore.deleteItemAsync("doctor_email"); } catch { }
+      try { await SecureStore.deleteItemAsync("doctor_password"); } catch { }
+      try { await SecureStore.setItemAsync("doctor_biometric_enabled", "false"); } catch { }
       setIsBiometricEnabled(false);
       return { ok: true };
     } catch (e) {
@@ -313,6 +339,7 @@ export function AuthProvider({ children }) {
       sessionPassword,
       enableBiometric,
       disableBiometric,
+      refreshBiometricStatus,
     }}>
       {children}
     </AuthContext.Provider>

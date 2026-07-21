@@ -25,7 +25,7 @@ import ChatScreen from "../screens/ChatScreen";
 import ChatDetailScreen from "../screens/ChatDetailScreen";
 import ThresholdsScreen from "../screens/ThresholdsScreen";
 import RemindersScreen from "../screens/RemindersScreen";
-import PrescriptionsScreen from "../screens/PrescriptionsScreen";
+import PrescriptionsScreen from "../screens/common/PrescriptionsScreen";
 import SettingsScreen from "../screens/SettingsScreen";
 import VideoCallScreen from "../screens/VideoCallScreen";
 import ComplianceScreen from "../screens/ComplianceScreen";
@@ -37,7 +37,6 @@ import NursePatientListScreen from "../screens/nurse/NursePatientListScreen";
 import MeasurementInputScreen from "../screens/nurse/MeasurementInputScreen";
 import NurseProfileScreen from "../screens/nurse/NurseProfileScreen";
 import PatientDetailScreen from "../screens/nurse/PatientDetailScreen";
-import NursePrescriptionScreen from "../screens/nurse/NursePrescriptionScreen";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -208,7 +207,7 @@ function NurseMainTabs() {
         component={MeasurementInputScreen}
         options={{ title: "Nhập liệu" }}
       />
-      <Tab.Screen name="NursePrescriptions" component={NursePrescriptionScreen} options={{ title: "Đơn thuốc" }} />
+      <Tab.Screen name="NursePrescriptions" component={PrescriptionsScreen} options={{ title: "Đơn thuốc" }} />
       <Tab.Screen name="NurseProfile" component={NurseProfileScreen} options={{ title: "Hồ sơ" }} />
     </Tab.Navigator>
   );
@@ -242,7 +241,7 @@ function RootNavigator() {
       <Stack.Navigator screenOptions={{ headerShown: false, headerBackTitleVisible: false }}>
         <Stack.Screen name="NurseMainTabs" component={NurseMainTabs} />
         <Stack.Screen name="NursePatientDetail" component={PatientDetailScreen} />
-        <Stack.Screen name="NursePrescriptionDetail" component={NursePrescriptionScreen} />
+        <Stack.Screen name="NursePrescriptionDetail" component={PrescriptionsScreen} />
       </Stack.Navigator>
     );
   }
