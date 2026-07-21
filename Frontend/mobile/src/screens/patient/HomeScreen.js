@@ -754,16 +754,12 @@ export default function HomeScreen() {
 
                       <View
                         style={
-                          alert.isAcknowledged
-                            ? styles.alertStatusPillNormal
-                            : (alert.isHigh ? styles.alertStatusPillHigh : styles.alertStatusPillNormal)
+                          alert.isHigh ? styles.alertStatusPillHigh : styles.alertStatusPillNormal
                         }
                       >
                         <Text
                           style={
-                            alert.isAcknowledged
-                              ? { ...styles.alertStatusTextNormal, color: "#6B7280" }
-                              : (alert.isHigh ? styles.alertStatusTextHigh : styles.alertStatusTextNormal)
+                            alert.isHigh ? styles.alertStatusTextHigh : styles.alertStatusTextNormal
                           }
                         >
                           {alert.severityText}
@@ -1123,6 +1119,12 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 999,
   },
+  alertStatusPillAcknowledged: {
+    backgroundColor: "#F3F4F6",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
   alertStatusTextNormal: {
     color: "#1A8F4A",
     fontWeight: "700",
@@ -1130,6 +1132,11 @@ const styles = StyleSheet.create({
   },
   alertStatusTextHigh: {
     color: "#D63031",
+    fontWeight: "700",
+    fontSize: 11,
+  },
+  alertStatusTextAcknowledged: {
+    color: "#6B7280",
     fontWeight: "700",
     fontSize: 11,
   },

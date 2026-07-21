@@ -444,9 +444,9 @@ export default function AlertScreen({ isEmbedded }) {
                           <View style={styles.alertRight}>
                             <Text style={styles.timePill}>{formatClockTime(alert.createdAt)}</Text>
                             <View
-                              style={statusMeta.isOpen ? (isHigh ? styles.levelPillHigh : styles.levelPillInfo) : styles.levelPillAck}
+                              style={isHigh ? styles.levelPillHigh : styles.levelPillInfo}
                             >
-                              <Text style={statusMeta.isOpen ? (isHigh ? styles.levelTextHigh : styles.levelTextInfo) : styles.levelTextAck}>
+                              <Text style={isHigh ? styles.levelTextHigh : styles.levelTextInfo}>
                                 {isHigh ? "Ưu tiên cao" : "Cần theo dõi"}
                               </Text>
                             </View>

@@ -1,25 +1,21 @@
-/**
- * NursePrescriptionScreen.js
- * Màn hình quản lý đơn thuốc cho y tá:
- *  - Refactored UI với Grouped List, Thống kê, và Gợi ý thuốc
- */
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator, Alert, RefreshControl, ScrollView, StyleSheet,
-  Text, TouchableOpacity, View, Modal, TextInput
+  Text, TouchableOpacity, View, Modal, TextInput, FlatList
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRoute } from "@react-navigation/native";
 
-import { useNursePatientListData } from "../../hooks/useNursePatientListData";
-import { useAuth } from "../../hooks/useAuth";
-import { useSnackbar } from "../../hooks/useSnackbar";
+import { getMyPatients } from "../../api/patientApi";
 import {
   getPrescriptions, createPrescription, updatePrescription, updatePrescriptionStatus
 } from "../../api/prescriptionApi";
 
-// Components
+import { useAuth } from "../../context/AuthContext";
+import { useToast } from "../../context/ToastContext";
+
+// Shared Components
 import { PrescriptionStatsHeader } from "../../components/nurse/prescription/PrescriptionStatsHeader";
 import { PrescriptionPatientGroup } from "../../components/nurse/prescription/PrescriptionCard";
 import { PrescriptionDetailModal } from "../../components/nurse/prescription/PrescriptionDetailModal";
@@ -45,47 +41,75 @@ function createDefaultForm(patientId = "") {
   };
 }
 
-// Helper: Group Prescriptions
 function groupPrescriptionsByPatient(prescriptions) {
   const map = {};
   prescriptions.forEach(p => {
-    if (!map[p.patientId]) map[p.patientId] = [];
-    map[p.patientId].push(p);
+    const key = p.patientId || p.patient?._id || "unknown";
+    if (!map[key]) map[key] = [];
+    map[key].push(p);
   });
   return map;
 }
 
-// Status Update Modal inside main screen to keep it simple
-function StatusUpdateModal({ visible, prescription, onClose, onUpdated }) {
+// Status Update Modal
+function StatusUpdateModal({ visible, prescription, onClose, onUpdated, showToast }) {
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(false);
   const handle = async (status) => {
     Alert.alert("Xác nhận", `Cập nhật trạng thái thành "${status}"?`, [
       { text: "Hủy", style: "cancel" },
-      { text: "Đồng ý", onPress: async () => {
+      { 
+        text: "Đồng ý", 
+        onPress: async () => {
           setLoading(true);
           try {
             const res = await updatePrescriptionStatus(prescription.id, status);
-            if (res.ok) { onUpdated(); onClose(); }
-            else showError("Không cập nhật được.");
-          } catch { showError("Lỗi kết nối máy chủ."); }
-          finally { setLoading(false); }
-      }}
+            if (res.ok || !res.error) { 
+              if (showToast) showToast("Đã cập nhật trạng thái đơn thuốc.", "success");
+              onUpdated(); 
+              onClose(); 
+            } else {
+              if (showToast) showToast("Không cập nhật được trạng thái.", "error");
+            }
+          } catch { 
+            if (showToast) showToast("Lỗi kết nối máy chủ.", "error"); 
+          } finally { 
+            setLoading(false); 
+          }
+        }
+      }
     ]);
   };
   if (!prescription) return null;
   return (
     <Modal visible={visible} transparent animationType="fade">
       <View style={styles.modalOverlay}>
-        <View style={styles.statusModalSheet}>
+        <View style={[styles.statusModalSheet, { paddingBottom: Math.max(insets.bottom + 16, 28) }]}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Đổi trạng thái đơn thuốc</Text>
-            <TouchableOpacity onPress={onClose}><Ionicons name="close" size={22} color="#374151" /></TouchableOpacity>
+            <TouchableOpacity onPress={onClose}>
+              <Ionicons name="close" size={22} color="#374151" />
+            </TouchableOpacity>
           </View>
-          {loading ? <ActivityIndicator color="#2563EB" style={{ marginVertical: 20 }} /> : (
+          {loading ? (
+            <ActivityIndicator color="#2563EB" style={{ marginVertical: 20 }} />
+          ) : (
             <>
-              {prescription.status !== "active" && <TouchableOpacity style={[styles.statusBtn, { backgroundColor: "#D1FAE5" }]} onPress={() => handle("active")}><Text style={[styles.statusBtnText, { color: "#065F46" }]}>Kích hoạt lại</Text></TouchableOpacity>}
-              {prescription.status === "active" && <TouchableOpacity style={[styles.statusBtn, { backgroundColor: "#DBEAFE" }]} onPress={() => handle("completed")}><Text style={[styles.statusBtnText, { color: "#1E40AF" }]}>Hoàn thành</Text></TouchableOpacity>}
-              {prescription.status === "active" && <TouchableOpacity style={[styles.statusBtn, { backgroundColor: "#FEE2E2" }]} onPress={() => handle("discontinued")}><Text style={[styles.statusBtnText, { color: "#991B1B" }]}>Ngưng dùng</Text></TouchableOpacity>}
+              {prescription.status !== "active" && (
+                <TouchableOpacity style={[styles.statusBtn, { backgroundColor: "#D1FAE5" }]} onPress={() => handle("active")}>
+                  <Text style={[styles.statusBtnText, { color: "#065F46" }]}>Kích hoạt lại</Text>
+                </TouchableOpacity>
+              )}
+              {prescription.status === "active" && (
+                <TouchableOpacity style={[styles.statusBtn, { backgroundColor: "#DBEAFE" }]} onPress={() => handle("completed")}>
+                  <Text style={[styles.statusBtnText, { color: "#1E40AF" }]}>Hoàn thành</Text>
+                </TouchableOpacity>
+              )}
+              {prescription.status === "active" && (
+                <TouchableOpacity style={[styles.statusBtn, { backgroundColor: "#FEE2E2" }]} onPress={() => handle("discontinued")}>
+                  <Text style={[styles.statusBtnText, { color: "#991B1B" }]}>Ngưng dùng</Text>
+                </TouchableOpacity>
+              )}
             </>
           )}
         </View>
@@ -94,14 +118,31 @@ function StatusUpdateModal({ visible, prescription, onClose, onUpdated }) {
   );
 }
 
-// ─── Main Screen ───
-export default function NursePrescriptionScreen() {
-  const { user } = useAuth() || {};
+// ─── Unified Common Screen (Doctor & Nurse) ───
+export default function PrescriptionsScreen() {
+  const insets = useSafeAreaInsets();
+  const authContext = useAuth() || {};
+  const { user, isDoctor, isNurse } = authContext;
   const route = useRoute();
-  const { showError, showSuccess } = useSnackbar();
   
-  const { patients, loadPatients } = useNursePatientListData(user);
-  
+  let toastFunc = null;
+  try {
+    const toastCtx = useToast();
+    toastFunc = toastCtx?.showToast;
+  } catch {
+    toastFunc = null;
+  }
+
+  const showToast = useCallback((msg, type = "info") => {
+    if (toastFunc) toastFunc(msg, type);
+    else Alert.alert(type === "error" ? "Thông báo lỗi" : "Thông báo", msg);
+  }, [toastFunc]);
+
+  // Determine user role and permissions
+  const userRole = user?.role || "";
+  const isDocRole = isDoctor || userRole === "doctor" || userRole === "user.doctor";
+
+  const [patients, setPatients] = useState([]);
   const [selectedPatientId, setSelectedPatientId] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -120,16 +161,35 @@ export default function NursePrescriptionScreen() {
     if (route?.params?.patientId) setSelectedPatientId(route.params.patientId);
   }, [route?.params?.patientId]);
 
-  useFocusEffect(useCallback(() => { loadPatients({ showLoader: !patients.length }); }, [loadPatients]));
+  const loadPatients = useCallback(async () => {
+    try {
+      const res = await getMyPatients();
+      if (res && res.ok && res.body && res.body.data) {
+        setPatients(res.body.data);
+      } else if (res && Array.isArray(res)) {
+        setPatients(res);
+      } else if (res && res.body && Array.isArray(res.body)) {
+        setPatients(res.body);
+      }
+    } catch (e) {
+      console.log("Failed to load patients", e);
+    }
+  }, []);
+
+  useFocusEffect(useCallback(() => { loadPatients(); }, [loadPatients]));
 
   const fetchPrescriptions = useCallback(async ({ isRefresh = false } = {}) => {
     if (isRefresh) setRefreshing(true); else setLoadingPres(true);
     try {
       const list = await getPrescriptions({ patientId: selectedPatientId || undefined });
       setPrescriptions([...(Array.isArray(list) ? list : [])].sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-    } catch { showError("Không tải được danh sách đơn thuốc."); }
-    finally { setLoadingPres(false); setRefreshing(false); }
-  }, [selectedPatientId, showError]);
+    } catch {
+      showToast("Không tải được danh sách đơn thuốc.", "error");
+    } finally {
+      setLoadingPres(false);
+      setRefreshing(false);
+    }
+  }, [selectedPatientId, showToast]);
 
   useFocusEffect(useCallback(() => { fetchPrescriptions(); }, [fetchPrescriptions]));
 
@@ -146,7 +206,15 @@ export default function NursePrescriptionScreen() {
 
   const patientMap = useMemo(() => {
     const map = {};
-    patients.forEach(p => map[p.user?._id] = { name: p.user?.name, code: p.patientCode });
+    patients.forEach(p => {
+      const key = p.patientId || p.user?._id || p.id || p._id;
+      if (key) {
+        map[key] = {
+          name: p.patientName || p.user?.name || "Bệnh nhân #" + key,
+          code: p.patientPublicId || p.patientCode || "",
+        };
+      }
+    });
     return map;
   }, [patients]);
 
@@ -166,8 +234,12 @@ export default function NursePrescriptionScreen() {
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       list = list.filter(p => {
-        const pInfo = patientMap[p.patientId] || {};
-        return (pInfo.name?.toLowerCase().includes(q)) || (pInfo.code?.toLowerCase().includes(q)) || (p.medications?.some(m => m.drugName?.toLowerCase().includes(q)));
+        const pInfo = patientMap[p.patientId || p.patient?._id] || {};
+        return (
+          (pInfo.name?.toLowerCase().includes(q)) ||
+          (pInfo.code?.toLowerCase().includes(q)) ||
+          (p.medications?.some(m => m.drugName?.toLowerCase().includes(q)))
+        );
       });
     }
     return groupPrescriptionsByPatient(list);
@@ -195,21 +267,23 @@ export default function NursePrescriptionScreen() {
     };
     try {
       const res = data.id ? await updatePrescription(data.id, { ...payload, status: data.status }) : await createPrescription(payload);
-      if (res.ok) {
-        showSuccess(data.id ? "Cập nhật thành công!" : "Tạo đơn thuốc thành công!");
+      if (res && (res.ok || res.id || res._id || res.patientId)) {
+        showToast(data.id ? "Cập nhật thành công!" : "Tạo đơn thuốc thành công!", "success");
         setFormVisible(false);
         fetchPrescriptions();
         return { success: true };
       } else {
-        const errMsg = res.body?.error || "Lỗi lưu đơn thuốc";
-        showError(errMsg);
+        const errMsg = res?.body?.error || res?.error || "Lỗi lưu đơn thuốc";
+        showToast(errMsg, "error");
         return { success: false, error: errMsg };
       }
     } catch (e) {
-      showError("Lỗi kết nối máy chủ");
+      showToast("Lỗi kết nối máy chủ", "error");
       return { success: false, error: "Lỗi kết nối máy chủ" };
     }
   };
+
+  const canCreatePrescription = true;
 
   const openEdit = (p) => {
     setFormData({
@@ -232,77 +306,148 @@ export default function NursePrescriptionScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={[styles.topBar, { justifyContent: "flex-end" }]}>
-        <TouchableOpacity style={styles.createBtn} onPress={() => { setFormData(createDefaultForm(selectedPatientId)); setFormVisible(true); }}>
+    <SafeAreaView style={styles.safeArea} edges={isDocRole ? ["bottom", "left", "right"] : ["top", "bottom", "left", "right"]}>
+      {/* Top Bar Action */}
+      <View style={[styles.topBar, isDocRole ? styles.topBarDoctor : styles.topBarNurse]}>
+        {!isDocRole && (
+          <View style={styles.headerTitleContainer}>
+            <Text style={styles.headerTitleText}>Quản lý đơn thuốc</Text>
+          </View>
+        )}
+
+        <TouchableOpacity 
+          style={styles.createBtn} 
+          onPress={() => { 
+            setFormData(createDefaultForm(selectedPatientId)); 
+            setFormVisible(true); 
+          }}
+        >
           <Ionicons name="add" size={18} color="#FFFFFF" />
           <Text style={styles.createBtnText}>Kê đơn mới</Text>
         </TouchableOpacity>
       </View>
 
+      {/* Search & Patient Filter Bar */}
       <View style={styles.searchContainer}>
         <View style={styles.searchBox}>
           <Ionicons name="search" size={18} color="#9CA3AF" />
-          <TextInput style={styles.searchInput} value={searchQuery} onChangeText={setSearchQuery} placeholder="Tìm tên bệnh nhân, tên thuốc..." placeholderTextColor="#9CA3AF" />
-          {searchQuery ? <TouchableOpacity onPress={() => setSearchQuery("")}><Ionicons name="close-circle" size={16} color="#9CA3AF" /></TouchableOpacity> : null}
+          <TextInput 
+            style={styles.searchInput} 
+            value={searchQuery} 
+            onChangeText={setSearchQuery} 
+            placeholder="Tìm tên bệnh nhân, tên thuốc..." 
+            placeholderTextColor="#9CA3AF" 
+          />
+          {searchQuery ? (
+            <TouchableOpacity onPress={() => setSearchQuery("")}>
+              <Ionicons name="close-circle" size={16} color="#9CA3AF" />
+            </TouchableOpacity>
+          ) : null}
         </View>
-        {selectedPatientId && (
+        {selectedPatientId ? (
           <TouchableOpacity style={styles.clearPatientBtn} onPress={() => setSelectedPatientId("")}>
-            <Text style={styles.clearPatientText}>Hiển thị tất cả</Text>
+            <Text style={styles.clearPatientText}>Tất cả BN</Text>
             <Ionicons name="close" size={16} color="#4B5563" />
           </TouchableOpacity>
-        )}
+        ) : null}
       </View>
 
+      {/* Filter Tabs */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterBar} contentContainerStyle={styles.filterContent}>
         {STATUS_FILTERS.map(f => (
-          <TouchableOpacity key={f.key} style={[styles.filterChip, statusFilter === f.key && styles.filterChipActive]} onPress={() => setStatusFilter(f.key)}>
+          <TouchableOpacity 
+            key={f.key} 
+            style={[styles.filterChip, statusFilter === f.key && styles.filterChipActive]} 
+            onPress={() => setStatusFilter(f.key)}
+          >
             <Text style={[styles.filterText, statusFilter === f.key && styles.filterTextActive]}>{f.label}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
 
-      <ScrollView 
-        style={styles.listWrapper} 
-        contentContainerStyle={styles.listContent}
+      {/* Main List */}
+      <FlatList
+        style={styles.listWrapper}
+        contentContainerStyle={[styles.listContent, { paddingBottom: Math.max(insets.bottom + 80, 100) }]}
+        data={Object.entries(grouped)}
+        keyExtractor={([pId]) => pId}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchPrescriptions({ isRefresh: true })} />}
-      >
-        <PrescriptionStatsHeader stats={stats} />
-        
-        {loadingPres && !prescriptions.length ? <ActivityIndicator size="large" color="#2563EB" style={{ marginTop: 40 }} /> : null}
-        {!loadingPres && Object.keys(grouped).length === 0 ? (
-          <View style={styles.emptyState}>
-            <Ionicons name="receipt-outline" size={40} color="#D1D5DB" />
-            <Text style={styles.emptyStateText}>Không có đơn thuốc nào phù hợp.</Text>
-          </View>
-        ) : (
-          Object.entries(grouped).map(([pId, list]) => (
-            <PrescriptionPatientGroup 
-              key={pId} 
-              patientInfo={patientMap[pId] || { name: "Bệnh nhân ẩn danh" }} 
-              prescriptions={list} 
-              onDetail={setDetailModal}
-              onEdit={openEdit}
-              onStatusChange={setStatusModal}
-            />
-          ))
+        ListHeaderComponent={<PrescriptionStatsHeader stats={stats} />}
+        ListEmptyComponent={
+          loadingPres && !prescriptions.length ? (
+            <ActivityIndicator size="large" color="#2563EB" style={{ marginTop: 40 }} />
+          ) : !loadingPres ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="receipt-outline" size={40} color="#D1D5DB" />
+              <Text style={styles.emptyStateText}>Không có đơn thuốc nào phù hợp.</Text>
+            </View>
+          ) : null
+        }
+        renderItem={({ item: [pId, list] }) => (
+          <PrescriptionPatientGroup
+            patientInfo={patientMap[pId] || { name: "Bệnh nhân #" + pId }}
+            prescriptions={list}
+            onDetail={setDetailModal}
+            onEdit={openEdit}
+            onStatusChange={setStatusModal}
+          />
         )}
-      </ScrollView>
+      />
 
-      <PrescriptionDetailModal visible={!!detailModal} prescription={detailModal} patientName={detailModal ? patientMap[detailModal.patientId]?.name : ""} onClose={() => setDetailModal(null)} onEdit={openEdit} onStatusChange={setStatusModal} />
-      <PrescriptionFormModal visible={formVisible} onClose={() => setFormVisible(false)} initialData={formData} onSave={handleSaveForm} patients={patients} />
-      <StatusUpdateModal visible={!!statusModal} prescription={statusModal} onClose={() => setStatusModal(null)} onUpdated={fetchPrescriptions} />
+      <PrescriptionDetailModal 
+        visible={!!detailModal} 
+        prescription={detailModal} 
+        patientName={detailModal ? (patientMap[detailModal.patientId]?.name || "Bệnh nhân") : ""} 
+        onClose={() => setDetailModal(null)} 
+        onEdit={openEdit} 
+        onStatusChange={setStatusModal} 
+      />
+
+      <PrescriptionFormModal 
+        visible={formVisible} 
+        onClose={() => setFormVisible(false)} 
+        initialData={formData} 
+        onSave={handleSaveForm} 
+        patients={patients} 
+      />
+
+      <StatusUpdateModal 
+        visible={!!statusModal} 
+        prescription={statusModal} 
+        onClose={() => setStatusModal(null)} 
+        onUpdated={fetchPrescriptions} 
+        showToast={showToast}
+      />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#F2F6FF" },
-  topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 12, backgroundColor: "#FFF", borderBottomWidth: 1, borderBottomColor: "#E5E7EB" },
-  topTitle: { fontSize: 18, fontWeight: "700" },
+  topBar: { 
+    flexDirection: "row", 
+    alignItems: "center", 
+    paddingHorizontal: 16, 
+  },
+  topBarNurse: {
+    justifyContent: "space-between",
+    paddingTop: 14,
+    paddingBottom: 4,
+  },
+  topBarDoctor: {
+    justifyContent: "flex-end",
+    paddingTop: 6,
+    paddingBottom: 2,
+  },
+  headerTitleContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  headerTitleText: { fontSize: 18, fontWeight: "700", color: "#111827" },
   createBtn: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#2563EB", paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
   createBtnText: { color: "#FFF", fontWeight: "700", fontSize: 13 },
-  searchContainer: { paddingHorizontal: 14, marginTop: 12, flexDirection: "row", gap: 10 },
+  searchContainer: { paddingHorizontal: 14, marginTop: 6, flexDirection: "row", gap: 10 },
   searchBox: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#FFF", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: "#E5E7EB" },
   searchInput: { flex: 1, fontSize: 14, color: "#111827" },
   clearPatientBtn: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#E5E7EB", paddingHorizontal: 10, borderRadius: 10 },

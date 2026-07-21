@@ -162,7 +162,7 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 	}
 
 	h.setAccessTokenCookie(c, accessToken)
-	c.JSON(http.StatusOK, gin.H{"message": "Làm mới token truy cập thành công"})
+	c.JSON(http.StatusOK, gin.H{"accessToken": accessToken, "message": "Làm mới token truy cập thành công"})
 }
 
 // @Summary Logout

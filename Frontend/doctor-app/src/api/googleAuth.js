@@ -8,26 +8,26 @@ const BASE_URL = process.env.EXPO_PUBLIC_BASE_URL || extras.BASE_URL || 'http://
 
 export async function loginWithGoogle() {
   const url = `${BASE_URL}/auth/google/login`;
-  const redirectUrl = Linking.createURL('login-callback'); 
-  
+  const redirectUrl = Linking.createURL('login-callback');
+
   try {
     const result = await WebBrowser.openAuthSessionAsync(url, redirectUrl);
-    
+
     if (result.type === 'success') {
       const parsedUrl = Linking.parse(result.url);
       const token = parsedUrl.queryParams?.accessToken;
       const refreshToken = parsedUrl.queryParams?.refreshToken;
-      
+
       if (!token) {
-        return { 
-          ok: false, 
-          error: `Không nhận được token từ hệ thống.\nLink BE gửi về là: ${result.url}` 
+        return {
+          ok: false,
+          error: `Không nhận được token từ hệ thống.\nLink BE gửi về là: ${result.url}`
         };
       }
 
       return { ok: true, data: { accessToken: token, refreshToken: refreshToken } };
     }
-    
+
     return { ok: false, error: 'Người dùng huỷ đăng nhập' };
   } catch (e) {
     return { ok: false, error: `failed_to_open_login: ${e.message || e}`, details: e };

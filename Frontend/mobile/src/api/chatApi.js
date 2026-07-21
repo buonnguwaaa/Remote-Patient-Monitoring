@@ -1,4 +1,5 @@
 import request, { BASE_URL } from "./httpClient";
+import * as SecureStore from "../utils/secureStoreHelper";
 
 function withQuery(path, params = {}) {
   const queryString = Object.entries(params)
@@ -25,13 +26,12 @@ export async function getConversationMessages(conversationId, limit = 100, curso
   );
 }
 
-import AsyncStorage from "@react-native-async-storage/async-storage";
-
 export async function buildConversationSocketUrl(conversationId) {
   const wsBase = BASE_URL.replace(/^http:/i, "ws:").replace(/^https:/i, "wss:");
   let token = "";
   try {
-    token = await AsyncStorage.getItem("accessToken");
+    token = await SecureStore.getItemAsync("patient_accessToken");
+    if (!token) token = await SecureStore.getItemAsync("accessToken");
   } catch (e) {}
 
   return `${wsBase}/chat/ws?conversationId=${encodeURIComponent(conversationId)}&token=${encodeURIComponent(token || "")}`;

@@ -2,7 +2,7 @@ import React, { createContext, useEffect, useState } from "react";
 import * as authApi from "../api/authApi";
 import { onSessionExpired } from "../api/authEvent";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Platform } from "react-native";
+import { Platform, Alert } from "react-native";
 import * as SecureStore from "../utils/secureStoreHelper";
 import * as LocalAuthentication from "expo-local-authentication";
 
@@ -66,10 +66,25 @@ export function AuthProvider({ children }) {
         if (CookieManager) await CookieManager.clearAll();
       } catch (e) {}
       try {
+        await SecureStore.deleteItemAsync("patient_accessToken");
+        await SecureStore.deleteItemAsync("patient_refreshToken");
+        await SecureStore.deleteItemAsync("accessToken");
+        await SecureStore.deleteItemAsync("refreshToken");
         await AsyncStorage.removeItem("accessToken");
         await AsyncStorage.removeItem("refreshToken");
       } catch (e) {}
-      setUser(null);
+
+      setUser((currentUser) => {
+        if (currentUser) {
+          Alert.alert(
+            "Phiên đăng nhập hết hạn",
+            "Phiên làm việc của bạn đã hết hạn. Vui lòng đăng nhập lại.",
+            [{ text: "Đăng nhập lại", style: "default" }]
+          );
+        }
+        return null;
+      });
+
       setSessionPassword(null);
     });
     return unsubscribe;
@@ -138,20 +153,29 @@ export function AuthProvider({ children }) {
     return errorMsg;
   };
 
+  const refreshBiometricStatus = async () => {
+    try {
+      const bioEnabled = await SecureStore.getItemAsync("patient_biometric_enabled");
+      setIsBiometricEnabled(bioEnabled === "true");
+    } catch {
+      setIsBiometricEnabled(false);
+    }
+  };
+
   const login = async (email, password) => {
     const loginResponse = await authApi.login({ email, password });
     if (!loginResponse.ok) {
       return { ok: false, error: parseBackendError(loginResponse) };
     }
 
-    // Lưu access token vào AsyncStorage để WebSocket và các request sau dùng được
+    // Lưu bộ token vào SecureStore bảo mật của thiết bị
     const loginData = loginResponse.body?.data || loginResponse.body;
     if (loginData?.AccessToken || loginData?.accessToken) {
       const at = loginData.AccessToken || loginData.accessToken;
       const rt = loginData.RefreshToken || loginData.refreshToken;
       try {
-        await AsyncStorage.setItem("accessToken", at);
-        if (rt) await AsyncStorage.setItem("refreshToken", rt);
+        if (at) await SecureStore.setItemAsync("patient_accessToken", at);
+        if (rt) await SecureStore.setItemAsync("patient_refreshToken", rt);
       } catch (e) {}
     }
 
@@ -173,10 +197,12 @@ export function AuthProvider({ children }) {
       }
       setUser(meUser);
       setSessionPassword(password);
+      await refreshBiometricStatus();
       return { ok: true, data: meUser };
     }
 
     setSessionPassword(password);
+    await refreshBiometricStatus();
     return { ok: true, data: loginResponse.body };
   };
 
@@ -223,6 +249,10 @@ export function AuthProvider({ children }) {
     }
 
     try {
+      await SecureStore.deleteItemAsync("patient_accessToken");
+      await SecureStore.deleteItemAsync("patient_refreshToken");
+      await SecureStore.deleteItemAsync("accessToken");
+      await SecureStore.deleteItemAsync("refreshToken");
       await AsyncStorage.removeItem("accessToken");
       await AsyncStorage.removeItem("refreshToken");
     } catch (e) {}
@@ -302,11 +332,10 @@ export function AuthProvider({ children }) {
 
   const saveGoogleTokens = async (accessToken, refreshToken) => {
     try {
-      if (accessToken) await AsyncStorage.setItem("accessToken", accessToken);
-      if (refreshToken)
-        await AsyncStorage.setItem("refreshToken", refreshToken);
+      if (accessToken) await SecureStore.setItemAsync("patient_accessToken", accessToken);
+      if (refreshToken) await SecureStore.setItemAsync("patient_refreshToken", refreshToken);
     } catch (e) {
-      console.warn("Failed to save google tokens", e);
+      console.warn("Failed to save google tokens into SecureStore", e);
     }
   };
 
@@ -325,6 +354,7 @@ export function AuthProvider({ children }) {
         sessionPassword,
         enableBiometric,
         disableBiometric,
+        refreshBiometricStatus,
       }}
     >
       {children}
