@@ -193,7 +193,7 @@ function ValidationMessage({ message }) {
 }
 
 export default function ProfileScreen() {
-  const { logout, updateUser, isBiometricEnabled, enableBiometric, disableBiometric, sessionPassword } = useAuth();
+  const { logout, updateUser, isBiometricEnabled, enableBiometric, disableBiometric, refreshBiometricStatus, sessionPassword } = useAuth();
   const { showSuccess, showError, showWarning } = useSnackbar();
   const [biometricLoading, setBiometricLoading] = useState(false);
 
@@ -317,7 +317,10 @@ export default function ProfileScreen() {
   useFocusEffect(
     useCallback(() => {
       loadProfile();
-    }, [loadProfile])
+      if (refreshBiometricStatus) {
+        refreshBiometricStatus();
+      }
+    }, [loadProfile, refreshBiometricStatus])
   );
 
   const handleChangeUser = (field, value) => {

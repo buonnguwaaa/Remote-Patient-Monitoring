@@ -1,12 +1,12 @@
 import Constants from "expo-constants";
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from "../utils/secureStoreHelper";
 import { emitSessionExpired } from "./authEvent";
 
 const extras =
   Constants?.manifest?.extra || Constants?.expoConfig?.extra || {};
 
 let envBaseUrl = process.env.EXPO_PUBLIC_BASE_URL || extras.BASE_URL || "";
-export const BASE_URL = envBaseUrl
+export const BASE_URL = envBaseUrl;
 
 async function parseResponse(response) {
   const text = await response.text();
@@ -28,9 +28,10 @@ export async function request(path, options = {}, canRetry = true) {
 
   let token = null;
   try {
-    token = await AsyncStorage.getItem("accessToken");
+    token = await SecureStore.getItemAsync("patient_accessToken");
+    if (!token) token = await SecureStore.getItemAsync("accessToken");
   } catch (e) {
-    // Ignore async storage errors
+    // Ignore storage errors
   }
 
   const headers = {
@@ -45,7 +46,6 @@ export async function request(path, options = {}, canRetry = true) {
 
   try {
     const response = await fetch(`${BASE_URL}${path}`, {
-      credentials: "include",
       ...options,
       headers,
       signal: controller.signal,
@@ -54,24 +54,41 @@ export async function request(path, options = {}, canRetry = true) {
     clearTimeout(timer);
 
     if (response.status === 401 && canRetry && path !== "/auth/refresh") {
-      // Lấy refreshToken từ AsyncStorage để gửi kèm body (fallback cho cookie)
+      // Lấy refreshToken từ SecureStore để gửi kèm body
       let storedRefreshToken = null;
       try {
-        storedRefreshToken = await AsyncStorage.getItem("refreshToken");
+        storedRefreshToken = await SecureStore.getItemAsync("patient_refreshToken");
+        if (!storedRefreshToken) storedRefreshToken = await SecureStore.getItemAsync("refreshToken");
       } catch (e) {}
 
       const refreshResponse = await fetch(`${BASE_URL}/auth/refresh`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: storedRefreshToken ? JSON.stringify({ refreshToken: storedRefreshToken }) : undefined,
       });
 
       if (refreshResponse.ok) {
+        // Extract new access token from response body and save it into SecureStore
+        try {
+          const refreshData = await refreshResponse.json();
+          const newAccessToken = refreshData?.accessToken;
+          if (newAccessToken) {
+            await SecureStore.setItemAsync("patient_accessToken", newAccessToken);
+          }
+        } catch (e) {}
+
+        // Retry original request with new token
         return request(path, options, false);
       }
 
       // Refresh token cũng hết hạn → force logout, chuyển về Login
+      try {
+        await SecureStore.deleteItemAsync("patient_accessToken");
+        await SecureStore.deleteItemAsync("patient_refreshToken");
+        await SecureStore.deleteItemAsync("accessToken");
+        await SecureStore.deleteItemAsync("refreshToken");
+      } catch (e) {}
+
       emitSessionExpired();
       return { ok: false, status: 401, body: null };
     }

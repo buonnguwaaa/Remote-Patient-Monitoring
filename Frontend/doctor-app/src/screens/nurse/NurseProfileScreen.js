@@ -219,7 +219,7 @@ function InfoRow({ icon, label, value, hint, iconLib = "ionicons" }) {
 
 export default function NurseProfileScreen() {
   const { showToast } = useToast();
-  const { logout, isBiometricEnabled, enableBiometric, disableBiometric, sessionPassword } = useAuth();
+  const { logout, isBiometricEnabled, enableBiometric, disableBiometric, refreshBiometricStatus, sessionPassword } = useAuth();
   const [profile, setProfile] = useState(EMPTY_PROFILE);
   const [biometricLoading, setBiometricLoading] = useState(false);
   const [departmentName, setDepartmentName] = useState("");
@@ -273,7 +273,10 @@ export default function NurseProfileScreen() {
   useFocusEffect(
     useCallback(() => {
       loadProfile();
-    }, [loadProfile])
+      if (refreshBiometricStatus) {
+        refreshBiometricStatus();
+      }
+    }, [loadProfile, refreshBiometricStatus])
   );
 
   const avatarInitial = getAvatarInitial(profile.name);

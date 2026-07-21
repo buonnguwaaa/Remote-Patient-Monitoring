@@ -1,6 +1,7 @@
 import React from "react";
-import { View, Text, StyleSheet, Modal, ScrollView, TouchableOpacity, SafeAreaView } from "react-native";
+import { View, Text, StyleSheet, Modal, ScrollView, TouchableOpacity, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const STATUS_META = {
   active: { label: "Đang điều trị", bg: "#D1FAE5", text: "#065F46" },
@@ -30,16 +31,22 @@ function mealLabel(mt) {
 }
 
 export function PrescriptionDetailModal({ visible, prescription, patientName, onClose, onEdit, onStatusChange }) {
+  const insets = useSafeAreaInsets();
+
   if (!prescription) return null;
   const meta = STATUS_META[prescription.status] || STATUS_META.expired;
   
-  const handleEdit = () => { onClose(); onEdit(prescription); };
-  const handleStatus = () => { onClose(); onStatusChange(prescription); };
+  const handleEdit = () => { onClose(); if (onEdit) onEdit(prescription); };
+  const handleStatus = () => { onClose(); if (onStatusChange) onStatusChange(prescription); };
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.header}>
+      <View style={styles.safeArea}>
+        {/* Top Header with Insets */}
+        <View style={[
+          styles.header, 
+          { paddingTop: Platform.OS === "android" ? Math.max(insets.top, 16) : 14 }
+        ]}>
           <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
             <Ionicons name="close" size={24} color="#111827" />
           </TouchableOpacity>
@@ -47,7 +54,11 @@ export function PrescriptionDetailModal({ visible, prescription, patientName, on
           <View style={{ width: 24 }} />
         </View>
 
-        <ScrollView style={styles.body} showsVerticalScrollIndicator={false}>
+        <ScrollView 
+          style={styles.body} 
+          contentContainerStyle={{ paddingBottom: Math.max(insets.bottom + 20, 40) }} 
+          showsVerticalScrollIndicator={false}
+        >
           {/* Info Card */}
           <View style={styles.card}>
             <View style={styles.rowBetween}>
@@ -90,20 +101,27 @@ export function PrescriptionDetailModal({ visible, prescription, patientName, on
               </View>
             </View>
           ))}
-          <View style={{ height: 40 }} />
         </ScrollView>
 
-        <View style={styles.footer}>
-          <TouchableOpacity style={[styles.footerBtn, styles.statusBtn]} onPress={handleStatus}>
-            <Ionicons name="swap-horizontal" size={18} color="#EA580C" />
-            <Text style={styles.statusBtnText}>Đổi trạng thái</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.footerBtn, styles.editBtn]} onPress={handleEdit}>
-            <Ionicons name="create" size={18} color="#FFFFFF" />
-            <Text style={styles.editBtnText}>Chỉnh sửa đơn</Text>
-          </TouchableOpacity>
+        {/* Bottom Action Footer with Bottom Insets */}
+        <View style={[
+          styles.footer, 
+          { paddingBottom: Math.max(insets.bottom, 16) + 6 }
+        ]}>
+          {onStatusChange && (
+            <TouchableOpacity style={[styles.footerBtn, styles.statusBtn]} onPress={handleStatus}>
+              <Ionicons name="swap-horizontal" size={18} color="#EA580C" />
+              <Text style={styles.statusBtnText}>Đổi trạng thái</Text>
+            </TouchableOpacity>
+          )}
+          {onEdit && (
+            <TouchableOpacity style={[styles.footerBtn, styles.editBtn]} onPress={handleEdit}>
+              <Ionicons name="create" size={18} color="#FFFFFF" />
+              <Text style={styles.editBtnText}>Chỉnh sửa đơn</Text>
+            </TouchableOpacity>
+          )}
         </View>
-      </SafeAreaView>
+      </View>
     </Modal>
   );
 }
@@ -115,7 +133,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingBottom: 14,
     backgroundColor: "#FFFFFF",
     borderBottomWidth: 1,
     borderBottomColor: "#E5E7EB",
@@ -167,7 +185,8 @@ const styles = StyleSheet.create({
   
   footer: {
     flexDirection: "row",
-    padding: 16,
+    paddingTop: 14,
+    paddingHorizontal: 16,
     backgroundColor: "#FFFFFF",
     borderTopWidth: 1,
     borderTopColor: "#E5E7EB",
