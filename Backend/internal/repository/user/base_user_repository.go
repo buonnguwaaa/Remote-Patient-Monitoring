@@ -16,6 +16,7 @@ import (
 type BaseUserRepository interface {
 	FindByID(ctx context.Context, id primitive.ObjectID) (*domain.BaseUser, error)
 	FindByEmail(ctx context.Context, email string) (*domain.BaseUser, error)
+	FindByPhoneLookupHash(ctx context.Context, hash string) (*domain.BaseUser, error)
 	FindWithFilter(ctx context.Context, f UserFilter) ([]domain.BaseUser, error)
 	ExistsByIDAndRole(ctx context.Context, id primitive.ObjectID, role domain.Role) (bool, error)
 	Update(ctx context.Context, id primitive.ObjectID, updateData map[string]interface{}) error
@@ -24,10 +25,6 @@ type BaseUserRepository interface {
 	SetResetToken(ctx context.Context, email, token string, expires time.Time) error
 	FindByEmailAndResetOTP(ctx context.Context, email, otpHash string) (*domain.BaseUser, error)
 	ResetPassword(ctx context.Context, id primitive.ObjectID, hashed string) error
-
-	SetActivationOTP(ctx context.Context, email, hash string, expires time.Time) error
-	FindByEmailAndActivationHash(ctx context.Context, email, hash string) (*domain.BaseUser, error)
-	ActivateUserByEmail(ctx context.Context, email string) error
 
 	EnsureIndexes(ctx context.Context) error
 }
@@ -68,6 +65,15 @@ func (r *baseUserRepository) FindByID(ctx context.Context, id primitive.ObjectID
 func (r *baseUserRepository) FindByEmail(ctx context.Context, email string) (*domain.BaseUser, error) {
 	var u domain.BaseUser
 	err := r.col.FindOne(ctx, bson.M{"email": email}).Decode(&u)
+	if err != nil {
+		return nil, err
+	}
+	return &u, nil
+}
+
+func (r *baseUserRepository) FindByPhoneLookupHash(ctx context.Context, hash string) (*domain.BaseUser, error) {
+	var u domain.BaseUser
+	err := r.col.FindOne(ctx, bson.M{"phoneLookupHash": hash}).Decode(&u)
 	if err != nil {
 		return nil, err
 	}
@@ -141,38 +147,6 @@ func (r *baseUserRepository) ResetPassword(ctx context.Context, id primitive.Obj
 	return err
 }
 
-func (r *baseUserRepository) SetActivationOTP(ctx context.Context, email, hash string, expires time.Time) error {
-	_, err := r.col.UpdateOne(ctx, bson.M{"email": email}, bson.M{
-		"$set": bson.M{
-			"activationTokenHash":   hash,
-			"activationTokenExpiry": expires,
-			"updatedAt":             time.Now().UTC(),
-		},
-	})
-	return err
-}
-
-func (r *baseUserRepository) FindByEmailAndActivationHash(ctx context.Context, email, hash string) (*domain.BaseUser, error) {
-	var u domain.BaseUser
-	err := r.col.FindOne(ctx, bson.M{
-		"email":                 email,
-		"activationTokenHash":   hash,
-		"activationTokenExpiry": bson.M{"$gt": time.Now()},
-	}).Decode(&u)
-	if err != nil {
-		return nil, err
-	}
-	return &u, nil
-}
-
-func (r *baseUserRepository) ActivateUserByEmail(ctx context.Context, email string) error {
-	_, err := r.col.UpdateOne(ctx, bson.M{"email": email}, bson.M{
-		"$set":   bson.M{"status": "active", "updatedAt": time.Now().UTC()},
-		"$unset": bson.M{"activationTokenHash": "", "activationTokenExpiry": ""},
-	})
-	return err
-}
-
 func buildFilterAndOptions(f UserFilter) (bson.M, *options.FindOptions) {
 	bsonFilter := bson.M{}
 	opts := options.Find()
@@ -205,10 +179,18 @@ func buildFilterAndOptions(f UserFilter) (bson.M, *options.FindOptions) {
 }
 
 func (r *baseUserRepository) EnsureIndexes(ctx context.Context) error {
+	if err := r.migrateOptionalEmailIndex(ctx); err != nil {
+		return err
+	}
+
 	models := []mongo.IndexModel{
 		{
 			Keys:    bson.D{{Key: "email", Value: 1}},
-			Options: options.Index().SetUnique(true).SetName("ux_user_email"),
+			Options: options.Index().SetUnique(true).SetName("ux_user_email").SetPartialFilterExpression(bson.M{"email": bson.M{"$type": "string"}}),
+		},
+		{
+			Keys:    bson.D{{Key: "phoneLookupHash", Value: 1}},
+			Options: options.Index().SetUnique(true).SetName("ux_user_phone_lookup").SetPartialFilterExpression(bson.M{"phoneLookupHash": bson.M{"$type": "string"}}),
 		},
 		{
 			Keys:    bson.D{{Key: "role", Value: 1}, {Key: "createdAt", Value: -1}},
@@ -230,12 +212,45 @@ func (r *baseUserRepository) EnsureIndexes(ctx context.Context) error {
 			Keys:    bson.D{{Key: "resetToken", Value: 1}},
 			Options: options.Index().SetSparse(true).SetName("idx_user_reset_token"),
 		},
-		{
-			Keys:    bson.D{{Key: "activationTokenHash", Value: 1}},
-			Options: options.Index().SetSparse(true).SetName("idx_user_activation_token"),
-		},
 	}
 
 	_, err := r.col.Indexes().CreateMany(ctx, models)
+	return err
+}
+
+func (r *baseUserRepository) migrateOptionalEmailIndex(ctx context.Context) error {
+	cursor, err := r.col.Indexes().List(ctx)
+	if err != nil {
+		return err
+	}
+	defer cursor.Close(ctx)
+
+	var indexes []bson.M
+	if err := cursor.All(ctx, &indexes); err != nil {
+		return err
+	}
+	for _, index := range indexes {
+		if index["name"] == "ux_user_email" && index["partialFilterExpression"] == nil {
+			if _, err := r.col.Indexes().DropOne(ctx, "ux_user_email"); err != nil {
+				return err
+			}
+		}
+		if index["name"] == "idx_user_activation_token" {
+			if _, err := r.col.Indexes().DropOne(ctx, "idx_user_activation_token"); err != nil {
+				return err
+			}
+		}
+	}
+
+	_, err = r.col.UpdateMany(ctx, bson.M{}, bson.M{
+		"$unset": bson.M{
+			"activationTokenHash":   "",
+			"activationTokenExpiry": "",
+		},
+	})
+	if err != nil {
+		return err
+	}
+	_, err = r.col.UpdateMany(ctx, bson.M{"email": ""}, bson.M{"$unset": bson.M{"email": ""}})
 	return err
 }

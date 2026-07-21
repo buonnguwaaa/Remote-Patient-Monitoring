@@ -94,9 +94,74 @@ func main() {
 			job.label, scanned, mode, updated, skipped, fieldCount)
 	}
 
+	phoneScanned, phoneUpdated, phoneSkipped := migratePhoneLookupHashes(ctx, users, crypto, dryRun)
+	log.Printf("[migrate-phi] phone lookup hashes: scanned=%d %s=%d skipped=%d",
+		phoneScanned, mode, phoneUpdated, phoneSkipped)
+
 	msgScanned, msgUpdated, msgSkipped, msgFields := migrateCollection(ctx, messages, bson.M{}, []string{"content"}, crypto, dryRun, false)
 	log.Printf("[migrate-phi] messages: scanned=%d %s=%d skipped=%d fields=%d",
 		msgScanned, mode, msgUpdated, msgSkipped, msgFields)
+}
+
+func migratePhoneLookupHashes(
+	ctx context.Context,
+	users *mongo.Collection,
+	crypto util.FieldEncryptor,
+	dryRun bool,
+) (scanned, updated, skipped int) {
+	cursor, err := users.Find(ctx, bson.M{"phone": bson.M{"$exists": true, "$ne": ""}}, options.Find().SetProjection(bson.M{
+		"_id":             1,
+		"phone":           1,
+		"phoneLookupHash": 1,
+	}))
+	if err != nil {
+		log.Fatalf("[migrate-phi] find phone lookup candidates: %v", err)
+	}
+	defer cursor.Close(ctx)
+
+	for cursor.Next(ctx) {
+		var doc bson.M
+		if err := cursor.Decode(&doc); err != nil {
+			log.Fatalf("[migrate-phi] decode phone lookup candidate: %v", err)
+		}
+		scanned++
+
+		id, ok := doc["_id"].(primitive.ObjectID)
+		if !ok {
+			skipped++
+			continue
+		}
+		storedPhone, _ := doc["phone"].(string)
+		plainPhone, err := crypto.Decrypt(storedPhone)
+		if err != nil {
+			log.Fatalf("[migrate-phi] decrypt phone for %s: %v", id.Hex(), err)
+		}
+		hash, err := util.HashPhoneForLookup(plainPhone)
+		if err != nil {
+			log.Fatalf("[migrate-phi] hash phone for %s: %v", id.Hex(), err)
+		}
+		currentHash, _ := doc["phoneLookupHash"].(string)
+		if hash == "" || hash == currentHash {
+			skipped++
+			continue
+		}
+
+		if dryRun {
+			updated++
+			continue
+		}
+		if _, err := users.UpdateOne(ctx, bson.M{"_id": id}, bson.M{"$set": bson.M{
+			"phoneLookupHash": hash,
+			"updatedAt":       time.Now().UTC(),
+		}}); err != nil {
+			log.Fatalf("[migrate-phi] update phone lookup hash for %s: %v", id.Hex(), err)
+		}
+		updated++
+	}
+	if err := cursor.Err(); err != nil {
+		log.Fatalf("[migrate-phi] phone lookup cursor: %v", err)
+	}
+	return scanned, updated, skipped
 }
 
 func migrateCollection(

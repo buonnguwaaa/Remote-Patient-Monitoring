@@ -6,6 +6,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecase"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/util"
 )
 
 var (
@@ -33,14 +34,7 @@ func (e *ConflictError) Error() string {
 }
 
 func normalizePhone(value string) string {
-	replacer := strings.NewReplacer(
-		" ", "",
-		"-", "",
-		".", "",
-		"(", "",
-		")", "",
-	)
-	return replacer.Replace(strings.TrimSpace(value))
+	return util.NormalizePhone(value)
 }
 
 func sanitizePatientProfileFields(input *usecase.PatientProfileFieldsInput) {

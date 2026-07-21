@@ -43,6 +43,11 @@ func RegisterUserRoutes(r *gin.Engine, c *container.MainServerContainer) {
 
 		patientGroup := userGroup.Group("/patients")
 		{
+			patientGroup.POST("",
+				middleware.JWTAuthMiddleware(c.JWTManager, c.TokenBlacklistRepo),
+				middleware.RequireRoles(domain.RoleAdmin),
+				c.UserHandler.CreatePatient,
+			)
 			patientGroup.GET("/me",
 				middleware.JWTAuthMiddleware(c.JWTManager, c.TokenBlacklistRepo),
 				middleware.RequireRoles(domain.RolePatient),
@@ -77,6 +82,11 @@ func RegisterUserRoutes(r *gin.Engine, c *container.MainServerContainer) {
 
 		doctorGroup := userGroup.Group("/doctors")
 		{
+			doctorGroup.POST("",
+				middleware.JWTAuthMiddleware(c.JWTManager, c.TokenBlacklistRepo),
+				middleware.RequireRoles(domain.RoleAdmin),
+				c.UserHandler.CreateDoctor,
+			)
 			doctorGroup.GET("",
 				middleware.JWTAuthMiddleware(c.JWTManager, c.TokenBlacklistRepo),
 				middleware.RequireRoles(domain.RoleAdmin, domain.RoleDoctor, domain.RoleNurse),
@@ -106,6 +116,11 @@ func RegisterUserRoutes(r *gin.Engine, c *container.MainServerContainer) {
 
 		nurseGroup := userGroup.Group("/nurses")
 		{
+			nurseGroup.POST("",
+				middleware.JWTAuthMiddleware(c.JWTManager, c.TokenBlacklistRepo),
+				middleware.RequireRoles(domain.RoleAdmin),
+				c.UserHandler.CreateNurse,
+			)
 			nurseGroup.GET("/me",
 				middleware.JWTAuthMiddleware(c.JWTManager, c.TokenBlacklistRepo),
 				middleware.RequireRoles(domain.RoleNurse),

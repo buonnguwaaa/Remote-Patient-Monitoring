@@ -34,7 +34,7 @@ type aesFieldEncryptor struct {
 
 type noopFieldEncryptor struct{}
 
-func (noopFieldEncryptor) Encrypt(plaintext string) (string, error) { return plaintext, nil }
+func (noopFieldEncryptor) Encrypt(plaintext string) (string, error)  { return plaintext, nil }
 func (noopFieldEncryptor) Decrypt(ciphertext string) (string, error) { return ciphertext, nil }
 func (noopFieldEncryptor) Enabled() bool                             { return false }
 
@@ -61,6 +61,14 @@ func NewAESFieldEncryptor(key []byte) (FieldEncryptor, error) {
 
 // NewAESFieldEncryptorFromBase64 decodes a base64 key then builds the encryptor.
 func NewAESFieldEncryptorFromBase64(encoded string) (FieldEncryptor, error) {
+	key, err := DecodeFieldEncryptionKey(encoded)
+	if err != nil {
+		return nil, err
+	}
+	return NewAESFieldEncryptor(key)
+}
+
+func DecodeFieldEncryptionKey(encoded string) ([]byte, error) {
 	encoded = strings.TrimSpace(encoded)
 	if encoded == "" {
 		return nil, errors.New("empty field encryption key")
@@ -69,7 +77,10 @@ func NewAESFieldEncryptorFromBase64(encoded string) (FieldEncryptor, error) {
 	if err != nil {
 		return nil, fmt.Errorf("decode field encryption key: %w", err)
 	}
-	return NewAESFieldEncryptor(key)
+	if len(key) != aesKeySize {
+		return nil, fmt.Errorf("field encryption key must be %d bytes, got %d", aesKeySize, len(key))
+	}
+	return key, nil
 }
 
 // LoadFieldEncryptorFromEnv reads FIELD_ENCRYPTION_KEY (base64 of 32 bytes).

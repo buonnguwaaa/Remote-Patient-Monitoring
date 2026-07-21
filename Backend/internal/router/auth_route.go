@@ -18,7 +18,5 @@ func RegisterAuthRoutes(r *gin.Engine, c *container.MainServerContainer) {
 		authGroup.GET("/google/callback", c.AuthHandler.HandleGoogleOAuth2Callback)
 		authGroup.POST("/forgot-password", c.AuthHandler.ForgotPassword)
 		authGroup.POST("/reset-password", c.AuthHandler.ResetPassword)
-		authGroup.POST("/activate", c.AuthHandler.ActivateAccount)
-		authGroup.POST("/resend-activation", c.AuthHandler.ResendActivationEmail)
 	}
 }

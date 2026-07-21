@@ -6,17 +6,20 @@ import (
 
 type RegisterRequest struct {
 	Name              string        `json:"name" example:"John Doe" binding:"required"`
-	Email             string        `json:"email" example:"john.doe@example.com" binding:"required,email"`
+	Email             string        `json:"email,omitempty" example:"john.doe@example.com" binding:"omitempty,email"`
+	Phone             string        `json:"phone,omitempty" example:"+84901234567"`
 	Password          string        `json:"password" example:"SecurePass123!" binding:"required,min=6"`
-	ConfirmedPassword string        `json:"confirmedPassword" example:"SecurePass123!" binding:"required,min=8"`
-	Role              domain.Role   `json:"role" example:"patient" binding:"required"`
+	ConfirmedPassword string        `json:"confirmedPassword" example:"SecurePass123!" binding:"required,min=6"`
 	Gender            domain.Gender `json:"gender" example:"M" binding:"required"`
 	Dob               string        `json:"dob" example:"1990-05-15" binding:"required"`
+	PatientProfileFieldsRequest
 }
 
 type LoginRequest struct {
-	Email    string `json:"email" example:"john.doe@example.com" binding:"required,email"`
-	Password string `json:"password" example:"SecurePass123!" binding:"required,min=6"`
+	Identifier string `json:"identifier,omitempty" example:"john.doe@example.com"`
+	Email      string `json:"email,omitempty" example:"john.doe@example.com" binding:"omitempty,email"`
+	Phone      string `json:"phone,omitempty" example:"+84901234567"`
+	Password   string `json:"password" example:"SecurePass123!" binding:"required,min=6"`
 }
 
 type LoginResponse struct {
@@ -41,13 +44,4 @@ type ResetPasswordRequest struct {
 	OTP                  string `json:"otp" example:"123456" binding:"required,len=6,numeric"`
 	NewPassword          string `json:"newPassword" binding:"required,min=6"`
 	ConfirmedNewPassword string `json:"confirmedNewPassword" binding:"required,min=6,eqfield=NewPassword"`
-}
-
-type ActivateAccountRequest struct {
-	Email string `json:"email" example:"john.doe@example.com" binding:"required,email"`
-	OTP   string `json:"otp" example:"123456" binding:"required,len=6,numeric"`
-}
-
-type ResendActivationEmailRequest struct {
-	Email string `json:"email" binding:"required,email"`
 }

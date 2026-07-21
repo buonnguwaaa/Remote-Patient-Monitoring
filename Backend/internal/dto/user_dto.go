@@ -40,14 +40,14 @@ type StaffInfoResponse struct {
 
 type DoctorInfoResponse struct {
 	StaffInfoResponse
-	Specialization                      string                           `json:"specialization,omitempty"`
-	AcademicDegree                      domain.AcademicDegree            `json:"academicDegree,omitempty"`
-	AcademicDegreeLabel                 string                           `json:"academicDegreeLabel,omitempty"`
-	ProfessionalQualification           domain.ProfessionalQualification `json:"professionalQualification,omitempty"`
-	ProfessionalQualificationLabel      string                           `json:"professionalQualificationLabel,omitempty"`
-	AcademicTitle                       domain.AcademicTitle             `json:"academicTitle,omitempty"`
-	AcademicTitleLabel                  string                           `json:"academicTitleLabel,omitempty"`
-	DisplayName                         string                           `json:"displayName,omitempty"`
+	Specialization                 string                           `json:"specialization,omitempty"`
+	AcademicDegree                 domain.AcademicDegree            `json:"academicDegree,omitempty"`
+	AcademicDegreeLabel            string                           `json:"academicDegreeLabel,omitempty"`
+	ProfessionalQualification      domain.ProfessionalQualification `json:"professionalQualification,omitempty"`
+	ProfessionalQualificationLabel string                           `json:"professionalQualificationLabel,omitempty"`
+	AcademicTitle                  domain.AcademicTitle             `json:"academicTitle,omitempty"`
+	AcademicTitleLabel             string                           `json:"academicTitleLabel,omitempty"`
+	DisplayName                    string                           `json:"displayName,omitempty"`
 }
 
 type NurseInfoResponse struct {
@@ -63,6 +63,15 @@ type UpdateBaseUserRequest struct {
 
 type UpdateUserStatusRequest struct {
 	Status domain.Status `json:"status" binding:"required"`
+}
+
+type CreatePatientRequest struct {
+	Name   string        `json:"name" binding:"required"`
+	Email  string        `json:"email,omitempty" binding:"omitempty,email"`
+	Phone  string        `json:"phone,omitempty"`
+	Gender domain.Gender `json:"gender" binding:"required"`
+	Dob    string        `json:"dob" binding:"required"`
+	PatientProfileFieldsRequest
 }
 
 type PatientProfileFieldsRequest struct {
@@ -98,6 +107,33 @@ type UpdateMedicalStaffRequest struct {
 	LicenseNumber     string `json:"licenseNumber"`
 	Workplace         string `json:"workplace"`
 	YearsOfExperience int    `json:"yearsOfExperience,omitempty"`
+}
+
+type CreateMedicalStaffRequest struct {
+	Name              string        `json:"name" binding:"required"`
+	Email             string        `json:"email" binding:"required,email"`
+	Phone             string        `json:"phone,omitempty"`
+	Password          string        `json:"password" binding:"required,min=6"`
+	ConfirmedPassword string        `json:"confirmedPassword" binding:"required,min=6"`
+	Gender            domain.Gender `json:"gender" binding:"required"`
+	Dob               string        `json:"dob" binding:"required"`
+	Status            domain.Status `json:"status,omitempty"`
+	DepartmentID      string        `json:"departmentId,omitempty"`
+	LicenseNumber     string        `json:"licenseNumber,omitempty"`
+	Workplace         string        `json:"workplace,omitempty"`
+	YearsOfExperience int           `json:"yearsOfExperience,omitempty" binding:"min=0"`
+}
+
+type CreateDoctorRequest struct {
+	CreateMedicalStaffRequest
+	Specialization            string `json:"specialization,omitempty"`
+	AcademicDegree            string `json:"academicDegree,omitempty"`
+	ProfessionalQualification string `json:"professionalQualification,omitempty"`
+	AcademicTitle             string `json:"academicTitle,omitempty"`
+}
+
+type CreateNurseRequest struct {
+	CreateMedicalStaffRequest
 }
 
 type UpdateDoctorRequest struct {

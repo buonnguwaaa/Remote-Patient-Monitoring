@@ -397,6 +397,61 @@ func (h *UserHandler) UpdateMyPatientProfile(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": patient, "message": "Cập nhật hồ sơ bệnh nhân thành công"})
 }
 
+// CreatePatient creates an already verified patient (admin only).
+// @Summary Create a verified patient
+// @Tags patients
+// @Accept json
+// @Produce json
+// @Param input body dto.CreatePatientRequest true "Patient data"
+// @Success 201 {object} map[string]interface{}
+// @Router /users/patients [post]
+func (h *UserHandler) CreatePatient(c *gin.Context) {
+	var req dto.CreatePatientRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	dob, err := time.Parse("2006-01-02", req.Dob)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"field": "dob", "error": "Ngày sinh phải có định dạng YYYY-MM-DD."})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 15*time.Second)
+	defer cancel()
+
+	patient, err := h.service.CreatePatient(ctx, &usecase.CreatePatientInput{
+		Name:   req.Name,
+		Email:  req.Email,
+		Phone:  req.Phone,
+		Gender: req.Gender,
+		Dob:    dob,
+		PatientProfileFieldsInput: usecase.PatientProfileFieldsInput{
+			InsuranceNumber:       req.InsuranceNumber,
+			CCCD:                  req.CCCD,
+			EmergencyContactName:  req.EmergencyContactName,
+			EmergencyContactPhone: req.EmergencyContactPhone,
+			MedicalHistory:        req.MedicalHistory,
+			DiseaseTypes:          req.DiseaseTypes,
+		},
+	})
+	if err != nil {
+		var validationErr *service.ValidationError
+		var conflictErr *service.ConflictError
+		switch {
+		case errors.As(err, &validationErr):
+			c.JSON(http.StatusBadRequest, gin.H{"field": validationErr.Field, "error": validationErr.Message})
+		case errors.As(err, &conflictErr):
+			c.JSON(http.StatusConflict, gin.H{"field": conflictErr.Field, "error": conflictErr.Message})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"data": patient, "message": "Tạo bệnh nhân thành công"})
+}
+
 // GetPatients retrieves a list of patients
 // @Summary Get list of patients
 // @Description Get a list of patients with optional filters and pagination
@@ -521,6 +576,58 @@ func (h *UserHandler) UpdatePatientByID(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Cập nhật bệnh nhân thành công"})
+}
+
+// CreateDoctor creates a doctor account (admin only).
+// @Summary Create doctor
+// @Tags doctors
+// @Accept json
+// @Produce json
+// @Param input body dto.CreateDoctorRequest true "Doctor data"
+// @Success 201 {object} map[string]interface{}
+// @Router /users/doctors [post]
+func (h *UserHandler) CreateDoctor(c *gin.Context) {
+	var req dto.CreateDoctorRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	dob, err := time.Parse("2006-01-02", req.Dob)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"field": "dob", "error": "Ngày sinh phải có định dạng YYYY-MM-DD."})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
+	defer cancel()
+
+	doctor, err := h.service.CreateDoctor(ctx, &usecase.CreateDoctorInput{
+		CreateMedicalStaffInput: usecase.CreateMedicalStaffInput{
+			Name:              req.Name,
+			Email:             req.Email,
+			Phone:             req.Phone,
+			Password:          req.Password,
+			ConfirmedPassword: req.ConfirmedPassword,
+			Gender:            req.Gender,
+			Dob:               dob,
+			Status:            req.Status,
+			YearsOfExperience: req.YearsOfExperience,
+			StaffFieldsInput: usecase.StaffFieldsInput{
+				DepartmentID:  req.DepartmentID,
+				LicenseNumber: req.LicenseNumber,
+				Workplace:     req.Workplace,
+			},
+		},
+		Specialization:            req.Specialization,
+		AcademicDegree:            domain.AcademicDegree(req.AcademicDegree),
+		ProfessionalQualification: domain.ProfessionalQualification(req.ProfessionalQualification),
+		AcademicTitle:             domain.AcademicTitle(req.AcademicTitle),
+	})
+	if err != nil {
+		h.writeCreateUserError(c, err)
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{"data": doctor, "message": "Tạo bác sĩ thành công"})
 }
 
 // GetDoctors retrieves a list of doctors
@@ -757,6 +864,54 @@ func (h *UserHandler) UploadMyDoctorAvatar(c *gin.Context) {
 	h.uploadAvatarForUser(c, userID.(string))
 }
 
+// CreateNurse creates a nurse account (admin only).
+// @Summary Create nurse
+// @Tags nurses
+// @Accept json
+// @Produce json
+// @Param input body dto.CreateNurseRequest true "Nurse data"
+// @Success 201 {object} map[string]interface{}
+// @Router /users/nurses [post]
+func (h *UserHandler) CreateNurse(c *gin.Context) {
+	var req dto.CreateNurseRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	dob, err := time.Parse("2006-01-02", req.Dob)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"field": "dob", "error": "Ngày sinh phải có định dạng YYYY-MM-DD."})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
+	defer cancel()
+
+	nurse, err := h.service.CreateNurse(ctx, &usecase.CreateNurseInput{
+		CreateMedicalStaffInput: usecase.CreateMedicalStaffInput{
+			Name:              req.Name,
+			Email:             req.Email,
+			Phone:             req.Phone,
+			Password:          req.Password,
+			ConfirmedPassword: req.ConfirmedPassword,
+			Gender:            req.Gender,
+			Dob:               dob,
+			Status:            req.Status,
+			YearsOfExperience: req.YearsOfExperience,
+			StaffFieldsInput: usecase.StaffFieldsInput{
+				DepartmentID:  req.DepartmentID,
+				LicenseNumber: req.LicenseNumber,
+				Workplace:     req.Workplace,
+			},
+		},
+	})
+	if err != nil {
+		h.writeCreateUserError(c, err)
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{"data": nurse, "message": "Tạo điều dưỡng thành công"})
+}
+
 // GetNurses retrieves a list of nurses
 // @Summary Get list of nurses
 // @Description Get a list of nurses with optional filters and pagination
@@ -919,4 +1074,19 @@ func parseOptionalBoolQuery(c *gin.Context, key string) *bool {
 		return nil
 	}
 	return &parsed
+}
+
+func (h *UserHandler) writeCreateUserError(c *gin.Context, err error) {
+	var validationErr *service.ValidationError
+	var conflictErr *service.ConflictError
+	switch {
+	case errors.As(err, &validationErr):
+		c.JSON(http.StatusBadRequest, gin.H{"field": validationErr.Field, "error": validationErr.Message})
+	case errors.As(err, &conflictErr):
+		c.JSON(http.StatusConflict, gin.H{"field": conflictErr.Field, "error": conflictErr.Message})
+	case errors.Is(err, service.ErrInvalidUserStatus):
+		c.JSON(http.StatusBadRequest, gin.H{"field": "status", "error": err.Error()})
+	default:
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	}
 }

@@ -31,7 +31,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Get activity logs with optional filters",
+                "description": "Get activity logs with optional filters (admin)",
                 "consumes": [
                     "application/json"
                 ],
@@ -104,34 +104,112 @@ const docTemplate = `{
                 }
             }
         },
-        "/activity-logs/cleanup-access": {
-            "delete": {
+        "/activity-logs/clinical": {
+            "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Delete all system logs with \"Truy cập:\" action (GET request logs)",
-                "consumes": [
-                    "application/json"
-                ],
+                "description": "Doctor/nurse view of who created/updated measurements, prescriptions, alerts, etc. on a patient they are assigned to",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "activity-logs"
                 ],
-                "summary": "Clean up access logs",
+                "summary": "Clinical history for an assigned patient",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Patient ID",
+                        "name": "patientId",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 50,
+                        "description": "Page size",
+                        "name": "pageSize",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/dto.ClinicalHistoryListResponse"
                         }
                     },
-                    "500": {
-                        "description": "Internal Server Error",
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/activity-logs/me": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Patient: who updated my chart. Doctor/nurse: my own clinical write actions across assigned patients.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "activity-logs"
+                ],
+                "summary": "My activity",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 50,
+                        "description": "Page size",
+                        "name": "pageSize",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ClinicalHistoryListResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -149,7 +227,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Get statistics for activity logs within a date range",
+                "description": "Get statistics for activity logs within a date range (admin)",
                 "consumes": [
                     "application/json"
                 ],
@@ -183,73 +261,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/activity-logs/{id}": {
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Delete an activity log by ID",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "activity-logs"
-                ],
-                "summary": "Delete a specific activity log",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Activity Log ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -1088,52 +1099,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/auth/activate": {
-            "post": {
-                "description": "Activate user account using OTP sent to email",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "auth"
-                ],
-                "summary": "Activate account",
-                "parameters": [
-                    {
-                        "description": "Email and OTP",
-                        "name": "data",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dto.ActivateAccountRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Account activated successfully",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/auth/forgot-password": {
             "post": {
                 "description": "Send reset link to user email",
@@ -1282,7 +1247,7 @@ const docTemplate = `{
         },
         "/auth/logout": {
             "post": {
-                "description": "Revoke refresh token and clear session",
+                "description": "Revoke refresh token, blacklist access token, and clear session",
                 "consumes": [
                     "application/json"
                 ],
@@ -1432,52 +1397,6 @@ const docTemplate = `{
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/auth/resend-activation": {
-            "post": {
-                "description": "Resend account activation OTP to user email",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "auth"
-                ],
-                "summary": "Resend Activation Email",
-                "parameters": [
-                    {
-                        "description": "Email",
-                        "name": "data",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dto.ResendActivationEmailRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Activation email resent successfully",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
                         }
                     },
                     "400": {
@@ -3394,6 +3313,160 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "doctors"
+                ],
+                "summary": "Create doctor",
+                "parameters": [
+                    {
+                        "description": "Doctor data",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.CreateDoctorRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/users/doctors/me": {
+            "patch": {
+                "description": "Update the authenticated doctor's information (excludes email and department)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "doctors"
+                ],
+                "summary": "Update my doctor profile",
+                "parameters": [
+                    {
+                        "description": "Updated doctor information",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateDoctorRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Doctor updated successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/users/doctors/me/avatar": {
+            "post": {
+                "description": "Upload an avatar image for the authenticated doctor",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "doctors"
+                ],
+                "summary": "Upload my doctor avatar",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "Avatar image file",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Avatar uploaded successfully",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
             }
         },
         "/users/doctors/{id}": {
@@ -3571,6 +3644,38 @@ const docTemplate = `{
                             "additionalProperties": {
                                 "type": "string"
                             }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "nurses"
+                ],
+                "summary": "Create nurse",
+                "parameters": [
+                    {
+                        "description": "Nurse data",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.CreateNurseRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -3814,6 +3919,38 @@ const docTemplate = `{
                             "additionalProperties": {
                                 "type": "string"
                             }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "patients"
+                ],
+                "summary": "Create a verified patient",
+                "parameters": [
+                    {
+                        "description": "Patient data",
+                        "name": "input",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.CreatePatientRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -4595,20 +4732,52 @@ const docTemplate = `{
                 "TimeOfDayEvening"
             ]
         },
-        "dto.ActivateAccountRequest": {
+        "dto.AccountActivityItem": {
             "type": "object",
-            "required": [
-                "email",
-                "otp"
-            ],
             "properties": {
-                "email": {
-                    "type": "string",
-                    "example": "john.doe@example.com"
+                "action": {
+                    "type": "string"
                 },
-                "otp": {
-                    "type": "string",
-                    "example": "123456"
+                "actorName": {
+                    "type": "string"
+                },
+                "actorRole": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.AccountActivityListResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.AccountActivityItem"
+                    }
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "pageSize": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                },
+                "totalPages": {
+                    "type": "integer"
                 }
             }
         },
@@ -4667,6 +4836,9 @@ const docTemplate = `{
                 "path": {
                     "type": "string"
                 },
+                "patientId": {
+                    "type": "string"
+                },
                 "resource": {
                     "type": "string"
                 },
@@ -4681,6 +4853,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "type": {
+                    "type": "string"
+                },
+                "userAgent": {
                     "type": "string"
                 },
                 "userId": {
@@ -4728,6 +4903,67 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.ClinicalHistoryItem": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string"
+                },
+                "actorName": {
+                    "type": "string"
+                },
+                "actorRole": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "patientId": {
+                    "type": "string"
+                },
+                "patientName": {
+                    "type": "string"
+                },
+                "resource": {
+                    "type": "string"
+                },
+                "resourceId": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.ClinicalHistoryListResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.ClinicalHistoryItem"
+                    }
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "pageSize": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                },
+                "totalPages": {
+                    "type": "integer"
+                }
+            }
+        },
         "dto.CreateConversationRequest": {
             "type": "object",
             "required": [
@@ -4740,6 +4976,70 @@ const docTemplate = `{
                     "items": {
                         "type": "string"
                     }
+                }
+            }
+        },
+        "dto.CreateDoctorRequest": {
+            "type": "object",
+            "required": [
+                "confirmedPassword",
+                "dob",
+                "email",
+                "gender",
+                "name",
+                "password"
+            ],
+            "properties": {
+                "academicDegree": {
+                    "type": "string"
+                },
+                "academicTitle": {
+                    "type": "string"
+                },
+                "confirmedPassword": {
+                    "type": "string",
+                    "minLength": 6
+                },
+                "departmentId": {
+                    "type": "string"
+                },
+                "dob": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "gender": {
+                    "$ref": "#/definitions/user.Gender"
+                },
+                "licenseNumber": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string",
+                    "minLength": 6
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "professionalQualification": {
+                    "type": "string"
+                },
+                "specialization": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/domain.Status"
+                },
+                "workplace": {
+                    "type": "string"
+                },
+                "yearsOfExperience": {
+                    "type": "integer",
+                    "minimum": 0
                 }
             }
         },
@@ -4841,6 +5141,101 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "prescriptionId": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.CreateNurseRequest": {
+            "type": "object",
+            "required": [
+                "confirmedPassword",
+                "dob",
+                "email",
+                "gender",
+                "name",
+                "password"
+            ],
+            "properties": {
+                "confirmedPassword": {
+                    "type": "string",
+                    "minLength": 6
+                },
+                "departmentId": {
+                    "type": "string"
+                },
+                "dob": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "gender": {
+                    "$ref": "#/definitions/user.Gender"
+                },
+                "licenseNumber": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string",
+                    "minLength": 6
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/domain.Status"
+                },
+                "workplace": {
+                    "type": "string"
+                },
+                "yearsOfExperience": {
+                    "type": "integer",
+                    "minimum": 0
+                }
+            }
+        },
+        "dto.CreatePatientRequest": {
+            "type": "object",
+            "required": [
+                "dob",
+                "gender",
+                "name"
+            ],
+            "properties": {
+                "cccd": {
+                    "type": "string"
+                },
+                "diseaseTypes": {
+                    "$ref": "#/definitions/user.DiseaseTypes"
+                },
+                "dob": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "emergencyContactName": {
+                    "type": "string"
+                },
+                "emergencyContactPhone": {
+                    "type": "string"
+                },
+                "gender": {
+                    "$ref": "#/definitions/user.Gender"
+                },
+                "insuranceNumber": {
+                    "type": "string"
+                },
+                "medicalHistory": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "phone": {
                     "type": "string"
                 }
             }
@@ -5038,7 +5433,6 @@ const docTemplate = `{
         "dto.LoginRequest": {
             "type": "object",
             "required": [
-                "email",
                 "password"
             ],
             "properties": {
@@ -5046,10 +5440,18 @@ const docTemplate = `{
                     "type": "string",
                     "example": "john.doe@example.com"
                 },
+                "identifier": {
+                    "type": "string",
+                    "example": "john.doe@example.com"
+                },
                 "password": {
                     "type": "string",
                     "minLength": 6,
                     "example": "SecurePass123!"
+                },
+                "phone": {
+                    "type": "string",
+                    "example": "+84901234567"
                 }
             }
         },
@@ -5177,17 +5579,21 @@ const docTemplate = `{
             "required": [
                 "confirmedPassword",
                 "dob",
-                "email",
                 "gender",
                 "name",
-                "password",
-                "role"
+                "password"
             ],
             "properties": {
+                "cccd": {
+                    "type": "string"
+                },
                 "confirmedPassword": {
                     "type": "string",
-                    "minLength": 8,
+                    "minLength": 6,
                     "example": "SecurePass123!"
+                },
+                "diseaseTypes": {
+                    "$ref": "#/definitions/user.DiseaseTypes"
                 },
                 "dob": {
                     "type": "string",
@@ -5197,6 +5603,12 @@ const docTemplate = `{
                     "type": "string",
                     "example": "john.doe@example.com"
                 },
+                "emergencyContactName": {
+                    "type": "string"
+                },
+                "emergencyContactPhone": {
+                    "type": "string"
+                },
                 "gender": {
                     "allOf": [
                         {
@@ -5204,6 +5616,12 @@ const docTemplate = `{
                         }
                     ],
                     "example": "M"
+                },
+                "insuranceNumber": {
+                    "type": "string"
+                },
+                "medicalHistory": {
+                    "type": "string"
                 },
                 "name": {
                     "type": "string",
@@ -5214,13 +5632,9 @@ const docTemplate = `{
                     "minLength": 6,
                     "example": "SecurePass123!"
                 },
-                "role": {
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/user.Role"
-                        }
-                    ],
-                    "example": "patient"
+                "phone": {
+                    "type": "string",
+                    "example": "+84901234567"
                 }
             }
         },
@@ -5236,17 +5650,6 @@ const docTemplate = `{
                     "type": "integer",
                     "maximum": 59,
                     "minimum": 0
-                }
-            }
-        },
-        "dto.ResendActivationEmailRequest": {
-            "type": "object",
-            "required": [
-                "email"
-            ],
-            "properties": {
-                "email": {
-                    "type": "string"
                 }
             }
         },
@@ -5311,6 +5714,12 @@ const docTemplate = `{
         "dto.UpdateDoctorRequest": {
             "type": "object",
             "properties": {
+                "academicDegree": {
+                    "type": "string"
+                },
+                "academicTitle": {
+                    "type": "string"
+                },
                 "departmentId": {
                     "type": "string"
                 },
@@ -5327,6 +5736,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "phone": {
+                    "type": "string"
+                },
+                "professionalQualification": {
                     "type": "string"
                 },
                 "specialization": {
@@ -5712,21 +6124,6 @@ const docTemplate = `{
                 "GenderMale",
                 "GenderFemale",
                 "GenderOther"
-            ]
-        },
-        "user.Role": {
-            "type": "string",
-            "enum": [
-                "user.patient",
-                "user.doctor",
-                "user.nurse",
-                "admin"
-            ],
-            "x-enum-varnames": [
-                "RolePatient",
-                "RoleDoctor",
-                "RoleNurse",
-                "RoleAdmin"
             ]
         }
     }

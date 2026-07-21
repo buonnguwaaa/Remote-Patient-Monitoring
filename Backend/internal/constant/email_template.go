@@ -1,11 +1,12 @@
 package constant
 
 const (
-	SubjectActivateAccount = "[RPM] - Kích hoạt tài khoản"
-	SubjectResetPassword   = "[RPM] - Đặt lại mật khẩu"
+	SubjectPatientAccountCreated  = "[RPM] - Tài khoản bệnh nhân đã được tạo"
+	SubjectPatientAccountVerified = "[RPM] - Tài khoản bệnh nhân đã được xác minh"
+	SubjectResetPassword          = "[RPM] - Đặt lại mật khẩu"
 )
 
-const ActivateOTPEmailTemplate = `
+const PatientAccountEmailTemplate = `
 	<!DOCTYPE html>
 	<html lang="vi">
 	<head>
@@ -42,15 +43,6 @@ const ActivateOTPEmailTemplate = `
 		font-size: 15px;
 		line-height: 1.6;
 		}
-		.otp {
-		display: block;
-		text-align: center;
-		font-size: 32px;
-		font-weight: 700;
-		letter-spacing: 8px;
-		color: #007bff;
-		margin: 24px 0;
-		}
 		.footer {
 		text-align: center;
 		font-size: 13px;
@@ -64,13 +56,11 @@ const ActivateOTPEmailTemplate = `
 		<div class="logo">
 		<img src="https://img.icons8.com/color/96/000000/heart-monitor.png" alt="Logo">
 		</div>
-		<h1>Kích hoạt tài khoản</h1>
+		<h1>%s</h1>
 		<p>Chào %s,</p>
-		<p>Chào mừng bạn đến với <strong>Remote Patient Monitoring</strong>! Dùng mã xác thực một lần bên dưới để kích hoạt tài khoản.</p>
-
-		<span class="otp">%s</span>
-
-		<p>Mã này sẽ hết hạn sau %d phút. Nếu bạn không tạo tài khoản này, vui lòng bỏ qua email.</p>
+		<p>%s</p>
+		%s
+		<p>Bạn có thể đăng nhập bằng email hoặc số điện thoại đã đăng ký cùng mật khẩu của mình.</p>
 	</div>
 	</body>
 	</html>
