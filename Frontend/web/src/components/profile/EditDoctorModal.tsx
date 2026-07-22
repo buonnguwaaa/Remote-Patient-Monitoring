@@ -93,7 +93,7 @@ const EditDoctorModal: React.FC<EditDoctorModalProps> = ({ doctor, onClose, onSu
             {/* Name */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                {t("doctorManagement.fields.name")}
+                {t("profile.name", "Họ và tên")}
               </label>
               <input
                 name="name"
@@ -107,7 +107,7 @@ const EditDoctorModal: React.FC<EditDoctorModalProps> = ({ doctor, onClose, onSu
             {/* Gender */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                {t("doctorManagement.fields.gender")}
+                {t("profile.gender", "Giới tính")}
               </label>
               <select
                 name="gender"
@@ -124,7 +124,7 @@ const EditDoctorModal: React.FC<EditDoctorModalProps> = ({ doctor, onClose, onSu
             {/* Phone */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                {t("doctorManagement.fields.phone")}
+                {t("profile.phone", "Số điện thoại")}
               </label>
               <input
                 name="phone"

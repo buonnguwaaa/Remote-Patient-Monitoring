@@ -150,9 +150,17 @@
       "large": "Easy to read, suitable for large screens"
     }
   },
+  "doctorManagement": {
+    "fields": {
+      "name": "Full Name",
+      "gender": "Gender",
+      "phone": "Phone Number"
+    }
+  },
   "profile": {
     "title": "Personal Information",
     "workInfo": "Work Information",
+    "name": "Full Name",
     "gender": "Gender",
     "dateOfBirth": "Date of Birth",
     "email": "Email",

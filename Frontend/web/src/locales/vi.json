@@ -150,9 +150,17 @@
       "large": "Dễ đọc, phù hợp màn hình lớn"
     }
   },
+  "doctorManagement": {
+    "fields": {
+      "name": "Họ và tên",
+      "gender": "Giới tính",
+      "phone": "Số điện thoại"
+    }
+  },
   "profile": {
     "title": "Thông tin cá nhân",
     "workInfo": "Thông tin công việc",
+    "name": "Họ và tên",
     "gender": "Giới tính",
     "dateOfBirth": "Ngày sinh",
     "email": "Email",

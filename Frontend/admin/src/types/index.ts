@@ -37,6 +37,11 @@ export interface Patient {
   dateOfBirth: string;
   address?: string;
   status: "active" | "inactive";
+  cccd?: string;
+  insuranceNumber?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  medicalHistory?: string;
 }
 
 export interface ThresholdViolation {

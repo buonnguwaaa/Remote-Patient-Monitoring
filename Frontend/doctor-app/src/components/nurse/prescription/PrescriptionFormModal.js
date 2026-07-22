@@ -24,8 +24,7 @@ const Chip = ({ label, active, onPress }) => (
   </TouchableOpacity>
 );
 
-// Quick common route options for 1-tap selection
-const QUICK_ROUTES = ["Đường uống", "Tiêm tĩnh mạch", "Bôi ngoài da", "Nhỏ mắt", "Hít (Xịt/Khí dung)"];
+
 
 function MedicationEditorCard({ med, medIdx, onChange, onRemove, canRemove, errors }) {
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -135,30 +134,6 @@ function MedicationEditorCard({ med, medIdx, onChange, onRemove, canRemove, erro
         </View>
       </View>
 
-      {/* Quick Route Chips */}
-      <View style={styles.quickRouteContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
-          {QUICK_ROUTES.map(rt => {
-            const active = med.route === rt || (!med.route && rt === "Đường uống");
-            return (
-              <TouchableOpacity 
-                key={rt} 
-                style={[styles.quickRouteChip, active && styles.quickRouteChipActive]}
-                onPress={() => handleField("route", rt)}
-              >
-                <Text style={[styles.quickRouteText, active && styles.quickRouteTextActive]}>{rt}</Text>
-              </TouchableOpacity>
-            );
-          })}
-          <TouchableOpacity 
-            style={[styles.quickRouteChip, { backgroundColor: "#F3F4F6", borderColor: "#D1D5DB" }]}
-            onPress={() => setShowRouteModal(true)}
-          >
-            <Text style={[styles.quickRouteText, { color: "#374151" }]}>Tất cả...</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </View>
-
       {/* Instructions */}
       <Text style={styles.label}>Chỉ dẫn thêm</Text>
       <TextInput 
@@ -170,31 +145,294 @@ function MedicationEditorCard({ med, medIdx, onChange, onRemove, canRemove, erro
         multiline 
       />
 
-      {/* Schedule */}
-      <Text style={[styles.label, { marginTop: 8 }]}>Lịch uống trong ngày</Text>
-      {med.schedule.map((dose, doseIdx) => (
-        <ScheduleEditorCard 
-          key={doseIdx} dose={dose} doseIdx={doseIdx}
-          onChange={(k, v) => {
-            const next = [...med.schedule];
-            next[doseIdx] = { ...next[doseIdx], [k]: v };
-            handleField("schedule", next);
-          }}
-          onRemove={() => {
-            const next = med.schedule.filter((_, i) => i !== doseIdx);
-            handleField("schedule", next);
-          }}
-          canRemove={med.schedule.length > 1}
-        />
-      ))}
+      {/* Schedule Preset Slots (Morning / Noon / Evening) & Extra Custom Doses */}
+      {(() => {
+        const primaryMorning = med.schedule.find(d => d.timeOfDay === "morning");
+        const primaryNoon = med.schedule.find(d => d.timeOfDay === "noon");
+        const primaryEvening = med.schedule.find(d => d.timeOfDay === "evening");
+        const presetDoses = [primaryMorning, primaryNoon, primaryEvening].filter(Boolean);
+        const extraDoses = med.schedule.filter(d => !presetDoses.includes(d));
 
-      <TouchableOpacity 
-        style={styles.addDoseBtn} 
-        onPress={() => handleField("schedule", [...med.schedule, { timeOfDay: "morning", customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }])}
-      >
-        <Ionicons name="add-circle" size={16} color="#2563EB" />
-        <Text style={styles.addDoseText}>Thêm lần uống khác</Text>
-      </TouchableOpacity>
+        return (
+          <View>
+            <Text style={[styles.label, { marginTop: 8 }]}>Lịch dùng trong ngày (Bật/Tắt các buổi & Thêm lịch khác)</Text>
+            <View style={{ gap: 8 }}>
+              {[
+                { tod: "morning", label: "Sáng", defaultTime: "08:00", existingDose: primaryMorning },
+                { tod: "noon", label: "Chiều", defaultTime: "12:00", existingDose: primaryNoon },
+                { tod: "evening", label: "Tối", defaultTime: "20:00", existingDose: primaryEvening },
+              ].map((slot) => {
+                const existingDose = slot.existingDose;
+                const enabled = !!existingDose;
+
+                const handleToggleSlot = () => {
+                  if (enabled) {
+                    const actualIndex = med.schedule.indexOf(existingDose);
+                    handleField("schedule", med.schedule.filter((_, idx) => idx !== actualIndex));
+                  } else {
+                    const newDose = { timeOfDay: slot.tod, customTime: slot.defaultTime, mealTiming: "post_meal", pillCount: 1 };
+                    const next = [...med.schedule, newDose].sort((a, b) => {
+                      const order = { morning: 1, noon: 2, evening: 3 };
+                      return (order[a.timeOfDay] || 9) - (order[b.timeOfDay] || 9);
+                    });
+                    handleField("schedule", next);
+                  }
+                };
+
+                const handleSlotChange = (field, value) => {
+                  const actualIndex = med.schedule.indexOf(existingDose);
+                  const next = [...med.schedule];
+                  next[actualIndex] = { ...next[actualIndex], [field]: value };
+                  handleField("schedule", next);
+                };
+
+                if (!enabled) {
+                  return (
+                    <TouchableOpacity 
+                      key={slot.tod}
+                      style={[styles.doseFormCard, { backgroundColor: "#F8FAFC", borderColor: "#E2E8F0", opacity: 0.8, paddingVertical: 10, paddingHorizontal: 12, marginBottom: 0 }]}
+                      onPress={handleToggleSlot}
+                    >
+                      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                          <Ionicons name="square-outline" size={20} color="#9CA3AF" />
+                          <Text style={{ fontSize: 13, fontWeight: "600", color: "#64748B" }}>Buổi {slot.label}</Text>
+                        </View>
+                        <View style={{ backgroundColor: "#EFF6FF", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: "#BFDBFE" }}>
+                          <Text style={{ fontSize: 11, fontWeight: "600", color: "#2563EB" }}>+ Bật buổi này</Text>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                }
+
+                return (
+                  <View 
+                    key={slot.tod}
+                    style={[styles.doseFormCard, { borderColor: "#3B82F6", borderWidth: 1.5, backgroundColor: "#FFFFFF", marginBottom: 0 }]}
+                  >
+                    <TouchableOpacity 
+                      style={[styles.doseCardHeader, { borderBottomWidth: 1, borderBottomColor: "#F1F5F9", paddingBottom: 8, marginBottom: 10, flexDirection: "row", justifyContent: "space-between", alignItems: "center" }]} 
+                      onPress={handleToggleSlot}
+                    >
+                      <Ionicons name="checkbox" size={20} color="#2563EB" />
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                        <Ionicons 
+                          name={slot.tod === "morning" ? "sunny-outline" : slot.tod === "noon" ? "partly-sunny-outline" : "moon-outline"} 
+                          size={18} 
+                          color="#2563EB" 
+                        />
+                        <Text style={{ fontSize: 14, fontWeight: "700", color: "#1E3A8A" }}>Buổi {slot.label}</Text>
+                      </View>
+                    </TouchableOpacity>
+
+                    {/* Row 1: Giờ dùng & Số viên (cân bằng kích thước flex: 1) */}
+                    <View style={styles.doseRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.doseFieldLabel}>Giờ dùng</Text>
+                        <TextInput
+                          style={styles.timeInput}
+                          placeholder={slot.defaultTime}
+                          placeholderTextColor="#9CA3AF"
+                          value={existingDose.customTime}
+                          onChangeText={(val) => handleSlotChange("customTime", val)}
+                        />
+                      </View>
+
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.doseFieldLabel}>Số viên</Text>
+                        <View style={styles.counterRow}>
+                          <TouchableOpacity
+                            style={styles.counterBtn}
+                            onPress={() => handleSlotChange("pillCount", Math.max(0.5, Number(existingDose.pillCount || 1) - 0.5))}
+                          >
+                            <Text style={styles.counterBtnText}>-</Text>
+                          </TouchableOpacity>
+                          <Text style={styles.counterValueText}>{existingDose.pillCount || 1}</Text>
+                          <TouchableOpacity
+                            style={styles.counterBtn}
+                            onPress={() => handleSlotChange("pillCount", Number(existingDose.pillCount || 1) + 0.5)}
+                          >
+                            <Text style={styles.counterBtnText}>+</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    </View>
+
+                    {/* Row 2: Thời điểm ăn (Icon tượng trưng + Bất kỳ thay cho K.Hạn) */}
+                    <View style={{ marginTop: 4 }}>
+                      <Text style={styles.doseFieldLabel}>Thời điểm ăn</Text>
+                      <View style={styles.mealTimingRow}>
+                        {[
+                          { val: "", lbl: "Bất kỳ" },
+                          { val: "pre_meal", lbl: "Trước ăn" },
+                          { val: "post_meal", lbl: "Sau ăn" },
+                        ].map((item) => {
+                          const selected = (existingDose.mealTiming || "") === item.val;
+                          return (
+                            <TouchableOpacity
+                              key={item.val}
+                              style={[styles.mealTimingBtn, selected && styles.mealTimingBtnActive]}
+                              onPress={() => handleSlotChange("mealTiming", item.val)}
+                            >
+                              <Text style={[styles.mealTimingText, selected && styles.mealTimingTextActive]}>
+                                {item.lbl}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  </View>
+                );
+              })}
+
+              {/* Extra Doses Outside the 3 Preset Sessions */}
+              {extraDoses.length > 0 && (
+                <View style={{ marginTop: 4, gap: 8 }}>
+                  <Text style={[styles.doseFieldLabel, { color: "#64748B", fontSize: 12, fontWeight: "700" }]}>Lịch dùng bổ sung ngoài 3 buổi Sáng/Chiều/Tối:</Text>
+                  {extraDoses.map((dose, extraIdx) => {
+                    const actualIndex = med.schedule.indexOf(dose);
+                    return (
+                      <View 
+                        key={actualIndex}
+                        style={[styles.doseFormCard, { borderColor: "#CBD5E1", borderWidth: 1.5, backgroundColor: "#FFFFFF", marginBottom: 0 }]}
+                      >
+                        <View style={[styles.doseCardHeader, { borderBottomWidth: 1, borderBottomColor: "#F1F5F9", paddingBottom: 8, marginBottom: 10, flexDirection: "row", justifyContent: "space-between", alignItems: "center" }]}>
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                            <Ionicons name="time-outline" size={18} color="#2563EB" />
+                            <Text style={{ fontSize: 13, fontWeight: "700", color: "#1E3A8A" }}>Buổi dùng bổ sung #{extraIdx + 1}</Text>
+                          </View>
+                          <TouchableOpacity 
+                            onPress={() => handleField("schedule", med.schedule.filter((_, idx) => idx !== actualIndex))} 
+                            style={{ flexDirection: "row", alignItems: "center", gap: 3 }}
+                          >
+                            <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                            <Text style={{ fontSize: 12, color: "#EF4444", fontWeight: "600" }}>Xóa</Text>
+                          </TouchableOpacity>
+                        </View>
+
+                        {/* Row 1: Nhóm buổi & Giờ dùng */}
+                        <View style={styles.doseRow}>
+                          <View style={{ flex: 2 }}>
+                            <Text style={styles.doseFieldLabel}>Nhóm buổi</Text>
+                            <View style={styles.todSegmentContainer}>
+                              {["morning", "noon", "evening"].map((tod) => {
+                                const selected = dose.timeOfDay === tod;
+                                return (
+                                  <TouchableOpacity
+                                    key={tod}
+                                    style={[styles.todSegmentBtn, selected && styles.todSegmentBtnActive, { flexDirection: "row", gap: 3, paddingHorizontal: 2 }]}
+                                    onPress={() => {
+                                      const next = [...med.schedule];
+                                      next[actualIndex] = { ...next[actualIndex], timeOfDay: tod };
+                                      handleField("schedule", next);
+                                    }}
+                                  >
+                                    <Ionicons
+                                      name={tod === "morning" ? "sunny-outline" : tod === "noon" ? "partly-sunny-outline" : "moon-outline"}
+                                      size={13}
+                                      color={selected ? "#FFFFFF" : "#64748B"}
+                                    />
+                                    <Text style={[styles.todSegmentText, selected && styles.todSegmentTextActive]}>
+                                      {tod === "morning" ? "Sáng" : tod === "noon" ? "Chiều" : "Tối"}
+                                    </Text>
+                                  </TouchableOpacity>
+                                );
+                              })}
+                            </View>
+                          </View>
+
+                          <View style={{ width: 85 }}>
+                            <Text style={styles.doseFieldLabel}>Giờ dùng</Text>
+                            <TextInput
+                              style={styles.timeInput}
+                              placeholder="21:30"
+                              placeholderTextColor="#9CA3AF"
+                              value={dose.customTime}
+                              onChangeText={(val) => {
+                                const next = [...med.schedule];
+                                next[actualIndex] = { ...next[actualIndex], customTime: val };
+                                handleField("schedule", next);
+                              }}
+                            />
+                          </View>
+                        </View>
+
+                        {/* Row 2: Thời điểm ăn & Số viên */}
+                        <View style={styles.doseRow}>
+                          <View style={{ flex: 2 }}>
+                            <Text style={styles.doseFieldLabel}>Thời điểm ăn</Text>
+                            <View style={styles.mealTimingRow}>
+                              {[
+                                { val: "", lbl: "Bất kỳ" },
+                                { val: "pre_meal", lbl: "Trước ăn" },
+                                { val: "post_meal", lbl: "Sau ăn" },
+                              ].map((item) => {
+                                const selected = (dose.mealTiming || "") === item.val;
+                                return (
+                                  <TouchableOpacity
+                                    key={item.val}
+                                    style={[styles.mealTimingBtn, selected && styles.mealTimingBtnActive]}
+                                    onPress={() => {
+                                      const next = [...med.schedule];
+                                      next[actualIndex] = { ...next[actualIndex], mealTiming: item.val };
+                                      handleField("schedule", next);
+                                    }}
+                                  >
+                                    <Text style={[styles.mealTimingText, selected && styles.mealTimingTextActive]}>
+                                      {item.lbl}
+                                    </Text>
+                                  </TouchableOpacity>
+                                );
+                              })}
+                            </View>
+                          </View>
+
+                          <View style={{ width: 85 }}>
+                            <Text style={styles.doseFieldLabel}>Số viên</Text>
+                            <View style={styles.counterRow}>
+                              <TouchableOpacity
+                                style={styles.counterBtn}
+                                onPress={() => {
+                                  const next = [...med.schedule];
+                                  next[actualIndex] = { ...next[actualIndex], pillCount: Math.max(0.5, Number(dose.pillCount || 1) - 0.5) };
+                                  handleField("schedule", next);
+                                }}
+                              >
+                                <Text style={styles.counterBtnText}>-</Text>
+                              </TouchableOpacity>
+                              <Text style={styles.counterValueText}>{dose.pillCount || 1}</Text>
+                              <TouchableOpacity
+                                style={styles.counterBtn}
+                                onPress={() => {
+                                  const next = [...med.schedule];
+                                  next[actualIndex] = { ...next[actualIndex], pillCount: Number(dose.pillCount || 1) + 0.5 };
+                                  handleField("schedule", next);
+                                }}
+                              >
+                                <Text style={styles.counterBtnText}>+</Text>
+                              </TouchableOpacity>
+                            </View>
+                          </View>
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
+
+              <TouchableOpacity 
+                style={[styles.addDoseBtn, { marginTop: 8, borderColor: "#3B82F6", backgroundColor: "#EFF6FF" }]} 
+                onPress={() => handleField("schedule", [...med.schedule, { timeOfDay: "evening", customTime: "21:30", mealTiming: "post_meal", pillCount: 1 }])}
+              >
+                <Ionicons name="add-circle" size={16} color="#2563EB" />
+                <Text style={[styles.addDoseText, { color: "#2563EB", fontWeight: "700" }]}>+ Thêm buổi dùng ngoài 3 buổi trên</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        );
+      })()}
 
       {/* Full Route Selector Modal */}
       <Modal visible={showRouteModal} transparent animationType="fade">
@@ -256,109 +494,7 @@ function MedicationEditorCard({ med, medIdx, onChange, onRemove, canRemove, erro
   );
 }
 
-function ScheduleEditorCard({ dose, doseIdx, onChange, onRemove, canRemove }) {
-  const renderTimeOfDay = (tod) => {
-    if (tod === "morning") return "Sáng";
-    if (tod === "noon") return "Trưa";
-    if (tod === "evening") return "Tối";
-    return tod;
-  };
 
-  return (
-    <View style={styles.doseFormCard}>
-      <View style={styles.doseCardHeader}>
-        <View style={styles.doseCardHeaderLeft}>
-          <Ionicons name="time-outline" size={14} color="#64748B" />
-          <Text style={styles.doseCardTitle}>Lần uống #{doseIdx + 1}</Text>
-        </View>
-        {canRemove && (
-          <TouchableOpacity onPress={onRemove} style={styles.removeDoseBtn}>
-            <Ionicons name="trash-outline" size={14} color="#EF4444" />
-            <Text style={styles.removeDoseText}>Xóa</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      <View style={styles.doseRow}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.doseFieldLabel}>Thời điểm</Text>
-          <View style={styles.todSegmentContainer}>
-            {["morning", "noon", "evening"].map((tod) => {
-              const selected = dose.timeOfDay === tod;
-              return (
-                <TouchableOpacity
-                  key={tod}
-                  style={[styles.todSegmentBtn, selected && styles.todSegmentBtnActive]}
-                  onPress={() => onChange("timeOfDay", tod)}
-                >
-                  <Text style={[styles.todSegmentText, selected && styles.todSegmentTextActive]}>
-                    {renderTimeOfDay(tod)}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-
-        <View style={styles.timeInputContainer}>
-          <Text style={styles.doseFieldLabel}>Giờ uống</Text>
-          <TextInput
-            style={styles.timeInput}
-            placeholder="08:00"
-            placeholderTextColor="#9CA3AF"
-            value={dose.customTime}
-            onChangeText={(val) => onChange("customTime", val)}
-          />
-        </View>
-      </View>
-
-      <View style={styles.doseRow}>
-        <View style={styles.pillCounterContainer}>
-          <Text style={styles.doseFieldLabel}>Số viên</Text>
-          <View style={styles.counterRow}>
-            <TouchableOpacity
-              style={styles.counterBtn}
-              onPress={() => onChange("pillCount", Math.max(0.5, Number(dose.pillCount || 1) - 0.5))}
-            >
-              <Text style={styles.counterBtnText}>-</Text>
-            </TouchableOpacity>
-            <Text style={styles.counterValueText}>{dose.pillCount || 1}</Text>
-            <TouchableOpacity
-              style={styles.counterBtn}
-              onPress={() => onChange("pillCount", Number(dose.pillCount || 1) + 0.5)}
-            >
-              <Text style={styles.counterBtnText}>+</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <View style={styles.mealTimingContainer}>
-          <Text style={styles.doseFieldLabel}>Thời điểm ăn</Text>
-          <View style={styles.mealTimingRow}>
-            {[
-              { val: "", lbl: "K.hạn" },
-              { val: "pre_meal", lbl: "Trước ăn" },
-              { val: "post_meal", lbl: "Sau ăn" },
-            ].map((item) => {
-              const selected = dose.mealTiming === item.val;
-              return (
-                <TouchableOpacity
-                  key={item.val}
-                  style={[styles.mealTimingBtn, selected && styles.mealTimingBtnActive]}
-                  onPress={() => onChange("mealTiming", item.val)}
-                >
-                  <Text style={[styles.mealTimingText, selected && styles.mealTimingTextActive]}>
-                    {item.lbl}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-      </View>
-    </View>
-  );
-}
 
 export function PrescriptionFormModal({ visible, onClose, initialData, onSave, patients }) {
   const insets = useSafeAreaInsets();
@@ -396,7 +532,7 @@ export function PrescriptionFormModal({ visible, onClose, initialData, onSave, p
       errs.meds = "Cần ít nhất 1 loại thuốc trong đơn.";
     }
     if (!formData.daysOfWeek || formData.daysOfWeek.length === 0) {
-      errs.days = "Vui lòng chọn ít nhất 1 ngày uống trong tuần.";
+      errs.days = "Vui lòng chọn ít nhất 1 ngày trong tuần.";
     }
     
     formData.medications.forEach((m, i) => {
@@ -411,7 +547,7 @@ export function PrescriptionFormModal({ visible, onClose, initialData, onSave, p
         if (!errs.meds) errs.meds = `Thuốc #${i+1} chưa có liều lượng.`;
       }
       if (!m.schedule || m.schedule.length === 0) {
-        if (!errs.meds) errs.meds = `Thuốc #${i+1} chưa chọn lịch uống.`;
+        if (!errs.meds) errs.meds = `Thuốc #${i+1} chưa chọn lịch dùng.`;
       }
     });
 
@@ -533,7 +669,7 @@ export function PrescriptionFormModal({ visible, onClose, initialData, onSave, p
                 </View>
               </View>
 
-              <Text style={styles.label}>Ngày uống trong tuần</Text>
+              <Text style={styles.label}>Ngày dùng trong tuần</Text>
               <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
                 {[{v:1, l:"T2"},{v:2, l:"T3"},{v:3, l:"T4"},{v:4, l:"T5"},{v:5, l:"T6"},{v:6, l:"T7"},{v:0, l:"CN"}].map(d => (
                   <Chip 
@@ -569,7 +705,11 @@ export function PrescriptionFormModal({ visible, onClose, initialData, onSave, p
                   ...formData, 
                   medications: [
                     ...formData.medications, 
-                    { drugName: "", dosage: "", route: "Đường uống", schedule: [{ timeOfDay: "morning", customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }] }
+                    { drugName: "", dosage: "", route: "Đường uống", schedule: [
+                      { timeOfDay: "morning", customTime: "08:00", mealTiming: "post_meal", pillCount: 1 },
+                      { timeOfDay: "noon", customTime: "12:00", mealTiming: "post_meal", pillCount: 1 },
+                      { timeOfDay: "evening", customTime: "20:00", mealTiming: "post_meal", pillCount: 1 }
+                    ] }
                   ]
                 })}
               >
@@ -799,22 +939,26 @@ const styles = StyleSheet.create({
   doseRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-end",
+    alignItems: "flex-start",
     gap: 10,
     marginBottom: 8,
   },
   todSegmentContainer: {
     flex: 1,
     flexDirection: "row",
-    backgroundColor: "#F1F5F9",
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
     borderRadius: 8,
-    padding: 2,
-    height: 38,
-    alignItems: "center",
+    padding: 1.5,
+    height: 40,
+    minHeight: 40,
+    maxHeight: 40,
+    boxSizing: "border-box",
+    alignItems: "stretch",
   },
   todSegmentBtn: {
     flex: 1,
-    height: "100%",
     justifyContent: "center",
     alignItems: "center",
     borderRadius: 6,
@@ -823,7 +967,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#2563EB",
   },
   todSegmentText: {
-    fontSize: 11,
+    fontSize: 12,
     color: "#64748B",
     fontWeight: "500",
   },
@@ -832,7 +976,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   timeInputContainer: {
-    width: 90,
+    flex: 1,
   },
   doseFieldLabel: {
     fontSize: 10,
@@ -846,13 +990,19 @@ const styles = StyleSheet.create({
     borderColor: "#CBD5E1",
     borderRadius: 8,
     paddingHorizontal: 8,
-    height: 38,
+    paddingTop: 0,
+    paddingBottom: 0,
+    height: 40,
+    minHeight: 40,
+    maxHeight: 40,
+    boxSizing: "border-box",
     fontSize: 14,
     color: "#1F2937",
     textAlign: "center",
+    textAlignVertical: "center",
   },
   pillCounterContainer: {
-    width: 100,
+    flex: 1,
   },
   counterRow: {
     flexDirection: "row",
@@ -861,7 +1011,10 @@ const styles = StyleSheet.create({
     borderColor: "#CBD5E1",
     borderRadius: 8,
     backgroundColor: "#F8FAFC",
-    height: 38,
+    height: 40,
+    minHeight: 40,
+    maxHeight: 40,
+    boxSizing: "border-box",
   },
   counterBtn: {
     width: 30,
@@ -886,15 +1039,19 @@ const styles = StyleSheet.create({
   },
   mealTimingRow: {
     flexDirection: "row",
-    backgroundColor: "#F1F5F9",
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
     borderRadius: 8,
-    padding: 2,
-    height: 38,
-    alignItems: "center",
+    padding: 1.5,
+    height: 40,
+    minHeight: 40,
+    maxHeight: 40,
+    boxSizing: "border-box",
+    alignItems: "stretch",
   },
   mealTimingBtn: {
     flex: 1,
-    height: "100%",
     justifyContent: "center",
     alignItems: "center",
     borderRadius: 6,
@@ -903,7 +1060,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#10B981",
   },
   mealTimingText: {
-    fontSize: 10,
+    fontSize: 12,
     color: "#64748B",
     fontWeight: "500",
   },

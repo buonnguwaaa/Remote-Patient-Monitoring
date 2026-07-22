@@ -949,7 +949,7 @@ export default function PrescriptionPage() {
 
   return (
     <div className="min-h-screen bg-[#f5f6fa] dark:bg-slate-900">
-      <div className="w-full space-y-4 px-4 py-8 pb-24 sm:px-6 lg:px-8">
+      <div className="w-full space-y-4 px-2 py-4 pb-24 sm:px-4 lg:px-6">
         {toast && <Toast toast={toast} onClose={hideToast} />}
 
         {activePrescriptionPrompt && (
@@ -1326,7 +1326,7 @@ export default function PrescriptionPage() {
           </>
         ) : (
           // Form
-          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 lg:p-8">
+          <div className="bg-white dark:bg-slate-800 rounded-xl  border border-slate-200 dark:border-slate-700 p-6 lg:p-8">
             <div className="flex justify-between items-center mb-6 pb-4 border-b border-slate-200 dark:border-slate-700">
               <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
                 <FaFilePrescription className="text-blue-500" />
@@ -1417,7 +1417,7 @@ export default function PrescriptionPage() {
                 {formData.medications.map((med, idx) => (
                   <div
                     key={idx}
-                    className="border border-slate-200 dark:border-slate-700 rounded-xl p-5 bg-white dark:bg-slate-800 relative shadow-sm"
+                    className="border border-slate-200 dark:border-slate-700 rounded-xl p-5 bg-white dark:bg-slate-800 relative "
                   >
                     {formData.medications.length > 1 && (
                       <button
