@@ -349,7 +349,7 @@ const DepartmentManagement: React.FC = () => {
                 </button>
             </div>
 
-            <div className="mb-6 rounded-lg bg-white p-3 shadow-md dark:bg-slate-900 dark:ring-1 dark:ring-slate-800 md:p-4">
+            <div className="mb-6 rounded-lg bg-white p-3  dark:bg-slate-900 dark:ring-1 dark:ring-slate-800 md:p-4">
                 <div className="relative">
                     <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                     <input

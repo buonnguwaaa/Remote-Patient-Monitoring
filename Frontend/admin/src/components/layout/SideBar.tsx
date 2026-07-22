@@ -11,8 +11,6 @@ interface SideBarProps {
   navigationItems?: NavigationItem[];
 }
 
-const DEFAULT_AVATAR = "/avartar.jpg";
-
 const SideBar = ({ navigationItems }: SideBarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -117,33 +115,7 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
             })}
           </ul>
         </nav>
-
-        <div className="px-2 py-4">
-          <div
-            className={`flex items-center ${isCollapsed ? "justify-center px-0" : "px-4 gap-3"
-              }`}
-            onClick={() => navigate("/doctor-profile")}
-            style={{ cursor: "pointer" }}
-          >
-            <div className="h-12 w-12 rounded-full shrink-0">
-              <img
-                src={DEFAULT_AVATAR}
-                alt="Admin avatar"
-                onError={(e) => {
-                  e.currentTarget.onerror = null;
-                  e.currentTarget.src = DEFAULT_AVATAR;
-                }}
-                className="w-full h-full rounded-full object-cover"
-              />
-            </div>
-            {!isCollapsed && (
-              <div className="flex-1 min-w-0">
-                <p className="font-bold text-xl text-primary-text dark:text-slate-100 truncate">
-                  {user?.username || "Admin"}
-                </p>
-              </div>
-            )}
-          </div>
+        <div className="px-2 py-4 border-t border-gray-100 dark:border-slate-800">
           <button
             onClick={handleLogout}
             className="flex w-full items-center justify-center py-2 rounded-md text-xl 

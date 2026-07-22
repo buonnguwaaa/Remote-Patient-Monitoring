@@ -37,7 +37,11 @@ const STATUS_FILTERS = [
 function createDefaultForm(patientId = "") {
   return {
     patientId,
-    medications: [{ drugName: "", dosage: "", route: "Đường uống", instructions: "", schedule: [{ timeOfDay: "morning", customTime: "08:00", mealTiming: "post_meal", pillCount: 1 }] }],
+    medications: [{ drugName: "", dosage: "", route: "Đường uống", instructions: "", schedule: [
+      { timeOfDay: "morning", customTime: "08:00", mealTiming: "post_meal", pillCount: 1 },
+      { timeOfDay: "noon", customTime: "12:00", mealTiming: "post_meal", pillCount: 1 },
+      { timeOfDay: "evening", customTime: "20:00", mealTiming: "post_meal", pillCount: 1 }
+    ] }],
     timezone: "Asia/Ho_Chi_Minh",
     daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
     startDate: new Date().toISOString().slice(0, 10),
