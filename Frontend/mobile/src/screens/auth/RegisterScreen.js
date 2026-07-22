@@ -36,16 +36,19 @@ export default function RegisterScreen({ navigation, onSwitchToLogin }) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [emailError, setEmailError] = useState('');
   const { register } = useAuth();
   const [showDobInput, setShowDobInput] = useState(false);
   const { showSuccess, showError } = useSnackbar();
 
   const handleSubmit = () => {
+    setEmailError('');
     if (!name.trim()) {
       showError('Vui lòng nhập họ tên.');
       return;
     }
     if (!email.trim() || !email.includes('@')) {
+      setEmailError('Vui lòng nhập email hợp lệ.');
       showError('Vui lòng nhập email hợp lệ.');
       return;
     }
@@ -86,10 +89,13 @@ export default function RegisterScreen({ navigation, onSwitchToLogin }) {
       });
       setLoading(false);
       if (ok) {
-        showSuccess('Đăng ký thành công. Vui lòng đăng nhập.');
+        showSuccess('Đăng ký thành công! Tài khoản của bạn đang chờ Quản trị viên duyệt.');
         navigation.navigate('Login');
       } else {
         const errorMsg = error?.error || error?.message || (typeof error === 'string' ? error : JSON.stringify(error)) || "Đăng ký thất bại.";
+        if (errorMsg.includes("Email") || errorMsg.includes("đã được đăng ký")) {
+          setEmailError(errorMsg);
+        }
         showError(errorMsg);
       }
     })();
@@ -128,12 +134,20 @@ export default function RegisterScreen({ navigation, onSwitchToLogin }) {
             <Text style={styles.label}>Email</Text>
             <TextInput
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(v) => {
+                setEmail(v);
+                if (emailError) setEmailError('');
+              }}
               placeholder="Enter your email"
               keyboardType="email-address"
               autoCapitalize="none"
-              style={styles.input}
+              style={[styles.input, emailError ? { borderColor: '#DC2626', borderWidth: 1.5 } : null]}
             />
+            {emailError ? (
+              <Text style={{ color: '#DC2626', fontSize: 12, marginTop: 6, fontWeight: '500' }}>
+                {emailError}
+              </Text>
+            ) : null}
           </View>
 
           <View style={styles.field}>
