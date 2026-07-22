@@ -39,6 +39,11 @@ type ForgotPasswordRequest struct {
 	Email string `json:"email" binding:"required,email"`
 }
 
+type VerifyResetOTPRequest struct {
+	Email string `json:"email" binding:"required,email"`
+	OTP   string `json:"otp" binding:"required,len=6,numeric"`
+}
+
 type ResetPasswordRequest struct {
 	Email                string `json:"email" example:"john.doe@example.com" binding:"required,email"`
 	OTP                  string `json:"otp" example:"123456" binding:"required,len=6,numeric"`

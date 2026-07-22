@@ -37,6 +37,7 @@ type AuthService interface {
 	GetGoogleLoginURL(state string) string
 	HandleGoogleOAuth2Callback(ctx context.Context, input *usecase.GoogleOAuth2Input) (*dto.LoginResponse, error)
 	ForgotPassword(ctx context.Context, input *usecase.ForgotPasswordInput) error
+	VerifyResetOTP(ctx context.Context, email, otp string) error
 	ResetPassword(ctx context.Context, input *usecase.ResetPasswordInput) error
 }
 
@@ -312,10 +313,10 @@ func (s *authService) ForgotPassword(ctx context.Context, input *usecase.ForgotP
 
 	u, err := s.baseUserRepo.FindByEmail(ctx, email)
 	if err != nil {
-		return nil // Không lộ thông tin user tồn tại hay không
+		return errors.New("Email không tồn tại trong hệ thống")
 	}
 	if u.Provider != LocalProvider {
-		return nil
+		return fmt.Errorf("Tài khoản được đăng ký qua %s, không thể đặt lại mật khẩu", u.Provider)
 	}
 
 	otp, err := util.GenerateNumericOTP(6)
@@ -337,6 +338,25 @@ func (s *authService) ForgotPassword(ctx context.Context, input *usecase.ForgotP
 		}
 	}()
 
+	return nil
+}
+
+func (s *authService) VerifyResetOTP(ctx context.Context, email, otp string) error {
+	email = strings.ToLower(strings.TrimSpace(email))
+	otp = strings.TrimSpace(otp)
+
+	if email == "" {
+		return errors.New("Thiếu email")
+	}
+	if otp == "" {
+		return errors.New("Thiếu mã OTP")
+	}
+
+	hashedOTP := util.HashTokenSHA256(otp)
+	_, err := s.baseUserRepo.FindByEmailAndResetOTP(ctx, email, hashedOTP)
+	if err != nil {
+		return errors.New("Mã OTP không hợp lệ hoặc đã hết hạn")
+	}
 	return nil
 }
 
