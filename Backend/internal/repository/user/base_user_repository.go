@@ -23,7 +23,9 @@ type BaseUserRepository interface {
 	Delete(ctx context.Context, id primitive.ObjectID) error
 
 	SetResetToken(ctx context.Context, email, token string, expires time.Time) error
+	SetResetTokenByID(ctx context.Context, id primitive.ObjectID, token string, expires time.Time) error
 	FindByEmailAndResetOTP(ctx context.Context, email, otpHash string) (*domain.BaseUser, error)
+	FindByValidResetToken(ctx context.Context, tokenHash string) (*domain.BaseUser, error)
 	ResetPassword(ctx context.Context, id primitive.ObjectID, hashed string) error
 
 	EnsureIndexes(ctx context.Context) error
@@ -126,6 +128,17 @@ func (r *baseUserRepository) SetResetToken(ctx context.Context, email, token str
 	return err
 }
 
+func (r *baseUserRepository) SetResetTokenByID(ctx context.Context, id primitive.ObjectID, token string, expires time.Time) error {
+	_, err := r.col.UpdateOne(ctx, bson.M{"_id": id}, bson.M{
+		"$set": bson.M{
+			"resetToken":       token,
+			"resetTokenExpiry": expires,
+			"updatedAt":        time.Now().UTC(),
+		},
+	})
+	return err
+}
+
 func (r *baseUserRepository) FindByEmailAndResetOTP(ctx context.Context, email, otpHash string) (*domain.BaseUser, error) {
 	var u domain.BaseUser
 	err := r.col.FindOne(ctx, bson.M{
@@ -139,9 +152,25 @@ func (r *baseUserRepository) FindByEmailAndResetOTP(ctx context.Context, email, 
 	return &u, nil
 }
 
+func (r *baseUserRepository) FindByValidResetToken(ctx context.Context, tokenHash string) (*domain.BaseUser, error) {
+	var u domain.BaseUser
+	err := r.col.FindOne(ctx, bson.M{
+		"resetToken":       tokenHash,
+		"resetTokenExpiry": bson.M{"$gt": time.Now()},
+	}).Decode(&u)
+	if err != nil {
+		return nil, err
+	}
+	return &u, nil
+}
+
 func (r *baseUserRepository) ResetPassword(ctx context.Context, id primitive.ObjectID, hashed string) error {
 	_, err := r.col.UpdateOne(ctx, bson.M{"_id": id}, bson.M{
-		"$set":   bson.M{"password": hashed, "updatedAt": time.Now().UTC()},
+		"$set": bson.M{
+			"password":        hashed,
+			"mustSetPassword": false,
+			"updatedAt":       time.Now().UTC(),
+		},
 		"$unset": bson.M{"resetToken": "", "resetTokenExpiry": ""},
 	})
 	return err

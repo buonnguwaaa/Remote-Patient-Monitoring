@@ -343,6 +343,102 @@ func (h *AuthHandler) ResetPassword(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Đặt lại mật khẩu thành công"})
 }
 
+// ShowAcceptInvite renders the set-password form for an admin-created patient invite link.
+// @Summary Show accept-invite form
+// @Tags auth
+// @Produce html
+// @Param token query string true "Invite token"
+// @Success 200 {string} string "HTML form"
+// @Router /auth/accept-invite [get]
+func (h *AuthHandler) ShowAcceptInvite(c *gin.Context) {
+	token := strings.TrimSpace(c.Query("token"))
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	name, err := h.service.PreviewAcceptInvite(ctx, token)
+	if err != nil {
+		h.renderAcceptInvitePage(c, http.StatusBadRequest, acceptInviteExpiredBody())
+		return
+	}
+
+	h.renderAcceptInvitePage(c, http.StatusOK, acceptInviteFormBody(name, token, ""))
+}
+
+// SubmitAcceptInvite completes first-time password setup from the invite link.
+// @Summary Submit accept-invite form
+// @Tags auth
+// @Accept application/x-www-form-urlencoded
+// @Produce html
+// @Param token formData string true "Invite token"
+// @Param password formData string true "New password"
+// @Param confirmedPassword formData string true "Confirm password"
+// @Success 200 {string} string "HTML success"
+// @Router /auth/accept-invite [post]
+func (h *AuthHandler) SubmitAcceptInvite(c *gin.Context) {
+	token := strings.TrimSpace(c.PostForm("token"))
+	password := c.PostForm("password")
+	confirmed := c.PostForm("confirmedPassword")
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	if err := h.service.AcceptInvite(ctx, token, password, confirmed); err != nil {
+		name, previewErr := h.service.PreviewAcceptInvite(ctx, token)
+		if previewErr != nil {
+			h.renderAcceptInvitePage(c, http.StatusBadRequest, acceptInviteExpiredBody())
+			return
+		}
+		h.renderAcceptInvitePage(c, http.StatusBadRequest, acceptInviteFormBody(name, token, err.Error()))
+		return
+	}
+
+	h.renderAcceptInvitePage(c, http.StatusOK, `
+		<p class="ok">Đặt mật khẩu thành công. Bạn có thể mở ứng dụng RPM và đăng nhập bằng email hoặc số điện thoại đã đăng ký.</p>
+	`)
+}
+
+func (h *AuthHandler) renderAcceptInvitePage(c *gin.Context, status int, body string) {
+	c.Header("Content-Type", "text/html; charset=utf-8")
+	c.String(status, constant.AcceptInvitePageTemplate, body)
+}
+
+func acceptInviteExpiredBody() string {
+	return `
+		<p class="error">Liên kết không hợp lệ hoặc đã hết hạn (15 phút).</p>
+		<p class="hint">Nếu tài khoản có email, mở ứng dụng RPM → <strong>Quên mật khẩu</strong> để nhận mã OTP mới và đặt mật khẩu. Nếu chỉ có số điện thoại, hãy liên hệ quản trị viên để gửi lại liên kết.</p>
+	`
+}
+
+func acceptInviteFormBody(name, token, formError string) string {
+	errBlock := ""
+	if formError != "" {
+		errBlock = `<p class="error">` + htmlEscape(formError) + `</p>`
+	}
+	return errBlock + `
+		<p>Chào <strong>` + htmlEscape(name) + `</strong>, hãy đặt mật khẩu để kích hoạt tài khoản RPM.</p>
+		<form method="POST" action="/auth/accept-invite">
+			<input type="hidden" name="token" value="` + htmlEscape(token) + `">
+			<label for="password">Mật khẩu mới</label>
+			<input id="password" name="password" type="password" minlength="6" required autocomplete="new-password">
+			<label for="confirmedPassword">Xác nhận mật khẩu</label>
+			<input id="confirmedPassword" name="confirmedPassword" type="password" minlength="6" required autocomplete="new-password">
+			<button type="submit">Lưu mật khẩu</button>
+		</form>
+		<p class="hint">Liên kết có hiệu lực 15 phút. Sau khi lưu, đăng nhập trên ứng dụng RPM.</p>
+	`
+}
+
+func htmlEscape(s string) string {
+	replacer := strings.NewReplacer(
+		`&`, "&amp;",
+		`<`, "&lt;",
+		`>`, "&gt;",
+		`"`, "&quot;",
+		`'`, "&#39;",
+	)
+	return replacer.Replace(s)
+}
+
 // ========================================================
 // =============== Private Helper Functions ===============
 // ========================================================

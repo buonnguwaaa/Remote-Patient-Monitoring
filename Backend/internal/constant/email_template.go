@@ -60,11 +60,37 @@ const PatientAccountEmailTemplate = `
 		<p>Chào %s,</p>
 		<p>%s</p>
 		%s
-		<p>Bạn có thể đăng nhập bằng email hoặc số điện thoại đã đăng ký cùng mật khẩu của mình.</p>
 	</div>
 	</body>
 	</html>
 	`
+
+const AcceptInvitePageTemplate = `<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Đặt mật khẩu - RPM</title>
+<style>
+  body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:#f7f9fc; color:#333; margin:0; padding:24px; }
+  .container { max-width:420px; margin:40px auto; background:#fff; border-radius:10px; padding:28px 32px; box-shadow:0 4px 12px rgba(0,0,0,0.08); }
+  h1 { color:#007bff; font-size:20px; text-align:center; }
+  p { font-size:15px; line-height:1.6; }
+  label { display:block; font-size:14px; margin:14px 0 6px; }
+  input { width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid #ccd; border-radius:6px; font-size:15px; }
+  button { width:100%; margin-top:20px; background:#007bff; color:#fff; border:none; border-radius:6px; padding:12px; font-size:16px; font-weight:600; cursor:pointer; }
+  .error { color:#c0392b; background:#fdecea; padding:10px 12px; border-radius:6px; font-size:14px; }
+  .ok { color:#1e7e34; background:#e8f5e9; padding:10px 12px; border-radius:6px; font-size:14px; }
+  .hint { font-size:13px; color:#666; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Đặt mật khẩu</h1>
+  %s
+</div>
+</body>
+</html>`
 
 const ResetPasswordEmailTemplate = `
 	<!DOCTYPE html>

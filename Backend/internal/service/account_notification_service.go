@@ -27,7 +27,7 @@ type SMSProvider interface {
 
 type AccountNotifier interface {
 	NotifyAdminsPatientRegistered(ctx context.Context, patient *userDomain.Patient) error
-	NotifyPatientActivated(ctx context.Context, patient *userDomain.Patient, createdByAdmin bool, temporaryPassword string) error
+	NotifyPatientActivated(ctx context.Context, patient *userDomain.Patient, createdByAdmin bool, inviteURL string) error
 }
 
 type accountNotifier struct {
@@ -81,7 +81,7 @@ func (s *accountNotifier) NotifyAdminsPatientRegistered(ctx context.Context, pat
 	return errors.Join(errs...)
 }
 
-func (s *accountNotifier) NotifyPatientActivated(ctx context.Context, patient *userDomain.Patient, createdByAdmin bool, temporaryPassword string) error {
+func (s *accountNotifier) NotifyPatientActivated(ctx context.Context, patient *userDomain.Patient, createdByAdmin bool, inviteURL string) error {
 	if patient == nil {
 		return errors.New("bệnh nhân là bắt buộc")
 	}
@@ -89,26 +89,40 @@ func (s *accountNotifier) NotifyPatientActivated(ctx context.Context, patient *u
 	title := "Tài khoản đã được xác minh"
 	message := "Thông tin của bạn đã được quản trị viên xác minh và tài khoản RPM hiện đã hoạt động."
 	subject := constant.SubjectPatientAccountVerified
-	emailDetails := ""
+	emailDetails := `<p>Bạn có thể đăng nhập bằng email hoặc số điện thoại đã đăng ký cùng mật khẩu của mình.</p>`
 	smsBody := "RPM - Tai khoan da duoc xac minh va kich hoat. Ban co the dang nhap."
 	if createdByAdmin {
 		title = "Tài khoản RPM đã được tạo"
-		message = "Quản trị viên đã tạo và kích hoạt tài khoản Remote Patient Monitoring cho bạn."
+		message = "Quản trị viên đã tạo tài khoản Remote Patient Monitoring cho bạn. Vui lòng mở liên kết bên dưới để đặt mật khẩu trước khi đăng nhập."
 		subject = constant.SubjectPatientAccountCreated
-		loginIdentifier := patient.Email
-		if loginIdentifier == "" {
-			loginIdentifier = patient.Phone
+		ttlMinutes := int(ResetPasswordTokenTTL.Minutes())
+		if inviteURL == "" {
+			emailDetails = fmt.Sprintf(
+				`<p>Liên kết đặt mật khẩu chưa sẵn sàng. Nếu bạn có email, hãy mở ứng dụng RPM và chọn <strong>Quên mật khẩu</strong> để đặt mật khẩu (OTP hiệu lực %d phút).</p>`,
+				ttlMinutes,
+			)
+			smsBody = fmt.Sprintf(
+				"RPM - Tai khoan da tao. Mo app va dung Quen mat khau de dat mat khau (OTP %d phut).",
+				ttlMinutes,
+			)
+		} else {
+			safeURL := html.EscapeString(inviteURL)
+			emailDetails = fmt.Sprintf(
+				`<p style="text-align:center;margin:28px 0;">
+					<a href="%s" style="background:#007bff;color:#fff;text-decoration:none;padding:12px 22px;border-radius:6px;display:inline-block;font-weight:600;">Đặt mật khẩu</a>
+				</p>
+				<p>Liên kết có hiệu lực trong <strong>%d phút</strong>. Nếu hết hạn, mở ứng dụng RPM và chọn <strong>Quên mật khẩu</strong> (cần email) để nhận mã OTP mới.</p>
+				<p style="font-size:13px;color:#666;word-break:break-all;">Hoặc mở: %s</p>`,
+				safeURL,
+				ttlMinutes,
+				safeURL,
+			)
+			smsBody = fmt.Sprintf(
+				"RPM - Dat mat khau tai: %s (het han sau %d phut). Neu het han, dung Quen mat khau trong app.",
+				inviteURL,
+				ttlMinutes,
+			)
 		}
-		emailDetails = fmt.Sprintf(
-			`<p><strong>Tài khoản:</strong> %s</p><p><strong>Mật khẩu tạm thời:</strong> %s</p><p><strong>Vui lòng đổi mật khẩu ngay sau khi đăng nhập.</strong></p>`,
-			html.EscapeString(loginIdentifier),
-			html.EscapeString(temporaryPassword),
-		)
-		smsBody = fmt.Sprintf(
-			"RPM - Tai khoan: %s; Mat khau tam: %s. Doi mat khau ngay sau khi dang nhap.",
-			patient.Phone,
-			temporaryPassword,
-		)
 	}
 
 	var errs []error
