@@ -73,7 +73,7 @@ export default function PatientClinicalSummary({ patientId }: Props) {
 
         {/* Diseases */}
         <div>
-          <span className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">Bệnh lý nền:</span>
+          <span className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">Bệnh lý:</span>
           <div className="flex gap-2 flex-wrap">
             {patient.diseaseTypes?.bloodPressure && <span className="px-2 py-0.5 bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400 text-[11px] font-semibold rounded border border-rose-100 dark:border-rose-800 flex items-center gap-1"><FaHeartbeat /> Huyết áp</span>}
             {patient.diseaseTypes?.glucose && <span className="px-2 py-0.5 bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400 text-[11px] font-semibold rounded border border-amber-100 dark:border-amber-800 flex items-center gap-1"><GiHeartBeats /> Tiểu đường</span>}

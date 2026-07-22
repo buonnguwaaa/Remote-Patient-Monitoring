@@ -60,29 +60,21 @@ function StatusUpdateModal({ visible, prescription, onClose, onUpdated, showToas
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(false);
   const handle = async (status) => {
-    Alert.alert("Xác nhận", `Cập nhật trạng thái thành "${status}"?`, [
-      { text: "Hủy", style: "cancel" },
-      { 
-        text: "Đồng ý", 
-        onPress: async () => {
-          setLoading(true);
-          try {
-            const res = await updatePrescriptionStatus(prescription.id, status);
-            if (res.ok || !res.error) { 
-              if (showToast) showToast("Đã cập nhật trạng thái đơn thuốc.", "success");
-              onUpdated(); 
-              onClose(); 
-            } else {
-              if (showToast) showToast("Không cập nhật được trạng thái.", "error");
-            }
-          } catch { 
-            if (showToast) showToast("Lỗi kết nối máy chủ.", "error"); 
-          } finally { 
-            setLoading(false); 
-          }
-        }
+    setLoading(true);
+    try {
+      const res = await updatePrescriptionStatus(prescription.id, status);
+      if (res.ok || !res.error) { 
+        if (showToast) showToast("Đã cập nhật trạng thái đơn thuốc.", "success");
+        onUpdated(); 
+        onClose(); 
+      } else {
+        if (showToast) showToast("Không cập nhật được trạng thái.", "error");
       }
-    ]);
+    } catch { 
+      if (showToast) showToast("Lỗi kết nối máy chủ.", "error"); 
+    } finally { 
+      setLoading(false); 
+    }
   };
   if (!prescription) return null;
   return (
@@ -321,7 +313,39 @@ export default function PrescriptionsScreen() {
 
         <TouchableOpacity 
           style={styles.createBtn} 
-          onPress={() => { 
+          onPress={async () => { 
+            if (!selectedPatientId) {
+              setFormData(createDefaultForm());
+              setFormVisible(true);
+              return;
+            }
+            try {
+              const list = await getPrescriptions({ patientId: selectedPatientId, latest: true });
+              const activeP = Array.isArray(list) ? list[0] : null;
+              if (activeP && activeP.status === "active") {
+                Alert.alert(
+                  "Cảnh báo: Đơn thuốc đang hiệu lực",
+                  "Bệnh nhân này đang có một đơn thuốc còn hiệu lực. Bạn có muốn tiếp tục tạo đơn mới đè lên, hay chỉnh sửa đơn hiện tại?",
+                  [
+                    { text: "Hủy bỏ", style: "cancel" },
+                    { 
+                      text: "Tiếp tục tạo mới", 
+                      onPress: () => {
+                        setFormData(createDefaultForm(selectedPatientId)); 
+                        setFormVisible(true); 
+                      } 
+                    },
+                    {
+                      text: "Chỉnh sửa đơn cũ",
+                      onPress: () => openEdit(activeP)
+                    }
+                  ]
+                );
+                return;
+              }
+            } catch (e) {
+              console.log("Error checking active prescription", e);
+            }
             setFormData(createDefaultForm(selectedPatientId)); 
             setFormVisible(true); 
           }}
