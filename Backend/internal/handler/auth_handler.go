@@ -282,7 +282,33 @@ func (h *AuthHandler) ForgotPassword(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Liên kết đặt lại mật khẩu đã được gửi đến hộp thư của bạn"})
+	c.JSON(http.StatusOK, gin.H{"message": "Mã OTP đã được gửi đến email của bạn"})
+}
+
+// @Summary Verify Reset OTP
+// @Description Verify reset password OTP code
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param data body dto.VerifyResetOTPRequest true "Email and OTP"
+// @Success 200 {object} map[string]string "OTP verified successfully"
+// @Failure 400 {object} map[string]string "Bad request"
+// @Router /auth/verify-reset-otp [post]
+func (h *AuthHandler) VerifyResetOTP(c *gin.Context) {
+	var req dto.VerifyResetOTPRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Email hoặc mã OTP không hợp lệ"})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	if err := h.service.VerifyResetOTP(ctx, req.Email, req.OTP); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Mã OTP hợp lệ"})
 }
 
 // @Summary Reset Password

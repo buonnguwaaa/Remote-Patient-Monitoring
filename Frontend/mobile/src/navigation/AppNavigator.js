@@ -119,6 +119,14 @@ function PatientTabNavigator() {
 // NurseTabNavigator removed — nurse app moved to doctor-app (staff app)
 // Files kept for rollback; not imported in navigation.
 
+function MainTabsScreen() {
+  return (
+    <BadgeProvider>
+      <PatientTabNavigator />
+    </BadgeProvider>
+  );
+}
+
 function RootNavigator() {
   const { user, initializing } = useAuth();
 
@@ -146,14 +154,7 @@ function RootNavigator() {
   // Patient-only app: all authenticated users go to patient navigator
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen
-        name="MainTabs"
-        component={() => (
-          <BadgeProvider>
-            <PatientTabNavigator />
-          </BadgeProvider>
-        )}
-      />
+      <Stack.Screen name="MainTabs" component={MainTabsScreen} />
       <Stack.Screen name="InputMeasurementPatientScreen" component={InputMeasurementPatientScreen} />
       <Stack.Screen name="PatientHistory" component={HistoryScreen} />
       <Stack.Screen name="PatientAlerts" component={AlertScreen} />

@@ -213,8 +213,18 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
     );
   };
 
+  const handleUnactivatedAccount = () => {
+    Alert.alert(
+      "Tài khoản chưa được kích hoạt",
+      "Tài khoản của bạn đang chờ Quản trị viên (Admin) duyệt và kích hoạt trước khi có thể đăng nhập.",
+      [{ text: "Đã hiểu", style: "default" }],
+      { cancelable: true }
+    );
+  };
+
   const handleSubmit = () => {
-    if (!email.trim()) {
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
       showError('Vui lòng nhập địa chỉ email.');
       return;
     }
@@ -224,10 +234,15 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
     }
     setLoading(true);
     (async () => {
-      const res = await login(email.trim(), password);
+      const res = await login(trimmedEmail, password);
       setLoading(false);
       if (!res.ok) {
-        showError(String(res.error || "Đăng nhập thất bại."));
+        const errorMsg = String(res.error || "Đăng nhập thất bại.");
+        if (errorMsg.toLowerCase().includes("chưa được kích hoạt") || errorMsg.toLowerCase().includes("not activated")) {
+          handleUnactivatedAccount();
+          return;
+        }
+        showError(errorMsg);
         return;
       }
 

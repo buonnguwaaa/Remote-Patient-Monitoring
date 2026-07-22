@@ -147,9 +147,7 @@ func (s *userService) UpdateBaseUserStatus(ctx context.Context, input *usecase.U
 			return nil
 		}
 		patient.Status = domain.StatusActive
-		if err := s.accountNotifier.NotifyPatientActivated(ctx, patient, false, ""); err != nil {
-			log.Printf("[WARN] failed to notify verified patient %s: %v", objID.Hex(), err)
-		}
+		s.notifyPatientActivatedAsync(ctx, patient, false, "")
 	}
 	return nil
 }
@@ -221,12 +219,26 @@ func (s *userService) CreatePatient(ctx context.Context, input *usecase.CreatePa
 	if err != nil {
 		return nil, err
 	}
-	if s.accountNotifier != nil {
-		if err := s.accountNotifier.NotifyPatientActivated(ctx, created, true, temporaryPassword); err != nil {
-			log.Printf("[WARN] failed to notify admin-created patient %s: %v", created.ID.Hex(), err)
-		}
-	}
+	s.notifyPatientActivatedAsync(ctx, created, true, temporaryPassword)
 	return mapPatient(created), nil
+}
+
+// notifyPatientActivatedAsync delivers the activation email/SMS off the
+// request path: SMTP and Twilio round-trips take seconds and their failures
+// are non-fatal (logged only), so the API response must not wait on them.
+func (s *userService) notifyPatientActivatedAsync(ctx context.Context, patient *domain.Patient, createdByAdmin bool, temporaryPassword string) {
+	if s.accountNotifier == nil {
+		return
+	}
+	notifyCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), time.Minute)
+	go func() {
+		defer cancel()
+		if err := s.accountNotifier.NotifyPatientActivated(notifyCtx, patient, createdByAdmin, temporaryPassword); err != nil {
+			log.Printf("[WARN] failed to notify patient %s: %v", patient.ID.Hex(), err)
+		} else {
+			log.Printf("[INFO] notified patient %s", patient.ID.Hex())
+		}
+	}()
 }
 
 func (s *userService) ensureContactsAvailable(ctx context.Context, email, phone string) error {

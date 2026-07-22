@@ -50,7 +50,7 @@ export default function RegisterOptionalScreen({ route, navigation }) {
       setLoading(false);
 
       if (ok) {
-        showSuccess('Đăng ký tài khoản thành công. Vui lòng đăng nhập!');
+        showSuccess('Đăng ký thành công! Tài khoản của bạn đang chờ Quản trị viên duyệt.');
         navigation.navigate('Login');
       } else {
         const errorMsg = error?.error || error?.message || (typeof error === 'string' ? error : JSON.stringify(error)) || 'Đăng ký thất bại.';

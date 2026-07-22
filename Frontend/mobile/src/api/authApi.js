@@ -44,6 +44,13 @@ export async function forgotPassword(email) {
   });
 }
 
+export async function verifyResetOtp(payload) {
+  return request("/auth/verify-reset-otp", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function resetPassword(payload) {
   return request("/auth/reset-password", {
     method: "POST",
@@ -51,4 +58,5 @@ export async function resetPassword(payload) {
   });
 }
 
-export default { register, login, refresh, me, logout, forgotPassword, resetPassword };
+export default { register, login, refresh, me, logout, forgotPassword, verifyResetOtp, resetPassword };
+
