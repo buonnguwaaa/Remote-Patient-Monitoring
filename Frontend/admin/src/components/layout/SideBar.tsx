@@ -64,7 +64,10 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
             }`}
         >
           {!isCollapsed && (
-            <h2 className="font-bold text-2xl text-primary-text dark:text-slate-100">RPM</h2>
+            <div className="flex items-center gap-3">
+              <img src="/doctor-logo.png" alt="Admin App Logo" className="w-10 h-10 rounded-xl shadow-sm object-cover bg-white" />
+              <h2 className="font-bold text-2xl text-primary-text dark:text-slate-100 tracking-tight">RPM</h2>
+            </div>
           )}
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
