@@ -11,9 +11,8 @@ import (
 )
 
 // cachedBaseUser is the safe-to-cache projection of domain.BaseUser. It
-// deliberately excludes Password, ResetToken(Expiry), and
-// ActivationTokenHash(Expiry): those are read via dedicated, uncached
-// lookups (FindByEmailAndResetOTP, FindByEmailAndActivationHash, etc.), and
+// deliberately excludes Password, ResetToken(Expiry), and PhoneLookupHash:
+// credential fields are read via dedicated, uncached lookups, and
 // FindByID's actual callers (GET /auth/me, GetBaseUserByID, the activity-log
 // middleware) never need them. This keeps credential material out of Redis
 // even though the underlying Mongo document carries it.

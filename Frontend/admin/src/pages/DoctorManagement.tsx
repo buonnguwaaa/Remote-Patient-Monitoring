@@ -324,7 +324,7 @@ const DoctorManagement: React.FC = () => {
         </button>
       </div>
 
-      <div className="mb-6 rounded-lg bg-white p-4 shadow-md dark:bg-gray-800">
+      <div className="mb-6 rounded-lg bg-white p-4 dark:bg-gray-800">
         <div className="relative">
           <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
           <input

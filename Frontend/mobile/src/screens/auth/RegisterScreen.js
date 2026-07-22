@@ -22,6 +22,7 @@ export default function RegisterScreen({ navigation, onSwitchToLogin }) {
   const [gender, setGender] = useState('');
   const [showGenderOptions, setShowGenderOptions] = useState(false);
   const [dob, setDob] = useState('');
+  const [cccd, setCccd] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [tempDate, setTempDate] = useState(dob ? new Date(dob) : new Date());
 
@@ -36,16 +37,19 @@ export default function RegisterScreen({ navigation, onSwitchToLogin }) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [emailError, setEmailError] = useState('');
   const { register } = useAuth();
   const [showDobInput, setShowDobInput] = useState(false);
   const { showSuccess, showError } = useSnackbar();
 
   const handleSubmit = () => {
+    setEmailError('');
     if (!name.trim()) {
       showError('Vui lòng nhập họ tên.');
       return;
     }
     if (!email.trim() || !email.includes('@')) {
+      setEmailError('Vui lòng nhập email hợp lệ.');
       showError('Vui lòng nhập email hợp lệ.');
       return;
     }
@@ -65,34 +69,24 @@ export default function RegisterScreen({ navigation, onSwitchToLogin }) {
       showError('Mật khẩu xác nhận không khớp.');
       return;
     }
-    setLoading(true);
-    (async () => {
-      const genderCode = (() => {
-        if (!gender) return 'O';
-        const g = gender.toLowerCase();
-        if (g.startsWith('male')) return 'M';
-        if (g.startsWith('female')) return 'F';
-        return 'O';
-      })();
-
-      const { ok, error } = await register({
-        name,
-        email,
-        password,
-        confirmedPassword: confirmPassword,
-        dob,
-        gender: genderCode,
-        role: 'user.patient',
-      });
-      setLoading(false);
-      if (ok) {
-        showSuccess('Đăng ký thành công. Vui lòng đăng nhập.');
-        navigation.navigate('Login');
-      } else {
-        const errorMsg = error?.error || error?.message || (typeof error === 'string' ? error : JSON.stringify(error)) || "Đăng ký thất bại.";
-        showError(errorMsg);
-      }
+    const genderCode = (() => {
+      if (!gender) return 'O';
+      const g = gender.toLowerCase();
+      if (g.startsWith('male')) return 'M';
+      if (g.startsWith('female')) return 'F';
+      return 'O';
     })();
+
+    navigation.navigate('RegisterOptional', {
+      name,
+      email,
+      password,
+      confirmedPassword: confirmPassword,
+      dob,
+      gender: genderCode,
+      role: 'user.patient',
+      cccd,
+    });
   };
 
   return (
@@ -128,12 +122,20 @@ export default function RegisterScreen({ navigation, onSwitchToLogin }) {
             <Text style={styles.label}>Email</Text>
             <TextInput
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(v) => {
+                setEmail(v);
+                if (emailError) setEmailError('');
+              }}
               placeholder="Enter your email"
               keyboardType="email-address"
               autoCapitalize="none"
-              style={styles.input}
+              style={[styles.input, emailError ? { borderColor: '#DC2626', borderWidth: 1.5 } : null]}
             />
+            {emailError ? (
+              <Text style={{ color: '#DC2626', fontSize: 12, marginTop: 6, fontWeight: '500' }}>
+                {emailError}
+              </Text>
+            ) : null}
           </View>
 
           <View style={styles.field}>
@@ -270,6 +272,17 @@ export default function RegisterScreen({ navigation, onSwitchToLogin }) {
           </View>
 
           <View style={styles.field}>
+            <Text style={styles.label}>CCCD (Căn cước công dân)</Text>
+            <TextInput
+              value={cccd}
+              onChangeText={setCccd}
+              placeholder="Nhập số CCCD (tùy chọn)"
+              keyboardType="number-pad"
+              style={styles.input}
+            />
+          </View>
+
+          <View style={styles.field}>
             <Text style={styles.label}>Password</Text>
             <View style={styles.passwordWrap}>
               <TextInput
@@ -302,7 +315,7 @@ export default function RegisterScreen({ navigation, onSwitchToLogin }) {
             </View>
           </View>
 
-          <ButtonPrimary title={loading ? 'Creating Account...' : 'Create Account'} onPress={handleSubmit} disabled={loading} />
+          <ButtonPrimary title="Tiếp tục" onPress={handleSubmit} disabled={loading} />
           {/* Terms */}
           <Text style={styles.termsText}>
             By signing up, you agree to our{' '}

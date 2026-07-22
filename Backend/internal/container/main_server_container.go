@@ -7,6 +7,7 @@ import (
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/config"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/fcm"
+	twilioClient "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/twilio"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/cache"
 	domain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/handler"
@@ -56,6 +57,7 @@ type MainServerContainer struct {
 	FollowUpAppointmentService service.FollowUpAppointmentService
 	ChatService                service.ChatService
 	NotificationService        service.NotificationService
+	AccountNotifier            service.AccountNotifier
 	VideoSessionService        service.VideoSessionService
 
 	AuthHandler                *handler.AuthHandler
@@ -173,8 +175,17 @@ func NewMainServerContainer() *MainServerContainer {
 
 	c.RealtimePublisher = realtime.NewRedisUserEventPublisher(config.Redis.Client)
 
-	c.AuthService = service.NewAuthService(c.BaseUserRepo, c.PatientRepo, c.DoctorRepo, c.NurseRepo, c.TokenRepo, c.TokenBlacklistRepo, c.JWTManager)
-	c.UserService = service.NewUserService(c.BaseUserRepo, c.PatientRepo, c.NurseRepo, c.DoctorRepo)
+	c.NotificationService = service.NewNotificationService(c.NotificationTokenRepo, c.NotificationRepo, fcmClient, c.RealtimePublisher)
+	var smsProvider service.SMSProvider
+	if client, err := twilioClient.NewClientFromEnv(); err != nil {
+		log.Printf("[WARN] Twilio client not configured: %v", err)
+	} else {
+		smsProvider = client
+	}
+	c.AccountNotifier = service.NewAccountNotifier(c.BaseUserRepo, c.NotificationService, smsProvider)
+
+	c.AuthService = service.NewAuthService(c.BaseUserRepo, c.PatientRepo, c.TokenRepo, c.TokenBlacklistRepo, c.JWTManager, c.AccountNotifier)
+	c.UserService = service.NewUserService(c.BaseUserRepo, c.PatientRepo, c.NurseRepo, c.DoctorRepo, c.AccountNotifier)
 	c.MeasurementService = service.NewMeasurementService(c.PatientRepo, c.MeasurementRepo)
 	c.ThresholdService = service.NewThresholdService(c.PatientRepo, c.DoctorRepo, c.ThresholdRepo)
 	c.AlertService = service.NewAlertService(c.AlertRepo)

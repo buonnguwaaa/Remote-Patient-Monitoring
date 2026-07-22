@@ -47,6 +47,17 @@ func (r *encryptedBaseUserRepository) FindByEmail(ctx context.Context, email str
 	return user, nil
 }
 
+func (r *encryptedBaseUserRepository) FindByPhoneLookupHash(ctx context.Context, hash string) (*domain.BaseUser, error) {
+	user, err := r.BaseUserRepository.FindByPhoneLookupHash(ctx, hash)
+	if err != nil {
+		return nil, err
+	}
+	if err := r.decryptPhone(user); err != nil {
+		return nil, err
+	}
+	return user, nil
+}
+
 func (r *encryptedBaseUserRepository) FindWithFilter(ctx context.Context, f UserFilter) ([]domain.BaseUser, error) {
 	users, err := r.BaseUserRepository.FindWithFilter(ctx, f)
 	if err != nil {
@@ -62,17 +73,6 @@ func (r *encryptedBaseUserRepository) FindWithFilter(ctx context.Context, f User
 
 func (r *encryptedBaseUserRepository) FindByEmailAndResetOTP(ctx context.Context, email, otpHash string) (*domain.BaseUser, error) {
 	user, err := r.BaseUserRepository.FindByEmailAndResetOTP(ctx, email, otpHash)
-	if err != nil {
-		return nil, err
-	}
-	if err := r.decryptPhone(user); err != nil {
-		return nil, err
-	}
-	return user, nil
-}
-
-func (r *encryptedBaseUserRepository) FindByEmailAndActivationHash(ctx context.Context, email, hash string) (*domain.BaseUser, error) {
-	user, err := r.BaseUserRepository.FindByEmailAndActivationHash(ctx, email, hash)
 	if err != nil {
 		return nil, err
 	}

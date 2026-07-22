@@ -1,6 +1,8 @@
 package usecase
 
 import (
+	"time"
+
 	domain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
 )
 
@@ -64,6 +66,40 @@ type UpdateUserInfoInput struct {
 type UpdateUserStatusInput struct {
 	ID     string
 	Status domain.Status
+}
+
+type CreatePatientInput struct {
+	Name   string
+	Email  string
+	Phone  string
+	Gender domain.Gender
+	Dob    time.Time
+	PatientProfileFieldsInput
+}
+
+type CreateMedicalStaffInput struct {
+	Name              string
+	Email             string
+	Phone             string
+	Password          string
+	ConfirmedPassword string
+	Gender            domain.Gender
+	Dob               time.Time
+	Status            domain.Status
+	YearsOfExperience int
+	StaffFieldsInput
+}
+
+type CreateDoctorInput struct {
+	CreateMedicalStaffInput
+	Specialization            string
+	AcademicDegree            domain.AcademicDegree
+	ProfessionalQualification domain.ProfessionalQualification
+	AcademicTitle             domain.AcademicTitle
+}
+
+type CreateNurseInput struct {
+	CreateMedicalStaffInput
 }
 
 type UpdatePatientProfileInput struct {

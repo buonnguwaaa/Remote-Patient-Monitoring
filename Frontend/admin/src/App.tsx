@@ -6,6 +6,7 @@ import "./styles/App.css";
 import MainLayout from "./components/layout/MainLayout.tsx";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
+import { RealtimeNotificationProvider } from "./context/RealtimeNotificationContext";
 
 const PageLoader = () => (
   <div className="flex h-screen w-full items-center justify-center">
@@ -53,32 +54,34 @@ function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <BrowserRouter>
-          <Suspense fallback={<PageLoader />}>
-            <Routes>
-              <Route path="/login" element={<LoginPage />} />
+        <RealtimeNotificationProvider>
+          <BrowserRouter>
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                <Route path="/login" element={<LoginPage />} />
 
-              <Route
-                element={
-                  <ProtectedRoute>
-                    <MainLayout />
-                  </ProtectedRoute>
-                }
-              >
-                <Route path="/" element={<AdminDashboard />} />
-                <Route path="/doctors" element={<DoctorManagement />} />
-                <Route path="/patients" element={<PatientManagementAdmin />} />
-                <Route path="/nurses" element={<NurseManagement />} />
-                <Route path="/system-settings" element={<SystemSettings />} />
-                <Route path="/activity-history" element={<ActivityHistory />} />
-                <Route path="/departments" element={<DepartmentManagement />} />
-                <Route path="/assignments" element={<AssignmentManagement />} />
-              </Route>
+                <Route
+                  element={
+                    <ProtectedRoute>
+                      <MainLayout />
+                    </ProtectedRoute>
+                  }
+                >
+                  <Route path="/" element={<AdminDashboard />} />
+                  <Route path="/doctors" element={<DoctorManagement />} />
+                  <Route path="/patients" element={<PatientManagementAdmin />} />
+                  <Route path="/nurses" element={<NurseManagement />} />
+                  <Route path="/system-settings" element={<SystemSettings />} />
+                  <Route path="/activity-history" element={<ActivityHistory />} />
+                  <Route path="/departments" element={<DepartmentManagement />} />
+                  <Route path="/assignments" element={<AssignmentManagement />} />
+                </Route>
 
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </Suspense>
-        </BrowserRouter>
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </Suspense>
+          </BrowserRouter>
+        </RealtimeNotificationProvider>
       </AuthProvider>
     </ThemeProvider>
   );

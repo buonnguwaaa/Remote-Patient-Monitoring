@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/constant"
-	domain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/service"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecase"
@@ -50,11 +49,19 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	input := &usecase.RegisterInput{
 		Name:              req.Name,
 		Email:             req.Email,
+		Phone:             req.Phone,
 		Password:          req.Password,
 		ConfirmedPassword: req.ConfirmedPassword,
-		Role:              domain.Role(req.Role),
-		Gender:            domain.Gender(req.Gender),
+		Gender:            req.Gender,
 		Dob:               dob,
+		PatientProfileFieldsInput: usecase.PatientProfileFieldsInput{
+			InsuranceNumber:       req.InsuranceNumber,
+			CCCD:                  req.CCCD,
+			EmergencyContactName:  req.EmergencyContactName,
+			EmergencyContactPhone: req.EmergencyContactPhone,
+			MedicalHistory:        req.MedicalHistory,
+			DiseaseTypes:          req.DiseaseTypes,
+		},
 	}
 
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
@@ -85,8 +92,8 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 	input := &usecase.LoginInput{
-		Email:    req.Email,
-		Password: req.Password,
+		Identifier: firstNonEmpty(req.Identifier, req.Email, req.Phone),
+		Password:   req.Password,
 	}
 
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
@@ -275,7 +282,33 @@ func (h *AuthHandler) ForgotPassword(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Liên kết đặt lại mật khẩu đã được gửi đến hộp thư của bạn"})
+	c.JSON(http.StatusOK, gin.H{"message": "Mã OTP đã được gửi đến email của bạn"})
+}
+
+// @Summary Verify Reset OTP
+// @Description Verify reset password OTP code
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param data body dto.VerifyResetOTPRequest true "Email and OTP"
+// @Success 200 {object} map[string]string "OTP verified successfully"
+// @Failure 400 {object} map[string]string "Bad request"
+// @Router /auth/verify-reset-otp [post]
+func (h *AuthHandler) VerifyResetOTP(c *gin.Context) {
+	var req dto.VerifyResetOTPRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Email hoặc mã OTP không hợp lệ"})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	if err := h.service.VerifyResetOTP(ctx, req.Email, req.OTP); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Mã OTP hợp lệ"})
 }
 
 // @Summary Reset Password
@@ -308,61 +341,6 @@ func (h *AuthHandler) ResetPassword(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Đặt lại mật khẩu thành công"})
-}
-
-// @Summary Activate account
-// @Description Activate user account using OTP sent to email
-// @Tags auth
-// @Accept json
-// @Produce json
-// @Param data body dto.ActivateAccountRequest true "Email and OTP"
-// @Success 200 {object} map[string]string "Account activated successfully"
-// @Failure 400 {object} map[string]string "Bad request"
-// @Router /auth/activate [post]
-func (h *AuthHandler) ActivateAccount(c *gin.Context) {
-	var req dto.ActivateAccountRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
-	defer cancel()
-
-	if err := h.service.ActivateAccount(ctx, &usecase.ActivateAccountInput{
-		Email: req.Email,
-		OTP:   req.OTP,
-	}); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"message": "Kích hoạt tài khoản thành công"})
-}
-
-// @Summary Resend Activation Email
-// @Description Resend account activation OTP to user email
-// @Tags auth
-// @Accept json
-// @Produce json
-// @Param data body dto.ResendActivationEmailRequest true "Email"
-// @Success 200 {object} map[string]string "Activation email resent successfully"
-// @Failure 400 {object} map[string]string "Bad request"
-// @Router /auth/resend-activation [post]
-func (h *AuthHandler) ResendActivationEmail(c *gin.Context) {
-	var req dto.ResendActivationEmailRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
-	defer cancel()
-
-	if err := h.service.ResendActivationEmail(ctx, &usecase.ResendActivationEmailInput{Email: req.Email}); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"message": "Đã gửi lại email kích hoạt thành công"})
 }
 
 // ========================================================
@@ -431,4 +409,13 @@ func (h *AuthHandler) setSameSite(c *gin.Context, isSecure bool) {
 	} else {
 		c.SetSameSite(http.SameSiteLaxMode)
 	}
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return value
+		}
+	}
+	return ""
 }

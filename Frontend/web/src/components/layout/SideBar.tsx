@@ -13,11 +13,13 @@ import api from "../../services/api";
 
 interface SideBarProps {
   navigationItems?: NavigationItem[];
+  isMobileOpen?: boolean;
+  setIsMobileOpen?: (open: boolean) => void;
 }
 
 const DEFAULT_AVATAR = "/default-avatar.svg";
 
-const SideBar = ({ navigationItems }: SideBarProps) => {
+const SideBar = ({ navigationItems, isMobileOpen = false, setIsMobileOpen }: SideBarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
@@ -28,6 +30,7 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
   const isSettingsActive = location.pathname === "/settings";
 
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [openAlertsCount, setOpenAlertsCount] = useState(0);
 
   useEffect(() => {
@@ -44,9 +47,12 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
     };
     fetchOpenAlerts();
   }, [user?.id, user?.role, unreadTotal]); // Also re-fetch when unreadTotal changes (as a proxy for new chat events)
+
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth < 768) {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (mobile) {
         setIsCollapsed(true);
       }
     };
@@ -61,13 +67,14 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
     navigate("/login");
   };
 
+  const effectivelyCollapsed = !isMobile && isCollapsed;
+
   return (
     <>
-      {}
-      {!isCollapsed && (
+      {isMobile && isMobileOpen && (
         <div
           className="fixed inset-0 bg-black/50 z-40 md:hidden transition-opacity"
-          onClick={() => setIsCollapsed(true)}
+          onClick={() => setIsMobileOpen?.(false)}
         />
       )}
 
@@ -76,16 +83,18 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
           h-screen bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-700
           flex flex-col transition-all duration-300
           fixed left-0 top-0 z-50 rounded-r-2xl 
-          md:relative md:z-auto 
-          ${isCollapsed ? "w-14" : "w-80"}
+          md:relative md:z-auto md:translate-x-0 md:rounded-none
+          ${effectivelyCollapsed ? "md:w-14" : "md:w-80"}
+          w-80
+          ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
         `}
       >
         <div
           className={`flex items-center p-4 ${
-            isCollapsed ? "justify-center" : "justify-between"
+            effectivelyCollapsed ? "justify-center" : "justify-between"
           }`}
         >
-          {!isCollapsed && (
+          {!effectivelyCollapsed && (
             <div className="flex items-center gap-3">
               <img src="/doctor-logo.png" alt="Doctor App Logo" className="w-10 h-10 rounded-xl shadow-sm object-cover bg-white" />
               <h2 className="font-bold text-2xl text-primary-text dark:text-slate-100 tracking-tight">
@@ -94,10 +103,18 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
             </div>
           )}
           <button
-            onClick={() => setIsCollapsed(!isCollapsed)}
+            onClick={() => {
+              if (isMobile) {
+                setIsMobileOpen?.(false);
+              } else {
+                setIsCollapsed(!isCollapsed);
+              }
+            }}
             className="text-primary-text dark:text-slate-300"
           >
-            {isCollapsed ? (
+            {isMobile ? (
+              <CiCircleChevLeft size={32} />
+            ) : effectivelyCollapsed ? (
               <CiCircleChevRight size={32} />
             ) : (
               <CiCircleChevLeft size={32} />
@@ -114,23 +131,23 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
                   <Link
                     to={item.path}
                     onClick={() => {
-                      if (window.innerWidth < 768) setIsCollapsed(true);
+                      if (isMobile) setIsMobileOpen?.(false);
                     }}
                     className={`
                       flex items-center py-2 rounded-lg transition-colors relative
-                      ${isCollapsed ? "justify-center px-0" : "px-4 gap-3"}
+                      ${effectivelyCollapsed ? "justify-center px-0" : "px-4 gap-3"}
                       ${
                         isActive
                           ? "bg-btn-clicked text-white"
                           : "text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800"
                       }
                     `}
-                    title={isCollapsed ? item.label : ""}
+                    title={effectivelyCollapsed ? item.label : ""}
                   >
                     {item.icon && (
                       <div className="text-2xl shrink-0">{item.icon}</div>
                     )}
-                    {!isCollapsed && (
+                    {!effectivelyCollapsed && (
                       <span className="text-xl font-semibold whitespace-nowrap overflow-hidden">
                         {item.label}
                       </span>
@@ -139,7 +156,7 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
                       <span
                         className={`
                           flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold
-                          ${isCollapsed ? "absolute -top-1 -right-1 h-4 w-4 min-w-0" : "ml-auto h-5 min-w-[20px] px-1"}
+                          ${effectivelyCollapsed ? "absolute -top-1 -right-1 h-4 w-4 min-w-0" : "ml-auto h-5 min-w-[20px] px-1"}
                         `}
                       >
                         {unreadTotal > 99 ? "99+" : unreadTotal}
@@ -149,7 +166,7 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
                       <span
                         className={`
                           flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold
-                          ${isCollapsed ? "absolute -top-1 -right-1 h-4 w-4 min-w-0" : "ml-auto h-5 min-w-[20px] px-1"}
+                          ${effectivelyCollapsed ? "absolute -top-1 -right-1 h-4 w-4 min-w-0" : "ml-auto h-5 min-w-[20px] px-1"}
                         `}
                       >
                         {openAlertsCount > 99 ? "99+" : openAlertsCount}
@@ -163,23 +180,23 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
               <Link
                 to="/settings"
                 onClick={() => {
-                  if (window.innerWidth < 768) setIsCollapsed(true);
+                  if (isMobile) setIsMobileOpen?.(false);
                 }}
                 className={`
                   flex items-center py-2 rounded-lg transition-colors
-                  ${isCollapsed ? "justify-center px-0" : "px-4 gap-3"}
+                  ${effectivelyCollapsed ? "justify-center px-0" : "px-4 gap-3"}
                   ${
                     isSettingsActive
                       ? "bg-btn-clicked text-white"
                       : "text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800"
                   }
                 `}
-                title={isCollapsed ? t("nav.settings") : ""}
+                title={effectivelyCollapsed ? t("nav.settings") : ""}
               >
                 <div className="text-2xl shrink-0">
                   <IoMdSettings />
                 </div>
-                {!isCollapsed && (
+                {!effectivelyCollapsed && (
                   <span className="text-xl font-semibold whitespace-nowrap overflow-hidden">
                     {t("nav.settings")}
                   </span>
@@ -192,9 +209,12 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
         <div className="px-2 py-4">
           <div
             className={`flex items-center ${
-              isCollapsed ? "justify-center px-0" : "px-4 gap-3"
+              effectivelyCollapsed ? "justify-center px-0" : "px-4 gap-3"
             }`}
-            onClick={() => navigate("/doctor-profile")}
+            onClick={() => {
+              if (isMobile) setIsMobileOpen?.(false);
+              navigate("/doctor-profile");
+            }}
             style={{ cursor: "pointer" }}
           >
             <div className="h-12 w-12 rounded-full shrink-0">
@@ -208,7 +228,7 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
                 className="w-full h-full rounded-full object-cover"
               />
             </div>
-            {!isCollapsed && (
+            {!effectivelyCollapsed && (
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-lg text-primary-text dark:text-slate-100 leading-tight line-clamp-2">
                   {user?.username || "Doctor Name"}
@@ -221,8 +241,8 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
             className="flex w-full items-center justify-center py-2 rounded-md text-xl 
             text-gray-500 dark:text-slate-400 hover:bg-rose-400 hover:text-gray-800 transition duration-400 mt-3"
           >
-            <FiLogOut className="mr-1" />
-            {!isCollapsed && <span>{t("auth.logout")}</span>}
+            <FiLogOut className="mr-1 shrink-0" />
+            {!effectivelyCollapsed && <span>{t("auth.logout")}</span>}
           </button>
           <div className="mt-16 md:mt-0 "> </div>
         </div>

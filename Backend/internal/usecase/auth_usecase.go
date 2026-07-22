@@ -9,16 +9,17 @@ import (
 type RegisterInput struct {
 	Name              string
 	Email             string
+	Phone             string
 	Password          string
 	ConfirmedPassword string
-	Role              domain.Role
 	Gender            domain.Gender
 	Dob               time.Time
+	PatientProfileFieldsInput
 }
 
 type LoginInput struct {
-	Email    string
-	Password string
+	Identifier string
+	Password   string
 }
 
 type MeInput struct {
@@ -48,13 +49,4 @@ type ResetPasswordInput struct {
 	OTP                  string
 	NewPassword          string
 	ConfirmedNewPassword string
-}
-
-type ActivateAccountInput struct {
-	Email string
-	OTP   string
-}
-
-type ResendActivationEmailInput struct {
-	Email string
 }

@@ -1,8 +1,8 @@
 package middleware
 
 import (
-	"context"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -14,15 +14,16 @@ import (
 	domainUser "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository"
 	userRepository "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository/user"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/util"
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type ActivityLoggerMiddleware struct {
-	repo              *repository.ActivityLogRepository
-	baseUserRepo      userRepository.BaseUserRepository
-	measurementRepo   repository.MeasurementRepository
-	prescriptionRepo  repository.PrescriptionRepository
+	repo             *repository.ActivityLogRepository
+	baseUserRepo     userRepository.BaseUserRepository
+	measurementRepo  repository.MeasurementRepository
+	prescriptionRepo repository.PrescriptionRepository
 }
 
 func NewActivityLoggerMiddleware(
@@ -33,8 +34,8 @@ func NewActivityLoggerMiddleware(
 ) *ActivityLoggerMiddleware {
 	return &ActivityLoggerMiddleware{
 		repo:             repo,
-		baseUserRepo:    baseUserRepo,
-		measurementRepo: measurementRepo,
+		baseUserRepo:     baseUserRepo,
+		measurementRepo:  measurementRepo,
 		prescriptionRepo: prescriptionRepo,
 	}
 }
@@ -160,15 +161,37 @@ func (m *ActivityLoggerMiddleware) LogActivity() gin.HandlerFunc {
 
 // logLoginActivity logs login activities
 func (m *ActivityLoggerMiddleware) logLoginActivity(c *gin.Context, requestBody []byte) {
-	// Parse request body to get email
 	var loginReq struct {
-		Email string `json:"email"`
+		Identifier string `json:"identifier"`
+		Email      string `json:"email"`
+		Phone      string `json:"phone"`
 	}
-	if err := json.Unmarshal(requestBody, &loginReq); err != nil || loginReq.Email == "" {
+	if err := json.Unmarshal(requestBody, &loginReq); err != nil {
 		return
 	}
 
-	user, err := m.baseUserRepo.FindByEmail(c.Request.Context(), loginReq.Email)
+	identifier := loginReq.Identifier
+	if identifier == "" {
+		identifier = loginReq.Email
+	}
+	if identifier == "" {
+		identifier = loginReq.Phone
+	}
+	if identifier == "" {
+		return
+	}
+
+	var user *domainUser.BaseUser
+	var err error
+	if strings.Contains(identifier, "@") {
+		user, err = m.baseUserRepo.FindByEmail(c.Request.Context(), strings.ToLower(strings.TrimSpace(identifier)))
+	} else {
+		hash, hashErr := util.HashPhoneForLookup(identifier)
+		if hashErr != nil {
+			return
+		}
+		user, err = m.baseUserRepo.FindByPhoneLookupHash(c.Request.Context(), hash)
+	}
 	if err != nil || user == nil {
 		return
 	}
@@ -494,30 +517,30 @@ func (m *ActivityLoggerMiddleware) resolvePatientID(
 // log metadata. Prefer IDs / status / scheduling flags over any PHI/PII values
 // (name, email, vitals, medications, free-text notes, etc.).
 var metadataAllowlist = map[string]struct{}{
-	"status":           {},
-	"role":             {},
-	"name":             {},
-	"patientId":        {},
-	"doctorId":         {},
-	"nurseId":          {},
-	"departmentId":     {},
-	"prescriptionId":   {},
-	"conversationId":   {},
-	"alertId":          {},
-	"measurementId":    {},
-	"assignmentId":     {},
-	"reminderId":       {},
-	"sessionId":        {},
-	"kind":             {},
-	"timezone":         {},
-	"daysOfWeek":       {},
-	"durationMinutes":  {},
-	"platform":         {},
-	"effectiveFrom":    {},
-	"effectiveTo":      {},
-	"startDate":        {},
-	"endDate":          {},
-	"scheduledAt":      {},
+	"status":          {},
+	"role":            {},
+	"name":            {},
+	"patientId":       {},
+	"doctorId":        {},
+	"nurseId":         {},
+	"departmentId":    {},
+	"prescriptionId":  {},
+	"conversationId":  {},
+	"alertId":         {},
+	"measurementId":   {},
+	"assignmentId":    {},
+	"reminderId":      {},
+	"sessionId":       {},
+	"kind":            {},
+	"timezone":        {},
+	"daysOfWeek":      {},
+	"durationMinutes": {},
+	"platform":        {},
+	"effectiveFrom":   {},
+	"effectiveTo":     {},
+	"startDate":       {},
+	"endDate":         {},
+	"scheduledAt":     {},
 }
 
 func sanitizeActivityMetadata(requestBody []byte) map[string]any {
@@ -575,4 +598,3 @@ func enhanceActionMessage(action string, metadata map[string]any) string {
 	}
 	return fmt.Sprintf("%s %s", statusVN, resource)
 }
-

@@ -894,7 +894,7 @@ const PatientDetailPage = () => {
             </h3>
             <div className="space-y-4">
               <div>
-                <span className="block text-xs text-gray-400 dark:text-slate-500 mb-2">Bệnh lý nền</span>
+                <span className="block text-xs text-gray-400 dark:text-slate-500 mb-2">Bệnh lý</span>
                 <div className="flex gap-2 flex-wrap">
                   {patient.diseaseTypes?.bloodPressure && <span className="px-2.5 py-1 bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400 text-xs font-semibold rounded-md border border-rose-100 dark:border-rose-800 flex items-center gap-1"><FaHeartbeat /> Huyết áp</span>}
                   {patient.diseaseTypes?.glucose && <span className="px-2.5 py-1 bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400 text-xs font-semibold rounded-md border border-amber-100 dark:border-amber-800 flex items-center gap-1"><GiHeartBeats /> Tiểu đường</span>}

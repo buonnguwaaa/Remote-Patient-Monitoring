@@ -19,7 +19,7 @@ function formatDateVN(iso) {
 
 function todLabel(tod) {
   if (tod === "morning") return "Sáng";
-  if (tod === "noon") return "Trưa";
+  if (tod === "noon") return "Chiều";
   if (tod === "evening") return "Tối";
   return "Khác";
 }

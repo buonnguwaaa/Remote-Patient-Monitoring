@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"log"
 	"strings"
 	"time"
 
@@ -10,14 +11,17 @@ import (
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
 	repository "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecase"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/util"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type userService struct {
-	baseUserRepo repository.BaseUserRepository
-	patientRepo  repository.PatientRepository
-	nurseRepo    repository.StaffRepository[domain.Nurse]
-	doctorRepo   repository.StaffRepository[domain.Doctor]
+	baseUserRepo    repository.BaseUserRepository
+	patientRepo     repository.PatientRepository
+	nurseRepo       repository.StaffRepository[domain.Nurse]
+	doctorRepo      repository.StaffRepository[domain.Doctor]
+	accountNotifier AccountNotifier
 }
 
 var ErrInvalidUserStatus = errors.New("Trạng thái người dùng không hợp lệ")
@@ -29,15 +33,18 @@ type UserService interface {
 	UpdateBaseUserStatus(context.Context, *usecase.UpdateUserStatusInput) error
 	DeleteBaseUser(context.Context, *usecase.DeleteUserInput) error
 
+	CreatePatient(context.Context, *usecase.CreatePatientInput) (*dto.PatientInfoResponse, error)
 	GetPatients(context.Context, *usecase.GetUsersInput) ([]dto.PatientInfoResponse, error)
 	GetPatientByID(context.Context, *usecase.GetUserByIDInput) (*dto.PatientInfoResponse, error)
 	UpdatePatient(context.Context, *usecase.UpdateUserInfoInput) error
 	UpdatePatientProfile(context.Context, *usecase.UpdatePatientProfileInput) error
 
+	CreateDoctor(context.Context, *usecase.CreateDoctorInput) (*dto.DoctorInfoResponse, error)
 	GetDoctors(context.Context, *usecase.GetUsersInput) ([]dto.DoctorInfoResponse, error)
 	GetDoctorByID(context.Context, *usecase.GetUserByIDInput) (*dto.DoctorInfoResponse, error)
 	UpdateDoctor(context.Context, *usecase.UpdateUserInfoInput) error
 
+	CreateNurse(context.Context, *usecase.CreateNurseInput) (*dto.NurseInfoResponse, error)
 	GetNurses(context.Context, *usecase.GetUsersInput) ([]dto.NurseInfoResponse, error)
 	GetNurseByID(context.Context, *usecase.GetUserByIDInput) (*dto.NurseInfoResponse, error)
 	UpdateNurse(context.Context, *usecase.UpdateUserInfoInput) error
@@ -48,12 +55,14 @@ func NewUserService(
 	patientRepo repository.PatientRepository,
 	nurseRepo repository.StaffRepository[domain.Nurse],
 	doctorRepo repository.StaffRepository[domain.Doctor],
+	accountNotifier AccountNotifier,
 ) UserService {
 	return &userService{
-		baseUserRepo: baseUserRepo,
-		patientRepo:  patientRepo,
-		nurseRepo:    nurseRepo,
-		doctorRepo:   doctorRepo,
+		baseUserRepo:    baseUserRepo,
+		patientRepo:     patientRepo,
+		nurseRepo:       nurseRepo,
+		doctorRepo:      doctorRepo,
+		accountNotifier: accountNotifier,
 	}
 }
 
@@ -115,11 +124,32 @@ func (s *userService) UpdateBaseUserStatus(ctx context.Context, input *usecase.U
 		return ErrInvalidUserStatus
 	}
 
+	current, err := s.baseUserRepo.FindByID(ctx, objID)
+	if err != nil {
+		return err
+	}
+	if current.Status == input.Status {
+		return nil
+	}
+
 	updateData := map[string]interface{}{
 		"status": input.Status,
 	}
 
-	return s.baseUserRepo.Update(ctx, objID, updateData)
+	if err := s.baseUserRepo.Update(ctx, objID, updateData); err != nil {
+		return err
+	}
+
+	if current.Role == domain.RolePatient && input.Status == domain.StatusActive && s.accountNotifier != nil {
+		patient, err := s.patientRepo.FindPatientByID(ctx, objID)
+		if err != nil {
+			log.Printf("[WARN] cannot load activated patient %s for notification: %v", objID.Hex(), err)
+			return nil
+		}
+		patient.Status = domain.StatusActive
+		s.notifyPatientActivatedAsync(ctx, patient, false, "")
+	}
+	return nil
 }
 
 func (s *userService) DeleteBaseUser(ctx context.Context, input *usecase.DeleteUserInput) error {
@@ -129,6 +159,108 @@ func (s *userService) DeleteBaseUser(ctx context.Context, input *usecase.DeleteU
 	}
 
 	return s.baseUserRepo.Delete(ctx, objID)
+}
+
+func (s *userService) CreatePatient(ctx context.Context, input *usecase.CreatePatientInput) (*dto.PatientInfoResponse, error) {
+	email := strings.ToLower(strings.TrimSpace(input.Email))
+	phone := util.NormalizePhone(input.Phone)
+	if email == "" && phone == "" {
+		return nil, &ValidationError{Field: "contact", Message: "Email hoặc số điện thoại là bắt buộc."}
+	}
+	profile := &usecase.UpdatePatientProfileInput{
+		Name:                      input.Name,
+		Phone:                     phone,
+		PatientProfileFieldsInput: input.PatientProfileFieldsInput,
+	}
+	if err := validatePatientProfileUpdate(profile); err != nil {
+		return nil, err
+	}
+	if err := s.ensureContactsAvailable(ctx, email, phone); err != nil {
+		return nil, err
+	}
+
+	temporaryPassword, err := util.GenerateRandomToken(12)
+	if err != nil {
+		return nil, err
+	}
+	hashedPassword, err := util.HashPassword(temporaryPassword)
+	if err != nil {
+		return nil, err
+	}
+	phoneHash, err := util.HashPhoneForLookup(phone)
+	if err != nil {
+		return nil, err
+	}
+
+	patient := &domain.Patient{
+		BaseUser: domain.BaseUser{
+			Name:            strings.TrimSpace(input.Name),
+			Email:           email,
+			Phone:           phone,
+			PhoneLookupHash: phoneHash,
+			Password:        hashedPassword,
+			Provider:        LocalProvider,
+			Role:            domain.RolePatient,
+			Gender:          input.Gender,
+			Dob:             input.Dob,
+			Status:          domain.StatusActive,
+		},
+		InsuranceNumber:       profile.InsuranceNumber,
+		CCCD:                  profile.CCCD,
+		EmergencyContactName:  profile.EmergencyContactName,
+		EmergencyContactPhone: profile.EmergencyContactPhone,
+		MedicalHistory:        profile.MedicalHistory,
+	}
+	if profile.DiseaseTypes != nil {
+		patient.DiseaseTypes = *profile.DiseaseTypes
+	}
+
+	created, err := s.patientRepo.Create(ctx, patient)
+	if err != nil {
+		return nil, err
+	}
+	s.notifyPatientActivatedAsync(ctx, created, true, temporaryPassword)
+	return mapPatient(created), nil
+}
+
+// notifyPatientActivatedAsync delivers the activation email/SMS off the
+// request path: SMTP and Twilio round-trips take seconds and their failures
+// are non-fatal (logged only), so the API response must not wait on them.
+func (s *userService) notifyPatientActivatedAsync(ctx context.Context, patient *domain.Patient, createdByAdmin bool, temporaryPassword string) {
+	if s.accountNotifier == nil {
+		return
+	}
+	notifyCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), time.Minute)
+	go func() {
+		defer cancel()
+		if err := s.accountNotifier.NotifyPatientActivated(notifyCtx, patient, createdByAdmin, temporaryPassword); err != nil {
+			log.Printf("[WARN] failed to notify patient %s: %v", patient.ID.Hex(), err)
+		} else {
+			log.Printf("[INFO] notified patient %s", patient.ID.Hex())
+		}
+	}()
+}
+
+func (s *userService) ensureContactsAvailable(ctx context.Context, email, phone string) error {
+	if email != "" {
+		if existing, err := s.baseUserRepo.FindByEmail(ctx, email); err == nil && existing != nil {
+			return &ConflictError{Field: "email", Message: "Email đã tồn tại."}
+		} else if err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
+			return err
+		}
+	}
+	if phone != "" {
+		hash, err := util.HashPhoneForLookup(phone)
+		if err != nil {
+			return err
+		}
+		if existing, err := s.baseUserRepo.FindByPhoneLookupHash(ctx, hash); err == nil && existing != nil {
+			return &ConflictError{Field: "phone", Message: "Số điện thoại đã tồn tại."}
+		} else if err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *userService) GetPatients(ctx context.Context, input *usecase.GetUsersInput) ([]dto.PatientInfoResponse, error) {
@@ -177,6 +309,11 @@ func (s *userService) UpdatePatient(ctx context.Context, input *usecase.UpdateUs
 
 	updateData := buildBaseUpdateData(input)
 	mergeInto(updateData, buildPatientUpdateData(&input.PatientProfileFieldsInput))
+	if input.Phone != "" {
+		if err := s.setPatientPhoneUpdate(ctx, objID, input.Phone, updateData); err != nil {
+			return err
+		}
+	}
 
 	return s.patientRepo.Update(ctx, objID, updateData)
 }
@@ -192,7 +329,130 @@ func (s *userService) UpdatePatientProfile(ctx context.Context, input *usecase.U
 	}
 
 	updateData := buildPatientProfileSelfUpdateData(input)
+	if input.Phone != "" {
+		if err := s.setPatientPhoneUpdate(ctx, objID, input.Phone, updateData); err != nil {
+			return err
+		}
+	}
 	return s.patientRepo.Update(ctx, objID, updateData)
+}
+
+func (s *userService) setPatientPhoneUpdate(ctx context.Context, patientID primitive.ObjectID, phone string, updateData map[string]interface{}) error {
+	normalized := util.NormalizePhone(phone)
+	hash, err := util.HashPhoneForLookup(normalized)
+	if err != nil {
+		return err
+	}
+	existing, err := s.baseUserRepo.FindByPhoneLookupHash(ctx, hash)
+	if err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
+		return err
+	}
+	if existing != nil && existing.ID != patientID {
+		return &ConflictError{Field: "phone", Message: "Số điện thoại đã tồn tại."}
+	}
+	updateData["phone"] = normalized
+	updateData["phoneLookupHash"] = hash
+	return nil
+}
+
+func (s *userService) CreateDoctor(ctx context.Context, input *usecase.CreateDoctorInput) (*dto.DoctorInfoResponse, error) {
+	staff, err := s.buildMedicalStaff(ctx, &input.CreateMedicalStaffInput, domain.RoleDoctor)
+	if err != nil {
+		return nil, err
+	}
+	if err := validateDoctorCredentials(input.AcademicDegree, input.AcademicTitle); err != nil {
+		return nil, err
+	}
+
+	doctor := &domain.Doctor{
+		MedicalStaff:              *staff,
+		Specialization:            strings.TrimSpace(input.Specialization),
+		AcademicDegree:            input.AcademicDegree,
+		ProfessionalQualification: input.ProfessionalQualification,
+		AcademicTitle:             input.AcademicTitle,
+	}
+	created, err := s.doctorRepo.Create(ctx, doctor)
+	if err != nil {
+		return nil, err
+	}
+	return mapDoctor(created), nil
+}
+
+func (s *userService) CreateNurse(ctx context.Context, input *usecase.CreateNurseInput) (*dto.NurseInfoResponse, error) {
+	staff, err := s.buildMedicalStaff(ctx, &input.CreateMedicalStaffInput, domain.RoleNurse)
+	if err != nil {
+		return nil, err
+	}
+	staff.YearsOfExperience = input.YearsOfExperience
+
+	created, err := s.nurseRepo.Create(ctx, &domain.Nurse{MedicalStaff: *staff})
+	if err != nil {
+		return nil, err
+	}
+	return mapNurse(created), nil
+}
+
+func (s *userService) buildMedicalStaff(ctx context.Context, input *usecase.CreateMedicalStaffInput, role domain.Role) (*domain.MedicalStaff, error) {
+	name := strings.TrimSpace(input.Name)
+	email := strings.ToLower(strings.TrimSpace(input.Email))
+	phone := util.NormalizePhone(input.Phone)
+	if name == "" {
+		return nil, &ValidationError{Field: "name", Message: "Họ tên là bắt buộc."}
+	}
+	if email == "" {
+		return nil, &ValidationError{Field: "email", Message: "Email là bắt buộc."}
+	}
+	if phone != "" && !patientPhonePattern.MatchString(phone) {
+		return nil, &ValidationError{Field: "phone", Message: "Số điện thoại phải gồm 9 đến 15 chữ số."}
+	}
+	if input.Password != input.ConfirmedPassword {
+		return nil, &ValidationError{Field: "confirmedPassword", Message: "Mật khẩu và mật khẩu xác nhận không khớp."}
+	}
+	if input.Status == "" {
+		input.Status = domain.StatusActive
+	}
+	if input.Status != domain.StatusActive && input.Status != domain.StatusInactive {
+		return nil, ErrInvalidUserStatus
+	}
+	if err := s.ensureContactsAvailable(ctx, email, phone); err != nil {
+		return nil, err
+	}
+
+	hashedPassword, err := util.HashPassword(input.Password)
+	if err != nil {
+		return nil, err
+	}
+	phoneHash, err := util.HashPhoneForLookup(phone)
+	if err != nil {
+		return nil, err
+	}
+
+	var departmentID primitive.ObjectID
+	if value := strings.TrimSpace(input.DepartmentID); value != "" {
+		departmentID, err = primitive.ObjectIDFromHex(value)
+		if err != nil {
+			return nil, &ValidationError{Field: "departmentId", Message: "Mã khoa không hợp lệ."}
+		}
+	}
+
+	return &domain.MedicalStaff{
+		BaseUser: domain.BaseUser{
+			Name:            name,
+			Email:           email,
+			Phone:           phone,
+			PhoneLookupHash: phoneHash,
+			Password:        hashedPassword,
+			Provider:        LocalProvider,
+			Role:            role,
+			Gender:          input.Gender,
+			Dob:             input.Dob,
+			Status:          input.Status,
+		},
+		DepartmentID:      departmentID,
+		LicenseNumber:     strings.TrimSpace(input.LicenseNumber),
+		Workplace:         strings.TrimSpace(input.Workplace),
+		YearsOfExperience: input.YearsOfExperience,
+	}, nil
 }
 
 func (s *userService) GetDoctors(ctx context.Context, input *usecase.GetUsersInput) ([]dto.DoctorInfoResponse, error) {
