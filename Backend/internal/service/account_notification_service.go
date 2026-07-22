@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html"
 	"log"
+	"time"
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/constant"
 	appDomain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
@@ -13,6 +14,11 @@ import (
 	userRepository "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecase"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/util"
+)
+
+const (
+	accountNotifyMaxAttempts    = 4
+	accountNotifyInitialBackoff = 5 * time.Second
 )
 
 type SMSProvider interface {
@@ -114,14 +120,18 @@ func (s *accountNotifier) NotifyPatientActivated(ctx context.Context, patient *u
 			html.EscapeString(message),
 			emailDetails,
 		)
-		if err := util.SendEmail(patient.Email, subject, body); err != nil {
+		if err := retryTransient(ctx, accountNotifyMaxAttempts, accountNotifyInitialBackoff, func() error {
+			return util.SendEmail(patient.Email, subject, body)
+		}); err != nil {
 			errs = append(errs, fmt.Errorf("send email: %w", err))
 		}
 	}
 	if patient.Phone != "" {
 		if s.smsProvider == nil {
 			errs = append(errs, errors.New("Twilio SMS chưa được cấu hình"))
-		} else if err := s.smsProvider.Send(ctx, patient.Phone, smsBody); err != nil {
+		} else if err := retryTransient(ctx, accountNotifyMaxAttempts, accountNotifyInitialBackoff, func() error {
+			return s.smsProvider.Send(ctx, patient.Phone, smsBody)
+		}); err != nil {
 			errs = append(errs, fmt.Errorf("send SMS: %w", err))
 		}
 	}
@@ -131,4 +141,31 @@ func (s *accountNotifier) NotifyPatientActivated(ctx context.Context, patient *u
 		return err
 	}
 	return nil
+}
+
+// retryTransient retries op with exponential backoff. Each channel (email/SMS)
+// is retried independently so a successful send is not duplicated when the
+// other channel fails.
+func retryTransient(ctx context.Context, attempts int, initialBackoff time.Duration, op func() error) error {
+	if attempts < 1 {
+		attempts = 1
+	}
+	var err error
+	backoff := initialBackoff
+	for attempt := 1; attempt <= attempts; attempt++ {
+		if err = op(); err == nil {
+			return nil
+		}
+		if attempt == attempts {
+			break
+		}
+		log.Printf("[WARN] account notification attempt %d/%d failed: %v; retrying in %s", attempt, attempts, err, backoff)
+		select {
+		case <-ctx.Done():
+			return errors.Join(err, ctx.Err())
+		case <-time.After(backoff):
+		}
+		backoff *= 2
+	}
+	return err
 }

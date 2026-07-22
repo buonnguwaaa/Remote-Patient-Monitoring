@@ -226,15 +226,17 @@ func (s *userService) CreatePatient(ctx context.Context, input *usecase.CreatePa
 // notifyPatientActivatedAsync delivers the activation email/SMS off the
 // request path: SMTP and Twilio round-trips take seconds and their failures
 // are non-fatal (logged only), so the API response must not wait on them.
+// Retries (per channel, with backoff) run inside AccountNotifier; the timeout
+// here must cover those attempts.
 func (s *userService) notifyPatientActivatedAsync(ctx context.Context, patient *domain.Patient, createdByAdmin bool, temporaryPassword string) {
 	if s.accountNotifier == nil {
 		return
 	}
-	notifyCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), time.Minute)
+	notifyCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 3*time.Minute)
 	go func() {
 		defer cancel()
 		if err := s.accountNotifier.NotifyPatientActivated(notifyCtx, patient, createdByAdmin, temporaryPassword); err != nil {
-			log.Printf("[WARN] failed to notify patient %s: %v", patient.ID.Hex(), err)
+			log.Printf("[WARN] failed to notify patient %s after retries: %v", patient.ID.Hex(), err)
 		} else {
 			log.Printf("[INFO] notified patient %s", patient.ID.Hex())
 		}
