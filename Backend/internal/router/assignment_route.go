@@ -15,6 +15,9 @@ func RegisterAssignmentRoutes(r *gin.Engine, c *container.MainServerContainer) {
 		assignGroup.GET("", middleware.RequireRoles(domain.RoleAdmin), c.AssignmentHandler.GetAllAssignments)
 		assignGroup.GET("/me", middleware.RequireRoles(domain.RoleDoctor, domain.RoleNurse), c.AssignmentHandler.GetMyAssignments)
 		assignGroup.GET("/my-care-team", middleware.RequireRoles(domain.RolePatient), c.AssignmentHandler.GetMyCareTeam)
+		assignGroup.GET("/doctor-patient-counts", middleware.RequireRoles(domain.RoleAdmin), c.AssignmentHandler.GetDoctorPatientCounts)
+		assignGroup.GET("/nurse-patient-counts", middleware.RequireRoles(domain.RoleAdmin), c.AssignmentHandler.GetNursePatientCounts)
 		assignGroup.DELETE("/:id", middleware.RequireRoles(domain.RoleAdmin), c.AssignmentHandler.DeleteAssignment)
 	}
 }
+

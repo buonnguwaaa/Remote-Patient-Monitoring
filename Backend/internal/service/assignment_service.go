@@ -25,6 +25,10 @@ type AssignmentService interface {
 	GetAssignmentsByRolePaginated(ctx context.Context, input *usecase.GetAssignmentsByRoleInput) ([]*dto.AssignmentResponse, int64, error)
 	GetMyCareTeam(ctx context.Context, patientID primitive.ObjectID) (*dto.MyCareTeamResponse, error)
 	DeleteAssignmentByID(ctx context.Context, input *usecase.DeleteAssignmentInput) error
+	// GetDoctorPatientCounts trả về map doctorId (hex) → số bệnh nhân đang quản lý
+	GetDoctorPatientCounts(ctx context.Context) (map[string]int64, error)
+	// GetNursePatientCounts trả về map nurseId (hex) → số bệnh nhân đang quản lý
+	GetNursePatientCounts(ctx context.Context) (map[string]int64, error)
 }
 
 type assignmentService struct {
@@ -255,6 +259,14 @@ func (s *assignmentService) DeleteAssignmentByID(ctx context.Context, input *use
 
 	s.notifyAssignmentRemoved(ctx, assignment)
 	return nil
+}
+
+func (s *assignmentService) GetDoctorPatientCounts(ctx context.Context) (map[string]int64, error) {
+	return s.assignmentRepo.CountByDoctorIDs(ctx)
+}
+
+func (s *assignmentService) GetNursePatientCounts(ctx context.Context) (map[string]int64, error) {
+	return s.assignmentRepo.CountByNurseIDs(ctx)
 }
 
 func (s *assignmentService) mapListToResponse(assignments []*domain.Assignment, userInfoMap map[primitive.ObjectID]repository.UserDisplayInfo) []*dto.AssignmentResponse {
