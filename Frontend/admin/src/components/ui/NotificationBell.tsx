@@ -27,7 +27,7 @@ export const NotificationBell: React.FC = () => {
     }
     setIsOpen(false);
     if (notif.type === "account_registration" || notif.data?.targetScreen === "Patients" || notif.title.includes("xác minh")) {
-      navigate("/patients");
+      navigate("/patients", { state: { tab: "pending" } });
     }
   };
 
@@ -106,7 +106,7 @@ export const NotificationBell: React.FC = () => {
 
           <div className="p-2.5 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-100 dark:border-gray-700 text-center">
             <button
-              onClick={() => { setIsOpen(false); navigate("/patients"); }}
+              onClick={() => { setIsOpen(false); navigate("/patients", { state: { tab: "pending" } }); }}
               className="text-xs font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition w-full"
             >
               Xem danh sách cần kiểm duyệt →

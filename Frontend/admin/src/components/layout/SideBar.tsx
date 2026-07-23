@@ -14,7 +14,7 @@ interface SideBarProps {
 const SideBar = ({ navigationItems }: SideBarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout, getUserRole } = useAuth();
+  const { logout, getUserRole } = useAuth();
   const { t } = useTranslation();
 
   const userRole = getUserRole();

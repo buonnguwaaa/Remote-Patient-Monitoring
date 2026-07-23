@@ -37,6 +37,7 @@ import NursePatientListScreen from "../screens/nurse/NursePatientListScreen";
 import MeasurementInputScreen from "../screens/nurse/MeasurementInputScreen";
 import NurseProfileScreen from "../screens/nurse/NurseProfileScreen";
 import PatientDetailScreen from "../screens/nurse/PatientDetailScreen";
+import AccountHistoryScreen from "../screens/AccountHistoryScreen";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -242,6 +243,7 @@ function RootNavigator() {
         <Stack.Screen name="NurseMainTabs" component={NurseMainTabs} />
         <Stack.Screen name="NursePatientDetail" component={PatientDetailScreen} />
         <Stack.Screen name="NursePrescriptionDetail" component={PrescriptionsScreen} />
+        <Stack.Screen name="AccountHistory" component={AccountHistoryScreen} options={themeRootHeaderOptions("Lịch sử hoạt động")} />
       </Stack.Navigator>
     );
   }
@@ -258,6 +260,7 @@ function RootNavigator() {
       <Stack.Screen name="Prescriptions" component={PrescriptionsScreen} options={themeRootHeaderOptions("Đơn thuốc")} />
       <Stack.Screen name="Settings" component={SettingsScreen} options={themeRootHeaderOptions("Cài đặt")} />
       <Stack.Screen name="AlertDetail" component={AlertDetailScreen} options={themeRootHeaderOptions("Chi tiết cảnh báo")} />
+      <Stack.Screen name="AccountHistory" component={AccountHistoryScreen} options={themeRootHeaderOptions("Lịch sử hoạt động")} />
     </Stack.Navigator>
   );
 }

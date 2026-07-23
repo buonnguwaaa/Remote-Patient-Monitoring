@@ -11,6 +11,7 @@ import {
   Alert,
   Image,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as SecureStore from '../../utils/secureStoreHelper';
 import * as LocalAuthentication from 'expo-local-authentication';
 import ButtonPrimary from '../../components/ButtonPrimary';
@@ -57,7 +58,7 @@ const portalBadgeStyle = StyleSheet.create({
   tagText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#2563EB',
+    color: '#1D4ED8',
     letterSpacing: 0.5,
   },
 });
@@ -104,7 +105,9 @@ const savedAccountStyle = StyleSheet.create({
   },
 });
 
-export default function LoginScreen({ navigation, onLoginSuccess }) {
+export default function LoginScreen({ onLoginSuccess, navigation }) {
+  const insets = useSafeAreaInsets();
+  const { showError, showSuccess, showWarning } = useSnackbar();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -112,7 +115,6 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
   const { login, saveGoogleTokens, updateUser } = useAuth();
   const [hasBiometric, setHasBiometric] = useState(false);
   const [isSavedAccount, setIsSavedAccount] = useState(false);
-  const { showError, showWarning } = useSnackbar();
 
   useEffect(() => {
     (async () => {
@@ -260,14 +262,18 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
       style={{ flex: 1 }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={[styles.container, { paddingTop: Math.max(insets.top + 20, 60) }]} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
           <Image 
             source={require('../../../assets/icon.png')} 
-            style={{ width: 80, height: 80, borderRadius: 20, marginBottom: 16 }} 
+            style={{ width: 80, height: 80, borderRadius: 16, marginBottom: 16, alignSelf: 'center' }} 
+            resizeMode="contain"
           />
-          <Text style={styles.title}>Đăng nhập</Text>
-          <Text style={styles.subtitle}>Remote Patient Monitoring</Text>
+          <Text style={styles.title}>Remote Patient Monitoring</Text>
+          <View style={portalBadgeStyle.tag}>
+            <Feather name="shield" size={14} color="#1D4ED8" />
+            <Text style={portalBadgeStyle.tagText}>CỔNG ĐĂNG NHẬP BỆNH NHÂN</Text>
+          </View>
         </View>
 
         <View style={styles.form}>

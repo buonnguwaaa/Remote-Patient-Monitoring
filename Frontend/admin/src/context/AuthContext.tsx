@@ -4,9 +4,16 @@ import api from "../services/api";
 
 export type UserRole = "doctor" | "admin" | "patient";
 
+export interface User {
+  username: string;
+  name?: string;
+  avatarUrl?: string;
+  role: UserRole;
+}
+
 interface AuthContextType {
   isAuthenticated: boolean;
-  user: { username: string; role: UserRole } | null;
+  user: User | null;
   login: (username: string, password: string) => Promise<UserRole | null>;
   isLoading: boolean;
   logout: () => void;
@@ -18,7 +25,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [user, setUser] = useState<{ username: string; role: UserRole } | null>(null);
+  const [user, setUser] = useState<User | null>(null);
 
   const mapRole = (backendRole: string): UserRole => {
     if (backendRole === "admin") return "admin";
@@ -34,7 +41,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (userData) {
           const role = mapRole(userData.role);
           setIsAuthenticated(true);
-          setUser({ username: userData.name, role });
+          setUser({ username: userData.name, name: userData.name, avatarUrl: userData.avatarUrl, role });
         }
       } catch (error) {
         setIsAuthenticated(false);

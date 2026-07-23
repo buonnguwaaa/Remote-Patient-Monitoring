@@ -87,7 +87,7 @@ const AcceptInvitePageTemplate = `<!DOCTYPE html>
 <body>
 <div class="container">
   <h1>Đặt mật khẩu</h1>
-  %s
+  {{BODY}}
 </div>
 </body>
 </html>`

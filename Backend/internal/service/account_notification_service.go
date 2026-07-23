@@ -83,18 +83,26 @@ func (s *accountNotifier) NotifyAdminsPatientRegistered(ctx context.Context, pat
 
 func (s *accountNotifier) NotifyPatientActivated(ctx context.Context, patient *userDomain.Patient, createdByAdmin bool, inviteURL string) error {
 	if patient == nil {
-		return errors.New("bệnh nhân là bắt buộc")
+		return errors.New("tài khoản là bắt buộc")
 	}
 
-	title := "Tài khoản đã được xác minh"
-	message := "Thông tin của bạn đã được quản trị viên xác minh và tài khoản RPM hiện đã hoạt động."
-	subject := constant.SubjectPatientAccountVerified
+	roleLabel := "bệnh nhân"
+	switch patient.Role {
+	case userDomain.RoleDoctor:
+		roleLabel = "bác sĩ"
+	case userDomain.RoleNurse:
+		roleLabel = "điều dưỡng"
+	}
+
+	title := fmt.Sprintf("Tài khoản %s đã được xác minh", roleLabel)
+	message := fmt.Sprintf("Thông tin của bạn đã được quản trị viên xác minh và tài khoản %s RPM hiện đã hoạt động.", roleLabel)
+	subject := fmt.Sprintf("[RPM] - Tài khoản %s đã được xác minh", roleLabel)
 	emailDetails := `<p>Bạn có thể đăng nhập bằng email hoặc số điện thoại đã đăng ký cùng mật khẩu của mình.</p>`
-	smsBody := "RPM - Tai khoan da duoc xac minh va kich hoat. Ban co the dang nhap."
+	smsBody := fmt.Sprintf("RPM - Tai khoan %s da duoc xac minh va kich hoat. Ban co the dang nhap.", roleLabel)
 	if createdByAdmin {
-		title = "Tài khoản RPM đã được tạo"
-		message = "Quản trị viên đã tạo tài khoản Remote Patient Monitoring cho bạn. Vui lòng mở liên kết bên dưới để đặt mật khẩu trước khi đăng nhập."
-		subject = constant.SubjectPatientAccountCreated
+		title = fmt.Sprintf("Tài khoản %s đã được tạo", roleLabel)
+		message = fmt.Sprintf("Quản trị viên đã tạo tài khoản %s Remote Patient Monitoring cho bạn. Vui lòng mở liên kết bên dưới để đặt mật khẩu trước khi đăng nhập.", roleLabel)
+		subject = fmt.Sprintf("[RPM] - Tài khoản %s đã được tạo", roleLabel)
 		ttlMinutes := int(ResetPasswordTokenTTL.Minutes())
 		if inviteURL == "" {
 			emailDetails = fmt.Sprintf(

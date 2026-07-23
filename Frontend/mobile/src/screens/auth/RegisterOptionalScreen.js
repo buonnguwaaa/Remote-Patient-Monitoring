@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import ButtonPrimary from '../../components/ButtonPrimary';
 import styles from '../../styles/login';
 import { useAuth } from '../../hooks/useAuth';
@@ -20,6 +21,8 @@ export default function RegisterOptionalScreen({ route, navigation }) {
   const [emergencyContactName, setEmergencyContactName] = useState('');
   const [emergencyContactPhone, setEmergencyContactPhone] = useState('');
   const [medicalHistory, setMedicalHistory] = useState('');
+  const [bloodPressure, setBloodPressure] = useState(false);
+  const [glucose, setGlucose] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const { register } = useAuth();
@@ -31,6 +34,7 @@ export default function RegisterOptionalScreen({ route, navigation }) {
       const payload = {
         name: step1Data.name,
         email: step1Data.email,
+        phone: step1Data.phone?.trim() || '',
         password: step1Data.password,
         confirmedPassword: step1Data.confirmedPassword,
         dob: step1Data.dob,
@@ -44,6 +48,10 @@ export default function RegisterOptionalScreen({ route, navigation }) {
         if (emergencyContactName.trim()) payload.emergencyContactName = emergencyContactName.trim();
         if (emergencyContactPhone.trim()) payload.emergencyContactPhone = emergencyContactPhone.trim();
         if (medicalHistory.trim()) payload.medicalHistory = medicalHistory.trim();
+        payload.diseaseTypes = {
+          bloodPressure,
+          glucose,
+        };
       }
 
       const { ok, error } = await register(payload);
@@ -94,6 +102,73 @@ export default function RegisterOptionalScreen({ route, navigation }) {
           </View>
 
           <View style={styles.field}>
+            <Text style={styles.label}>Chỉ số & Loại bệnh lý theo dõi</Text>
+            <View style={{ flexDirection: 'column', gap: 10, marginTop: 4 }}>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => setBloodPressure((prev) => !prev)}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingHorizontal: 14,
+                  paddingVertical: 12,
+                  borderRadius: 12,
+                  backgroundColor: bloodPressure ? '#EFF6FF' : '#F8FAFC',
+                  borderWidth: 1.5,
+                  borderColor: bloodPressure ? '#2563EB' : '#E2E8F0',
+                }}
+              >
+                <Feather
+                  name={bloodPressure ? 'check-square' : 'square'}
+                  size={20}
+                  color={bloodPressure ? '#2563EB' : '#94A3B8'}
+                />
+                <Text
+                  style={{
+                    marginLeft: 10,
+                    fontSize: 14,
+                    fontWeight: bloodPressure ? '600' : '400',
+                    color: bloodPressure ? '#1E40AF' : '#334155',
+                  }}
+                >
+                  Huyết áp (Blood Pressure)
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => setGlucose((prev) => !prev)}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingHorizontal: 14,
+                  paddingVertical: 12,
+                  borderRadius: 12,
+                  backgroundColor: glucose ? '#EFF6FF' : '#F8FAFC',
+                  borderWidth: 1.5,
+                  borderColor: glucose ? '#2563EB' : '#E2E8F0',
+                }}
+              >
+                <Feather
+                  name={glucose ? 'check-square' : 'square'}
+                  size={20}
+                  color={glucose ? '#2563EB' : '#94A3B8'}
+                />
+                <Text
+                  style={{
+                    marginLeft: 10,
+                    fontSize: 14,
+                    fontWeight: glucose ? '600' : '400',
+                    color: glucose ? '#1E40AF' : '#334155',
+                  }}
+                >
+                  Đường huyết / Đái tháo đường (Glucose)
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={styles.field}>
             <Text style={styles.label}>Người liên hệ khẩn cấp</Text>
             <TextInput
               value={emergencyContactName}
@@ -115,7 +190,7 @@ export default function RegisterOptionalScreen({ route, navigation }) {
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.label}>Tiền sử bệnh lý / Dị ứng</Text>
+            <Text style={styles.label}>Tiền sử bệnh lý & Ghi chú y tế</Text>
             <TextInput
               value={medicalHistory}
               onChangeText={setMedicalHistory}

@@ -10,10 +10,10 @@ import {
   Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
 import { useAuth } from "../context/AuthContext";
 import request from "../api/httpClient";
 import { colors, radius, spacing, typography, shadows } from "../theme/rpmTheme";
-import ActivityHistorySection from "../components/ActivityHistorySection";
 import EditProfileModal from "../components/EditProfileModal";
 
 
@@ -52,7 +52,8 @@ function Section({ title, children }) {
 }
 
 export default function ProfileScreen() {
-  const { user, logout } = useAuth();
+  const navigation = useNavigation();
+  const { user } = useAuth();
   const [doctor, setDoctor] = useState(null);
   const [departments, setDepartments] = useState([]);
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -122,7 +123,7 @@ export default function ProfileScreen() {
     <ScrollView
       style={styles.container}
       showsVerticalScrollIndicator={false}
-      contentContainerStyle={{ paddingBottom: 40 }}
+      contentContainerStyle={{ paddingBottom: 80 }}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
     >
       {/* Avatar card */}
@@ -177,14 +178,26 @@ export default function ProfileScreen() {
         <InfoRow icon="briefcase-outline"    label="Vai trò"           value="Bác sĩ" />
       </Section>
 
-      {/* Activity History */}
-      <ActivityHistorySection />
-
-      {/* Logout */}
-      <TouchableOpacity style={styles.logoutBtn} onPress={logout} activeOpacity={0.8}>
-        <Ionicons name="log-out-outline" size={20} color={colors.dangerAccent} />
-        <Text style={styles.logoutText}>Đăng xuất</Text>
-      </TouchableOpacity>
+      {/* Activity History Navigation Row */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>TÀI KHOẢN & HOẠT ĐỘNG</Text>
+        <View style={styles.card}>
+          <TouchableOpacity
+            style={[styles.infoRow, { borderBottomWidth: 0 }]}
+            onPress={() => navigation.navigate("AccountHistory")}
+            activeOpacity={0.7}
+          >
+            <View style={styles.infoIcon}>
+              <Ionicons name="time-outline" size={18} color={colors.primary} />
+            </View>
+            <View style={styles.infoContent}>
+              <Text style={styles.infoValue}>Lịch sử hoạt động</Text>
+              <Text style={styles.infoLabel}>Xem nhật ký thao tác lâm sàng</Text>
+            </View>
+            <Ionicons name="chevron-forward-outline" size={18} color={colors.textMuted} />
+          </TouchableOpacity>
+        </View>
+      </View>
 
       <EditProfileModal
         visible={editModalVisible}
@@ -233,6 +246,6 @@ const styles = StyleSheet.create({
   infoLabel: { ...typography.hint, marginBottom: 2 },
   infoValue: { ...typography.value, fontWeight: "500" },
 
-  logoutBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", backgroundColor: colors.dangerSoftAlt, borderRadius: radius.lg, paddingVertical: 14, gap: 8, marginTop: 4 },
+  logoutBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", backgroundColor: colors.dangerSoftAlt, borderRadius: radius.lg, paddingVertical: 14, gap: 8, marginTop: 4, marginBottom: 24 },
   logoutText: { fontSize: 15, fontWeight: "700", color: colors.dangerAccent },
 });

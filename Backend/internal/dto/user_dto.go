@@ -113,8 +113,8 @@ type CreateMedicalStaffRequest struct {
 	Name              string        `json:"name" binding:"required"`
 	Email             string        `json:"email" binding:"required,email"`
 	Phone             string        `json:"phone,omitempty"`
-	Password          string        `json:"password" binding:"required,min=6"`
-	ConfirmedPassword string        `json:"confirmedPassword" binding:"required,min=6"`
+	Password          string        `json:"password,omitempty" binding:"omitempty,min=6"`
+	ConfirmedPassword string        `json:"confirmedPassword,omitempty" binding:"omitempty,min=6"`
 	Gender            domain.Gender `json:"gender" binding:"required"`
 	Dob               string        `json:"dob" binding:"required"`
 	Status            domain.Status `json:"status,omitempty"`
