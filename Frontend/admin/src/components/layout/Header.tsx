@@ -31,7 +31,7 @@ const Header: React.FC = () => {
             className="h-8 w-8 rounded-full object-cover"
           />
           <span className="text-sm font-medium text-gray-700 dark:text-gray-200 hidden sm:inline truncate max-w-[150px]">
-            {user?.name || "Admin"}
+            {user?.name || user?.username || "Admin"}
           </span>
         </div>
       </div>

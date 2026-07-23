@@ -38,6 +38,7 @@ import VideoCallScreen from "../screens/patient/VideoCallScreen";
 import EducationHomeScreen from "../screens/patient/EducationHomeScreen";
 import EducationArticleScreen from "../screens/patient/EducationArticleScreen";
 import EducationQuizScreen from "../screens/patient/EducationQuizScreen";
+import AccountHistoryScreen from "../screens/patient/AccountHistoryScreen";
 
 // Nurse screen imports kept for rollback — not used in navigation (moved to doctor-app)
 // import NursePatientListScreen from "../screens/nurse/NursePatientListScreen";
@@ -163,6 +164,7 @@ function RootNavigator() {
       <Stack.Screen name="VideoCall" component={VideoCallScreen} />
       <Stack.Screen name="EducationArticle" component={EducationArticleScreen} />
       <Stack.Screen name="EducationQuiz" component={EducationQuizScreen} />
+      <Stack.Screen name="AccountHistory" component={AccountHistoryScreen} />
     </Stack.Navigator>
   );
 }

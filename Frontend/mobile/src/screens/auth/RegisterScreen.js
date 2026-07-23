@@ -32,6 +32,7 @@ export default function RegisterScreen({ navigation, onSwitchToLogin }) {
   } catch (e) {
     DateTimePicker = null;
   }
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -80,6 +81,7 @@ export default function RegisterScreen({ navigation, onSwitchToLogin }) {
     navigation.navigate('RegisterOptional', {
       name,
       email,
+      phone,
       password,
       confirmedPassword: confirmPassword,
       dob,
@@ -136,6 +138,17 @@ export default function RegisterScreen({ navigation, onSwitchToLogin }) {
                 {emailError}
               </Text>
             ) : null}
+          </View>
+
+          <View style={styles.field}>
+            <Text style={styles.label}>Số điện thoại</Text>
+            <TextInput
+              value={phone}
+              onChangeText={setPhone}
+              placeholder="Nhập số điện thoại (tùy chọn)"
+              keyboardType="phone-pad"
+              style={styles.input}
+            />
           </View>
 
           <View style={styles.field}>

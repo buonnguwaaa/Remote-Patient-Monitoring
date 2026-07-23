@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { HiOutlineEnvelope, HiLockClosed, HiOutlineEye, HiOutlineEyeSlash } from "react-icons/hi2";
+import { HiOutlineEnvelope, HiLockClosed, HiOutlineEye, HiOutlineEyeSlash, HiShieldCheck } from "react-icons/hi2";
 import { useAuth } from "../../../context/AuthContext";
 
 const LoginForm: React.FC = () => {
@@ -32,17 +32,17 @@ const LoginForm: React.FC = () => {
   };
 
   return (
-    <div className="flex w-full max-w-md min-h-100 flex-col items-center bg-gray-50 p-8 rounded">
+    <div className="flex w-full max-w-md min-h-100 flex-col items-center bg-gray-50 p-8 rounded-xl shadow-sm border border-gray-100">
       <div className="mb-4 flex justify-center">
         <img src="/doctor-logo.png" alt="Admin App Logo" className="w-16 h-16 rounded-xl shadow-sm object-cover bg-white" />
       </div>
-      <p className="mb-6 text-lg font-medium text-gray-600 text-center">
-        Xin chào bạn đến với hệ thống Quản Lý RPM
-      </p>
-
-      <h2 className="mb-8 text-2xl font-semibold text-gray-800">
-        Đăng nhập tài khoản
-      </h2>
+      <h1 className="text-2xl font-bold text-gray-900 text-center">
+        Remote Patient Monitoring
+      </h1>
+      <div className="mt-3 mb-6 inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-3.5 py-1 text-xs font-bold text-blue-700 tracking-wider">
+        <HiShieldCheck className="h-4 w-4 text-blue-700" />
+        <span>CỔNG ĐĂNG NHẬP QUẢN TRỊ</span>
+      </div>
       <form className="w-full" onSubmit={handleSubmit}>
         {error && (
           <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md text-sm">
