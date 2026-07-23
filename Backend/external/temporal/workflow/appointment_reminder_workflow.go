@@ -11,7 +11,15 @@ import (
 
 const AppointmentUpdateSignal = "APPOINTMENT-UPDATE-SIGNAL"
 
-const appointmentReminderLeadTime = 24 * time.Hour
+type appointmentReminderStep struct {
+	leadTime time.Duration
+	kind     dto.AppointmentReminderKind
+}
+
+var appointmentReminderSteps = []appointmentReminderStep{
+	{leadTime: 24 * time.Hour, kind: dto.AppointmentReminderKind1d},
+	{leadTime: 2 * time.Hour, kind: dto.AppointmentReminderKind2h},
+}
 
 func AppointmentReminderWorkflow(ctx workflow.Context, input dto.AppointmentReminderWorkflowInput) error {
 	logger := workflow.GetLogger(ctx)
@@ -27,7 +35,10 @@ func AppointmentReminderWorkflow(ctx workflow.Context, input dto.AppointmentRemi
 
 	updateCh := workflow.GetSignalChannel(ctx, AppointmentUpdateSignal)
 
-	for {
+	stepIndex := 0
+	for stepIndex < len(appointmentReminderSteps) {
+		step := appointmentReminderSteps[stepIndex]
+
 		var appointment domain.FollowUpAppointment
 		if err := workflow.ExecuteActivity(ctx, "GetAppointmentActivity", input.AppointmentID).Get(ctx, &appointment); err != nil {
 			return err
@@ -39,15 +50,18 @@ func AppointmentReminderWorkflow(ctx workflow.Context, input dto.AppointmentRemi
 		}
 
 		now := workflow.Now(ctx)
-		remindAt := appointment.ScheduledAt.Add(-appointmentReminderLeadTime)
+		if !appointment.ScheduledAt.After(now) {
+			return nil
+		}
+
+		remindAt := appointment.ScheduledAt.Add(-step.leadTime)
 
 		if !remindAt.After(now) {
-			if appointment.ScheduledAt.After(now) {
-				if err := workflow.ExecuteActivity(ctx, "SendAppointmentReminderActivity", input.AppointmentID).Get(ctx, nil); err != nil {
-					return err
-				}
+			if err := sendAppointmentReminder(ctx, input.AppointmentID, step.kind); err != nil {
+				return err
 			}
-			return nil
+			stepIndex++
+			continue
 		}
 
 		timer := workflow.NewTimer(ctx, remindAt.Sub(now))
@@ -63,12 +77,23 @@ func AppointmentReminderWorkflow(ctx workflow.Context, input dto.AppointmentRemi
 		selector.Select(ctx)
 
 		if !timerFired {
+			// Appointment was updated — recompute both lead times from scratch.
+			stepIndex = 0
 			continue
 		}
 
-		if err := workflow.ExecuteActivity(ctx, "SendAppointmentReminderActivity", input.AppointmentID).Get(ctx, nil); err != nil {
+		if err := sendAppointmentReminder(ctx, input.AppointmentID, step.kind); err != nil {
 			return err
 		}
-		return nil
+		stepIndex++
 	}
+
+	return nil
+}
+
+func sendAppointmentReminder(ctx workflow.Context, appointmentID string, kind dto.AppointmentReminderKind) error {
+	return workflow.ExecuteActivity(ctx, "SendAppointmentReminderActivity", dto.SendAppointmentReminderInput{
+		AppointmentID: appointmentID,
+		Kind:          kind,
+	}).Get(ctx, nil)
 }

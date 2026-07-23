@@ -96,54 +96,20 @@ var neutralGivenNames = []string{
 	"Quân", "Sương", "Tâm", "Uyên", "Vy",
 }
 
-// departmentNames lists the main clinical departments commonly found in
-// Vietnamese hospitals.
+// departmentNames lists clinical departments in scope for hypertension and
+// diabetes remote monitoring.
 var departmentNames = []string{
-	"Khoa Nội Tổng hợp",
-	"Khoa Ngoại Tổng hợp",
-	"Khoa Nhi",
-	"Khoa Sản Phụ khoa",
 	"Khoa Tim mạch",
-	"Khoa Thần kinh",
-	"Khoa Tiêu hóa",
-	"Khoa Hô hấp",
-	"Khoa Nội tiết",
+	"Khoa Nội Tổng quát",
 	"Khoa Thận - Tiết niệu",
-	"Khoa Cơ Xương Khớp",
-	"Khoa Da liễu",
-	"Khoa Mắt",
-	"Khoa Tai Mũi Họng",
-	"Khoa Ung thư",
-	"Khoa Huyết học",
-	"Khoa Truyền nhiễm",
-	"Khoa Tâm thần",
-	"Khoa Chấn thương Chỉnh hình",
-	"Khoa Cấp cứu",
-	"Khoa Hồi sức Cấp cứu",
-	"Khoa Chẩn đoán Hình ảnh",
-	"Khoa Phục hồi Chức năng",
-	"Khoa Dinh dưỡng",
-	"Khoa Lão khoa",
-	"Khoa Y học Gia đình",
+	"Khoa Nội tiết",
 }
 
-// doctorSpecializations lists the main, common specializations for
-// doctors in Vietnam.
-var doctorSpecializations = []string{
-	"Nội Tổng hợp",
-	"Tim mạch",
-	"Nội tiết",
-	"Thận - Tiết niệu",
-	"Hô hấp",
-	"Tiêu hóa",
-	"Thần kinh",
-	"Cơ Xương Khớp",
-	"Da liễu",
-	"Nhi khoa",
-	"Sản Phụ khoa",
-	"Ung thư",
-	"Truyền nhiễm",
-	"Lão khoa",
-	"Y học Gia đình",
-	"Đa khoa",
+// DepartmentNames returns the in-scope department catalog used by seed and
+// migrations. Callers must treat the slice as read-only.
+func DepartmentNames() []string {
+	out := make([]string, len(departmentNames))
+	copy(out, departmentNames)
+	return out
 }
+

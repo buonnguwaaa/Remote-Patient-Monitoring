@@ -6,6 +6,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/external/temporal/dto"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/service"
@@ -36,8 +37,8 @@ func (a *AppointmentActivity) GetAppointmentActivity(ctx context.Context, appoin
 	return a.appointmentRepo.FindByID(ctx, id)
 }
 
-func (a *AppointmentActivity) SendAppointmentReminderActivity(ctx context.Context, appointmentID string) error {
-	id, err := util.MustHexToObjectID(appointmentID)
+func (a *AppointmentActivity) SendAppointmentReminderActivity(ctx context.Context, input dto.SendAppointmentReminderInput) error {
+	id, err := util.MustHexToObjectID(input.AppointmentID)
 	if err != nil {
 		return err
 	}
@@ -56,8 +57,16 @@ func (a *AppointmentActivity) SendAppointmentReminderActivity(ctx context.Contex
 		return nil
 	}
 
+	kind := input.Kind
+	if kind == "" {
+		kind = dto.AppointmentReminderKind1d
+	}
+
 	title := "Nhắc nhở tái khám"
 	body := "Ngày mai bạn có lịch tái khám. Vui lòng chuẩn bị đến khám đúng giờ."
+	if kind == dto.AppointmentReminderKind2h {
+		body = "Bạn có lịch tái khám trong 2 giờ nữa. Vui lòng chuẩn bị đến khám đúng giờ."
+	}
 
 	payload := map[string]string{
 		"type":          "appointment",
@@ -66,6 +75,7 @@ func (a *AppointmentActivity) SendAppointmentReminderActivity(ctx context.Contex
 		"doctorId":      appointment.DoctorID.Hex(),
 		"scheduledFor":  appointment.ScheduledAt.UTC().Format(time.RFC3339),
 		"targetScreen":  "PatientAppointments",
+		"reminderKind":  string(kind),
 	}
 
 	_, err = a.notificationService.PublishToUser(ctx, &usecase.InternalPublishNotificationInput{
@@ -74,10 +84,10 @@ func (a *AppointmentActivity) SendAppointmentReminderActivity(ctx context.Contex
 		Title:    title,
 		Body:     body,
 		Data:     payload,
-		DedupKey: fmt.Sprintf("appointment:%s:reminder-1d", appointment.ID.Hex()),
+		DedupKey: fmt.Sprintf("appointment:%s:reminder-%s", appointment.ID.Hex(), kind),
 	})
 	if err != nil {
-		log.Printf("[WARN] failed to publish appointment reminder (non-fatal) for appointment=%s: %v", appointment.ID.Hex(), err)
+		log.Printf("[WARN] failed to publish appointment reminder (non-fatal) for appointment=%s kind=%s: %v", appointment.ID.Hex(), kind, err)
 		return nil
 	}
 

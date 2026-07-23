@@ -41,7 +41,7 @@ Key routes: `/`, `/patient`, `/patient/:id`, `/threshold-alerts`, `/threshold-se
 
 ### Admin Panel (`admin/`)
 
-A separate web app for system administrators. Manages doctors, nurses, patients, departments, assignments, system settings, and activity history. Only users with the `admin` role can sign in.
+A separate web app for system administrators. Manages doctors, nurses, patients, departments, assignments, system settings, and activity history. Only users with the `admin` role can sign in. Creating a patient triggers a backend invite (email/SMS set-password link), not a raw temp password.
 
 Key routes: `/`, `/doctors`, `/patients`, `/nurses`, `/departments`, `/assignments`, `/system-settings`, `/activity-history`.
 
@@ -280,6 +280,8 @@ Role checks happen on both sides:
 - **Doctor web** — doctor-role accounts only.
 - **Staff mobile** — `isDoctor` / `isNurse` from auth context drives which navigator renders.
 - **Patient mobile** — patient and nurse roles get different tab layouts.
+
+**Patient onboarding (backend):** When an admin creates a patient, the API does **not** send a raw temporary password. It emails/SMS an invite link to `/auth/accept-invite` (HTML set-password page), sets `mustSetPassword`, and uses a 15-minute token TTL. Admins can resend via `POST /users/patients/:id/resend-invite`. Forgot password on the patient app is a 6-digit email OTP (15 min). The API accepts login by email or phone (`phoneLookupHash`); logout uses a Redis JWT blacklist.
 
 ### Demo accounts (after backend seed)
 

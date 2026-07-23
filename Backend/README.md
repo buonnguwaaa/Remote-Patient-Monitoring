@@ -31,18 +31,20 @@ Built with **Go**, **MongoDB**, **Redis**, and **Temporal** for durable backgrou
 
 | Domain                              | What it covers                                                                   |
 | ----------------------------------- | -------------------------------------------------------------------------------- |
-| **Authentication**            | JWT-based auth, Google OAuth2, role-based access (admin, doctor, nurse, patient) |
+| **Authentication**            | JWT auth, Google OAuth2, role-based access; login by email or phone (`phoneLookupHash`); admin patient invite → `/auth/accept-invite` (`mustSetPassword`, 15 min TTL, no raw temp password); `POST /users/patients/:id/resend-invite`; forgot password = 6-digit OTP / 15 min |
 | **Users & departments**       | Staff and patient profiles, department management                                |
 | **Care assignments**          | Link patients to doctors and nurses                                              |
 | **Measurements**              | Vital sign ingestion with configurable thresholds                                |
-| **Alerts**                    | Point threshold + rising/falling trend evaluation, push, and chat messages       |
+| **Alerts**                    | Point threshold + rising/falling trend evaluation (~21 days BP/glucose), push, and chat messages |
 | **Prescriptions & reminders** | Medication schedules with Temporal-backed reminder delivery                      |
 | **Medication intake**         | Track whether patients took prescribed doses                                     |
 | **Follow-up appointments**    | Scheduling with automated appointment reminders                                  |
-| **Chat**                      | Conversations between care team and patients                                     |
+| **Chat**                      | Conversations between care team and patients (content encrypted at rest)         |
 | **Notifications**             | In-app notifications and Firebase Cloud Messaging (FCM) push                     |
 | **Realtime**                  | WebSocket hub backed by Redis pub/sub for live updates                           |
+| **Security**                  | AES-GCM field encryption for PHI/chat (`FIELD_ENCRYPTION_KEY`); Redis JWT blacklist + cache-aside |
 | **Video sessions**            | Jitsi-based telehealth room provisioning                                         |
+| **Email & SMS**               | SMTP (OTP, transactional); Twilio SMS (patient invite links)                     |
 | **Activity logs**             | Audit trail for admin/doctor/nurse/patient write actions                          |
 
 ---
@@ -62,8 +64,9 @@ The backend runs as two processes in development (and production):
                      ▼                             ▼                             ▼
               ┌────────────┐               ┌────────────┐               ┌────────────┐
               │  MongoDB   │               │   Redis    │               │  Temporal  │
-              │  (data)    │               │ (cache /   │               │ (workflows)│
-              └────────────┘               │  pub-sub)  │               └─────┬──────┘
+              │  (data)    │               │ cache, JWT │               │ (workflows)│
+              │            │               │ blacklist, │               └─────┬──────┘
+              └────────────┘               │ pub-sub    │                     │
                                            └────────────┘                     │
                                                                                ▼
                                                                     ┌──────────────────┐
@@ -85,12 +88,14 @@ The backend runs as two processes in development (and production):
 | Language           | Go 1.24                                |
 | HTTP framework     | [Gin](https://github.com/gin-gonic/gin) |
 | Database           | MongoDB                                |
-| Cache / pub-sub    | Redis                                  |
+| Cache / pub-sub / JWT blacklist | Redis                       |
 | Workflows          | [Temporal](https://temporal.io/)        |
-| Auth               | JWT, Google OAuth2                     |
+| Auth               | JWT, Google OAuth2, invite + OTP flows |
+| Field encryption   | AES-256-GCM (`FIELD_ENCRYPTION_KEY`)   |
 | Push notifications | Firebase Cloud Messaging               |
 | Media uploads      | Cloudinary                             |
 | Email              | SMTP                                   |
+| SMS                | Twilio                                 |
 | Video              | Jitsi                                  |
 | API docs           | Swagger (swaggo)                       |
 
@@ -141,7 +146,7 @@ make up-dev
 | --------------- | -------- | --------------------------------- |
 | Temporal gRPC   | `7233` | Workflow engine                   |
 | Temporal Web UI | `8233` | Inspect workflows and task queues |
-| Redis           | `6379` | Cache and realtime event bus      |
+| Redis           | `6379` | Cache-aside, JWT blacklist, realtime pub/sub |
 
 ### 4. Seed the database (optional)
 
@@ -180,7 +185,8 @@ Environment variables are loaded from `.env` at startup via [godotenv](https://g
 | `GIN_MODE`      | Gin mode:`debug` or `release` | `debug`          |
 | `PORT`          | HTTP server port                  | `8080`           |
 | `JWT_SECRET`    | Secretly signing secret           | — (required)      |
-| `FIELD_ENCRYPTION_KEY` | Base64 AES-256 key for PHI fields (CCCD, BHYT, medicalHistory, …). Generate with `openssl rand -base64 32`. Required when `GIN_MODE=release`. | — (optional in debug) |
+| `BE_URL`        | Public API origin used in invite email/SMS links (`…/auth/accept-invite?token=…`). See `.env.example`. | `http://localhost:8080` (via code fallback) |
+| `FIELD_ENCRYPTION_KEY` | Base64 AES-256 key for PHI/chat fields (phone, CCCD, BHYT, medicalHistory, licenseNumber, chat content, …). Also required for phone login/`phoneLookupHash`. Generate with `openssl rand -base64 32`. Required when `GIN_MODE=release`. | — (optional in debug) |
 | `MONGO_URI`     | MongoDB connection string         | — (required)      |
 | `MONGO_DB_NAME` | MongoDB database name             | — (required)      |
 | `TEMPORAL_HOST` | Temporal frontend address         | `localhost:7233` |
@@ -208,8 +214,8 @@ This layer is only wired into the HTTP server container (`internal/container/mai
 
 | Variable          | Description                     | Default                   |
 | ----------------- | ------------------------------- | ------------------------- |
-| `FE_WEB_URL`    | Patient web app origin          | `http://localhost:3000` |
-| `FE_ADMIN_URL`  | Admin web app origin            | `http://localhost:3001` |
+| `FE_WEB_URL`    | Doctor web app origin           | `http://localhost:3000` |
+| `FE_ADMIN_URL`  | Admin web app origin            | `http://localhost:5174` |
 | `FE_MOBILE_URI` | Mobile app redirect URI (OAuth) | —                        |
 
 ### Authentication
@@ -223,6 +229,8 @@ This layer is only wired into the HTTP server container (`internal/container/mai
 | `COOKIE_CROSS_SITE`    | Set to`true` for cross-site cookies in production |
 | `FORCE_SAMESITE_NONE`  | Force`SameSite=None` on cookies                   |
 
+Patient onboarding (admin create): the API issues a one-time invite token (15 min), sets `mustSetPassword`, and notifies via SMTP and/or Twilio with a link to `GET/POST /auth/accept-invite` (HTML set-password page). Raw temporary passwords are never emailed/SMS'd. Admins can call `POST /users/patients/:id/resend-invite` while `mustSetPassword` is still true. Forgot password sends a 6-digit OTP by email (15 min TTL). Logout blacklists the access-token JTI in Redis.
+
 ### Email (SMTP)
 
 | Variable          | Description                   |
@@ -231,6 +239,17 @@ This layer is only wired into the HTTP server container (`internal/container/mai
 | `SMTP_PORT`     | SMTP port                     |
 | `SMTP_EMAIL`    | Sender email address          |
 | `SMTP_PASSWORD` | SMTP password or app password |
+
+### SMS (Twilio)
+
+| Variable                   | Description                                      |
+| -------------------------- | ------------------------------------------------ |
+| `TWILIO_ACCOUNT_SID`     | Twilio account SID                               |
+| `TWILIO_AUTH_TOKEN`      | Twilio auth token                                |
+| `TWILIO_FROM_NUMBER`     | Sender phone number                              |
+| `TWILIO_TO_NUMBER_OVERRIDE` | Optional: route all outbound SMS to one verified number (trial/testing) |
+
+Invite SMS is skipped gracefully if Twilio is not configured (logged as a warning).
 
 ### Push notifications (Firebase)
 
@@ -622,7 +641,7 @@ The Dockerfile produces two binaries: `/server` and `/worker`.
 
 ### Production Compose
 
-Production stack includes PostgreSQL, Temporal, Temporal UI, Redis, server, worker, and nginx:
+Production stack includes PostgreSQL, Temporal, Temporal UI, Redis, server, worker, and nginx — typically run together via **Docker Compose on EC2**. Individual services can be separated and scaled later:
 
 ```bash
 make up-prod
@@ -635,7 +654,7 @@ Stop production services:
 make down-prod
 ```
 
-Ensure `.env` (or `.env.production`) contains production MongoDB, Firebase, and SMTP credentials before deploying.
+Ensure `.env` (or `.env.production`) contains production MongoDB, Firebase, SMTP/Twilio, `BE_URL`, and `FIELD_ENCRYPTION_KEY` before deploying. Do not commit secrets.
 
 ---
 
