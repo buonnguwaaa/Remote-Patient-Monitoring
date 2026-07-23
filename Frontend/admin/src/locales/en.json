@@ -120,6 +120,7 @@
     "loadError": "Error loading doctor list",
     "updateSuccess": "Doctor updated successfully!",
     "addSuccess": "Doctor added successfully!",
+    "noDoctors": "No doctors found.",
     "errorPrefix": "Error:",
     "fields": {
       "name": "Full Name",
@@ -164,6 +165,7 @@
     "loadError": "Error loading nurse list",
     "updateSuccess": "Nurse updated successfully!",
     "addSuccess": "Nurse added successfully!",
+    "noNurses": "No nurses found.",
     "errorPrefix": "Error:",
     "fields": {
       "name": "Full Name",
@@ -201,6 +203,7 @@
     "loadError": "Error loading patient list",
     "updateSuccess": "Patient updated successfully!",
     "addSuccess": "Patient added successfully!",
+    "noPatients": "No patients found.",
     "errorPrefix": "Error:",
     "loginAccount": "login account",
     "fields": {

@@ -399,7 +399,8 @@ func (h *AuthHandler) SubmitAcceptInvite(c *gin.Context) {
 
 func (h *AuthHandler) renderAcceptInvitePage(c *gin.Context, status int, body string) {
 	c.Header("Content-Type", "text/html; charset=utf-8")
-	c.String(status, constant.AcceptInvitePageTemplate, body)
+	htmlContent := strings.Replace(constant.AcceptInvitePageTemplate, "{{BODY}}", body, 1)
+	c.String(status, "%s", htmlContent)
 }
 
 func acceptInviteExpiredBody() string {

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { FaEdit, FaExchangeAlt, FaSave, FaTrash, FaUserMd, FaUserNurse } from "react-icons/fa";
 import { useTranslation } from "react-i18next";
+import { useLocation, useSearchParams } from "react-router-dom";
 
 import api from "../services/api";
 import type { Assignment, Nurse, Patient, doctor } from "../types";
@@ -30,9 +31,19 @@ const AssignmentManagement: React.FC = () => {
   const [loadingAssignments, setLoadingAssignments] = useState(false);
   const [editingAssignmentId, setEditingAssignmentId] = useState<string | null>(null);
 
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const targetPatientId = (location.state as any)?.patientId || searchParams.get("patientId") || "";
+
   useEffect(() => {
     void fetchData();
   }, []);
+
+  useEffect(() => {
+    if (targetPatientId) {
+      setSelectedPatient(targetPatientId);
+    }
+  }, [targetPatientId]);
 
   const extractList = (response: any) => {
     const data = response.data?.data;

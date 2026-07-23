@@ -33,7 +33,6 @@ import {
 import { buildPatientQrValue } from "../../utils/patientQrUtils";
 import { request } from "../../api/httpClient";
 import { getMyCareTeam } from "../../api/assignmentApi";
-import AccountActivitySection from "../../components/AccountActivitySection";
 
 
 const EMPTY_USER_FORM = {
@@ -1135,6 +1134,31 @@ export default function ProfileScreen() {
                 />
               )}
             </View>
+
+            {/* Row navigation sang Lịch sử tài khoản */}
+            <TouchableOpacity
+              style={[
+                styles.settingInfoRow,
+                {
+                  alignItems: "center",
+                  marginTop: 16,
+                  paddingTop: 16,
+                  borderTopWidth: 1,
+                  borderTopColor: "#F3F4F6",
+                },
+              ]}
+              onPress={() => navigation.navigate("AccountHistory")}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="time-outline" size={18} color="#2563EB" />
+              <View style={styles.settingContent}>
+                <Text style={styles.settingLabel}>Lịch sử tài khoản</Text>
+                <Text style={styles.settingSub}>
+                  Xem các hoạt động đã thực hiện trên tài khoản
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward-outline" size={18} color="#9CA3AF" />
+            </TouchableOpacity>
           </View>
 
           {editMode ? (
@@ -1156,9 +1180,6 @@ export default function ProfileScreen() {
               <Text style={styles.saveText}>{saving ? "Đang lưu..." : "Lưu thay đổi"}</Text>
             </TouchableOpacity>
           ) : null}
-
-          {/* ── Lịch sử tài khoản ───────────────────────────────────── */}
-          <AccountActivitySection />
 
           <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
             <Text style={styles.logoutText}>Đăng xuất</Text>

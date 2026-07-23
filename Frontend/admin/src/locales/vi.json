@@ -120,6 +120,7 @@
     "loadError": "Lỗi khi tải danh sách bác sĩ",
     "updateSuccess": "Cập nhật bác sĩ thành công!",
     "addSuccess": "Thêm bác sĩ thành công!",
+    "noDoctors": "Không tìm thấy bác sĩ nào.",
     "errorPrefix": "Lỗi:",
     "fields": {
       "name": "Họ tên",
@@ -164,6 +165,7 @@
     "loadError": "Lỗi khi tải danh sách y tá",
     "updateSuccess": "Cập nhật y tá thành công!",
     "addSuccess": "Thêm y tá thành công!",
+    "noNurses": "Không tìm thấy y tá / điều dưỡng nào.",
     "errorPrefix": "Lỗi:",
     "fields": {
       "name": "Họ tên",
@@ -201,6 +203,7 @@
     "loadError": "Lỗi khi tải danh sách bệnh nhân",
     "updateSuccess": "Cập nhật bệnh nhân thành công!",
     "addSuccess": "Thêm bệnh nhân thành công!",
+    "noPatients": "Không tìm thấy bệnh nhân nào.",
     "errorPrefix": "Lỗi:",
     "loginAccount": "tài khoản đăng nhập",
     "fields": {

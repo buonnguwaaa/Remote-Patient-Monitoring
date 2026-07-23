@@ -423,6 +423,14 @@ func (s *userService) CreateDoctor(ctx context.Context, input *usecase.CreateDoc
 	if err != nil {
 		return nil, err
 	}
+
+	if created.MustSetPassword {
+		inviteURL, err := s.issuePatientInvite(ctx, created.ID)
+		if err == nil {
+			s.notifyPatientActivatedAsync(ctx, &domain.Patient{BaseUser: created.BaseUser}, true, inviteURL)
+		}
+	}
+
 	return mapDoctor(created), nil
 }
 
@@ -437,6 +445,14 @@ func (s *userService) CreateNurse(ctx context.Context, input *usecase.CreateNurs
 	if err != nil {
 		return nil, err
 	}
+
+	if created.MustSetPassword {
+		inviteURL, err := s.issuePatientInvite(ctx, created.ID)
+		if err == nil {
+			s.notifyPatientActivatedAsync(ctx, &domain.Patient{BaseUser: created.BaseUser}, true, inviteURL)
+		}
+	}
+
 	return mapNurse(created), nil
 }
 
@@ -453,9 +469,17 @@ func (s *userService) buildMedicalStaff(ctx context.Context, input *usecase.Crea
 	if phone != "" && !patientPhonePattern.MatchString(phone) {
 		return nil, &ValidationError{Field: "phone", Message: "Số điện thoại phải gồm 9 đến 15 chữ số."}
 	}
-	if input.Password != input.ConfirmedPassword {
+
+	mustSetPassword := false
+	if strings.TrimSpace(input.Password) == "" {
+		rawToken, _ := util.GenerateRandomToken(12)
+		input.Password = rawToken
+		input.ConfirmedPassword = rawToken
+		mustSetPassword = true
+	} else if input.Password != input.ConfirmedPassword {
 		return nil, &ValidationError{Field: "confirmedPassword", Message: "Mật khẩu và mật khẩu xác nhận không khớp."}
 	}
+
 	if input.Status == "" {
 		input.Status = domain.StatusActive
 	}
@@ -495,6 +519,7 @@ func (s *userService) buildMedicalStaff(ctx context.Context, input *usecase.Crea
 			Gender:          input.Gender,
 			Dob:             input.Dob,
 			Status:          input.Status,
+			MustSetPassword: mustSetPassword,
 		},
 		DepartmentID:      departmentID,
 		LicenseNumber:     strings.TrimSpace(input.LicenseNumber),

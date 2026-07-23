@@ -1,3 +1,4 @@
+import React, { useCallback, useState } from "react";
 import {
   View,
   Text,
@@ -12,14 +13,12 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons, MaterialIcons, FontAwesome5 } from "@expo/vector-icons";
-import { useCallback, useState } from "react";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 
 import { useAuth } from "../../hooks/useAuth";
 import { getDepartments } from "../../api/departmentApi";
 import { getMyNurseProfile } from "../../api/profileApi";
 import { useToast } from "../../context/ToastContext";
-import ActivityHistorySection from "../../components/ActivityHistorySection";
 
 
 const EMPTY_PROFILE = {
@@ -218,6 +217,7 @@ function InfoRow({ icon, label, value, hint, iconLib = "ionicons" }) {
 }
 
 export default function NurseProfileScreen() {
+  const navigation = useNavigation();
   const { showToast } = useToast();
   const { logout, isBiometricEnabled, enableBiometric, disableBiometric, refreshBiometricStatus, sessionPassword } = useAuth();
   const [profile, setProfile] = useState(EMPTY_PROFILE);
@@ -521,10 +521,35 @@ export default function NurseProfileScreen() {
               </TouchableOpacity>
             )}
           </View>
-        </View>
 
-        {/* Activity History */}
-        <ActivityHistorySection />
+          {/* Row navigation sang Lịch sử hoạt động */}
+          <TouchableOpacity
+            style={[
+              styles.securityRow,
+              {
+                marginTop: 16,
+                paddingTop: 16,
+                borderTopWidth: 1,
+                borderTopColor: "#F3F4F6",
+              },
+            ]}
+            onPress={() => navigation.navigate("AccountHistory")}
+            activeOpacity={0.7}
+          >
+            <View style={styles.securityInfo}>
+              <View style={styles.infoIconWrapper}>
+                <Ionicons name="time-outline" size={18} color="#2563EB" />
+              </View>
+              <View style={styles.securityTextBlock}>
+                <Text style={styles.securityLabel}>Lịch sử hoạt động</Text>
+                <Text style={styles.securitySub}>
+                  Xem nhật ký các thao tác lâm sàng
+                </Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward-outline" size={18} color="#9CA3AF" />
+          </TouchableOpacity>
+        </View>
 
         <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
           <Text style={styles.logoutText}>Đăng xuất</Text>
@@ -548,7 +573,7 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     padding: 20,
-    paddingBottom: 32,
+    paddingBottom: 80,
   },
   stateContainer: {
     flex: 1,
