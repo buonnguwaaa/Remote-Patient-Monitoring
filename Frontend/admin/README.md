@@ -45,6 +45,7 @@ admin/
 - Xem danh sách bệnh nhân
 - Thêm/sửa/xóa bệnh nhân
 - Quản lý thông tin bệnh nhân
+- Khi **tạo mới**, backend gửi liên kết mời (email/SMS) tới trang `/auth/accept-invite` để bệnh nhân tự đặt mật khẩu (`mustSetPassword`, TTL 15 phút) — **không** gửi mật khẩu tạm dạng plaintext. Có thể gửi lại qua `POST /users/patients/:id/resend-invite` nếu liên kết hết hạn và tài khoản vẫn chưa đặt mật khẩu.
 
 ### 3. Quản lý Y tá
 - Xem danh sách y tá
@@ -87,10 +88,10 @@ npm run preview
 ## Cấu hình
 
 ### Port
-Admin app chạy trên port **5174** (khác với web app chạy trên port 5173)
+Admin app chạy trên port **5174** (khác với doctor web app chạy trên port **3000**)
 
 ### API Endpoint
-API endpoint được cấu hình trong `src/services/api.ts`
+API endpoint được cấu hình trong `src/services/api.ts` (`VITE_API_URL`).
 
 ## Đăng nhập
 
@@ -103,7 +104,7 @@ Chỉ tài khoản có role **admin** mới có thể đăng nhập vào admin p
 
 | Tính năng | Admin App | Web App |
 |-----------|-----------|---------|
-| Port | 5174 | 5173 |
+| Port | 5174 | 3000 |
 | User Role | Admin only | Doctor only |
 | Chức năng | Quản lý hệ thống | Theo dõi bệnh nhân |
 | Routing | `/`, `/doctors`, `/patients`, etc. | `/`, `/patient`, `/threshold-alerts`, etc. |
@@ -111,7 +112,7 @@ Chỉ tài khoản có role **admin** mới có thể đăng nhập vào admin p
 ## Development
 
 ### Tech Stack
-- **React 18** với TypeScript
+- **React 19** với TypeScript
 - **Vite** - Build tool
 - **React Router** - Routing
 - **Axios** - HTTP client

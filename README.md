@@ -48,18 +48,19 @@ The repository contains five applications. Each one targets a specific role and 
 
 - Record vital signs (blood pressure, heart rate, blood glucose, and more)
 - View measurement history and personal alert history
-- Receive push notifications when readings cross configured thresholds
+- Receive push notifications for threshold and trend alerts
 - Manage medications and mark doses as taken
 - Chat with their care team
 - Join video consultations (Jitsi)
 - Read health education articles and complete quizzes
+- Set a first password via admin invite link (`/auth/accept-invite`) or reset with email OTP
 
 ### For doctors
 
 - Dashboard overview of assigned patients and recent activity
 - Patient profiles with measurement trends and alert history
 - Configure per-patient vital sign thresholds
-- Review and act on threshold alerts in real time
+- Review and act on alerts (personal threshold + trend) in real time
 - Prescribe medications and schedule follow-up appointments
 - Set medication and appointment reminders
 - Chat with patients and start video sessions
@@ -73,7 +74,7 @@ The repository contains five applications. Each one targets a specific role and 
 
 ### For administrators
 
-- Manage doctors, nurses, and patients (create, edit, deactivate)
+- Manage doctors, nurses, and patients (create, edit, deactivate); new patients receive an invite link (email/SMS) to set their own password — no raw temp password
 - Organize departments and assign staff
 - Assign patients to doctors and nurses
 - Review system activity logs
@@ -83,13 +84,15 @@ The repository contains five applications. Each one targets a specific role and 
 
 | Capability | How it works |
 |------------|--------------|
-| **Authentication** | JWT tokens with role-based access; Google OAuth2 supported |
-| **Threshold alerts** | Measurements evaluated against per-patient limits; Temporal workflows handle notification delivery |
+| **Authentication** | JWT with role-based access and Google OAuth2; login by email or phone (`phoneLookupHash`); admin-created patients get an invite link (email/SMS) to `/auth/accept-invite` (set password, `mustSetPassword`, 15 min TTL) — not a raw temp password; forgot password uses a 6-digit OTP (15 min) |
+| **Alerts** | `AlertWorkflow` evaluates personal thresholds **and** ~21-day BP/glucose trends (not point-only); Temporal delivers push and chat |
+| **Field encryption** | AES-GCM at rest for PHI and chat content (`FIELD_ENCRYPTION_KEY`) |
 | **Real-time updates** | WebSocket hub backed by Redis pub/sub — clients see new alerts and messages without polling |
+| **Cache & logout** | Redis cache-aside for hot reads; JWT blacklist on logout/revocation |
 | **Reminders** | Temporal schedules medication and appointment reminders; worker sends push notifications and in-app messages |
 | **Push notifications** | Firebase Cloud Messaging (FCM) for mobile clients |
 | **Media uploads** | Cloudinary for profile images and attachments |
-| **Email** | SMTP for password reset and transactional mail |
+| **Email & SMS** | SMTP for OTP reset and transactional mail; Twilio for patient invite SMS |
 | **Audit trail** | Activity logs for admin actions |
 
 ---
@@ -118,8 +121,9 @@ At a high level, clients call the Gin API server over HTTP. When something needs
          ▼                   ▼                   ▼
   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
   │   MongoDB   │    │    Redis    │    │  Temporal   │
-  │  persistent │    │ cache +     │    │  workflow   │
-  │  data store │    │ pub/sub bus │    │  engine     │
+  │  persistent │    │ cache, JWT  │    │  workflow   │
+  │  data store │    │ blacklist,  │    │  engine     │
+  │             │    │ pub/sub     │    │             │
   └─────────────┘    └─────────────┘    └──────┬──────┘
                                                │
                                                ▼
@@ -149,16 +153,17 @@ For local development, Docker Compose starts Temporal and Redis. MongoDB is expe
 |-------|---------|-------|
 | **Backend** | Go 1.24, Gin | REST API with Swagger docs |
 | **Database** | MongoDB | Users, measurements, prescriptions, chat, and more |
-| **Cache & events** | Redis | Pub/sub for WebSocket fan-out |
+| **Cache & events** | Redis | Pub/sub, cache-aside, JWT blacklist |
 | **Workflows** | Temporal | Durable scheduling for alerts and reminders |
-| **Auth** | JWT, Google OAuth2 | Role-based middleware on protected routes |
+| **Auth** | JWT, Google OAuth2 | Role-based middleware; invite + OTP reset flows |
+| **Encryption** | AES-GCM | PHI and chat fields via `FIELD_ENCRYPTION_KEY` |
 | **Doctor & admin web** | React, TypeScript, Vite, Tailwind CSS | Separate Vite apps, independent deployments |
 | **Mobile** | React Native, Expo SDK 54 | Patient app and doctor app are separate Expo projects |
 | **Push** | Firebase Cloud Messaging | Optional notifications to mobile |
 | **Video** | Jitsi | Telehealth room provisioning |
 | **Media** | Cloudinary | Image uploads |
-| **Email** | SMTP | Password reset, notifications |
-| **DevOps** | Docker, GitHub Actions | CI on push; backend deploys to EC2 via Docker Hub |
+| **Email / SMS** | SMTP, Twilio | OTP reset, invites, transactional mail/SMS |
+| **DevOps** | Docker Compose, GitHub Actions | CI on push; multi-service stack on EC2 (can split/scale later) |
 
 ---
 
@@ -199,6 +204,7 @@ cd Backend
 # Copy and edit environment variables
 cp .env.example .env
 # Required: MONGO_URI, MONGO_DB_NAME, JWT_SECRET
+# Invite links use BE_URL (public API origin); see Backend/.env.example
 # Redis defaults match docker-compose.yml (password: redispassword)
 
 go mod tidy
@@ -407,7 +413,7 @@ Temporal task queues used by the worker:
 
 | Queue | Workflows | Purpose |
 |-------|-----------|---------|
-| `ALERT-TASK-QUEUE` | `AlertWorkflow` | Evaluate measurements, create alerts, notify |
+| `ALERT-TASK-QUEUE` | `AlertWorkflow` | Personal threshold + ~21-day BP/glucose trends; create alerts; notify |
 | `REMINDER-TASK-QUEUE` | `ReminderWorkflow`, `AppointmentReminderWorkflow` | Medication and appointment reminders |
 
 ### Frontend (web & admin)
@@ -450,7 +456,7 @@ GitHub Actions workflows run automatically when changes are pushed to `master`:
 | [`frontend_web_ci_cd.yml`](.github/workflows/frontend_web_ci_cd.yml) | `Frontend/web/**` | Install, build with production `VITE_API_URL`, upload artifact |
 | [`frontend_admin_ci_cd.yml`](.github/workflows/frontend_admin_ci_cd.yml) | `Frontend/admin/**` | Install, build, deploy admin panel |
 
-The backend pipeline builds two Docker images (`rpm-backend`, `rpm-nginx`) and deploys them to EC2 via SSH. Frontend pipelines inject secrets such as `VITE_API_URL` at build time.
+The backend pipeline builds Docker images and deploys a **Docker Compose** multi-service stack on EC2 (server, worker, nginx, plus Temporal/Redis/Postgres as configured). Services can be separated and scaled later. Frontend pipelines inject secrets such as `VITE_API_URL` at build time.
 
 ---
 
