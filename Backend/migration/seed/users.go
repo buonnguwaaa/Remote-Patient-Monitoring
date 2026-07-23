@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
@@ -26,12 +27,11 @@ func (s *Seeder) seedDepartments(ctx context.Context) ([]*domain.Department, err
 		byName[d.Name] = d
 	}
 
-	result := make([]*domain.Department, 0, seedCount)
+	result := make([]*domain.Department, 0, len(departmentNames))
 	created := 0
 	now := time.Now().UTC()
 
-	for i := 0; i < seedCount; i++ {
-		name := pick(departmentNames, i)
+	for _, name := range departmentNames {
 		if d, ok := byName[name]; ok {
 			result = append(result, d)
 			continue
@@ -114,7 +114,7 @@ func (s *Seeder) seedDoctors(ctx context.Context, departments []*domain.Departme
 				LicenseNumber:     fmt.Sprintf("DOC-2024-%03d", i+1),
 				YearsOfExperience: 3 + (i % 20),
 			},
-			Specialization:            pick(doctorSpecializations, i),
+			Specialization:            strings.TrimPrefix(dept.Name, "Khoa "),
 			AcademicDegree:            degree,
 			ProfessionalQualification: DoctorProfessionalQualification(i),
 			AcademicTitle:             DoctorAcademicTitle(i, degree),
