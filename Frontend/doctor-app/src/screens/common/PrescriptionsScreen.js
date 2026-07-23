@@ -91,10 +91,15 @@ function StatusUpdateModal({ visible, prescription, onClose, onUpdated, showToas
             <ActivityIndicator color="#2563EB" style={{ marginVertical: 20 }} />
           ) : (
             <>
-              {prescription.status !== "active" && (
+              {prescription.status === "discontinued" && (
                 <TouchableOpacity style={[styles.statusBtn, { backgroundColor: "#D1FAE5" }]} onPress={() => handle("active")}>
                   <Text style={[styles.statusBtnText, { color: "#065F46" }]}>Kích hoạt lại</Text>
                 </TouchableOpacity>
+              )}
+              {(prescription.status === "completed" || prescription.status === "expired") && (
+                <Text style={{ textAlign: "center", color: "#6B7280", fontStyle: "italic", marginTop: 10 }}>
+                  Đơn thuốc đã kết thúc, không thể thay đổi trạng thái.
+                </Text>
               )}
               {prescription.status === "active" && (
                 <TouchableOpacity style={[styles.statusBtn, { backgroundColor: "#DBEAFE" }]} onPress={() => handle("completed")}>

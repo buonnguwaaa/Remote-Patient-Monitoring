@@ -24,6 +24,10 @@ type AssignmentRepository interface {
 	FindByDoctorIDWithNamesPaginated(ctx context.Context, doctorID primitive.ObjectID, offset, limit int) ([]*domain.Assignment, map[primitive.ObjectID]UserDisplayInfo, int64, error)
 	FindByNurseIDWithNamesPaginated(ctx context.Context, nurseID primitive.ObjectID, offset, limit int) ([]*domain.Assignment, map[primitive.ObjectID]UserDisplayInfo, int64, error)
 	DeleteByID(ctx context.Context, assignmentID primitive.ObjectID) error
+	// CountByDoctorIDs trả về map doctorId (hex string) → số bệnh nhân đang được phân công
+	CountByDoctorIDs(ctx context.Context) (map[string]int64, error)
+	// CountByNurseIDs trả về map nurseId (hex string) → số bệnh nhân đang được phân công
+	CountByNurseIDs(ctx context.Context) (map[string]int64, error)
 }
 
 type UserDisplayInfo struct {
@@ -342,4 +346,65 @@ func (r *assignmentRepository) EnsureIndexes(ctx context.Context) error {
 		},
 	})
 	return err
+}
+
+// CountByDoctorIDs trả về map doctorId (hex string) → số bệnh nhân đang được phân công.
+// Chỉ đếm các assignment có doctorId khác NilObjectID.
+func (r *assignmentRepository) CountByDoctorIDs(ctx context.Context) (map[string]int64, error) {
+	pipeline := mongo.Pipeline{
+		{{Key: "$match", Value: bson.M{"doctorId": bson.M{"$ne": primitive.NilObjectID}}}},
+		{{Key: "$group", Value: bson.M{
+			"_id":   "$doctorId",
+			"count": bson.M{"$sum": 1},
+		}}},
+	}
+
+	cursor, err := r.collection.Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	result := make(map[string]int64)
+	var rows []struct {
+		ID    primitive.ObjectID `bson:"_id"`
+		Count int64              `bson:"count"`
+	}
+	if err := cursor.All(ctx, &rows); err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		result[row.ID.Hex()] = row.Count
+	}
+	return result, nil
+}
+
+// CountByNurseIDs trả về map nurseId (hex string) → số bệnh nhân đang được phân công.
+func (r *assignmentRepository) CountByNurseIDs(ctx context.Context) (map[string]int64, error) {
+	pipeline := mongo.Pipeline{
+		{{Key: "$match", Value: bson.M{"nurseId": bson.M{"$ne": primitive.NilObjectID}}}},
+		{{Key: "$group", Value: bson.M{
+			"_id":   "$nurseId",
+			"count": bson.M{"$sum": 1},
+		}}},
+	}
+
+	cursor, err := r.collection.Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	result := make(map[string]int64)
+	var rows []struct {
+		ID    primitive.ObjectID `bson:"_id"`
+		Count int64              `bson:"count"`
+	}
+	if err := cursor.All(ctx, &rows); err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		result[row.ID.Hex()] = row.Count
+	}
+	return result, nil
 }
