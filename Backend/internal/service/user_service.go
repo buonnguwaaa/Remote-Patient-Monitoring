@@ -34,6 +34,7 @@ type UserService interface {
 	DeleteBaseUser(context.Context, *usecase.DeleteUserInput) error
 
 	CreatePatient(context.Context, *usecase.CreatePatientInput) (*dto.PatientInfoResponse, error)
+	ResendPatientInvite(context.Context, *usecase.GetUserByIDInput) error
 	GetPatients(context.Context, *usecase.GetUsersInput) ([]dto.PatientInfoResponse, error)
 	GetPatientByID(context.Context, *usecase.GetUserByIDInput) (*dto.PatientInfoResponse, error)
 	UpdatePatient(context.Context, *usecase.UpdateUserInfoInput) error
@@ -204,6 +205,7 @@ func (s *userService) CreatePatient(ctx context.Context, input *usecase.CreatePa
 			Gender:          input.Gender,
 			Dob:             input.Dob,
 			Status:          domain.StatusActive,
+			MustSetPassword: true,
 		},
 		InsuranceNumber:       profile.InsuranceNumber,
 		CCCD:                  profile.CCCD,
@@ -219,22 +221,68 @@ func (s *userService) CreatePatient(ctx context.Context, input *usecase.CreatePa
 	if err != nil {
 		return nil, err
 	}
-	s.notifyPatientActivatedAsync(ctx, created, true, temporaryPassword)
+
+	inviteURL, err := s.issuePatientInvite(ctx, created.ID)
+	if err != nil {
+		log.Printf("[WARN] patient %s created but invite token failed: %v", created.ID.Hex(), err)
+		return mapPatient(created), nil
+	}
+	s.notifyPatientActivatedAsync(ctx, created, true, inviteURL)
 	return mapPatient(created), nil
+}
+
+func (s *userService) ResendPatientInvite(ctx context.Context, input *usecase.GetUserByIDInput) error {
+	objID, err := primitive.ObjectIDFromHex(input.ID)
+	if err != nil {
+		return err
+	}
+	patient, err := s.patientRepo.FindPatientByID(ctx, objID)
+	if err != nil {
+		return err
+	}
+	if !patient.MustSetPassword {
+		return &ValidationError{Field: "mustSetPassword", Message: "Bệnh nhân đã đặt mật khẩu; không cần gửi lại liên kết."}
+	}
+	if patient.Email == "" && patient.Phone == "" {
+		return &ValidationError{Field: "contact", Message: "Bệnh nhân cần email hoặc số điện thoại để nhận liên kết."}
+	}
+
+	inviteURL, err := s.issuePatientInvite(ctx, patient.ID)
+	if err != nil {
+		return err
+	}
+	s.notifyPatientActivatedAsync(ctx, patient, true, inviteURL)
+	return nil
+}
+
+// issuePatientInvite mints a one-time set-password token (15m) and returns the public accept-invite URL.
+func (s *userService) issuePatientInvite(ctx context.Context, userID primitive.ObjectID) (string, error) {
+	rawToken, err := util.GenerateRandomToken(InviteTokenBytes)
+	if err != nil {
+		return "", err
+	}
+	expires := time.Now().Add(ResetPasswordTokenTTL)
+	if err := s.baseUserRepo.SetResetTokenByID(ctx, userID, util.HashTokenSHA256(rawToken), expires); err != nil {
+		return "", err
+	}
+	return util.AcceptInviteURL(rawToken), nil
 }
 
 // notifyPatientActivatedAsync delivers the activation email/SMS off the
 // request path: SMTP and Twilio round-trips take seconds and their failures
 // are non-fatal (logged only), so the API response must not wait on them.
-func (s *userService) notifyPatientActivatedAsync(ctx context.Context, patient *domain.Patient, createdByAdmin bool, temporaryPassword string) {
+// Retries (per channel, with backoff) run inside AccountNotifier; the timeout
+// here must cover those attempts.
+// For admin-created patients, inviteURL is the set-password link (never a raw password).
+func (s *userService) notifyPatientActivatedAsync(ctx context.Context, patient *domain.Patient, createdByAdmin bool, inviteURL string) {
 	if s.accountNotifier == nil {
 		return
 	}
-	notifyCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), time.Minute)
+	notifyCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 3*time.Minute)
 	go func() {
 		defer cancel()
-		if err := s.accountNotifier.NotifyPatientActivated(notifyCtx, patient, createdByAdmin, temporaryPassword); err != nil {
-			log.Printf("[WARN] failed to notify patient %s: %v", patient.ID.Hex(), err)
+		if err := s.accountNotifier.NotifyPatientActivated(notifyCtx, patient, createdByAdmin, inviteURL); err != nil {
+			log.Printf("[WARN] failed to notify patient %s after retries: %v", patient.ID.Hex(), err)
 		} else {
 			log.Printf("[INFO] notified patient %s", patient.ID.Hex())
 		}

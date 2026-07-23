@@ -26,6 +26,12 @@ const (
 	GoogleProvider = "google"
 
 	ResetPasswordTokenTTL = 15 * time.Minute
+	InviteTokenBytes      = 32
+)
+
+var (
+	ErrMustSetPassword = errors.New("Tài khoản chưa đặt mật khẩu. Vui lòng mở liên kết trong email/SMS (hiệu lực 15 phút). Nếu đã hết hạn, dùng Quên mật khẩu trong ứng dụng (cần email).")
+	ErrInviteInvalid   = errors.New("Liên kết không hợp lệ hoặc đã hết hạn")
 )
 
 type AuthService interface {
@@ -39,6 +45,8 @@ type AuthService interface {
 	ForgotPassword(ctx context.Context, input *usecase.ForgotPasswordInput) error
 	VerifyResetOTP(ctx context.Context, email, otp string) error
 	ResetPassword(ctx context.Context, input *usecase.ResetPasswordInput) error
+	PreviewAcceptInvite(ctx context.Context, rawToken string) (string, error)
+	AcceptInvite(ctx context.Context, rawToken, newPassword, confirmedPassword string) error
 }
 
 type authService struct {
@@ -91,6 +99,9 @@ func (s *authService) Login(ctx context.Context, input *usecase.LoginInput) (*dt
 	}
 	if u.Status != domain.StatusActive {
 		return nil, errors.New("Tài khoản đang chờ quản trị viên xác minh")
+	}
+	if u.MustSetPassword {
+		return nil, ErrMustSetPassword
 	}
 	if !util.ComparePassword(u.Password, input.Password) {
 		return nil, errors.New("Thông tin đăng nhập hoặc mật khẩu không đúng")
@@ -395,6 +406,58 @@ func (s *authService) ResetPassword(ctx context.Context, input *usecase.ResetPas
 		_ = s.blacklistRepo.InvalidateUserTokensIssuedBefore(ctx, userIDStr, time.Now().UTC(), util.AccessTokenTTL)
 	}
 	return nil
+}
+
+func (s *authService) PreviewAcceptInvite(ctx context.Context, rawToken string) (string, error) {
+	u, err := s.findInviteUser(ctx, rawToken)
+	if err != nil {
+		return "", err
+	}
+	return u.Name, nil
+}
+
+func (s *authService) AcceptInvite(ctx context.Context, rawToken, newPassword, confirmedPassword string) error {
+	if strings.TrimSpace(newPassword) == "" || len(newPassword) < 6 {
+		return errors.New("Mật khẩu phải có ít nhất 6 ký tự")
+	}
+	if newPassword != confirmedPassword {
+		return errors.New("Mật khẩu và mật khẩu xác nhận không khớp")
+	}
+
+	u, err := s.findInviteUser(ctx, rawToken)
+	if err != nil {
+		return err
+	}
+
+	hashedPwd, err := util.HashPassword(newPassword)
+	if err != nil {
+		return err
+	}
+	if err := s.baseUserRepo.ResetPassword(ctx, u.ID, hashedPwd); err != nil {
+		return err
+	}
+
+	userIDStr := u.ID.Hex()
+	_ = s.tokenRepo.RevokeAllByUserID(ctx, userIDStr)
+	if s.blacklistRepo != nil {
+		_ = s.blacklistRepo.InvalidateUserTokensIssuedBefore(ctx, userIDStr, time.Now().UTC(), util.AccessTokenTTL)
+	}
+	return nil
+}
+
+func (s *authService) findInviteUser(ctx context.Context, rawToken string) (*domain.BaseUser, error) {
+	rawToken = strings.TrimSpace(rawToken)
+	if rawToken == "" {
+		return nil, ErrInviteInvalid
+	}
+	u, err := s.baseUserRepo.FindByValidResetToken(ctx, util.HashTokenSHA256(rawToken))
+	if err != nil {
+		return nil, ErrInviteInvalid
+	}
+	if !u.MustSetPassword {
+		return nil, ErrInviteInvalid
+	}
+	return u, nil
 }
 
 // ========================================================

@@ -19,5 +19,7 @@ func RegisterAuthRoutes(r *gin.Engine, c *container.MainServerContainer) {
 		authGroup.POST("/forgot-password", c.AuthHandler.ForgotPassword)
 		authGroup.POST("/verify-reset-otp", c.AuthHandler.VerifyResetOTP)
 		authGroup.POST("/reset-password", c.AuthHandler.ResetPassword)
+		authGroup.GET("/accept-invite", c.AuthHandler.ShowAcceptInvite)
+		authGroup.POST("/accept-invite", c.AuthHandler.SubmitAcceptInvite)
 	}
 }

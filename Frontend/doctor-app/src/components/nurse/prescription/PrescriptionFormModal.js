@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from "react";
 import { 
   View, Text, StyleSheet, Modal, ScrollView, TouchableOpacity, 
-  SafeAreaView, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator 
+  SafeAreaView, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator, Alert
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { DRUG_SUGGESTIONS, ROUTE_OPTIONS } from "../../../constants/drugSuggestions";
 import { useToast } from "../../../context/ToastContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { getPrescriptions } from "../../../api/prescriptionApi";
 
 // Helper components
 const Section = ({ title, children, error }) => (
@@ -505,6 +506,8 @@ export function PrescriptionFormModal({ visible, onClose, initialData, onSave, p
   const [showPatientPicker, setShowPatientPicker] = useState(false);
   const [searchPatient, setSearchPatient] = useState("");
   const [showDatePicker, setShowDatePicker] = useState({ show: false, field: "startDate" });
+  const [activePrescriptionPrompt, setActivePrescriptionPrompt] = useState(null);
+  const [pendingPatientId, setPendingPatientId] = useState(null);
   const scrollViewRef = useRef(null);
 
   // Safe toast reference
@@ -786,9 +789,22 @@ export function PrescriptionFormModal({ visible, onClose, initialData, onSave, p
                       <TouchableOpacity 
                         key={pid} 
                         style={[styles.patientRow, selected && styles.patientRowSelected]} 
-                        onPress={() => {
-                          setFormData({ ...formData, patientId: pid });
+                        onPress={async () => {
                           setShowPatientPicker(false);
+                          
+                          try {
+                            const list = await getPrescriptions({ patientId: pid, latest: true });
+                            const activeP = Array.isArray(list) ? list[0] : null;
+                            if (activeP && activeP.status === "active") {
+                              setActivePrescriptionPrompt(activeP);
+                              setPendingPatientId(pid);
+                              return;
+                            }
+                          } catch (e) {
+                            console.log("Check error", e);
+                          }
+
+                          setFormData({ ...formData, patientId: pid });
                         }}
                       >
                         <Ionicons name="person-circle" size={34} color={selected ? "#2563EB" : "#9CA3AF"} />
@@ -799,6 +815,63 @@ export function PrescriptionFormModal({ visible, onClose, initialData, onSave, p
                   })
                 }
               </ScrollView>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Active Prescription Custom Prompt Modal */}
+        <Modal visible={!!activePrescriptionPrompt} transparent animationType="fade">
+          <View style={[styles.modalOverlay, { justifyContent: 'center', alignItems: 'center' }]}>
+            <View style={styles.promptModalContainer}>
+              <View style={styles.promptModalHeader}>
+                <Text style={styles.promptModalTitle}>Bệnh nhân đang có đơn thuốc hiệu lực</Text>
+                <TouchableOpacity onPress={() => setActivePrescriptionPrompt(null)}>
+                  <Ionicons name="close" size={20} color="#6B7280" />
+                </TouchableOpacity>
+              </View>
+              
+              <Text style={styles.promptModalDesc}>
+                Bệnh nhân này đã có đơn thuốc bắt đầu từ {activePrescriptionPrompt?.startDate?.slice(0,10) || "trước đó"}. Bạn muốn chỉnh sửa đơn này hay tiếp tục tạo đơn mới?
+              </Text>
+              
+              <View style={styles.promptModalActions}>
+                <TouchableOpacity 
+                  style={styles.promptModalBtnOutline}
+                  onPress={() => {
+                    setActivePrescriptionPrompt(null);
+                    setFormData({ ...formData, patientId: pendingPatientId });
+                    setPendingPatientId(null);
+                  }}
+                >
+                  <Text style={styles.promptModalBtnOutlineText}>Tạo đơn mới</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.promptModalBtnPrimary}
+                  onPress={() => {
+                    setActivePrescriptionPrompt(null);
+                    setPendingPatientId(null);
+                    setFormData({
+                      id: activePrescriptionPrompt.id,
+                      patientId: activePrescriptionPrompt.patientId,
+                      status: activePrescriptionPrompt.status,
+                      timezone: activePrescriptionPrompt.timezone,
+                      daysOfWeek: activePrescriptionPrompt.daysOfWeek || [],
+                      startDate: activePrescriptionPrompt.startDate?.slice(0, 10) || "",
+                      endDate: activePrescriptionPrompt.endDate?.slice(0, 10) || "",
+                      medications: (activePrescriptionPrompt.medications || []).map(m => ({
+                        drugName: m.drugName, dosage: m.dosage, route: m.route || "", instructions: m.instructions || "",
+                        schedule: (m.schedule || []).map(s => ({
+                          timeOfDay: s.timeOfDay, mealTiming: s.mealTiming || "", pillCount: s.pillCount || 1,
+                          customTime: s.hour !== undefined ? `${String(s.hour).padStart(2,"0")}:${String(s.minute||0).padStart(2,"0")}` : ""
+                        }))
+                      }))
+                    });
+                  }}
+                >
+                  <Ionicons name="create-outline" size={16} color="#FFF" />
+                  <Text style={styles.promptModalBtnPrimaryText}>Chỉnh sửa đơn thuốc</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         </Modal>
@@ -874,9 +947,9 @@ const styles = StyleSheet.create({
   quickRouteTextActive: { color: "#1E40AF", fontWeight: "700" },
 
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
-  patientModalSheet: { backgroundColor: "#FFF", borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: 24 },
+  patientModalSheet: { backgroundColor: "#FFF", borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingTop: 16, paddingBottom: 24 },
   routeModalSheet: { backgroundColor: "#FFF", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 16, paddingBottom: 24 },
-  modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: "#F3F4F6" },
+  modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 16, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: "#F3F4F6" },
   modalTitle: { fontSize: 16, fontWeight: "700", color: "#111827" },
   searchPatientInput: { backgroundColor: "#F3F4F6", padding: 10, borderRadius: 8, fontSize: 14, color: "#111827", marginBottom: 10 },
   patientRow: { flexDirection: "row", alignItems: "center", padding: 14, borderBottomWidth: 1, borderBottomColor: "#F3F4F6", gap: 12 },
@@ -1146,4 +1219,13 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   bottomSaveText: { fontSize: 15, fontWeight: "700", color: "#FFFFFF" },
+  promptModalContainer: { width: "85%", backgroundColor: "#FFF", borderRadius: 12, padding: 20, shadowColor: "#000", shadowOpacity: 0.1, shadowRadius: 10, elevation: 5 },
+  promptModalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
+  promptModalTitle: { fontSize: 16, fontWeight: "700", color: "#111827", flex: 1 },
+  promptModalDesc: { fontSize: 14, color: "#4B5563", marginBottom: 20, lineHeight: 20 },
+  promptModalActions: { flexDirection: "row", justifyContent: "space-between", gap: 12 },
+  promptModalBtnOutline: { flex: 1, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: "#D1D5DB", alignItems: "center", justifyContent: "center" },
+  promptModalBtnOutlineText: { color: "#374151", fontWeight: "600", fontSize: 14 },
+  promptModalBtnPrimary: { flex: 1, paddingVertical: 10, borderRadius: 8, backgroundColor: "#2563EB", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 },
+  promptModalBtnPrimaryText: { color: "#FFF", fontWeight: "600", fontSize: 14 },
 });

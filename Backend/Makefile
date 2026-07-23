@@ -48,7 +48,7 @@ static_check:
 	@go vet ./...
 	@echo "Static analysis completed!"
 
-.PHONY: up up-dev up-prod seed seed-append seed-history
+.PHONY: gen_swagger seed seed-append seed-history server worker run format static_check up up-dev up-prod down-dev down-prod
 up:
 	@echo "Specify environment: run 'make up-dev' or 'make up-prod'"
 

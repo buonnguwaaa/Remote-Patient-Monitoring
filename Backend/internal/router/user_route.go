@@ -78,6 +78,11 @@ func RegisterUserRoutes(r *gin.Engine, c *container.MainServerContainer) {
 				middleware.RequireRoles(domain.RoleAdmin),
 				c.UserHandler.UpdatePatientByID,
 			)
+			patientGroup.POST("/:id/resend-invite",
+				middleware.JWTAuthMiddleware(c.JWTManager, c.TokenBlacklistRepo),
+				middleware.RequireRoles(domain.RoleAdmin),
+				c.UserHandler.ResendPatientInvite,
+			)
 		}
 
 		doctorGroup := userGroup.Group("/doctors")

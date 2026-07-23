@@ -15,6 +15,7 @@ import (
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/service"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecase"
 	"github.com/gin-gonic/gin"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type UserHandler struct {
@@ -449,7 +450,35 @@ func (h *UserHandler) CreatePatient(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"data": patient, "message": "Tạo bệnh nhân thành công"})
+	c.JSON(http.StatusCreated, gin.H{"data": patient, "message": "Tạo bệnh nhân thành công. Liên kết đặt mật khẩu (15 phút) đã được gửi nếu có email/SMS."})
+}
+
+// ResendPatientInvite regenerates the 15-minute set-password link for an admin-created patient
+// who has not completed first-time password setup yet.
+// @Summary Resend patient invite link
+// @Tags patients
+// @Produce json
+// @Param id path string true "Patient ID"
+// @Success 200 {object} map[string]string
+// @Router /users/patients/{id}/resend-invite [post]
+func (h *UserHandler) ResendPatientInvite(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 15*time.Second)
+	defer cancel()
+
+	err := h.service.ResendPatientInvite(ctx, &usecase.GetUserByIDInput{ID: c.Param("id")})
+	if err != nil {
+		var validationErr *service.ValidationError
+		switch {
+		case errors.As(err, &validationErr):
+			c.JSON(http.StatusBadRequest, gin.H{"field": validationErr.Field, "error": validationErr.Message})
+		case errors.Is(err, mongo.ErrNoDocuments):
+			c.JSON(http.StatusNotFound, gin.H{"error": "Không tìm thấy bệnh nhân"})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Đã gửi lại liên kết đặt mật khẩu (hiệu lực 15 phút)"})
 }
 
 // GetPatients retrieves a list of patients
