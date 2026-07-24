@@ -42,6 +42,7 @@ export interface Patient {
   emergencyContactName?: string;
   emergencyContactPhone?: string;
   medicalHistory?: string;
+  diseaseTypes?: { bloodPressure: boolean; glucose: boolean };
 }
 
 export interface ThresholdViolation {
@@ -115,6 +116,7 @@ export interface doctor {
   dateOfBirth: string;
   email?: string;
   phone?: string;
+  patientCount?: number;
 }
 
 export interface Nurse {

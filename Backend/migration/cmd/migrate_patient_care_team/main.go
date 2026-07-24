@@ -232,7 +232,6 @@ func run(ctx context.Context, db *mongo.Database, opts runOpts) error {
 				return fmt.Errorf("patient %s nurse: %w", patient.Email, err)
 			}
 			newNurse = picked
-			needNurseChange = newNurse.ID != a.NurseID
 		}
 
 		if newDoctor.ID == a.DoctorID && newNurse.ID == a.NurseID {

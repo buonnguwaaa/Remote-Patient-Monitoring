@@ -83,7 +83,7 @@ func run(ctx context.Context, db *mongo.Database, dryRun bool) error {
 	if err != nil {
 		return err
 	}
-	defer cur.Close(ctx)
+	defer func() { _ = cur.Close(ctx) }()
 
 	var patients []patientRow
 	if err := cur.All(ctx, &patients); err != nil {
@@ -185,12 +185,12 @@ func cascadeDeletePatient(ctx context.Context, db *mongo.Database, p patientRow,
 	for convCur.Next(ctx) {
 		var c bson.M
 		if err := convCur.Decode(&c); err != nil {
-			convCur.Close(ctx)
+			_ = convCur.Close(ctx)
 			return nil, err
 		}
 		convIDs = append(convIDs, c["_id"].(primitive.ObjectID))
 	}
-	convCur.Close(ctx)
+	_ = convCur.Close(ctx)
 
 	if len(convIDs) > 0 {
 		if dryRun {

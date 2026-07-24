@@ -226,3 +226,39 @@ func (h *AssignmentHandler) GetMyCareTeam(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"data": careTeam})
 }
+
+// GetDoctorPatientCounts returns the number of patients currently assigned to each doctor.
+// @Summary Get patient counts per doctor
+// @Description Returns a map of doctorId -> patient count for all doctors with active assignments
+// @Tags assignments
+// @Produce json
+// @Success 200 {object} map[string]interface{} "Doctor patient counts"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 403 {object} map[string]string "Forbidden"
+// @Router /assignments/doctor-patient-counts [get]
+func (h *AssignmentHandler) GetDoctorPatientCounts(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	counts, err := h.service.GetDoctorPatientCounts(ctx)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": counts})
+}
+
+// GetNursePatientCounts returns the number of patients currently assigned to each nurse.
+func (h *AssignmentHandler) GetNursePatientCounts(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	counts, err := h.service.GetNursePatientCounts(ctx)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": counts})
+}
