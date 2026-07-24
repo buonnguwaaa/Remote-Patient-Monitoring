@@ -10,9 +10,7 @@ const Header: React.FC = () => {
 
   return (
     <header className="h-14 shrink-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 flex items-center justify-between z-30">
-      <div className="text-sm font-semibold text-gray-700 dark:text-gray-200">
-        Admin Dashboard
-      </div>
+      <div />
 
       <div className="flex items-center gap-4">
         <NotificationBell />

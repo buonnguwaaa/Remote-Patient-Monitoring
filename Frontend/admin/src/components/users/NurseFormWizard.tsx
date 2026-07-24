@@ -214,8 +214,10 @@ export const NurseFormWizard: React.FC<NurseFormWizardProps> = ({
       }}
       onBack={handleBack}
       onSubmit={handleSubmit}
+      onStepClick={(step) => setCurrentStep(step)}
       isSubmitting={isSubmitting}
       submitText={editingNurse ? "Lưu thay đổi" : "Tạo điều dưỡng"}
+      isViewOnly={modalMode === "view"}
     >
       {currentStep === 1 && (
         <div className="space-y-4">
@@ -311,8 +313,8 @@ export const NurseFormWizard: React.FC<NurseFormWizardProps> = ({
                   onChange={(e) => setStatus(e.target.value)}
                   className="w-full px-3.5 py-2.5 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-70"
                 >
-                  <option value="active">Hoạt động (Active)</option>
-                  <option value="inactive">Tạm khóa (Inactive)</option>
+                  <option value="active">Hoạt động</option>
+                  <option value="inactive">Tạm khóa</option>
                 </select>
               </div>
             )}

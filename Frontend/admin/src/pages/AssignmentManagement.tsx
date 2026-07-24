@@ -24,20 +24,31 @@ function getTargetDepartments(diseaseTypes?: { bloodPressure: boolean; glucose: 
   if (!diseaseTypes) return [];
   const { bloodPressure, glucose } = diseaseTypes;
   if (!bloodPressure && !glucose) return [];
-  // Cả hai → chỉ Nội Tổng quát
-  if (bloodPressure && glucose) return ["nội tổng quát", "noi tong quat", "tổng quát", "tong quat"];
-  if (bloodPressure) return [
-    "tim mạch", "tim mach", "cardio",
-    "thận", "than", "tiết niệu", "tiet nieu", "renal",
-    "nội tổng quát", "noi tong quat", "tổng quát",
-    "huyết áp", "huyet ap", "hypertension",
-  ];
-  if (glucose) return [
-    "nội tiết", "noi tiet", "endocrin", "tiểu đường", "tieu duong", "đái tháo", "dai thao",
-    "thận", "than", "tiết niệu", "tiet nieu",
-    "nội tổng quát", "noi tong quat", "tổng quát",
-  ];
-  return [];
+
+  const keywords: string[] = [];
+
+  // Từ khóa khoa Nội dùng chung
+  keywords.push(
+    "nội tổng hợp", "noi tong hop", "tổng hợp", "tong hop",
+    "nội tổng quát", "noi tong quat", "tổng quát", "tong quat",
+    "nội", "noi"
+  );
+
+  if (bloodPressure) {
+    keywords.push(
+      "tim mạch", "tim mach", "cardio",
+      "thận", "than", "tiết niệu", "tiet nieu", "renal",
+      "huyết áp", "huyet ap", "hypertension"
+    );
+  }
+
+  if (glucose) {
+    keywords.push(
+      "nội tiết", "noi tiet", "endocrin", "tiểu đường", "tieu duong", "đái tháo", "dai thao"
+    );
+  }
+
+  return keywords;
 }
 
 function getDiseaseLabel(diseaseTypes?: { bloodPressure: boolean; glucose: boolean }) {
@@ -52,9 +63,9 @@ function getSuggestedDeptLabel(diseaseTypes?: { bloodPressure: boolean; glucose:
   if (!diseaseTypes) return "";
   const { bloodPressure, glucose } = diseaseTypes;
   if (!bloodPressure && !glucose) return "";
-  if (bloodPressure && glucose) return "Nội Tổng quát";
-  if (bloodPressure) return "Tim mạch · Thận - Tiết niệu · Nội Tổng quát";
-  if (glucose) return "Nội tiết · Thận - Tiết niệu · Nội Tổng quát";
+  if (bloodPressure && glucose) return "Nội Tổng hợp / Tim mạch / Nội tiết";
+  if (bloodPressure) return "Tim mạch · Thận - Tiết niệu · Nội Tổng hợp";
+  if (glucose) return "Nội tiết · Thận - Tiết niệu · Nội Tổng hợp";
   return "";
 }
 
@@ -619,12 +630,8 @@ const AssignmentManagement: React.FC = () => {
       const specStr = (d.specialization || "").toLowerCase();
       return targetDepts.some((t) => deptStr.includes(t) || specStr.includes(t));
     });
-    // Debug: log khi có filter nhưng result rỗng
-    if (result.length === 0 && doctors.length > 0) {
-      console.warn("[AssignFilter] 0 doctors matched. Sample doctor fields:", doctors.slice(0, 3).map(d => ({ dept: d.department, spec: d.specialization })));
-      console.warn("[AssignFilter] Target keywords:", targetDepts);
-    }
-    return result;
+    // Fallback: nếu không tìm thấy bác sĩ nào theo từ khóa gợi ý, trả về toàn bộ danh sách bác sĩ
+    return result.length > 0 ? result : doctors;
   }, [doctors, targetDepts]);
 
   // Filter note text
@@ -632,9 +639,18 @@ const AssignmentManagement: React.FC = () => {
     if (!selectedPatientInfo?.diseaseTypes) return undefined;
     const { bloodPressure, glucose } = selectedPatientInfo.diseaseTypes;
     if (!bloodPressure && !glucose) return undefined;
+    const matchedCount = doctors.filter((d) => {
+      const deptStr = (d.department || "").toLowerCase();
+      const specStr = (d.specialization || "").toLowerCase();
+      return targetDepts.some((t) => deptStr.includes(t) || specStr.includes(t));
+    }).length;
+
+    if (matchedCount === 0) {
+      return `Không tìm thấy bác sĩ thuộc khoa gợi ý (Hiển thị tất cả ${doctors.length} bác sĩ)`;
+    }
     const suggested = getSuggestedDeptLabel(selectedPatientInfo.diseaseTypes);
-    return `Đã lọc: ${suggested} (${filteredDoctors.length} bác sĩ phù hợp)`;
-  }, [selectedPatientInfo, filteredDoctors]);
+    return `Đã lọc: Khoa phù hợp (${matchedCount} bác sĩ)`;
+  }, [selectedPatientInfo, doctors, targetDepts, filteredDoctors]);
 
   const handleAssign = async (event: React.FormEvent) => {
     event.preventDefault();
