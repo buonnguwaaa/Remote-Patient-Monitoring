@@ -373,7 +373,7 @@ func remapConversations(
 	if err != nil {
 		return fmt.Errorf("find conversations: %w", err)
 	}
-	defer cur.Close(ctx)
+	defer func() { _ = cur.Close(ctx) }()
 
 	var convIDs []primitive.ObjectID
 	for cur.Next(ctx) {
@@ -445,7 +445,7 @@ func loadDiseaseLessPatients(ctx context.Context, db *mongo.Database) ([]patient
 	if err != nil {
 		return nil, err
 	}
-	defer cur.Close(ctx)
+	defer func() { _ = cur.Close(ctx) }()
 	var out []patientUser
 	if err := cur.All(ctx, &out); err != nil {
 		return nil, err
@@ -460,7 +460,7 @@ func loadStaff(ctx context.Context, db *mongo.Database, role string) ([]staffUse
 	if err != nil {
 		return nil, fmt.Errorf("load %s: %w", role, err)
 	}
-	defer cur.Close(ctx)
+	defer func() { _ = cur.Close(ctx) }()
 	var out []staffUser
 	if err := cur.All(ctx, &out); err != nil {
 		return nil, err
@@ -474,7 +474,7 @@ func loadAssignmentsByPatient(ctx context.Context, db *mongo.Database) (map[prim
 	if err != nil {
 		return nil, err
 	}
-	defer cur.Close(ctx)
+	defer func() { _ = cur.Close(ctx) }()
 	var rows []assignmentDoc
 	if err := cur.All(ctx, &rows); err != nil {
 		return nil, err

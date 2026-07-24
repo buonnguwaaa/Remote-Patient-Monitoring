@@ -93,7 +93,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("[tmp_round_bp] find measurements: %v", err)
 	}
-	defer cur.Close(ctx)
+	defer func() { _ = cur.Close(ctx) }()
 
 	var snapshots []snap
 	msUpdated := 0
