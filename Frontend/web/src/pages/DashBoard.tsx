@@ -8,6 +8,8 @@ import {
   FaHeartbeat,
   FaInfoCircle,
   FaUserFriends,
+  FaTasks,
+  FaChartBar,
 } from "react-icons/fa";
 import { BsCalendar3 } from "react-icons/bs";
 import StatCard from "../components/ui/StatCard";
@@ -279,8 +281,8 @@ const TodoList: React.FC<{
     <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white dark:border-slate-700/60 dark:bg-slate-800">
       <div className="px-5 pb-3 pt-5">
         <SectionHeader
-          icon={<span className="text-[13px]">✅</span>}
-          title="Việc cần làm hôm nay"
+          icon={<FaTasks size={14} className="text-indigo-500" />}
+          title="Cần xử lý hôm nay"
         />
       </div>
 
@@ -1202,10 +1204,10 @@ const DashBoard = () => {
           ))}
         </div>
 
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-5">
-          <div className="rounded-2xl border border-gray-100 bg-white p-5 dark:border-slate-700/60 dark:bg-slate-800 lg:col-span-3">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+          <div className="rounded-2xl border border-gray-100 bg-white p-5 dark:border-slate-700/60 dark:bg-slate-800 lg:col-span-2">
             <SectionHeader
-              icon={<span className="text-[13px]">📊</span>}
+              icon={<FaChartBar size={14} className="text-blue-500" />}
               title={t("dashboard.patientOverview")}
             />
             <Chart
@@ -1216,7 +1218,7 @@ const DashBoard = () => {
             />
           </div>
 
-          <div className="flex flex-col gap-3 lg:col-span-2 h-full">
+          <div className="flex flex-col gap-3 lg:col-span-1 h-full">
             <div className="h-[300px]">
               <TodoList
                 alerts={alerts}
