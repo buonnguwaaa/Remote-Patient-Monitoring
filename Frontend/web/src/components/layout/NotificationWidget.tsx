@@ -96,11 +96,12 @@ const NotificationWidget = () => {
     }
   };
 
-  // Do not render for non-doctors (if you want this widget only for doctors)
+  // Do not render for non-doctors
   if (!user || user.role !== "doctor") return null;
 
   const isChatRoute = location.pathname.startsWith("/patient/chat");
-  const bottomClass = isChatRoute ? "bottom-6" : "bottom-[5.5rem]";
+  // Trên trang Chat, đặt vị trí nút thông báo lên cao (bottom-24) để không che khung nhập & nút gửi
+  const bottomClass = isChatRoute ? "bottom-24" : "bottom-6 md:bottom-[5.5rem]";
 
   return (
     <>

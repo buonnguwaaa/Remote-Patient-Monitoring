@@ -14,56 +14,83 @@ function normalizePayload(payload) {
 }
 
 /**
- * Map a notification data payload to a screen navigation action.
- *
- * Notification types sent by the backend:
- *   - type = "alert"       → open Alerts screen (highlight the alert)
- *   - type = "reminder"    → open Reminders screen
- *   - type = "new_message" → open Chat screen (doctor only)
- *   - fallback             → open Alerts screen (safest default for doctors)
+ * Map a notification data payload to a screen navigation action for Doctor/Nurse App.
  */
 function buildNavigationAction(payload, isNurse) {
   const data = normalizePayload(payload);
   const type = data.type;
 
-  // Nurse routing: avoid Chat/VideoCall routes
-  if (isNurse) {
-    if (type === "alert" && data.patientId) {
-      return {
-        screen: "NursePatientDetail",
-        params: { patientId: data.patientId },
-      };
+  // 1. Chat notifications
+  if (
+    type === "chat" ||
+    type === "new_message" ||
+    type === "message" ||
+    data.conversationId ||
+    data.targetScreen === "ChatDetail" ||
+    data.targetScreen === "Chat"
+  ) {
+    if (isNurse) {
+      if (data.patientId || data.senderId) {
+        return {
+          screen: "NursePatientDetail",
+          params: { patientId: data.patientId || data.senderId },
+        };
+      }
+      return { screen: "NursePatients", params: {} };
     }
-    return { screen: "NursePatients", params: {} };
-  }
 
-  // Doctor routing
-  if (type === "alert" && data.alertId) {
     return {
-      screen: "Alerts",
-      params: { selectedAlertId: data.alertId, patientId: data.patientId },
+      screen: "ChatTab",
+      params: {
+        screen: "ChatDetail",
+        params: {
+          conversationId: data.conversationId,
+          patientId: data.senderId || data.patientId,
+        },
+      },
     };
   }
 
-  if (type === "reminder") {
+  // 2. Alert notifications
+  if (type === "alert" || data.alertId || data.targetScreen === "Alerts") {
+    if (isNurse) {
+      if (data.patientId) {
+        return {
+          screen: "NursePatientDetail",
+          params: { patientId: data.patientId },
+        };
+      }
+      return { screen: "NursePatients", params: {} };
+    }
+
+    return {
+      screen: "AlertsTab",
+      params: {
+        screen: "Alerts",
+        params: { selectedAlertId: data.alertId, patientId: data.patientId },
+      },
+    };
+  }
+
+  // 3. Reminders / Prescriptions
+  if (type === "reminder" || type === "prescription") {
+    if (isNurse) {
+      return { screen: "NursePatients", params: {} };
+    }
     return {
       screen: "Reminders",
       params: { selectedReminderId: data.reminderId },
     };
   }
 
-  if (type === "new_message" && data.conversationId) {
-    return {
-      screen: "ChatDetail",
-      params: { 
-        conversationId: data.conversationId,
-        patientId: data.senderId,
-      },
-    };
+  // 4. Default fallback
+  if (isNurse) {
+    return { screen: "NursePatients", params: {} };
   }
-
-  // Default: go to alerts
-  return { screen: "Alerts", params: {} };
+  return {
+    screen: "AlertsTab",
+    params: { screen: "Alerts" },
+  };
 }
 
 // Cache the current user role so navigationRef can access it without React context
@@ -82,6 +109,7 @@ function performNavigation(action) {
     navigationRef.navigate(action.screen, action.params);
   } catch (e) {
     console.warn("[nav] Failed to navigate from notification:", e);
+    return false;
   }
   return true;
 }
@@ -99,6 +127,7 @@ export function flushPendingNotificationNavigation() {
     navigationRef.navigate(action.screen, action.params);
   } catch (e) {
     console.warn("[nav] Failed to flush pending navigation:", e);
+    return false;
   }
   return true;
 }

@@ -65,7 +65,7 @@ export const DoctorFormWizard: React.FC<DoctorFormWizardProps> = ({
       setWorkplace(editingDoctor.workplace || "");
       setYearsOfExperience(editingDoctor.yearsOfExperience || 5);
       setAcademicDegree(editingDoctor.academicDegree || "bachelor");
-      setProfessionalQualification(editingDoctor.professionalQualification || "cki");
+      setProfessionalQualification(editingDoctor.professionalQualification || "");
       setAcademicTitle(editingDoctor.academicTitle || "");
     } else {
       setName("");
@@ -81,7 +81,7 @@ export const DoctorFormWizard: React.FC<DoctorFormWizardProps> = ({
       setWorkplace("");
       setYearsOfExperience(0);
       setAcademicDegree("bachelor");
-      setProfessionalQualification("cki");
+      setProfessionalQualification("");
       setAcademicTitle("");
     }
     setCurrentStep(1);
@@ -220,8 +220,10 @@ export const DoctorFormWizard: React.FC<DoctorFormWizardProps> = ({
       }}
       onBack={handleBack}
       onSubmit={handleSubmit}
+      onStepClick={(step) => setCurrentStep(step)}
       isSubmitting={isSubmitting}
       submitText={editingDoctor ? "Lưu thay đổi" : "Tạo bác sĩ"}
+      isViewOnly={modalMode === "view"}
     >
       {currentStep === 1 && (
         <div className="space-y-4">
@@ -317,8 +319,8 @@ export const DoctorFormWizard: React.FC<DoctorFormWizardProps> = ({
                   onChange={(e) => setStatus(e.target.value)}
                   className="w-full px-3.5 py-2.5 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-70"
                 >
-                  <option value="active">Hoạt động (Active)</option>
-                  <option value="inactive">Tạm khóa (Inactive)</option>
+                  <option value="active">Hoạt động</option>
+                  <option value="inactive">Tạm khóa</option>
                 </select>
               </div>
             )}
@@ -390,36 +392,37 @@ export const DoctorFormWizard: React.FC<DoctorFormWizardProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Học vị (Academic Degree)</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Học vị</label>
               <select
                 disabled={modalMode === "view"}
                 value={academicDegree}
                 onChange={(e) => setAcademicDegree(e.target.value)}
                 className="w-full px-3.5 py-2.5 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-70"
               >
-                <option value="bachelor">Cử nhân (BS)</option>
-                <option value="master">Thạc sĩ (ThS)</option>
-                <option value="phd">Tiến sĩ (TS)</option>
+                <option value="bachelor">Cử nhân</option>
+                <option value="master">Thạc sĩ</option>
+                <option value="phd">Tiến sĩ</option>
               </select>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Trình độ chuyên môn (Qualification)</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Trình độ chuyên môn</label>
               <select
                 disabled={modalMode === "view"}
                 value={professionalQualification}
                 onChange={(e) => setProfessionalQualification(e.target.value)}
                 className="w-full px-3.5 py-2.5 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-70"
               >
+                <option value="">Không có</option>
                 <option value="resident">Bác sĩ Nội trú</option>
-                <option value="cki">Chuyên khoa I (CKI)</option>
-                <option value="ckii">Chuyên khoa II (CKII)</option>
+                <option value="cki">Chuyên khoa I</option>
+                <option value="ckii">Chuyên khoa II</option>
               </select>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Chức danh Giáo sư (Academic Title)
+                Chức danh Giáo sư
               </label>
               <select
                 disabled={modalMode === "view"}
@@ -428,8 +431,8 @@ export const DoctorFormWizard: React.FC<DoctorFormWizardProps> = ({
                 className="w-full px-3.5 py-2.5 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-70"
               >
                 <option value="">Không có</option>
-                <option value="associate_professor">Phó Giáo sư (PGS)</option>
-                <option value="professor">Giáo sư (GS)</option>
+                <option value="associate_professor">Phó Giáo sư</option>
+                <option value="professor">Giáo sư</option>
               </select>
               {(academicTitle === "professor" || academicTitle === "associate_professor") && academicDegree !== "phd" && (
                 <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">

@@ -19,59 +19,84 @@ function buildNotificationNavigationAction(payload) {
   const data = normalizePayload(payload);
   const type = data.type;
 
-  if (type === "alert" && data.alertId) {
+  // 1. Chat notifications -> Navigate to DoctorChat tab
+  if (
+    type === "chat" ||
+    type === "new_message" ||
+    type === "message" ||
+    data.conversationId ||
+    data.targetScreen === "DoctorChat" ||
+    data.screen === "DoctorChat"
+  ) {
     return {
       name: "MainTabs",
       params: {
-        screen: "PatientAlerts",
+        screen: "DoctorChat",
         params: {
-          selectedAlertId: data.alertId,
-          notificationId: data.notificationId,
+          conversationId: data.conversationId,
+          senderId: data.senderId,
         },
       },
     };
   }
 
-  if (type === "reminder") {
-    const targetScreen = data.targetScreen;
-    if (targetScreen === "InputMeasurementPatientScreen" || data.reminderKind === "measure") {
-      return {
-        name: "MainTabs",
-        params: {
-          screen: "InputMeasurementPatientScreen",
-          params: {
-            selectedReminderId: data.reminderId,
-            notificationId: data.notificationId,
-            reminderKind: data.reminderKind,
-            reminderMessage: data.message,
-          },
-        },
-      };
-    }
-
+  // 2. Alert notifications -> Navigate to PatientAlerts screen
+  if (type === "alert" || data.alertId || data.targetScreen === "PatientAlerts") {
     return {
-      name: "MainTabs",
+      name: "PatientAlerts",
       params: {
-        screen: "PatientNotifications",
-        params: {
-          selectedNotificationId: data.notificationId,
-          selectedReminderId: data.reminderId,
-        },
+        selectedAlertId: data.alertId,
+        notificationId: data.notificationId,
+        patientId: data.patientId,
       },
     };
   }
 
-  if (data.notificationId) {
+  // 3. Medication reminders / Prescriptions -> Navigate to PatientMedications screen
+  if (
+    type === "medication" ||
+    type === "prescription" ||
+    data.reminderKind === "medicine" ||
+    data.prescriptionId ||
+    data.targetScreen === "PatientMedications"
+  ) {
     return {
-      name: "MainTabs",
+      name: "PatientMedications",
       params: {
-        screen: "PatientNotifications",
-        params: { selectedNotificationId: data.notificationId },
+        selectedReminderId: data.reminderId,
+        prescriptionId: data.prescriptionId,
+        notificationId: data.notificationId,
       },
     };
   }
 
-  return null;
+  // 4. Measurement reminders -> Navigate to InputMeasurementPatientScreen
+  if (
+    type === "reminder" &&
+    (data.targetScreen === "InputMeasurementPatientScreen" || data.reminderKind === "measure")
+  ) {
+    return {
+      name: "InputMeasurementPatientScreen",
+      params: {
+        selectedReminderId: data.reminderId,
+        notificationId: data.notificationId,
+        reminderKind: data.reminderKind,
+        reminderMessage: data.message,
+      },
+    };
+  }
+
+  // 5. Fallback for all other notifications -> Navigate to PatientNotifs tab (Notification Inbox)
+  return {
+    name: "MainTabs",
+    params: {
+      screen: "PatientNotifs",
+      params: {
+        selectedNotificationId: data.notificationId,
+        selectedReminderId: data.reminderId,
+      },
+    },
+  };
 }
 
 function performNavigation(action) {
@@ -81,7 +106,12 @@ function performNavigation(action) {
     return false;
   }
 
-  navigationRef.navigate(action.name, action.params);
+  try {
+    navigationRef.navigate(action.name, action.params);
+  } catch (err) {
+    console.warn("[nav] Failed to perform notification navigation:", err);
+    return false;
+  }
   return true;
 }
 
@@ -96,6 +126,11 @@ export function flushPendingNotificationNavigation() {
 
   const action = pendingNotificationAction;
   pendingNotificationAction = null;
-  navigationRef.navigate(action.name, action.params);
+  try {
+    navigationRef.navigate(action.name, action.params);
+  } catch (err) {
+    console.warn("[nav] Failed to flush pending notification navigation:", err);
+    return false;
+  }
   return true;
 }

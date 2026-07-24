@@ -140,7 +140,7 @@ export const PatientFormWizard: React.FC<PatientFormWizardProps> = ({
         }
 
         // Edit Patient Profile
-        await api.patch(`/users/${editingPatient.id}`, {
+        await api.patch(`/users/patients/${editingPatient.id}`, {
           name,
           email,
           phone,
@@ -218,8 +218,10 @@ export const PatientFormWizard: React.FC<PatientFormWizardProps> = ({
       }}
       onBack={handleBack}
       onSubmit={handleSubmit}
+      onStepClick={(step) => setCurrentStep(step)}
       isSubmitting={isSubmitting}
       submitText={modalMode === "verify" ? "Duyệt & Kích hoạt" : editingPatient ? "Lưu thay đổi" : "Tạo bệnh nhân"}
+      isViewOnly={modalMode === "view"}
     >
       {currentStep === 1 && (
         <div className="space-y-4">
@@ -327,8 +329,8 @@ export const PatientFormWizard: React.FC<PatientFormWizardProps> = ({
                   onChange={(e) => setStatus(e.target.value)}
                   className="w-full px-3.5 py-2.5 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-70"
                 >
-                  <option value="active">Hoạt động (Active)</option>
-                  <option value="inactive">Chưa kích hoạt / Khóa (Inactive)</option>
+                  <option value="active">Hoạt động</option>
+                  <option value="inactive">Chưa kích hoạt / Khóa</option>
                 </select>
               </div>
             )}
@@ -377,7 +379,7 @@ export const PatientFormWizard: React.FC<PatientFormWizardProps> = ({
 
             <div className="md:col-span-2">
               <label className="block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">
-                Chỉ số & Loại bệnh lý theo dõi (Disease Types):
+                Chỉ số & Loại bệnh lý theo dõi:
               </label>
               <div className="flex flex-wrap gap-6 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700">
                 <label className="inline-flex items-center gap-2.5 cursor-pointer">
@@ -388,7 +390,7 @@ export const PatientFormWizard: React.FC<PatientFormWizardProps> = ({
                     onChange={(e) => setDiseaseTypes({ ...diseaseTypes, bloodPressure: e.target.checked })}
                     className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   />
-                  <span className="text-sm font-medium text-gray-800 dark:text-gray-200">Huyết áp (Blood Pressure)</span>
+                  <span className="text-sm font-medium text-gray-800 dark:text-gray-200">Huyết áp</span>
                 </label>
                 <label className="inline-flex items-center gap-2.5 cursor-pointer">
                   <input
@@ -398,7 +400,7 @@ export const PatientFormWizard: React.FC<PatientFormWizardProps> = ({
                     onChange={(e) => setDiseaseTypes({ ...diseaseTypes, glucose: e.target.checked })}
                     className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   />
-                  <span className="text-sm font-medium text-gray-800 dark:text-gray-200">Đường huyết / Đái tháo đường (Glucose)</span>
+                  <span className="text-sm font-medium text-gray-800 dark:text-gray-200">Đái tháo đường</span>
                 </label>
               </div>
             </div>

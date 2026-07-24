@@ -196,7 +196,14 @@ export async function processInitialNotificationResponse() {
     const data = normalizeNotificationPayload(
       lastResponse?.notification?.request?.content?.data || {}
     );
-    if (!data.notificationId && !data.alertId && !data.reminderId) {
+    if (
+      !data.notificationId &&
+      !data.alertId &&
+      !data.reminderId &&
+      !data.type &&
+      !data.conversationId &&
+      !data.senderId
+    ) {
       return;
     }
     await handleNotificationOpened(data);

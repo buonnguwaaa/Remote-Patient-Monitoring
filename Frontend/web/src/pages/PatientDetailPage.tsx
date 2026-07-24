@@ -25,6 +25,7 @@ import {
   FaHeartbeat,
   FaNotesMedical,
   FaCalendarAlt,
+  FaCheckCircle,
 } from "react-icons/fa";
 import { GiHeartBeats } from "react-icons/gi";
 import VideoCallModal from "../components/video/VideoCallModal";
@@ -832,6 +833,13 @@ const PatientDetailPage = () => {
               >
                 <MdNotificationsActive size={14} />
                 {t("patientDetail.manageReminders")}
+              </button>
+              <button
+                onClick={() => navigate(`/patient/${patientId}/adherence`)}
+                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition font-medium"
+              >
+                <FaCheckCircle size={14} />
+                Theo dõi uống thuốc
               </button>
 
               <button
