@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { 
   MdOutlineKeyboardBackspace, 
@@ -203,11 +203,9 @@ export default function PatientAdherencePage() {
                             }
                             const groups = groupSlotsByTimeOfDay(day.medications);
                             const timeKeys = ["morning", "noon", "evening", "night", "other"];
-                            let hasMed = false;
 
                             return timeKeys.map(tk => {
                               if (!groups[tk] || groups[tk].length === 0) return null;
-                              hasMed = true;
                               return (
                                 <div key={tk} className="mb-4 last:mb-0">
                                   <h4 className="text-xs font-bold uppercase text-gray-400 dark:text-slate-500 mb-2 tracking-wider">
