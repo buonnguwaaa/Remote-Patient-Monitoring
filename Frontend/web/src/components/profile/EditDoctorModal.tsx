@@ -14,7 +14,7 @@ const EditDoctorModal: React.FC<EditDoctorModalProps> = ({ doctor, onClose, onSu
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string>(doctor.avatarUrl || "/avartar.jpg");
+  const [preview, setPreview] = useState<string>(doctor.avatarUrl || "/default-avatar.svg");
   const [selectedAcademicDegree, setSelectedAcademicDegree] = useState(doctor.academicDegree || "");
 
   const handleAvatarSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -79,7 +79,7 @@ const EditDoctorModal: React.FC<EditDoctorModalProps> = ({ doctor, onClose, onSu
                 src={preview}
                 alt="Avatar"
                 className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg"
-                onError={(e) => { e.currentTarget.src = "/avartar.jpg"; }}
+                onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = "/default-avatar.svg"; }}
               />
               <label className="absolute inset-0 flex items-center justify-center bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
                 <Upload size={20} />
