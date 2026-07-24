@@ -191,7 +191,14 @@ export async function processInitialNotificationResponse() {
   try {
     const last = await Notifications.getLastNotificationResponseAsync();
     const data = normalizePayload(last?.notification?.request?.content?.data || {});
-    if (!data.type && !data.alertId) return; // nothing actionable
+    if (
+      !data.type &&
+      !data.alertId &&
+      !data.conversationId &&
+      !data.senderId &&
+      !data.reminderId &&
+      !data.notificationId
+    ) return; // nothing actionable
     navigateFromNotificationPayload(data);
   } catch (error) {
     console.warn("[push] failed to process initial notification response", error);

@@ -179,7 +179,24 @@ export default function NotificationInboxScreen({ isEmbedded }) {
       if (options.fromDeepLink) {
         handledSelectedIdRef.current = nextItem.id;
       }
-      if (nextItem.type === "alert" && data.alertId) {
+
+      // Chat Notification -> DoctorChat
+      if (
+        nextItem.type === "chat" ||
+        nextItem.type === "new_message" ||
+        nextItem.type === "message" ||
+        data.conversationId ||
+        data.targetScreen === "DoctorChat"
+      ) {
+        navigation.navigate("DoctorChat", {
+          conversationId: data.conversationId,
+          senderId: data.senderId,
+        });
+        return;
+      }
+
+      // Alert Notification -> PatientAlerts
+      if (nextItem.type === "alert" || data.alertId || data.targetScreen === "PatientAlerts") {
         navigation.navigate("PatientAlerts", {
           selectedAlertId: data.alertId,
           notificationId: nextItem.id,
@@ -187,7 +204,27 @@ export default function NotificationInboxScreen({ isEmbedded }) {
         return;
       }
 
-      if (nextItem.type === "reminder" && (data.targetScreen === "InputMeasurementPatientScreen" || data.reminderKind === "measure")) {
+      // Medication Notification -> PatientMedications
+      if (
+        nextItem.type === "medication" ||
+        nextItem.type === "prescription" ||
+        data.reminderKind === "medicine" ||
+        data.prescriptionId ||
+        data.targetScreen === "PatientMedications"
+      ) {
+        navigation.navigate("PatientMedications", {
+          selectedReminderId: data.reminderId,
+          prescriptionId: data.prescriptionId,
+          notificationId: nextItem.id,
+        });
+        return;
+      }
+
+      // Measurement Reminder -> InputMeasurementPatientScreen
+      if (
+        nextItem.type === "reminder" &&
+        (data.targetScreen === "InputMeasurementPatientScreen" || data.reminderKind === "measure")
+      ) {
         navigation.navigate("InputMeasurementPatientScreen", {
           selectedReminderId: data.reminderId,
           reminderKind: data.reminderKind,

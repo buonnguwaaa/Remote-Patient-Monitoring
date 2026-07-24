@@ -12,8 +12,10 @@ interface FormWizardModalProps {
   onNext: () => boolean | Promise<boolean>;
   onBack: () => void;
   onSubmit: (e: React.FormEvent) => void;
+  onStepClick?: (step: number) => void;
   isSubmitting?: boolean;
   submitText?: string;
+  isViewOnly?: boolean;
   children: React.ReactNode;
 }
 
@@ -28,8 +30,10 @@ export const FormWizardModal: React.FC<FormWizardModalProps> = ({
   onNext,
   onBack,
   onSubmit,
+  onStepClick,
   isSubmitting = false,
   submitText = "Hoàn tất",
+  isViewOnly = false,
   children,
 }) => {
   const lastStepTransitionTime = useRef<number>(0);
@@ -72,7 +76,16 @@ export const FormWizardModal: React.FC<FormWizardModalProps> = ({
 
               return (
                 <React.Fragment key={stepNumber}>
-                  <div className="flex items-center gap-3">
+                  <div
+                    onClick={() => {
+                      if (onStepClick) {
+                        onStepClick(stepNumber);
+                      }
+                    }}
+                    className={`flex items-center gap-3 ${
+                      onStepClick ? "cursor-pointer hover:opacity-80 transition-opacity" : ""
+                    }`}
+                  >
                     <div
                       className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold transition-all ${
                         isCompleted
@@ -116,6 +129,7 @@ export const FormWizardModal: React.FC<FormWizardModalProps> = ({
         <form
           onSubmit={(e) => {
             e.preventDefault();
+            if (isViewOnly) return;
             const elapsed = Date.now() - lastStepTransitionTime.current;
             console.log("[FormWizardModal] form onSubmit event fired! elapsed since last step transition:", elapsed, "ms", "currentStep:", currentStep, "totalSteps:", totalSteps);
             if (elapsed < 500) {
@@ -138,59 +152,77 @@ export const FormWizardModal: React.FC<FormWizardModalProps> = ({
 
           {/* Footer Actions */}
           <div className="flex items-center justify-between border-t border-gray-100 dark:border-gray-700 px-6 py-4 bg-gray-50 dark:bg-gray-800 rounded-b-2xl">
-            {currentStep > 1 ? (
-              <button
-                key={`btn-back-step-${currentStep}`}
-                type="button"
-                onClick={onBack}
-                disabled={isSubmitting}
-                className="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 shadow-xs hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 transition"
-              >
-                <FaArrowLeft className="h-3.5 w-3.5" />
-                Quay lại
-              </button>
+            {isViewOnly ? (
+              <div className="flex justify-end w-full">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="rounded-xl border border-gray-300 bg-white px-6 py-2.5 text-sm font-semibold text-gray-700 shadow-xs hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 transition"
+                >
+                  Đóng
+                </button>
+              </div>
             ) : (
-              <button
-                key={`btn-cancel-step-${currentStep}`}
-                type="button"
-                onClick={onClose}
-                disabled={isSubmitting}
-                className="rounded-xl border border-gray-300 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 shadow-xs hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 transition"
-              >
-                Hủy
-              </button>
-            )}
+              <div className="flex items-center justify-between w-full">
+                <div>
+                  {currentStep > 1 ? (
+                    <button
+                      key={`btn-back-step-${currentStep}`}
+                      type="button"
+                      onClick={onBack}
+                      disabled={isSubmitting}
+                      className="inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 shadow-xs hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 transition"
+                    >
+                      <FaArrowLeft className="h-3.5 w-3.5" />
+                      Quay lại
+                    </button>
+                  ) : (
+                    <button
+                      key={`btn-cancel-step-${currentStep}`}
+                      type="button"
+                      onClick={onClose}
+                      disabled={isSubmitting}
+                      className="rounded-xl border border-gray-300 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 shadow-xs hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 transition"
+                    >
+                      Hủy
+                    </button>
+                  )}
+                </div>
 
-            {currentStep < totalSteps ? (
-              <button
-                key={`btn-next-step-${currentStep}`}
-                type="button"
-                onClick={handleNext}
-                disabled={isSubmitting}
-                className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-2.5 text-sm font-semibold text-white shadow-md shadow-blue-600/20 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition"
-              >
-                Tiếp theo
-                <FaArrowRight className="h-3.5 w-3.5" />
-              </button>
-            ) : (
-              <button
-                key={`btn-submit-step-${currentStep}`}
-                type="submit"
-                disabled={isSubmitting}
-                className="inline-flex items-center gap-2 rounded-xl bg-green-600 px-6 py-2.5 text-sm font-semibold text-white shadow-md shadow-green-600/20 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 transition"
-              >
-                {isSubmitting ? (
-                  <>
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    Đang lưu...
-                  </>
-                ) : (
-                  <>
-                    <FaCheck className="h-3.5 w-3.5" />
-                    {submitText}
-                  </>
-                )}
-              </button>
+                <div>
+                  {currentStep < totalSteps ? (
+                    <button
+                      key={`btn-next-step-${currentStep}`}
+                      type="button"
+                      onClick={handleNext}
+                      disabled={isSubmitting}
+                      className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-2.5 text-sm font-semibold text-white shadow-md shadow-blue-600/20 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition"
+                    >
+                      Tiếp theo
+                      <FaArrowRight className="h-3.5 w-3.5" />
+                    </button>
+                  ) : (
+                    <button
+                      key={`btn-submit-step-${currentStep}`}
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="inline-flex items-center gap-2 rounded-xl bg-green-600 px-6 py-2.5 text-sm font-semibold text-white shadow-md shadow-green-600/20 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 transition"
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                          Đang lưu...
+                        </>
+                      ) : (
+                        <>
+                          <FaCheck className="h-3.5 w-3.5" />
+                          {submitText}
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+              </div>
             )}
           </div>
         </form>
