@@ -96,6 +96,8 @@ func (s *Seeder) seedDoctors(ctx context.Context, departments []*domain.Departme
 		}
 
 		degree := DoctorAcademicDegree(i)
+		qual := DoctorProfessionalQualification(i)
+		title := DoctorAcademicTitle(i, degree)
 		doctor := &userDomain.Doctor{
 			MedicalStaff: userDomain.MedicalStaff{
 				BaseUser: userDomain.BaseUser{
@@ -112,12 +114,12 @@ func (s *Seeder) seedDoctors(ctx context.Context, departments []*domain.Departme
 				DepartmentID:      dept.ID,
 				Workplace:         "Bệnh viện Đa khoa Thành phố",
 				LicenseNumber:     fmt.Sprintf("DOC-2024-%03d", i+1),
-				YearsOfExperience: 3 + (i % 20),
+				YearsOfExperience: DoctorYearsOfExperience(i, title, degree, qual),
 			},
 			Specialization:            strings.TrimPrefix(dept.Name, "Khoa "),
 			AcademicDegree:            degree,
-			ProfessionalQualification: DoctorProfessionalQualification(i),
-			AcademicTitle:             DoctorAcademicTitle(i, degree),
+			ProfessionalQualification: qual,
+			AcademicTitle:             title,
 		}
 
 		createdDoctor, err := s.doctorRepo.Create(ctx, doctor)
@@ -248,12 +250,12 @@ func (s *Seeder) seedPatients(ctx context.Context) ([]*userDomain.Patient, error
 			CCCD:                  fmt.Sprintf("00107501%04d", i+1),
 			EmergencyContactName:  seedPersonName(i, 41),
 			EmergencyContactPhone: fmt.Sprintf("0909%06d", i+1),
-			MedicalHistory:        pick([]string{"Tăng huyết áp", "Đái tháo đường type 2", "Hen suyễn", "Bệnh tim mạch"}, i),
 			DiseaseTypes: userDomain.DiseaseTypes{
 				BloodPressure: i%2 == 0,
 				Glucose:       i%3 != 0,
 			},
 		}
+		patient.MedicalHistory = PatientMedicalHistory(i, patient.DiseaseTypes.BloodPressure, patient.DiseaseTypes.Glucose)
 
 		createdPatient, err := s.patientRepo.Create(ctx, patient)
 		if err != nil {

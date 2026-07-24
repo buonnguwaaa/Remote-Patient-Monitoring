@@ -153,12 +153,12 @@ func (s *Seeder) ensureAppendPatient(
 		CCCD:                  fmt.Sprintf("00107501%04d", index+1),
 		EmergencyContactName:  seedPersonName(index, 41),
 		EmergencyContactPhone: fmt.Sprintf("0909%06d", index+1),
-		MedicalHistory:        pick([]string{"Tăng huyết áp", "Đái tháo đường type 2", "Hen suyễn", "Bệnh tim mạch"}, index),
 		DiseaseTypes: userDomain.DiseaseTypes{
 			BloodPressure: index%2 == 0,
 			Glucose:       index%3 != 0,
 		},
 	}
+	patient.MedicalHistory = PatientMedicalHistory(index, patient.DiseaseTypes.BloodPressure, patient.DiseaseTypes.Glucose)
 
 	createdPatient, err := s.patientRepo.Create(ctx, patient)
 	if err != nil {
