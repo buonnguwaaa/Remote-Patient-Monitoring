@@ -649,7 +649,7 @@ const AssignmentManagement: React.FC = () => {
       return `Không tìm thấy bác sĩ thuộc khoa gợi ý (Hiển thị tất cả ${doctors.length} bác sĩ)`;
     }
     const suggested = getSuggestedDeptLabel(selectedPatientInfo.diseaseTypes);
-    return `Đã lọc: Khoa phù hợp (${matchedCount} bác sĩ)`;
+    return `Đã lọc: ${suggested || "Khoa phù hợp"} (${matchedCount} bác sĩ)`;
   }, [selectedPatientInfo, doctors, targetDepts, filteredDoctors]);
 
   const handleAssign = async (event: React.FormEvent) => {
