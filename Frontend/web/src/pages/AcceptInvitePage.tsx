@@ -117,7 +117,7 @@ export default function AcceptInvitePage() {
             <img src="/doctor-logo.png" alt="RPM" className="h-full w-full rounded-[14px] object-cover" />
           </div>
           <div>
-            <span className="text-xl font-extrabold tracking-tight text-white">RPM Portal</span>
+            <span className="text-xl font-extrabold tracking-tight text-white">RPM</span>
             <span className="block text-xs font-medium text-blue-400 tracking-wider uppercase">Remote Patient Monitoring</span>
           </div>
         </div>
@@ -210,7 +210,7 @@ export default function AcceptInvitePage() {
                 Đặt mật khẩu thành công! 🎉
               </h2>
               <p className="text-sm text-slate-600 dark:text-slate-400 mb-8 leading-relaxed">
-                Tài khoản Bác sĩ của bạn đã sẵn sàng sử dụng. Hãy đăng nhập vào hệ thống bằng mật khẩu vừa khởi tạo.
+                Tài khoản của bạn đã sẵn sàng. Hãy đăng nhập vào hệ thống bằng mật khẩu vừa khởi tạo.
               </p>
               <button
                 onClick={() => navigate("/login")}
