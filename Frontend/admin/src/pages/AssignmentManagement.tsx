@@ -45,11 +45,6 @@ function getSuggestedFilters(diseaseTypes?: { bloodPressure: boolean; glucose: b
       label: "Tim mạch",
       keywords: ["tim mạch", "tim mach", "cardio", "huyết áp", "huyet ap", "hypertension"]
     });
-    filters.push({
-      id: "than-tiet-nieu",
-      label: "Thận - Tiết niệu",
-      keywords: ["thận", "than", "tiết niệu", "tiet nieu", "renal"]
-    });
   }
 
   if (glucose) {
@@ -58,13 +53,6 @@ function getSuggestedFilters(diseaseTypes?: { bloodPressure: boolean; glucose: b
       label: "Nội tiết",
       keywords: ["nội tiết", "noi tiet", "endocrin", "tiểu đường", "tieu duong", "đái tháo", "dai thao"]
     });
-    if (!bloodPressure) {
-      filters.push({
-        id: "than-tiet-nieu",
-        label: "Thận - Tiết niệu",
-        keywords: ["thận", "than", "tiết niệu", "tiet nieu", "renal"]
-      });
-    }
   }
 
   return filters;
