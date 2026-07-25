@@ -563,14 +563,6 @@ export default function ThresholdSettingsPage() {
               )}
             </div>
           </div>
-          <div className="flex items-center">
-            <button
-              onClick={() => handleCloneArchived(threshold)}
-              className="px-4 py-1.5 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 rounded-lg text-sm transition flex items-center"
-            >
-              <FaPlus className="mr-1.5 h-3 w-3" /> Sao chép tạo mới
-            </button>
-          </div>
         </div>
       </div>
     );

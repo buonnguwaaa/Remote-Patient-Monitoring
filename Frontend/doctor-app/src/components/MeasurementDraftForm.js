@@ -64,7 +64,7 @@ export default function MeasurementDraftForm({
                 value={values.systolic}
                 onChangeText={(value) => onFieldChange("systolic", value, "bp")}
                 keyboardType="numeric"
-                placeholder="vd: 120"
+                placeholder="Ví dụ: 120"
               />
               <Text style={styles.fieldHint}>mmHg · 70-250</Text>
             </View>
@@ -75,21 +75,10 @@ export default function MeasurementDraftForm({
                 value={values.diastolic}
                 onChangeText={(value) => onFieldChange("diastolic", value, "bp")}
                 keyboardType="numeric"
-                placeholder="vd: 80"
+                placeholder="Ví dụ: 80"
               />
               <Text style={styles.fieldHint}>mmHg · 40-150</Text>
             </View>
-          </View>
-          <View style={[styles.fieldColumn, styles.marginTopMedium]}>
-            <Text style={styles.fieldLabel}>Mạch (PULSE)</Text>
-            <TextInput
-              style={styles.input}
-              value={values.heartRate}
-              onChangeText={(value) => onFieldChange("heartRate", value, "bp")}
-              keyboardType="numeric"
-              placeholder="vd: 72"
-            />
-            <Text style={styles.fieldHint}>lần/phút · 30-220</Text>
           </View>
         </>
       );
@@ -106,7 +95,7 @@ export default function MeasurementDraftForm({
               value={values.glucose}
               onChangeText={(value) => onFieldChange("glucose", value, "glucose")}
               keyboardType="numeric"
-              placeholder="vd: 110"
+              placeholder="Ví dụ: 110"
             />
             <Text style={styles.fieldHint}>mg/dL · 40-600</Text>
           </View>
@@ -144,7 +133,7 @@ export default function MeasurementDraftForm({
               value={values.spo2}
               onChangeText={(value) => onFieldChange("spo2", value, "spo2")}
               keyboardType="numeric"
-              placeholder="vd: 98"
+              placeholder="Ví dụ: 98"
             />
             <Text style={styles.fieldHint}>% · 50-100</Text>
           </View>
@@ -163,7 +152,7 @@ export default function MeasurementDraftForm({
               value={values.temperature}
               onChangeText={(value) => onFieldChange("temperature", value, "temp")}
               keyboardType="numeric"
-              placeholder="vd: 36.8"
+              placeholder="Ví dụ: 36.8"
             />
             <Text style={styles.fieldHint}>°C · 30-45</Text>
           </View>
@@ -182,7 +171,7 @@ export default function MeasurementDraftForm({
               value={values.heartRate}
               onChangeText={(value) => onFieldChange("heartRate", value, "heartRate")}
               keyboardType="numeric"
-              placeholder="vd: 78"
+              placeholder="Ví dụ: 78"
             />
             <Text style={styles.fieldHint}>lần/phút · 30-220</Text>
           </View>
@@ -201,7 +190,7 @@ export default function MeasurementDraftForm({
               value={values.respiratoryRate}
               onChangeText={(value) => onFieldChange("respiratoryRate", value, "respiratoryRate")}
               keyboardType="numeric"
-              placeholder="vd: 18"
+              placeholder="Ví dụ: 18"
             />
             <Text style={styles.fieldHint}>lần/phút · 5-60</Text>
           </View>
@@ -221,7 +210,7 @@ export default function MeasurementDraftForm({
                 value={values.height}
                 onChangeText={(value) => onFieldChange("height", value, "bodyStats")}
                 keyboardType="numeric"
-                placeholder="vd: 170"
+                placeholder="Ví dụ: 170"
               />
               <Text style={styles.fieldHint}>cm · 30-300</Text>
             </View>
@@ -232,7 +221,7 @@ export default function MeasurementDraftForm({
                 value={values.weight}
                 onChangeText={(value) => onFieldChange("weight", value, "bodyStats")}
                 keyboardType="numeric"
-                placeholder="vd: 65"
+                placeholder="Ví dụ: 65"
               />
               <Text style={styles.fieldHint}>kg · 2-500</Text>
             </View>
@@ -310,7 +299,7 @@ export default function MeasurementDraftForm({
           style={styles.input}
           value={values.device}
           onChangeText={(value) => onFieldChange("device", value)}
-          placeholder="vd: Omron HEM-7130"
+          placeholder="Ví dụ: Omron HEM-7130"
         />
         <Text style={[styles.fieldLabel, styles.marginTopMedium]}>Ghi chú</Text>
         <TextInput

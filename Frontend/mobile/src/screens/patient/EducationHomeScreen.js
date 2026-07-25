@@ -26,7 +26,7 @@ const FILTER_TABS = [
   { key: 'recommended', label: 'Cho bạn', icon: 'star-outline', activeIcon: 'star', color: '#F59E0B' },
   { key: 'bloodPressure', label: 'Huyết áp', icon: 'heart-outline', activeIcon: 'heart', color: '#EF4444' },
   { key: 'glucose', label: 'Tiểu đường', icon: 'water-outline', activeIcon: 'water', color: '#8B5CF6' },
-  { key: 'general', label: 'Sinh tồn', icon: 'pulse-outline', activeIcon: 'pulse', color: '#10B981' },
+  { key: 'general', label: 'Sinh hiệu', icon: 'pulse-outline', activeIcon: 'pulse', color: '#10B981' },
   { key: 'general_app', label: 'Dùng app', icon: 'phone-portrait-outline', activeIcon: 'phone-portrait', color: '#6366F1' },
   { key: 'lifestyle', label: 'Lối sống', icon: 'leaf-outline', activeIcon: 'leaf', color: '#EAB308' },
 ];

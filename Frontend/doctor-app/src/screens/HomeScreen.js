@@ -240,17 +240,17 @@ export default function HomeScreen({ onNavigate }) {
             </>
           )}
         </View>
-        
+
         {/* Additional useful section when empty */}
         {recentAlerts.length === 0 && !loading && (
-           <View style={{ marginTop: 16 }}>
-             <StaffSectionHeader title="Bệnh nhân ưu tiên hôm nay" subtitle="Các bệnh nhân mới cập nhật hoặc cần theo dõi thường xuyên" />
-             <StaffEmptyState
-                iconName="people-circle-outline"
-                title="Chưa có bệnh nhân ưu tiên"
-                description="Danh sách bệnh nhân ưu tiên hôm nay sẽ hiển thị tại đây"
-              />
-           </View>
+          <View style={{ marginTop: 16 }}>
+            <StaffSectionHeader title="Bệnh nhân ưu tiên hôm nay" subtitle="Các bệnh nhân mới cập nhật hoặc cần theo dõi thường xuyên" />
+            <StaffEmptyState
+              iconName="people-circle-outline"
+              title="Chưa có bệnh nhân ưu tiên"
+              description="Danh sách bệnh nhân ưu tiên hôm nay sẽ hiển thị tại đây"
+            />
+          </View>
         )}
       </ScrollView>
     </StaffScreenContainer>

@@ -75,7 +75,7 @@ function MedicationEditorCard({ med, medIdx, onChange, onRemove, canRemove, erro
             setShowSuggestions(true);
           }}
           onFocus={() => setShowSuggestions(true)}
-          placeholder="Nhập hoặc chọn tên thuốc (vd: Paracetamol)..."
+          placeholder="Nhập hoặc chọn tên thuốc (Ví dụ: Paracetamol)..."
           placeholderTextColor="#9CA3AF"
         />
         {nameError ? <Text style={styles.fieldErrorText}>{nameError}</Text> : null}
