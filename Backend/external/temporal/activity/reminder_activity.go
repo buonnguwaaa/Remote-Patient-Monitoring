@@ -73,6 +73,7 @@ func (a *ReminderActivity) SendReminderActivity(ctx context.Context, reminderID 
 		}
 	} else {
 		title = "Nhắc nhở dùng thuốc"
+		targetScreen = "PatientMedications"
 
 		// Resolve the doses due at this specific fire time; skip if all taken.
 		occurrence, err := service.ResolveMedicationOccurrence(ctx, a.prescriptionRepo, a.intakeRepo, reminder, scheduledAt)
