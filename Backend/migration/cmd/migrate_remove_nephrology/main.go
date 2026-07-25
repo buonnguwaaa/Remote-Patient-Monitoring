@@ -120,14 +120,12 @@ func run(ctx context.Context, db *mongo.Database, dryRun bool) error {
 	if err != nil {
 		return err
 	}
-	targetIDs := make([]primitive.ObjectID, 0, len(targetDeptNames))
 	targetIDByName := map[string]primitive.ObjectID{}
 	for _, name := range targetDeptNames {
 		id, err := ensureDept(ctx, deptsCol, name, dryRun, now)
 		if err != nil {
 			return err
 		}
-		targetIDs = append(targetIDs, id)
 		targetIDByName[name] = id
 		log.Printf("[migrate-remove-nephrology] target dept %q (%s)", name, id.Hex())
 	}
