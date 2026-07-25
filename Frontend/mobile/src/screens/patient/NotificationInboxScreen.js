@@ -278,9 +278,11 @@ export default function NotificationInboxScreen({ isEmbedded }) {
       if (
         nextItem.type === "medication" ||
         nextItem.type === "prescription" ||
+        data.reminderKind === "medication" ||
         data.reminderKind === "medicine" ||
         data.prescriptionId ||
-        data.targetScreen === "PatientMedications"
+        data.targetScreen === "PatientMedications" ||
+        (nextItem.title && nextItem.title.toLowerCase().includes("dùng thuốc"))
       ) {
         navigation.navigate("PatientMedications", {
           selectedReminderId: data.reminderId,

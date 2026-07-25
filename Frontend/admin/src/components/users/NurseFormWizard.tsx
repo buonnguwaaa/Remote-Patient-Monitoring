@@ -29,6 +29,7 @@ export const NurseFormWizard: React.FC<NurseFormWizardProps> = ({
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string>("");
 
   // Form State - Step 1
   const [name, setName] = useState("");
@@ -75,6 +76,7 @@ export const NurseFormWizard: React.FC<NurseFormWizardProps> = ({
     setCurrentStep(1);
     setErrors({});
     setAvatarFile(null);
+    setAvatarPreviewUrl("");
   }, [editingNurse, isOpen, departments]);
 
   const validateStep1 = () => {
@@ -223,7 +225,12 @@ export const NurseFormWizard: React.FC<NurseFormWizardProps> = ({
         <div className="space-y-4">
           <AvatarUploader
             currentUrl={editingNurse?.profileImageUrl}
-            onFileSelect={(file) => setAvatarFile(file)}
+            previewUrl={avatarPreviewUrl}
+            initialFileName={avatarFile?.name}
+            onFileSelect={(file, previewUrl) => {
+              setAvatarFile(file);
+              setAvatarPreviewUrl(previewUrl);
+            }}
             disabled={modalMode === "view"}
           />
 

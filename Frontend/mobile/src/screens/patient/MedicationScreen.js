@@ -613,7 +613,11 @@ export default function MedicationScreen({ navigation, route }) {
               </TouchableOpacity>
             </View>
             
-            <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+            <ScrollView 
+              style={styles.modalContent} 
+              contentContainerStyle={styles.modalContentContainer}
+              showsVerticalScrollIndicator={false}
+            >
               <Text style={styles.modalDateRange}>
                 Áp dụng: {new Date(selectedPrescription.startDate).toLocaleDateString("vi-VN")}
                 {selectedPrescription.endDate ? ` - ${new Date(selectedPrescription.endDate).toLocaleDateString("vi-VN")}` : ""}
@@ -1183,7 +1187,11 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   modalContent: {
-    padding: 16,
+    paddingHorizontal: 16,
+  },
+  modalContentContainer: {
+    paddingTop: 16,
+    paddingBottom: 56,
   },
   modalDateRange: {
     fontSize: 14,
