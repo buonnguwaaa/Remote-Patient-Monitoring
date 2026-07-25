@@ -63,8 +63,8 @@ func (a *ReminderActivity) SendReminderActivity(ctx context.Context, reminderID 
 	}
 
 	var title string
+	var targetScreen string
 	body := strings.TrimSpace(reminder.Message)
-	targetScreen := "PatientNotifications"
 	if reminder.Kind == domain.KindMeasure {
 		title = "Nhắc nhở đo chỉ số"
 		targetScreen = "InputMeasurementPatientScreen"
