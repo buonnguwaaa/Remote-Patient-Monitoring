@@ -28,7 +28,7 @@ func TestGenerateAccessTokenIncludesJTI(t *testing.T) {
 	if claims.Role != domain.RolePatient {
 		t.Fatalf("unexpected role: %s", claims.Role)
 	}
-	if claims.ExpiresAt == nil || claims.ExpiresAt.Time.Before(time.Now()) {
+	if claims.ExpiresAt == nil || claims.ExpiresAt.Before(time.Now()) {
 		t.Fatal("expected future expiry")
 	}
 }

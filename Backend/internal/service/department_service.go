@@ -114,7 +114,7 @@ func (s *departmentService) GetMembers(ctx context.Context, input *usecase.GetDe
 			Name:      u.Name,
 			Email:     u.Email,
 			Role:      string(u.Role),
-			Avatar:    "", // Placeholder if avatar not available in user struct
+			Avatar:    u.AvatarUrl,
 			CreatedAt: u.CreatedAt.Format(time.RFC3339),
 		})
 	}
