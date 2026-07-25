@@ -6,18 +6,27 @@ const DEFAULT_AVATAR = "/avartar.jpg";
 
 interface AvatarUploaderProps {
     currentUrl?: string;
+    previewUrl?: string;
+    initialFileName?: string;
     onFileSelect: (file: File, previewUrl: string) => void;
     disabled?: boolean;
 }
 
-const AvatarUploader: React.FC<AvatarUploaderProps> = ({ currentUrl, onFileSelect, disabled = false }) => {
+const AvatarUploader: React.FC<AvatarUploaderProps> = ({
+    currentUrl,
+    previewUrl = "",
+    initialFileName = "",
+    onFileSelect,
+    disabled = false,
+}) => {
     const { t } = useTranslation();
-    const [localPreview, setLocalPreview] = useState<string>("");
-    const [selectedFileName, setSelectedFileName] = useState<string>("");
+    const [localPreview, setLocalPreview] = useState<string>(previewUrl);
+    const [selectedFileName, setSelectedFileName] = useState<string>(initialFileName);
     const [lightboxOpen, setLightboxOpen] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
 
-    const displaySrc = localPreview || currentUrl || DEFAULT_AVATAR;
+    const displaySrc = localPreview || previewUrl || currentUrl || DEFAULT_AVATAR;
+    const displayFileName = selectedFileName || initialFileName || "";
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -70,11 +79,11 @@ const AvatarUploader: React.FC<AvatarUploaderProps> = ({ currentUrl, onFileSelec
                     </button>
                 )}
 
-                {selectedFileName ? (
+                {displayFileName ? (
                     <p className="text-xs text-green-600 flex items-center gap-1">
                         <span className="font-bold">✓</span>
-                        <span className="truncate max-w-[200px]" title={selectedFileName}>
-                            {selectedFileName}
+                        <span className="truncate max-w-[200px]" title={displayFileName}>
+                            {displayFileName}
                         </span>
                         <span className="text-gray-400">— {t("avatarUploader.willUploadOnSave")}</span>
                     </p>

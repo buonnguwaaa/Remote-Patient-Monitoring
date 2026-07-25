@@ -390,11 +390,11 @@ function formatDayLabel(iso: string, t: (key: string) => string) {
   });
 }
 
-function getPatientSummary(patient: PatientDetailResponse) {
+function getPatientSummary(patient: PatientDetailResponse, hideHistory = false) {
   const parts = [
     patient.gender || null,
     patient.patientCode ? `Mã hồ sơ ${patient.patientCode}` : null,
-    patient.medicalHistory || null,
+    hideHistory ? null : (patient.medicalHistory || null),
   ].filter(Boolean);
 
   return parts.join(" • ");
@@ -1007,7 +1007,7 @@ const ChatPage = ({
     );
   }
 
-  const patientSummary = patient ? getPatientSummary(patient) : "";
+  const patientSummary = patient ? getPatientSummary(patient, embedded) : "";
   const containerClassName = embedded
     ? "flex h-full min-h-0 flex-col overflow-hidden bg-[#F0F2F5] dark:bg-slate-950"
     : "flex h-[calc(100vh)] min-h-0 flex-col overflow-hidden rounded bg-[#F0F2F5] dark:bg-slate-950 dark:ring-1 dark:ring-slate-800/80";

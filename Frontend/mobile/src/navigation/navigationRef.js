@@ -56,6 +56,7 @@ function buildNotificationNavigationAction(payload) {
   if (
     type === "medication" ||
     type === "prescription" ||
+    data.reminderKind === "medication" ||
     data.reminderKind === "medicine" ||
     data.prescriptionId ||
     data.targetScreen === "PatientMedications"

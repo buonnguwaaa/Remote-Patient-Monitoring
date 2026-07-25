@@ -75,7 +75,7 @@ const PatientSearchSelect = ({
         <input
           ref={inputRef}
           type="text"
-          value={disabled ? (loadingLabel ?? placeholder ?? "") : inputValue}
+          value={disabled ? (selectedDisplayText || loadingLabel || placeholder || "") : (open ? inputValue : selectedDisplayText)}
           onChange={(e) => setInputValue(e.target.value)}
           onFocus={handleFocus}
           placeholder={open ? (searchPlaceholder ?? "Tìm kiếm...") : (placeholder ?? "")}

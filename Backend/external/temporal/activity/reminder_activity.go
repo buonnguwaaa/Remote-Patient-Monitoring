@@ -63,8 +63,8 @@ func (a *ReminderActivity) SendReminderActivity(ctx context.Context, reminderID 
 	}
 
 	var title string
+	var targetScreen string
 	body := strings.TrimSpace(reminder.Message)
-	targetScreen := "PatientNotifications"
 	if reminder.Kind == domain.KindMeasure {
 		title = "Nhắc nhở đo chỉ số"
 		targetScreen = "InputMeasurementPatientScreen"
@@ -73,6 +73,7 @@ func (a *ReminderActivity) SendReminderActivity(ctx context.Context, reminderID 
 		}
 	} else {
 		title = "Nhắc nhở dùng thuốc"
+		targetScreen = "PatientMedications"
 
 		// Resolve the doses due at this specific fire time; skip if all taken.
 		occurrence, err := service.ResolveMedicationOccurrence(ctx, a.prescriptionRepo, a.intakeRepo, reminder, scheduledAt)
