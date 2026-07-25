@@ -26,7 +26,7 @@ export const BADGE_CONFIG = {
     darkColor: '#1E3A8A',
   },
   general: {
-    label: 'Sinh tồn',
+    label: 'Sinh hiệu',
     bg: '#E8F5E9',
     color: '#2E7D32',
     gradientStart: '#11998E',

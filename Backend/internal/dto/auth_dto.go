@@ -50,3 +50,9 @@ type ResetPasswordRequest struct {
 	NewPassword          string `json:"newPassword" binding:"required,min=6"`
 	ConfirmedNewPassword string `json:"confirmedNewPassword" binding:"required,min=6,eqfield=NewPassword"`
 }
+
+type AcceptInviteApiRequest struct {
+	Token             string `json:"token" binding:"required"`
+	Password          string `json:"password" binding:"required,min=6"`
+	ConfirmedPassword string `json:"confirmedPassword" binding:"required,min=6"`
+}

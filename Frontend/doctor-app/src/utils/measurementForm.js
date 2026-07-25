@@ -1,5 +1,5 @@
 export const MEASUREMENT_SECTIONS = [
-  { key: "bp", iconName: "heart-outline", label: "Huyết áp", description: "SYS / DIA / Mạch" },
+  { key: "bp", iconName: "heart-outline", label: "Huyết áp", description: "SYS / DIA" },
   { key: "glucose", iconName: "water-outline", label: "Đường huyết", description: "mg/dL" },
   { key: "spo2", iconName: "pulse-outline", label: "SpO2", description: "% bão hòa O2" },
   { key: "temp", iconName: "thermometer-outline", label: "Nhiệt độ", description: "°C" },
@@ -23,20 +23,13 @@ export function hasMeasurementSectionValue(sectionKey, values = {}) {
   if (sectionKey === "bp") {
     return (
       hasMeasurementValue(values.systolic) ||
-      hasMeasurementValue(values.diastolic) ||
-      hasMeasurementValue(values.heartRate)
+      hasMeasurementValue(values.diastolic)
     );
   }
   if (sectionKey === "glucose") return hasMeasurementValue(values.glucose);
   if (sectionKey === "spo2") return hasMeasurementValue(values.spo2);
   if (sectionKey === "temp") return hasMeasurementValue(values.temperature);
-  if (sectionKey === "heartRate") {
-    return (
-      hasMeasurementValue(values.heartRate) &&
-      !hasMeasurementValue(values.systolic) &&
-      !hasMeasurementValue(values.diastolic)
-    );
-  }
+  if (sectionKey === "heartRate") return hasMeasurementValue(values.heartRate);
   if (sectionKey === "respiratoryRate") {
     return hasMeasurementValue(values.respiratoryRate);
   }
@@ -62,8 +55,7 @@ export function buildMeasurementPayload({
 }) {
   const hasBp =
     Number(values.systolic) > 0 ||
-    Number(values.diastolic) > 0 ||
-    Number(values.heartRate) > 0;
+    Number(values.diastolic) > 0;
   const hasGlucose = hasMeasurementValue(values.glucose);
 
   return {
@@ -93,25 +85,21 @@ export function getMeasurementValidationError(sectionKey, values = {}) {
   if (sectionKey === "bp") {
     const sys = Number(values.systolic);
     const dia = Number(values.diastolic);
-    const pulse = Number(values.heartRate);
 
-    if (!values.systolic || !values.diastolic || !values.heartRate) {
+    if (!values.systolic || !values.diastolic) {
       return {
         title: "Thiếu chỉ số",
-        message: "Huyết áp yêu cầu đủ: Tâm thu, Tâm trương và mạch.",
+        message: "Huyết áp yêu cầu đủ: Tâm thu và Tâm trương.",
       };
     }
 
     if (
       Number.isNaN(sys) ||
       Number.isNaN(dia) ||
-      Number.isNaN(pulse) ||
       sys < 70 ||
       sys > 250 ||
       dia < 40 ||
-      dia > 150 ||
-      pulse < 30 ||
-      pulse > 220
+      dia > 150
     ) {
       return {
         title: "Giá trị không hợp lệ",

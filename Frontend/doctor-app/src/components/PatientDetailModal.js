@@ -496,7 +496,7 @@ export default function PatientDetailModal({
                 </Text>
               </View>
 
-              <Text style={styles.modalSectionTitle}>Chỉ số sinh tồn gần nhất</Text>
+              <Text style={styles.modalSectionTitle}>Chỉ số sinh hiệu gần nhất</Text>
               <View style={styles.vitalsGrid}>
                 {renderLatestVitalCard("temperature", "thermometer-outline", "Nhiệt độ", "°C", "#FEF3C7", "#D97706")}
                 {renderLatestVitalCard("heartRate", "heart-outline", "Nhịp tim", "bpm", "#FEE2E2", "#DC2626")}

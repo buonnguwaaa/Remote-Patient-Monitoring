@@ -30,13 +30,13 @@ export function BadgeProvider({ children }) {
         return;
       }
 
-      // Doctor: original logic
-      // 1. Fetch unread alerts
-      const alertsRes = await getAlerts({ limit: 100 });
+      // Doctor: fetch open alerts
+      const alertsRes = await getAlerts({ limit: 1000, status: "open" });
       if (alertsRes.ok) {
         const list = alertsRes.body?.data || [];
-        const activeAlerts = list.filter((a) => a.status === "active");
-        setUnreadAlertsCount(activeAlerts.length);
+        const openAlerts = list.filter((a) => a.status === "open");
+        const totalOpen = typeof alertsRes.body?.total === "number" ? alertsRes.body.total : openAlerts.length;
+        setUnreadAlertsCount(totalOpen);
       }
 
       // 2. Fetch conversations

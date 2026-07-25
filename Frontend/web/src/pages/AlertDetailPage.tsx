@@ -272,7 +272,7 @@ export default function AlertDetailPage() {
                   const sourceType = getAlertSourceType(alert);
                   return sourceType === "trend"
                     ? "⚠️ Cảnh báo xu hướng bất thường"
-                    : "Cảnh báo vượt ngưỡng chỉ số sinh tồn";
+                    : "Cảnh báo vượt ngưỡng chỉ số sinh hiệu";
                 })()}
               </h1>
               <div className="text-xs text-slate-500 dark:text-slate-400 mt-2 flex items-center gap-1">

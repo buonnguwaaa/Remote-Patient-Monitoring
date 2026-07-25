@@ -22,6 +22,7 @@ import {
 import { recordMedicationIntake } from "../../api/medicationIntakeApi";
 import { subscribeNotificationEvents } from "../../services/notificationEvents";
 import { useSnackbar } from "../../hooks/useSnackbar";
+import { useBadge } from "../../context/BadgeContext";
 
 function extractData(response) {
   if (!response?.ok) return null;
@@ -76,12 +77,81 @@ function buildNotificationMeta(item) {
     };
   }
 
+  const isAssignment =
+    item?.type === "assignment" ||
+    item?.data?.type === "assignment" ||
+    (item?.title && item.title.includes("Phân công"));
+
+  if (isAssignment) {
+    return {
+      iconName: "people-outline",
+      iconColor: "#10B981",
+      pillText: "Phân công",
+      title: item?.title || "Phân công chăm sóc mới",
+      subtitle: item?.body || "Bạn có phân công chăm sóc mới.",
+    };
+  }
+
+  const isAppointment =
+    item?.type === "appointment" ||
+    item?.data?.type === "appointment" ||
+    (item?.title && item.title.includes("Lịch hẹn"));
+
+  if (isAppointment) {
+    return {
+      iconName: "calendar-outline",
+      iconColor: "#F59E0B",
+      pillText: "Lịch hẹn",
+      title: item?.title || "Lịch tái khám / Lịch hẹn",
+      subtitle: item?.body || "Bạn có một lịch hẹn mới.",
+    };
+  }
+
+  const isAccount =
+    item?.type === "account_registration" ||
+    item?.data?.type === "account_registration";
+
+  if (isAccount) {
+    return {
+      iconName: "person-outline",
+      iconColor: "#6366F1",
+      pillText: "Tài khoản",
+      title: item?.title || "Xác minh tài khoản",
+      subtitle: item?.body || "Cập nhật thông tin tài khoản.",
+    };
+  }
+
+  if (item?.data?.reminderKind === "measure") {
+    return {
+      iconName: "timer-outline",
+      iconColor: "#2563EB",
+      pillText: "Nhắc đo",
+      title: item?.title || "Nhắc nhở sức khỏe",
+      subtitle: translateMealTiming(item?.body) || "Bạn có một nhắc nhở mới.",
+    };
+  }
+
+  if (
+    item?.type === "reminder" ||
+    item?.type === "medication" ||
+    item?.type === "prescription" ||
+    item?.data?.reminderKind === "medicine"
+  ) {
+    return {
+      iconName: "medical-outline",
+      iconColor: "#7C3AED",
+      pillText: "Nhắc uống thuốc",
+      title: item?.title || "Nhắc uống thuốc",
+      subtitle: translateMealTiming(item?.body) || "Bạn có một nhắc nhở mới.",
+    };
+  }
+
   return {
-    iconName: item?.data?.reminderKind === "measure" ? "timer-outline" : "medical-outline",
-    iconColor: item?.data?.reminderKind === "measure" ? "#2563EB" : "#7C3AED",
-    pillText: item?.data?.reminderKind === "measure" ? "Nhắc đo" : "Nhắc uống thuốc",
-    title: item?.title || "Nhắc nhở sức khỏe",
-    subtitle: translateMealTiming(item?.body) || "Bạn có một nhắc nhở mới.",
+    iconName: "notifications-outline",
+    iconColor: "#6B7280",
+    pillText: "Thông báo",
+    title: item?.title || "Thông báo hệ thống",
+    subtitle: item?.body || "Bạn có một thông báo mới.",
   };
 }
 
@@ -89,8 +159,8 @@ export default function NotificationInboxScreen({ isEmbedded }) {
   const navigation = useNavigation();
   const route = useRoute();
   const { showSuccess, showError } = useSnackbar();
+  const { refreshBadges } = useBadge();
   const [notifications, setNotifications] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
@@ -113,6 +183,10 @@ export default function NotificationInboxScreen({ isEmbedded }) {
     return nonAlerts;
   }, [notifications, filterMode]);
 
+  const unreadCount = useMemo(() => {
+    return filteredNotifications.filter((item) => !item.isRead).length;
+  }, [filteredNotifications]);
+
   const updateNotificationInState = useCallback((nextItem) => {
     setNotifications((current) =>
       current.map((item) => (item.id === nextItem.id ? { ...item, ...nextItem } : item))
@@ -125,10 +199,7 @@ export default function NotificationInboxScreen({ isEmbedded }) {
       if (isRefresh) setRefreshing(true);
       else setLoading(true);
 
-      const [listResponse, unreadResponse] = await Promise.all([
-        getMyNotifications(),
-        getUnreadNotificationCount(),
-      ]);
+      const listResponse = await getMyNotifications();
 
       if (!listResponse?.ok) {
         throw new Error(listResponse?.body?.error || listResponse?.error || "Không thể tải thông báo.");
@@ -138,7 +209,6 @@ export default function NotificationInboxScreen({ isEmbedded }) {
         .map(normalizeNotification)
         .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime());
       setNotifications(list);
-      setUnreadCount(Number(extractData(unreadResponse)?.count || 0));
     } catch (loadError) {
       console.error("Failed to load notifications", loadError);
       setError(loadError?.message || "Không thể tải thông báo.");
@@ -171,7 +241,7 @@ export default function NotificationInboxScreen({ isEmbedded }) {
         if (response?.ok && updated) {
           nextItem = normalizeNotification(updated);
           updateNotificationInState(nextItem);
-          setUnreadCount((current) => Math.max(0, current - 1));
+          refreshBadges();
         }
       }
 
@@ -265,7 +335,7 @@ export default function NotificationInboxScreen({ isEmbedded }) {
           const updated = extractData(response);
           if (response?.ok && updated) {
             updateNotificationInState(normalizeNotification(updated));
-            setUnreadCount((current) => Math.max(0, current - 1));
+            refreshBadges();
           }
         }
       } catch (err) {

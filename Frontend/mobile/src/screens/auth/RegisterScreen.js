@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   Modal,
+  Image,
+  StyleSheet,
 } from 'react-native';
 import ButtonPrimary from '../../components/ButtonPrimary';
 import { Feather } from '@expo/vector-icons';
@@ -16,13 +18,42 @@ import styles from '../../styles/login';
 import { useAuth } from '../../hooks/useAuth';
 import { useSnackbar } from '../../hooks/useSnackbar';
 
-export default function RegisterScreen({ navigation, onSwitchToLogin }) {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [gender, setGender] = useState('');
+const portalBadgeStyle = StyleSheet.create({
+  tag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginTop: 10,
+    gap: 6,
+  },
+  tagText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1D4ED8',
+    letterSpacing: 0.5,
+  },
+});
+
+
+export default function RegisterScreen({ route, navigation, onSwitchToLogin }) {
+  const savedStep1 = route?.params?.savedStep1;
+
+  const [name, setName] = useState(savedStep1?.name || '');
+  const [email, setEmail] = useState(savedStep1?.email || '');
+  const [gender, setGender] = useState(() => {
+    if (!savedStep1?.gender) return '';
+    if (savedStep1.gender === 'M' || savedStep1.gender === 'male') return 'Nam';
+    if (savedStep1.gender === 'F' || savedStep1.gender === 'female') return 'Nữ';
+    return savedStep1.gender;
+  });
   const [showGenderOptions, setShowGenderOptions] = useState(false);
-  const [dob, setDob] = useState('');
-  const [cccd, setCccd] = useState('');
+  const [dob, setDob] = useState(savedStep1?.dob || '');
+  const [cccd, setCccd] = useState(savedStep1?.cccd || '');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [tempDate, setTempDate] = useState(dob ? new Date(dob) : new Date());
 
@@ -32,9 +63,9 @@ export default function RegisterScreen({ navigation, onSwitchToLogin }) {
   } catch (e) {
     DateTimePicker = null;
   }
-  const [phone, setPhone] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [phone, setPhone] = useState(savedStep1?.phone || '');
+  const [password, setPassword] = useState(savedStep1?.password || '');
+  const [confirmPassword, setConfirmPassword] = useState(savedStep1?.confirmedPassword || savedStep1?.password || '');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -42,6 +73,24 @@ export default function RegisterScreen({ navigation, onSwitchToLogin }) {
   const { register } = useAuth();
   const [showDobInput, setShowDobInput] = useState(false);
   const { showSuccess, showError } = useSnackbar();
+
+  useEffect(() => {
+    if (route?.params?.savedStep1) {
+      const s1 = route.params.savedStep1;
+      if (s1.name !== undefined) setName(s1.name);
+      if (s1.email !== undefined) setEmail(s1.email);
+      if (s1.phone !== undefined) setPhone(s1.phone);
+      if (s1.dob !== undefined) setDob(s1.dob);
+      if (s1.cccd !== undefined) setCccd(s1.cccd);
+      if (s1.password !== undefined) setPassword(s1.password);
+      if (s1.confirmedPassword !== undefined) setConfirmPassword(s1.confirmedPassword);
+      if (s1.gender) {
+        if (s1.gender === 'M' || s1.gender === 'male') setGender('Nam');
+        else if (s1.gender === 'F' || s1.gender === 'female') setGender('Nữ');
+        else setGender(s1.gender);
+      }
+    }
+  }, [route?.params?.savedStep1]);
 
   const handleSubmit = () => {
     setEmailError('');
@@ -71,11 +120,11 @@ export default function RegisterScreen({ navigation, onSwitchToLogin }) {
       return;
     }
     const genderCode = (() => {
-      if (!gender) return 'O';
+      if (!gender) return 'M';
       const g = gender.toLowerCase();
-      if (g.startsWith('male')) return 'M';
-      if (g.startsWith('female')) return 'F';
-      return 'O';
+      if (g === 'nam' || g.startsWith('male')) return 'M';
+      if (g === 'nữ' || g.startsWith('female')) return 'F';
+      return 'M';
     })();
 
     navigation.navigate('RegisterOptional', {
@@ -88,6 +137,7 @@ export default function RegisterScreen({ navigation, onSwitchToLogin }) {
       gender: genderCode,
       role: 'user.patient',
       cccd,
+      savedStep2: route?.params?.savedStep2,
     });
   };
 
@@ -102,20 +152,34 @@ export default function RegisterScreen({ navigation, onSwitchToLogin }) {
         keyboardDismissMode="interactive"
       >
         <View style={styles.header}>
-          <View style={styles.logoWrap}>
-            <Text style={styles.logoText}>RPM</Text>
+          <Image 
+            source={require('../../../assets/icon.png')} 
+            style={{ width: 80, height: 80, borderRadius: 16, marginBottom: 12, alignSelf: 'center' }} 
+            resizeMode="contain"
+          />
+          <Text style={styles.title}>Remote Patient Monitoring</Text>
+          <View style={portalBadgeStyle.tag}>
+            <Feather name="user-plus" size={14} color="#1D4ED8" />
+            <Text style={portalBadgeStyle.tagText}>CỔNG ĐĂNG KÝ BỆNH NHÂN</Text>
           </View>
-          <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>Sign up to get started</Text>
+        </View>
+
+        <View style={{ marginTop: 16, marginBottom: 8, alignItems: 'center' }}>
+          <Text style={{ fontSize: 18, fontWeight: '700', color: '#1E293B' }}>
+            Bước 1/2: Thông tin cá nhân
+          </Text>
+          <Text style={{ fontSize: 13, color: '#64748B', marginTop: 4, textAlign: 'center' }}>
+            Điền thông tin cá nhân cơ bản để đăng ký tài khoản
+          </Text>
         </View>
 
         <View style={styles.form}>
           <View style={styles.field}>
-            <Text style={styles.label}>Full Name</Text>
+            <Text style={styles.label}>Họ và tên</Text>
             <TextInput
               value={name}
               onChangeText={setName}
-              placeholder="Enter your full name"
+              placeholder="Nhập họ và tên của bạn"
               style={styles.input}
             />
           </View>
@@ -128,7 +192,7 @@ export default function RegisterScreen({ navigation, onSwitchToLogin }) {
                 setEmail(v);
                 if (emailError) setEmailError('');
               }}
-              placeholder="Enter your email"
+              placeholder="Nhập địa chỉ email"
               keyboardType="email-address"
               autoCapitalize="none"
               style={[styles.input, emailError ? { borderColor: '#DC2626', borderWidth: 1.5 } : null]}
@@ -145,30 +209,28 @@ export default function RegisterScreen({ navigation, onSwitchToLogin }) {
             <TextInput
               value={phone}
               onChangeText={setPhone}
-              placeholder="Nhập số điện thoại (tùy chọn)"
+              placeholder="Nhập số điện thoại"
               keyboardType="phone-pad"
               style={styles.input}
             />
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.label}>Gender</Text>
+            <Text style={styles.label}>Giới tính</Text>
             <TouchableOpacity
               onPress={() => setShowGenderOptions((s) => !s)}
               style={styles.selectButton}
               activeOpacity={0.8}
             >
-              <Text style={gender ? styles.inputText : styles.placeholderText}>{gender || 'Select your gender'}</Text>
+              <Text style={gender ? styles.inputText : styles.placeholderText}>{gender || 'Chọn giới tính'}</Text>
               <Feather name={showGenderOptions ? 'chevron-up' : 'chevron-down'} size={18} color="#717182" />
             </TouchableOpacity>
 
             {showGenderOptions && (
               <View style={styles.selectOptions}>
                 {[
-                  { label: 'Male', value: 'male' },
-                  { label: 'Female', value: 'female' },
-                  { label: 'Non-binary', value: 'non-binary' },
-                  { label: 'Prefer not to say', value: 'prefer-not-to-say' },
+                  { label: 'Nam', value: 'male' },
+                  { label: 'Nữ', value: 'female' },
                 ].map((opt) => (
                   <TouchableOpacity
                     key={opt.value}
@@ -186,7 +248,7 @@ export default function RegisterScreen({ navigation, onSwitchToLogin }) {
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.label}>Date of Birth</Text>
+            <Text style={styles.label}>Ngày sinh</Text>
             <TouchableOpacity
               onPress={() => {
                 if (DateTimePicker) {
@@ -199,7 +261,7 @@ export default function RegisterScreen({ navigation, onSwitchToLogin }) {
               style={styles.dobButton}
             >
               <Feather name="calendar" size={18} color="#717182" style={{ marginRight: 10 }} />
-              <Text style={dob ? { color: '#030213' } : styles.dobText}>{dob || 'Pick a date'}</Text>
+              <Text style={dob ? { color: '#030213' } : styles.dobText}>{dob || 'Chọn ngày sinh'}</Text>
             </TouchableOpacity>
 
             {showDobInput && (
@@ -240,7 +302,7 @@ export default function RegisterScreen({ navigation, onSwitchToLogin }) {
               >
                 <View style={styles.modalContainer}>
                   <View style={styles.modalContent}>
-                    <Text style={styles.modalTitle}>Select date</Text>
+                    <Text style={styles.modalTitle}>Chọn ngày sinh</Text>
                     <View style={styles.iosDatePickerWrap}>
                       <DateTimePicker
                         value={tempDate}
@@ -264,7 +326,7 @@ export default function RegisterScreen({ navigation, onSwitchToLogin }) {
                           setShowDatePicker(false);
                         }}
                       >
-                        <Text style={styles.modalActionText}>Cancel</Text>
+                        <Text style={styles.modalActionText}>Hủy</Text>
                       </TouchableOpacity>
 
                       <TouchableOpacity
@@ -275,7 +337,7 @@ export default function RegisterScreen({ navigation, onSwitchToLogin }) {
                           setShowDatePicker(false);
                         }}
                       >
-                        <Text style={styles.modalActionText}>Confirm</Text>
+                        <Text style={styles.modalActionText}>Xác nhận</Text>
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -285,23 +347,23 @@ export default function RegisterScreen({ navigation, onSwitchToLogin }) {
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.label}>CCCD (Căn cước công dân)</Text>
+            <Text style={styles.label}>Số CCCD (Căn cước công dân)</Text>
             <TextInput
               value={cccd}
               onChangeText={setCccd}
-              placeholder="Nhập số CCCD (tùy chọn)"
+              placeholder="Nhập số CCCD"
               keyboardType="number-pad"
               style={styles.input}
             />
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.label}>Password</Text>
+            <Text style={styles.label}>Mật khẩu</Text>
             <View style={styles.passwordWrap}>
               <TextInput
                 value={password}
                 onChangeText={setPassword}
-                placeholder="Create a password"
+                placeholder="Nhập mật khẩu"
                 secureTextEntry={!showPassword}
                 style={[styles.input, { paddingRight: 50 }]}
               />
@@ -309,16 +371,16 @@ export default function RegisterScreen({ navigation, onSwitchToLogin }) {
                 <Feather name={showPassword ? 'eye-off' : 'eye'} size={20} color="#717182" />
               </TouchableOpacity>
             </View>
-            <Text style={{ color: '#717182', marginTop: 6 }}>Must be at least 8 characters</Text>
+            <Text style={{ color: '#717182', marginTop: 6 }}>Mật khẩu phải có ít nhất 8 ký tự</Text>
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.label}>Confirm Password</Text>
+            <Text style={styles.label}>Xác nhận mật khẩu</Text>
             <View style={styles.passwordWrap}>
               <TextInput
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
-                placeholder="Confirm your password"
+                placeholder="Nhập lại mật khẩu"
                 secureTextEntry={!showConfirmPassword}
                 style={[styles.input, { paddingRight: 50 }]}
               />
@@ -329,9 +391,10 @@ export default function RegisterScreen({ navigation, onSwitchToLogin }) {
           </View>
 
           <ButtonPrimary title="Tiếp tục" onPress={handleSubmit} disabled={loading} />
+
           {/* Terms */}
           <Text style={styles.termsText}>
-            By signing up, you agree to our{' '}
+            Bằng việc đăng ký, bạn đồng ý với{' '}
             <Text
               style={styles.termsLink}
               onPress={() => {
@@ -342,9 +405,9 @@ export default function RegisterScreen({ navigation, onSwitchToLogin }) {
                 } catch (e) { }
               }}
             >
-              Terms
+              Điều khoản dịch vụ
             </Text>{' '}
-            and{' '}
+            và{' '}
             <Text
               style={styles.termsLink}
               onPress={() => {
@@ -355,18 +418,21 @@ export default function RegisterScreen({ navigation, onSwitchToLogin }) {
                 } catch (e) { }
               }}
             >
-              Privacy Policy
-            </Text>
+              Chính sách bảo mật
+            </Text>{' '}
+            của chúng tôi.
           </Text>
         </View>
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>
-            Already have an account?{' '}
-            <Text style={styles.signUp} onPress={() => navigation.navigate('Login')}>Sign In</Text>
+            Đã có tài khoản?{' '}
+            <Text style={styles.signUp} onPress={() => navigation.navigate('Login')}>Đăng nhập</Text>
           </Text>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
+
+

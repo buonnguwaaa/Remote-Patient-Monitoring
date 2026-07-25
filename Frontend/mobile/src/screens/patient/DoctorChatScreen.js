@@ -317,7 +317,7 @@ function getViolationLabel(type) {
 
 export default function DoctorChatScreen() {
   const { user } = useAuth();
-  const { refreshBadges } = useBadge();
+  const { refreshBadges, markMessagesRead } = useBadge();
   const currentUserId = user?.id || user?._id;
   const isFocused = useIsFocused();
   const navigation = useNavigation();
@@ -335,8 +335,13 @@ export default function DoctorChatScreen() {
   const scrollViewRef = useRef(null);
   const lastDeliveredSentRef = useRef(null);
   const lastReadSentRef = useRef(null);
+  const messagesRef = useRef(messages);
   const [alertsCache, setAlertsCache] = useState({});
   const [activeVideoSessionId, setActiveVideoSessionId] = useState(null);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   async function fetchConversationMessages(conversationId, limit = 100) {
     const messagesResponse = await getConversationMessages(conversationId, limit);
@@ -426,12 +431,13 @@ export default function DoctorChatScreen() {
     scrollViewRef.current?.scrollToEnd({ animated: true });
   }, [messages]);
 
-  // Refresh badge count when screen is focused
+  // Refresh and clear badge count when screen is focused
   useEffect(() => {
     if (isFocused) {
+      markMessagesRead();
       refreshBadges();
     }
-  }, [isFocused, refreshBadges]);
+  }, [isFocused, markMessagesRead, refreshBadges]);
 
   useEffect(() => {
     if (!isFocused) {
@@ -525,6 +531,12 @@ export default function DoctorChatScreen() {
         socket.onopen = () => {
           setSocketState("open");
           setError(null);
+          markMessagesRead();
+          const latestIncoming = findLatestIncomingMessage(messagesRef.current || [], currentUserId);
+          if (latestIncoming?.id && lastReadSentRef.current !== latestIncoming.id) {
+            socket.send(JSON.stringify(createReadPayload(latestIncoming.id)));
+            lastReadSentRef.current = latestIncoming.id;
+          }
         };
 
         socket.onmessage = (event) => {
@@ -700,6 +712,7 @@ export default function DoctorChatScreen() {
     if (lastReadSentRef.current !== latestIncomingMessage.id) {
       socketRef.current.send(JSON.stringify(createReadPayload(latestIncomingMessage.id)));
       lastReadSentRef.current = latestIncomingMessage.id;
+      markMessagesRead();
 
       // Refresh badge count after sending READ event
       // Use setTimeout to allow backend to process the READ event first
@@ -707,7 +720,7 @@ export default function DoctorChatScreen() {
         refreshBadges();
       }, 300);
     }
-  }, [conversation?.id, currentUserId, isFocused, messages, socketState, refreshBadges]);
+  }, [conversation?.id, currentUserId, isFocused, messages, socketState, refreshBadges, markMessagesRead]);
 
   const handleSend = (nextContent = draft) => {
     const content = String(nextContent || "").trim();
