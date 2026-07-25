@@ -25,6 +25,8 @@ const BadgeContext = createContext({
 export function BadgeProvider({ children }) {
   const { user } = useAuth();
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
+  const [unreadAlertsCount, setUnreadAlertsCount] = useState(0);
+  const [unreadRemindersCount, setUnreadRemindersCount] = useState(0);
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const pollingRef = useRef(null);
 
@@ -54,6 +56,8 @@ export function BadgeProvider({ children }) {
         }
       }
 
+      setUnreadAlertsCount(openAlertsCount);
+      setUnreadRemindersCount(unreadRemindersCount);
       setUnreadNotifCount(openAlertsCount + unreadRemindersCount);
     } catch {
       // Silent fail for badge polling
@@ -170,6 +174,8 @@ export function BadgeProvider({ children }) {
     <BadgeContext.Provider
       value={{
         unreadNotifCount,
+        unreadAlertsCount,
+        unreadRemindersCount,
         unreadMessageCount,
         refreshBadges,
         markMessagesRead,
