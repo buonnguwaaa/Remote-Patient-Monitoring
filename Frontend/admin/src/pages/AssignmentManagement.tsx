@@ -19,36 +19,43 @@ import Pagination from "../components/ui/Pagination";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-/** Mapping bệnh → keywords tên khoa (lowercase) để filter */
-function getTargetDepartments(diseaseTypes?: { bloodPressure: boolean; glucose: boolean }): string[] {
+export interface FilterCategory {
+  id: string;
+  label: string;
+  keywords: string[];
+}
+
+function getSuggestedFilters(diseaseTypes?: { bloodPressure: boolean; glucose: boolean }): FilterCategory[] {
   if (!diseaseTypes) return [];
   const { bloodPressure, glucose } = diseaseTypes;
   if (!bloodPressure && !glucose) return [];
 
-  const keywords: string[] = [];
+  const filters: FilterCategory[] = [];
 
   // Từ khóa khoa Nội dùng chung
-  keywords.push(
-    "nội tổng hợp", "noi tong hop", "tổng hợp", "tong hop",
-    "nội tổng quát", "noi tong quat", "tổng quát", "tong quat",
-    "nội", "noi"
-  );
+  filters.push({
+    id: "noi-tong-quat",
+    label: "Nội Tổng quát",
+    keywords: ["nội tổng hợp", "noi tong hop", "tổng hợp", "tong hop", "nội tổng quát", "noi tong quat", "tổng quát", "tong quat"]
+  });
 
   if (bloodPressure) {
-    keywords.push(
-      "tim mạch", "tim mach", "cardio",
-      "thận", "than", "tiết niệu", "tiet nieu", "renal",
-      "huyết áp", "huyet ap", "hypertension"
-    );
+    filters.push({
+      id: "tim-mach",
+      label: "Tim mạch",
+      keywords: ["tim mạch", "tim mach", "cardio", "huyết áp", "huyet ap", "hypertension"]
+    });
   }
 
   if (glucose) {
-    keywords.push(
-      "nội tiết", "noi tiet", "endocrin", "tiểu đường", "tieu duong", "đái tháo", "dai thao"
-    );
+    filters.push({
+      id: "noi-tiet",
+      label: "Nội tiết",
+      keywords: ["nội tiết", "noi tiet", "endocrin", "tiểu đường", "tieu duong", "đái tháo", "dai thao"]
+    });
   }
 
-  return keywords;
+  return filters;
 }
 
 function getDiseaseLabel(diseaseTypes?: { bloodPressure: boolean; glucose: boolean }) {
@@ -57,16 +64,6 @@ function getDiseaseLabel(diseaseTypes?: { bloodPressure: boolean; glucose: boole
   if (diseaseTypes.bloodPressure) labels.push({ label: "Huyết áp", color: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300", icon: <MdBloodtype className="inline mr-1" /> });
   if (diseaseTypes.glucose) labels.push({ label: "Đái tháo đường", color: "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300", icon: <GiMedicines className="inline mr-1" /> });
   return labels;
-}
-
-function getSuggestedDeptLabel(diseaseTypes?: { bloodPressure: boolean; glucose: boolean }): string {
-  if (!diseaseTypes) return "";
-  const { bloodPressure, glucose } = diseaseTypes;
-  if (!bloodPressure && !glucose) return "";
-  if (bloodPressure && glucose) return "Nội Tổng hợp / Tim mạch / Nội tiết";
-  if (bloodPressure) return "Tim mạch · Thận - Tiết niệu · Nội Tổng hợp";
-  if (glucose) return "Nội tiết · Thận - Tiết niệu · Nội Tổng hợp";
-  return "";
 }
 
 /** Badge màu số bệnh nhân */
@@ -99,7 +96,7 @@ function PatientInfoCard({ patient }: { patient: Patient }) {
   const genderStr = (g === "male" || g === "m") ? "Nam" : (g === "female" || g === "f") ? "Nữ" : patient.gender || "Khác";
 
   return (
-    <div className="rounded-xl border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 dark:border-blue-800 dark:from-blue-950/40 dark:to-indigo-950/40 space-y-4">
+    <div className="rounded-xl border border-blue-200 bg-gradient-to-r from-blue-50 to-blue-50 p-4 dark:border-blue-800 dark:from-blue-950/40 dark:to-blue-950/40 space-y-4">
       {/* Header: Avatar + Tên + Email */}
       <div className="flex items-center gap-4">
         <img
@@ -316,18 +313,21 @@ interface DoctorPickerProps {
   selectedDoctor: string;
   onSelect: (id: string) => void;
   doctorPatientCounts: Record<string, number>;
-  filterNote?: string;
   search: string;
   onSearchChange: (v: string) => void;
+  activeFilterIds?: string[];
+  suggestedFilters?: FilterCategory[];
+  onToggleFilter?: (id: string) => void;
+  onClearFilters?: () => void;
 }
 
-function DoctorPickerList({ doctors, filteredDoctors, selectedDoctor, onSelect, doctorPatientCounts, filterNote, search, onSearchChange }: DoctorPickerProps) {
-  const searched = useMemo(() =>
-    search
+function DoctorPickerList({ doctors, filteredDoctors, selectedDoctor, onSelect, doctorPatientCounts, search, onSearchChange, suggestedFilters, activeFilterIds, onToggleFilter, onClearFilters }: DoctorPickerProps) {
+  const searched = useMemo(() => {
+    let list = search
       ? filteredDoctors.filter(d => d.name.toLowerCase().includes(search.toLowerCase()) || (d.displayName || "").toLowerCase().includes(search.toLowerCase()))
-      : filteredDoctors,
-    [filteredDoctors, search]
-  );
+      : filteredDoctors;
+    return [...list].sort((a, b) => (doctorPatientCounts[a.id] || 0) - (doctorPatientCounts[b.id] || 0));
+  }, [filteredDoctors, search, doctorPatientCounts]);
 
   return (
     <div className="flex flex-col h-full">
@@ -343,11 +343,34 @@ function DoctorPickerList({ doctors, filteredDoctors, selectedDoctor, onSelect, 
         />
       </div>
 
-      {/* Filter note */}
-      {filterNote && (
-        <div className="mb-2 flex items-center gap-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/30 px-3 py-1.5">
-          <FaFilter className="text-blue-500 text-xs shrink-0" />
-          <span className="text-xs text-blue-600 dark:text-blue-400">{filterNote}</span>
+      {/* Filter chips */}
+      {suggestedFilters && suggestedFilters.length > 0 && (
+        <div className="mb-2 flex flex-wrap items-center gap-2 rounded-lg bg-blue-50/50 dark:bg-blue-950/20 px-3 py-2 border border-blue-100 dark:border-blue-900/50">
+          <FaFilter className="text-blue-500 text-xs shrink-0 mr-1" />
+          {suggestedFilters.map(f => {
+            const isActive = activeFilterIds?.includes(f.id);
+            return (
+              <button
+                key={f.id}
+                type="button"
+                onClick={() => onToggleFilter?.(f.id)}
+                className={`inline-flex items-center rounded px-2 py-1 text-xs font-medium shadow-sm border transition-colors focus:outline-none ${
+                  isActive
+                    ? "bg-blue-500 text-white border-blue-600 hover:bg-blue-600 dark:border-blue-500 dark:hover:bg-blue-400"
+                    : "bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
+                }`}
+              >
+                {f.label}
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            onClick={onClearFilters}
+            className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200 underline ml-auto font-medium"
+          >
+            {activeFilterIds?.length === 0 ? "Khôi phục" : "Bỏ lọc"}
+          </button>
         </div>
       )}
 
@@ -373,7 +396,7 @@ function DoctorPickerList({ doctors, filteredDoctors, selectedDoctor, onSelect, 
       {/* Count summary */}
       <div className="mt-2 text-xs text-gray-400 dark:text-gray-500 text-right">
         {searched.length}/{doctors.length} bác sĩ
-        {filterNote ? " (đã lọc theo bệnh)" : ""}
+        {activeFilterIds && activeFilterIds.length > 0 ? " (đã lọc)" : ""}
       </div>
     </div>
   );
@@ -381,18 +404,25 @@ function DoctorPickerList({ doctors, filteredDoctors, selectedDoctor, onSelect, 
 
 interface NursePickerProps {
   nurses: Nurse[];
+  filteredNurses: Nurse[];
   selectedNurse: string;
   onSelect: (id: string) => void;
   nursePatientCounts: Record<string, number>;
   search: string;
   onSearchChange: (v: string) => void;
+  activeFilterIds?: string[];
+  suggestedFilters?: FilterCategory[];
+  onToggleFilter?: (id: string) => void;
+  onClearFilters?: () => void;
 }
 
-function NursePickerList({ nurses, selectedNurse, onSelect, nursePatientCounts, search, onSearchChange }: NursePickerProps) {
-  const searched = useMemo(() =>
-    search ? nurses.filter(n => n.name.toLowerCase().includes(search.toLowerCase())) : nurses,
-    [nurses, search]
-  );
+function NursePickerList({ nurses, filteredNurses, selectedNurse, onSelect, nursePatientCounts, search, onSearchChange, suggestedFilters, activeFilterIds, onToggleFilter, onClearFilters }: NursePickerProps) {
+  const searched = useMemo(() => {
+    let list = search 
+      ? filteredNurses.filter(n => n.name.toLowerCase().includes(search.toLowerCase())) 
+      : filteredNurses;
+    return [...list].sort((a, b) => (nursePatientCounts[a.id] || 0) - (nursePatientCounts[b.id] || 0));
+  }, [filteredNurses, search, nursePatientCounts]);
 
   return (
     <div className="flex flex-col h-full">
@@ -407,6 +437,37 @@ function NursePickerList({ nurses, selectedNurse, onSelect, nursePatientCounts, 
           className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 pl-8 pr-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
         />
       </div>
+
+      {/* Filter chips */}
+      {suggestedFilters && suggestedFilters.length > 0 && (
+        <div className="mb-2 flex flex-wrap items-center gap-2 rounded-lg bg-blue-50/50 dark:bg-blue-950/20 px-3 py-2 border border-blue-100 dark:border-blue-900/50">
+          <FaFilter className="text-blue-500 text-xs shrink-0 mr-1" />
+          {suggestedFilters.map(f => {
+            const isActive = activeFilterIds?.includes(f.id);
+            return (
+              <button
+                key={f.id}
+                type="button"
+                onClick={() => onToggleFilter?.(f.id)}
+                className={`inline-flex items-center rounded px-2 py-1 text-xs font-medium shadow-sm border transition-colors focus:outline-none ${
+                  isActive
+                    ? "bg-blue-500 text-white border-blue-600 hover:bg-blue-600 dark:border-blue-500 dark:hover:bg-blue-400"
+                    : "bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
+                }`}
+              >
+                {f.label}
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            onClick={onClearFilters}
+            className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200 underline ml-auto font-medium"
+          >
+            {activeFilterIds?.length === 0 ? "Khôi phục" : "Bỏ lọc"}
+          </button>
+        </div>
+      )}
 
       {/* List */}
       <div className="flex-1 min-h-0 space-y-2 overflow-y-auto pr-0.5">
@@ -429,6 +490,7 @@ function NursePickerList({ nurses, selectedNurse, onSelect, nursePatientCounts, 
 
       <div className="mt-2 text-xs text-gray-400 dark:text-gray-500 text-right">
         {searched.length}/{nurses.length} y tá
+        {activeFilterIds && activeFilterIds.length > 0 ? " (đã lọc)" : ""}
       </div>
     </div>
   );
@@ -456,6 +518,10 @@ const AssignmentManagement: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [loadingAssignments, setLoadingAssignments] = useState(false);
   const [editingAssignmentId, setEditingAssignmentId] = useState<string | null>(null);
+  
+  const [suggestedFilters, setSuggestedFilters] = useState<FilterCategory[]>([]);
+  const [doctorActiveFilterIds, setDoctorActiveFilterIds] = useState<string[]>([]);
+  const [nurseActiveFilterIds, setNurseActiveFilterIds] = useState<string[]>([]);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -470,6 +536,17 @@ const AssignmentManagement: React.FC = () => {
   useEffect(() => {
     if (targetPatientId) setSelectedPatient(targetPatientId);
   }, [targetPatientId]);
+
+  const targetDoctorId = (location.state as any)?.doctorId || searchParams.get("doctorId") || "";
+
+  useEffect(() => {
+    if (targetDoctorId && doctors.length > 0) {
+      const targetDoc = doctors.find(d => d.id === targetDoctorId);
+      if (targetDoc) {
+        setSearchTerm(targetDoc.name);
+      }
+    }
+  }, [targetDoctorId, doctors]);
 
   const extractList = (response: any) => {
     const data = response.data?.data;
@@ -607,7 +684,7 @@ const AssignmentManagement: React.FC = () => {
 
   const patientOptions = useMemo(() => {
     if (editingAssignmentId) return patients.filter((p) => p.id === selectedPatient);
-    return patients.filter((p) => !assignmentByPatientId.has(p.id));
+    return patients.filter((p) => p.status === 'active' && !assignmentByPatientId.has(p.id));
   }, [assignmentByPatientId, editingAssignmentId, patients, selectedPatient]);
 
   // Thông tin bệnh nhân được chọn
@@ -616,41 +693,47 @@ const AssignmentManagement: React.FC = () => {
     [patients, selectedPatient]
   );
 
-  // Tính target departments từ bệnh
-  const targetDepts = useMemo(() =>
-    getTargetDepartments(selectedPatientInfo?.diseaseTypes),
-    [selectedPatientInfo]
+  useEffect(() => {
+    if (selectedPatientInfo) {
+      const filters = getSuggestedFilters(selectedPatientInfo.diseaseTypes);
+      setSuggestedFilters(filters);
+      setDoctorActiveFilterIds(filters.map(f => f.id));
+      setNurseActiveFilterIds(filters.map(f => f.id));
+    } else {
+      setSuggestedFilters([]);
+      setDoctorActiveFilterIds([]);
+      setNurseActiveFilterIds([]);
+    }
+  }, [selectedPatientInfo]);
+
+  const doctorActiveKeywords = useMemo(() => 
+    suggestedFilters.filter(f => doctorActiveFilterIds.includes(f.id)).flatMap(f => f.keywords), 
+    [suggestedFilters, doctorActiveFilterIds]
+  );
+
+  const nurseActiveKeywords = useMemo(() => 
+    suggestedFilters.filter(f => nurseActiveFilterIds.includes(f.id)).flatMap(f => f.keywords), 
+    [suggestedFilters, nurseActiveFilterIds]
   );
 
   // Filter bác sĩ theo khoa phù hợp: match department name hoặc specialization
   const filteredDoctors = useMemo(() => {
-    if (targetDepts.length === 0) return doctors;
-    const result = doctors.filter((d) => {
+    if (doctorActiveKeywords.length === 0) return doctors;
+    return doctors.filter((d) => {
       const deptStr = (d.department || "").toLowerCase();
       const specStr = (d.specialization || "").toLowerCase();
-      return targetDepts.some((t) => deptStr.includes(t) || specStr.includes(t));
+      return doctorActiveKeywords.some((t) => deptStr.includes(t) || specStr.includes(t));
     });
-    // Fallback: nếu không tìm thấy bác sĩ nào theo từ khóa gợi ý, trả về toàn bộ danh sách bác sĩ
-    return result.length > 0 ? result : doctors;
-  }, [doctors, targetDepts]);
+  }, [doctors, doctorActiveKeywords]);
 
-  // Filter note text
-  const filterNote = useMemo(() => {
-    if (!selectedPatientInfo?.diseaseTypes) return undefined;
-    const { bloodPressure, glucose } = selectedPatientInfo.diseaseTypes;
-    if (!bloodPressure && !glucose) return undefined;
-    const matchedCount = doctors.filter((d) => {
-      const deptStr = (d.department || "").toLowerCase();
-      const specStr = (d.specialization || "").toLowerCase();
-      return targetDepts.some((t) => deptStr.includes(t) || specStr.includes(t));
-    }).length;
-
-    if (matchedCount === 0) {
-      return `Không tìm thấy bác sĩ thuộc khoa gợi ý (Hiển thị tất cả ${doctors.length} bác sĩ)`;
-    }
-    const suggested = getSuggestedDeptLabel(selectedPatientInfo.diseaseTypes);
-    return `Đã lọc: ${suggested || "Khoa phù hợp"} (${matchedCount} bác sĩ)`;
-  }, [selectedPatientInfo, doctors, targetDepts, filteredDoctors]);
+  // Filter y tá theo khoa phù hợp: match department name
+  const filteredNurses = useMemo(() => {
+    if (nurseActiveKeywords.length === 0) return nurses;
+    return nurses.filter((n) => {
+      const deptStr = (n.department || "").toLowerCase();
+      return nurseActiveKeywords.some((t) => deptStr.includes(t));
+    });
+  }, [nurses, nurseActiveKeywords]);
 
   const handleAssign = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -737,10 +820,15 @@ const AssignmentManagement: React.FC = () => {
   return (
     <div className="p-4 md:p-6">
       <Toast toast={toast} onClose={hideToast} />
-      <h1 className="mb-8 flex items-center text-2xl font-bold text-gray-800 dark:text-white md:text-3xl">
-        <FaExchangeAlt className="mr-3 text-slate-700 dark:text-slate-200" />
-        {t("assignmentManagement.title")}
-      </h1>
+      <div className="mb-8">
+        <h1 className="flex items-center text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+          <FaExchangeAlt className="mr-3 text-blue-600" />
+          {t("assignmentManagement.title")}
+        </h1>
+        <p className="mt-2 text-slate-500 dark:text-slate-400 font-medium">
+          {t("assignmentManagement.subtitle") || "Quản lý và điều phối luồng công việc giữa Bệnh nhân và Y bác sĩ"}
+        </p>
+      </div>
 
       {/* ── Form Panel ── */}
       <div className="rounded-xl bg-white p-6 shadow-md dark:bg-gray-800 md:p-8">
@@ -798,9 +886,18 @@ const AssignmentManagement: React.FC = () => {
                   selectedDoctor={selectedDoctor}
                   onSelect={setSelectedDoctor}
                   doctorPatientCounts={doctorPatientCounts}
-                  filterNote={filterNote}
                   search={doctorSearch}
                   onSearchChange={setDoctorSearch}
+                  suggestedFilters={suggestedFilters}
+                  activeFilterIds={doctorActiveFilterIds}
+                  onToggleFilter={(id) => setDoctorActiveFilterIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
+                  onClearFilters={() => {
+                    if (doctorActiveFilterIds.length === 0) {
+                      setDoctorActiveFilterIds(suggestedFilters.map(f => f.id)); // Khôi phục
+                    } else {
+                      setDoctorActiveFilterIds([]); // Bỏ lọc
+                    }
+                  }}
                 />
               </div>
             </div>
@@ -814,11 +911,22 @@ const AssignmentManagement: React.FC = () => {
               <div className="flex-1 min-h-0 flex flex-col">
                 <NursePickerList
                   nurses={nurses}
+                  filteredNurses={filteredNurses}
                   selectedNurse={selectedNurse}
                   onSelect={setSelectedNurse}
                   nursePatientCounts={nursePatientCounts}
                   search={nurseSearch}
                   onSearchChange={setNurseSearch}
+                  suggestedFilters={suggestedFilters}
+                  activeFilterIds={nurseActiveFilterIds}
+                  onToggleFilter={(id) => setNurseActiveFilterIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
+                  onClearFilters={() => {
+                    if (nurseActiveFilterIds.length === 0) {
+                      setNurseActiveFilterIds(suggestedFilters.map(f => f.id)); // Khôi phục
+                    } else {
+                      setNurseActiveFilterIds([]); // Bỏ lọc
+                    }
+                  }}
                 />
               </div>
             </div>

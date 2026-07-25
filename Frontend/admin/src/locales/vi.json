@@ -261,6 +261,7 @@
   },
   "assignmentManagement": {
     "title": "Phân công Bệnh nhân",
+    "subtitle": "Quản lý và điều phối luồng công việc giữa Bệnh nhân và Y bác sĩ",
     "assignmentList": "Danh sách phân công",
     "assignmentListDesc": "Theo dõi, chỉnh sửa hoặc xóa nhanh các phân công hiện có.",
     "searchPlaceholder": "Tìm theo bệnh nhân, mã hồ sơ, bác sĩ, y tá...",
@@ -333,7 +334,7 @@
     "pagination": {
       "showing": "Hiển thị",
       "of": "trong tổng số",
-      "logs": "logs",
+      "logs": "bản ghi",
       "page": "Trang",
       "previous": "Trước",
       "next": "Sau"

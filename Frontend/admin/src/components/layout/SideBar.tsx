@@ -52,26 +52,26 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
 
       <div
         className={`
-          h-screen bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-slate-700
+          h-screen bg-[#F8FAFC] dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 shadow-sm
           flex flex-col transition-all duration-300
-          fixed left-0 top-0 z-50 rounded-r-2xl 
+          fixed left-0 top-0 z-50 
           md:relative md:z-auto 
-          ${isCollapsed ? "w-14" : "w-80"}
+          ${isCollapsed ? "w-16" : "w-64"}
         `}
       >
         <div
-          className={`flex items-center p-4 ${isCollapsed ? "justify-center" : "justify-between"
+          className={`flex items-center h-20 ${isCollapsed ? "justify-center" : "justify-between px-6"
             }`}
         >
           {!isCollapsed && (
             <div className="flex items-center gap-3">
-              <img src="/doctor-logo.png" alt="Admin App Logo" className="w-10 h-10 rounded-xl shadow-sm object-cover bg-white" />
-              <h2 className="font-bold text-2xl text-primary-text dark:text-slate-100 tracking-tight">RPM</h2>
+              <img src="/doctor-logo.png" alt="Admin App Logo" className="w-10 h-10 rounded-xl shadow-sm object-cover bg-white border border-slate-200" />
+              <h2 className="font-bold text-2xl text-slate-900 dark:text-white tracking-tight">RPM</h2>
             </div>
           )}
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="text-primary-text dark:text-slate-300"
+            className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors"
           >
             {isCollapsed ? (
               <CiCircleChevRight size={32} />
@@ -81,56 +81,97 @@ const SideBar = ({ navigationItems }: SideBarProps) => {
           </button>
         </div>
 
-        <nav className="flex-1 mt-4 px-2 overflow-y-auto">
-          <ul className="space-y-2">
-            {itemsToDisplay.map((item) => {
-              const isActive = location.pathname === item.path;
-              return (
-                <li key={item.path}>
-                  <Link
-                    to={item.path}
-                    onClick={() => {
-                      if (window.innerWidth < 768) setIsCollapsed(true);
-                    }}
-                    className={`
-                      flex items-center py-2 rounded-lg transition-colors relative
-                      ${isCollapsed ? "justify-center px-0" : "px-4 gap-3"}
-                      ${isActive
-                        ? "bg-btn-clicked text-white"
-                        : "text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800"
-                      }
-                    `}
-                    title={isCollapsed ? item.label : ""}
-                  >
-                    {item.icon && (
-                      <div className="text-2xl shrink-0">
-                        {item.icon}
-                      </div>
-                    )}
-                    {!isCollapsed && (
-                      <span className="text-xl font-semibold whitespace-nowrap overflow-hidden">
-                        {item.label}
-                      </span>
-                    )}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
+        <nav className="flex-1 mt-6 px-3 overflow-y-auto custom-scrollbar">
+          {userRole === "admin" ? (
+            <>
+              {/* Group: Tổng quan */}
+              <div className="mb-6">
+                {!isCollapsed && <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 px-3">Tổng quan</div>}
+                <ul className="space-y-1">
+                  {itemsToDisplay.filter(i => ["/"].includes(i.path)).map((item) => (
+                    <NavItem key={item.path} item={item} isActive={location.pathname === item.path} isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
+                  ))}
+                </ul>
+              </div>
+              
+              {/* Group: Quản lý */}
+              <div className="mb-6">
+                {!isCollapsed && <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 px-3">Quản lý</div>}
+                <ul className="space-y-1">
+                  {itemsToDisplay.filter(i => ["/doctors", "/patients", "/nurses", "/departments", "/assignments"].includes(i.path)).map((item) => (
+                    <NavItem key={item.path} item={item} isActive={location.pathname === item.path} isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
+                  ))}
+                </ul>
+              </div>
+
+              {/* Group: Hệ thống */}
+              <div className="mb-6">
+                {!isCollapsed && <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2 px-3">Hệ thống</div>}
+                <ul className="space-y-1">
+                  {itemsToDisplay.filter(i => ["/system-settings"].includes(i.path)).map((item) => (
+                    <NavItem key={item.path} item={item} isActive={location.pathname === item.path} isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
+                  ))}
+                </ul>
+              </div>
+            </>
+          ) : (
+            <ul className="space-y-1">
+              {itemsToDisplay.map((item) => (
+                <NavItem key={item.path} item={item} isActive={location.pathname === item.path} isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
+              ))}
+            </ul>
+          )}
         </nav>
-        <div className="px-2 py-4 border-t border-gray-100 dark:border-slate-800">
+        
+        <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50">
           <button
             onClick={handleLogout}
-            className="flex w-full items-center justify-center py-2 rounded-md text-xl 
-            text-gray-500 dark:text-slate-400 hover:bg-rose-400 hover:text-gray-800 transition duration-400 mt-3"
+            className={`flex w-full items-center py-2.5 rounded-lg text-sm
+            text-slate-500 dark:text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 dark:hover:text-rose-400 transition-colors
+            ${isCollapsed ? "justify-center" : "px-3 gap-3"}`}
           >
-            <FiLogOut className="mr-1" />
-            {!isCollapsed && <span>{t("sidebar.logout")}</span>}
+            <FiLogOut className="text-xl shrink-0" />
+            {!isCollapsed && <span className="font-medium">{t("sidebar.logout")}</span>}
           </button>
-          <div className="mt-16 md:mt-0 "> </div>
         </div>
       </div>
     </>
+  );
+};
+
+const NavItem = ({ item, isActive, isCollapsed, setIsCollapsed }: { item: any, isActive: boolean, isCollapsed: boolean, setIsCollapsed: (v: boolean) => void }) => {
+  return (
+    <li>
+      <Link
+        to={item.path}
+        onClick={() => {
+          if (window.innerWidth < 768) setIsCollapsed(true);
+        }}
+        className={`
+          flex items-center py-2.5 rounded-lg transition-all relative group
+          ${isCollapsed ? "justify-center px-0" : "px-3 gap-3"}
+          ${isActive
+            ? "bg-blue-50 text-blue-700 font-semibold dark:bg-blue-900/30 dark:text-blue-400"
+            : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/60 dark:hover:text-slate-200 font-medium"
+          }
+        `}
+        title={isCollapsed ? item.label : ""}
+      >
+        {isActive && !isCollapsed && (
+          <div className="absolute left-0 top-2 bottom-2 w-1 bg-blue-600 dark:bg-blue-400 rounded-r-md"></div>
+        )}
+        {item.icon && (
+          <div className={`text-[1.1rem] shrink-0 transition-colors ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 group-hover:text-slate-600 dark:text-slate-500 dark:group-hover:text-slate-300'}`}>
+            {item.icon}
+          </div>
+        )}
+        {!isCollapsed && (
+          <span className="text-sm whitespace-nowrap overflow-hidden">
+            {item.label}
+          </span>
+        )}
+      </Link>
+    </li>
   );
 };
 

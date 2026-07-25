@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { FaHistory, FaFilter, FaUserMd, FaRegUser, FaUserNurse, FaCog } from "react-icons/fa";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 import api from "../services/api";
 import { useToast } from "../hooks/useToast";
 import Toast from "../components/ui/Toast";
@@ -211,13 +212,57 @@ const ActivityHistory: React.FC = () => {
     return t(`activityHistory.types.${type}`) || t("activityHistory.types.other");
   };
 
+  const translateAction = (action: string) => {
+    if (!action) return "";
+    const map: Record<string, string> = {
+      "login": "đăng nhập",
+      "logout": "đăng xuất",
+      "update": "cập nhật",
+      "create": "tạo mới",
+      "delete": "xóa",
+      "notifications": "thông báo",
+      "notification": "thông báo",
+      "alerts": "cảnh báo",
+      "alert": "cảnh báo",
+      "doctor": "bác sĩ",
+      "doctors": "bác sĩ",
+      "nurse": "y tá",
+      "nurses": "y tá",
+      "patient": "bệnh nhân",
+      "patients": "bệnh nhân",
+      "department": "khoa phòng",
+      "departments": "khoa phòng",
+      "user": "người dùng",
+      "users": "người dùng",
+      "assignment": "phân công",
+      "assignments": "phân công",
+      "settings": "cài đặt",
+      "profile": "hồ sơ",
+      "password": "mật khẩu",
+      "status": "trạng thái"
+    };
+
+    let translated = action;
+    for (const [key, value] of Object.entries(map)) {
+      const regex = new RegExp(`\\b${key}\\b`, 'gi');
+      translated = translated.replace(regex, value);
+    }
+    return translated.charAt(0).toUpperCase() + translated.slice(1);
+  };
+
   return (
     <div className="p-6">
       <Toast toast={toast} onClose={hideToast} />
 
+      <div className="mb-4">
+        <Link to="/" className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 transition-colors">
+          &larr; Quay lại Bảng điều khiển
+        </Link>
+      </div>
+
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-800 dark:text-white flex items-center">
-          <FaHistory className="mr-3 text-indigo-600" />
+          <FaHistory className="mr-3 text-blue-600" />
           {t("activityHistory.title")}
         </h1>
         <p className="text-gray-600 dark:text-gray-400 mt-2">
@@ -239,7 +284,7 @@ const ActivityHistory: React.FC = () => {
                 onClick={() => setDateMode("all")}
                 className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all ${
                   dateMode === "all"
-                    ? "bg-white dark:bg-gray-600 text-indigo-600 dark:text-white shadow-sm"
+                    ? "bg-white dark:bg-gray-600 text-blue-600 dark:text-white shadow-sm"
                     : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
                 }`}
               >
@@ -250,7 +295,7 @@ const ActivityHistory: React.FC = () => {
                 onClick={() => setDateMode("range")}
                 className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all ${
                   dateMode === "range"
-                    ? "bg-white dark:bg-gray-600 text-indigo-600 dark:text-white shadow-sm"
+                    ? "bg-white dark:bg-gray-600 text-blue-600 dark:text-white shadow-sm"
                     : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
                 }`}
               >
@@ -261,7 +306,7 @@ const ActivityHistory: React.FC = () => {
                 onClick={() => setDateMode("single")}
                 className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all ${
                   dateMode === "single"
-                    ? "bg-white dark:bg-gray-600 text-indigo-600 dark:text-white shadow-sm"
+                    ? "bg-white dark:bg-gray-600 text-blue-600 dark:text-white shadow-sm"
                     : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
                 }`}
               >
@@ -286,7 +331,7 @@ const ActivityHistory: React.FC = () => {
                   </label>
                   <input
                     type="date"
-                    className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                    className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
                   />
@@ -302,7 +347,7 @@ const ActivityHistory: React.FC = () => {
                           setStartDate("");
                           setEndDate("");
                         }}
-                        className="text-[10px] text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium"
+                        className="text-[10px] text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
                       >
                         {t("common.clearFilter")}
                       </button>
@@ -310,7 +355,7 @@ const ActivityHistory: React.FC = () => {
                   </div>
                   <input
                     type="date"
-                    className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                    className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
                   />
@@ -327,7 +372,7 @@ const ActivityHistory: React.FC = () => {
                   {singleDate && (
                     <button
                       onClick={() => setSingleDate("")}
-                      className="text-[10px] text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium"
+                      className="text-[10px] text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
                     >
                       {t("common.clearFilter")}
                     </button>
@@ -335,7 +380,7 @@ const ActivityHistory: React.FC = () => {
                 </div>
                 <input
                   type="date"
-                  className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                  className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                   value={singleDate}
                   onChange={(e) => setSingleDate(e.target.value)}
                 />
@@ -349,7 +394,7 @@ const ActivityHistory: React.FC = () => {
               {t("activityHistory.activityType")}
             </label>
             <select
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
             >
@@ -406,7 +451,7 @@ const ActivityHistory: React.FC = () => {
 
         {loading ? (
           <div className="p-12 text-center">
-            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-indigo-600 border-r-transparent"></div>
+            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
             <p className="mt-4 text-gray-500">{t("common.loading")}</p>
           </div>
         ) : filteredActivities.length === 0 ? (
@@ -455,7 +500,7 @@ const ActivityHistory: React.FC = () => {
                                 {getActivityTypeLabel(activity.type)}
                               </span>
                             </div>
-                            <p className="text-gray-700 dark:text-gray-300">{activity.action}</p>
+                            <p className="text-gray-700 dark:text-gray-300">{translateAction(activity.action)}</p>
                           </div>
                         </div>
                         <div className="text-right">
@@ -525,8 +570,8 @@ const ActivityHistory: React.FC = () => {
                   <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
                     {t("activityHistory.action") || "Hành động thực hiện"}
                   </p>
-                  <p className="text-lg font-bold text-indigo-600 dark:text-indigo-400 mt-1">
-                    {selectedActivity.action}
+                  <p className="text-lg font-bold text-blue-600 dark:text-blue-400 mt-1">
+                    {translateAction(selectedActivity.action)}
                   </p>
                 </div>
                 <span
@@ -577,7 +622,7 @@ const ActivityHistory: React.FC = () => {
                     {selectedActivity.method && (
                       <div>
                         <span className="font-medium text-gray-400 mr-1.5">Phương thức:</span>
-                        <span className="font-bold font-mono text-indigo-600 dark:text-indigo-400">{selectedActivity.method}</span>
+                        <span className="font-bold font-mono text-blue-600 dark:text-blue-400">{selectedActivity.method}</span>
                       </div>
                     )}
                     {selectedActivity.path && (

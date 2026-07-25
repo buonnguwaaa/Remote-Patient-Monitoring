@@ -195,21 +195,10 @@ export default function MeasurementInputScreen() {
 
   const markEditing = (sectionKey) => {
     setSavedSections((prev) => {
-      const next = { ...prev };
-      let changed = false;
       if (prev[sectionKey]) {
-        next[sectionKey] = false;
-        changed = true;
+        return { ...prev, [sectionKey]: false };
       }
-      if (
-        sectionKey === "heartRate" &&
-        (hasMeasurementValue(systolic) || hasMeasurementValue(diastolic)) &&
-        prev.bp
-      ) {
-        next.bp = false;
-        changed = true;
-      }
-      return changed ? next : prev;
+      return prev;
     });
   };
 

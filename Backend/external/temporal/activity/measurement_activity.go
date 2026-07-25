@@ -455,6 +455,10 @@ func (a *ProcessingAlertActivity) SendAlertMessageActivity(ctx context.Context, 
 		return nil, fmt.Errorf("failed to send system message: %w", err)
 	}
 
+	if err := a.conversationRepo.SetLatestMessage(ctx, conversation.ID, createdMessage.ID); err != nil {
+		log.Printf("warn: failed to set conversation latestMessageId for system alert message: %v", err)
+	}
+
 	return &dto.SendAlertMessageResult{
 		ConversationID: conversation.ID.Hex(),
 		Message:        mapMessageToDTO(createdMessage),
@@ -515,30 +519,53 @@ func (a *ProcessingAlertActivity) PublishUserEventActivity(ctx context.Context, 
 		severity = &input.Severity
 	}
 
-	event := map[string]interface{}{
-		"type":      "chat.alert_message",
-		"eventId":   fmt.Sprintf("chat:alert_message:%s:recipient:%s", input.Message.ID.Hex(), input.DoctorID),
-		"createdAt": input.Message.CreatedAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
-		"data": map[string]interface{}{
-			"conversationId": input.ConversationID,
-			"messageId":      input.Message.ID.Hex(),
-			"senderId":       nil,
-			"messageSource":  "system",
-			"patientId":      patientID,
-			"relatedAlertId": alertID,
-			"severity":       severity,
-			"preview":        "Có cảnh báo sức khỏe mới cần kiểm tra.",
-			"message":        input.Message,
-		},
+	if input.DoctorID != "" {
+		eventDoc := map[string]interface{}{
+			"type":      "chat.alert_message",
+			"eventId":   fmt.Sprintf("chat:alert_message:%s:recipient:%s", input.Message.ID.Hex(), input.DoctorID),
+			"createdAt": input.Message.CreatedAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
+			"data": map[string]interface{}{
+				"conversationId": input.ConversationID,
+				"messageId":      input.Message.ID.Hex(),
+				"senderId":       nil,
+				"messageSource":  "system",
+				"patientId":      patientID,
+				"relatedAlertId": alertID,
+				"severity":       severity,
+				"preview":        "Có cảnh báo sức khỏe mới cần kiểm tra.",
+				"message":        input.Message,
+			},
+		}
+		if err := a.userEventPublisher.Publish(ctx, input.DoctorID, eventDoc); err != nil {
+			log.Printf("warn: failed to publish user event for doctor=%s: %v", input.DoctorID, err)
+		} else {
+			log.Printf("[INFO] published user event for alert message to doctor=%s", input.DoctorID)
+		}
 	}
 
-	if err := a.userEventPublisher.Publish(ctx, input.DoctorID, event); err != nil {
-		log.Printf("warn: failed to publish user event for doctor=%s: %v", input.DoctorID, err)
-		// Don't fail the activity on publish error
-		return nil
+	if input.PatientID != "" {
+		eventPat := map[string]interface{}{
+			"type":      "chat.alert_message",
+			"eventId":   fmt.Sprintf("chat:alert_message:%s:recipient:%s", input.Message.ID.Hex(), input.PatientID),
+			"createdAt": input.Message.CreatedAt.UTC().Format("2006-01-02T15:04:05Z07:00"),
+			"data": map[string]interface{}{
+				"conversationId": input.ConversationID,
+				"messageId":      input.Message.ID.Hex(),
+				"senderId":       nil,
+				"messageSource":  "system",
+				"patientId":      patientID,
+				"relatedAlertId": alertID,
+				"severity":       severity,
+				"preview":        "Có cảnh báo sức khỏe mới cần kiểm tra.",
+				"message":        input.Message,
+			},
+		}
+		if err := a.userEventPublisher.Publish(ctx, input.PatientID, eventPat); err != nil {
+			log.Printf("warn: failed to publish user event for patient=%s: %v", input.PatientID, err)
+		} else {
+			log.Printf("[INFO] published user event for alert message to patient=%s", input.PatientID)
+		}
 	}
-
-	log.Printf("[INFO] published user event for alert message to doctor=%s", input.DoctorID)
 	return nil
 }
 

@@ -15,6 +15,8 @@ import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/nativ
 import { Ionicons } from "@expo/vector-icons";
 
 import { getMyAlerts } from "../../api/alertApi";
+import { getMyNotifications, markNotificationRead } from "../../api/notificationsApi";
+import { useBadge } from "../../context/BadgeContext";
 import { normalizeAlertSeverity } from "../../utils/alertSeverity";
 
 function extractData(response) {
@@ -235,6 +237,7 @@ export default function AlertScreen({ isEmbedded }) {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const route = useRoute();
+  const { refreshBadges } = useBadge();
   const [alerts, setAlerts] = useState([]);
   const [tab, setTab] = useState("all");
   const [loading, setLoading] = useState(true);
@@ -248,13 +251,31 @@ export default function AlertScreen({ isEmbedded }) {
       if (isRefresh) setRefreshing(true);
       else setLoading(true);
 
-      const response = await getMyAlerts();
+      const [response, notifsResponse] = await Promise.all([
+        getMyAlerts(),
+        getMyNotifications({ unreadOnly: true }),
+      ]);
+
       const nextAlerts = extractList(response);
 
       if (!response?.ok) {
         throw new Error(
           response?.body?.error || response?.error || "Không thể tải dữ liệu cảnh báo."
         );
+      }
+
+      // Automatically mark unread alert notifications as read since the patient is viewing their alerts screen
+      if (notifsResponse?.ok) {
+        const notifList = extractList(notifsResponse);
+        const unreadAlertNotifs = notifList.filter(
+          (n) => n.type === "alert" && !n.isRead
+        );
+        if (unreadAlertNotifs.length > 0) {
+          await Promise.all(
+            unreadAlertNotifs.map((n) => markNotificationRead(n.id))
+          );
+          refreshBadges();
+        }
       }
 
       // Normalize severity tại API boundary ngay khi nhận dữ liệu
@@ -279,7 +300,7 @@ export default function AlertScreen({ isEmbedded }) {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [refreshBadges]);
 
   useFocusEffect(
     useCallback(() => {

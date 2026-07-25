@@ -77,22 +77,6 @@ const StatsHeader: React.FC<StatsHeaderProps> = ({
                 <div className="absolute -top-1 left-0 h-1 w-full rounded-full bg-blue-500 transition-all duration-300" />
               ) : null}
             </div>
-            <span
-              style={{
-                color: isActive
-                  ? isDark
-                    ? "#f1f5f9"
-                    : "#111827"
-                  : isDark
-                    ? "#94a3b8"
-                    : "#4b5563",
-              }}
-              className="text-xl font-semibold transition-colors"
-            >
-              {typeof stat.value === "number"
-                ? stat.value.toLocaleString()
-                : stat.value}
-            </span>
           </button>
         );
       })}

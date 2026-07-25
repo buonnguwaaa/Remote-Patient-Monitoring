@@ -21,5 +21,8 @@ func RegisterAuthRoutes(r *gin.Engine, c *container.MainServerContainer) {
 		authGroup.POST("/reset-password", c.AuthHandler.ResetPassword)
 		authGroup.GET("/accept-invite", c.AuthHandler.ShowAcceptInvite)
 		authGroup.POST("/accept-invite", c.AuthHandler.SubmitAcceptInvite)
+		authGroup.GET("/smart-invite", c.AuthHandler.HandleSmartInvite)
+		authGroup.GET("/accept-invite/preview", c.AuthHandler.PreviewAcceptInviteApi)
+		authGroup.POST("/accept-invite/api", c.AuthHandler.SubmitAcceptInviteApi)
 	}
 }

@@ -26,7 +26,7 @@ export const BADGE_CONFIG = {
     darkColor: '#1E3A8A',
   },
   general: {
-    label: 'Sinh tồn',
+    label: 'Sinh hiệu',
     bg: '#E8F5E9',
     color: '#2E7D32',
     gradientStart: '#11998E',
@@ -101,6 +101,10 @@ export const educationArticles = [
         type: 'note',
         text: 'Ghi lại kết quả vào app ngay sau khi đo để bác sĩ có thể theo dõi xu hướng huyết áp của bạn.',
       },
+      {
+        type: 'paragraph',
+        text: 'Ngoài ra, kích thước vòng bít (cuff) cũng rất quan trọng. Vòng bít quá nhỏ so với bắp tay sẽ làm kết quả đo cao hơn thực tế, và ngược lại. Hãy chọn loại có kích cỡ phù hợp với chu vi bắp tay của bạn.',
+      },
     ],
     quiz: [
       {
@@ -120,6 +124,18 @@ export const educationArticles = [
         options: ['Ngồi nghỉ ngơi', 'Uống cà phê', 'Đi vệ sinh', 'Thở đều'],
         correctIndex: 1,
         explanation: 'Cà phê chứa caffeine có thể làm tăng huyết áp tạm thời, nên tránh trong 30 phút trước khi đo.',
+      },
+      {
+        question: 'Nếu bạn nói chuyện trong khi máy đang đo, kết quả có thể bị ảnh hưởng như thế nào?',
+        options: ['Làm kết quả thấp hơn', 'Làm kết quả cao hơn hoặc gây lỗi máy', 'Không bị ảnh hưởng', 'Làm máy đo nhanh hơn'],
+        correctIndex: 1,
+        explanation: 'Nói chuyện hoặc cử động có thể làm thay đổi áp lực máu tạm thời, khiến kết quả cao hơn thực tế hoặc gây báo lỗi trên máy.',
+      },
+      {
+        question: 'Vòng bít (băng quấn) quá chật so với bắp tay sẽ gây ra điều gì?',
+        options: ['Kết quả đo cao hơn thực tế', 'Kết quả đo thấp hơn thực tế', 'Không ảnh hưởng', 'Kết quả đo chính xác hơn'],
+        correctIndex: 0,
+        explanation: 'Sử dụng vòng bít quá nhỏ hoặc quấn quá chật sẽ tạo áp lực dư thừa, dẫn đến chỉ số huyết áp hiển thị cao hơn thực tế.',
       },
     ],
   },
@@ -164,6 +180,10 @@ export const educationArticles = [
         type: 'note',
         text: 'Đừng kết luận tình trạng sức khỏe chỉ dựa vào một lần đo. Xu hướng nhiều ngày mới có ý nghĩa lâm sàng.',
       },
+      {
+        type: 'paragraph',
+        text: 'Đơn vị đo huyết áp tiêu chuẩn là milimét thủy ngân (viết tắt là mmHg). Một mức huyết áp bình thường ở người trưởng thành khỏe mạnh thường dao động dưới 120/80 mmHg.',
+      },
     ],
     quiz: [
       {
@@ -188,6 +208,18 @@ export const educationArticles = [
         ],
         correctIndex: 2,
         explanation: 'Một kết quả đơn lẻ chưa đủ kết luận. Cần theo dõi xu hướng nhiều lần và báo cho bác sĩ khi có bất thường lặp lại.',
+      },
+      {
+        question: 'Đơn vị đo huyết áp là gì?',
+        options: ['mg/dL', 'mmHg', 'bpm', 'kg'],
+        correctIndex: 1,
+        explanation: 'Huyết áp được đo bằng đơn vị milimét thủy ngân, viết tắt là mmHg.',
+      },
+      {
+        question: 'Mức huyết áp nào thường được coi là mục tiêu khỏe mạnh cho người trưởng thành (nếu không có bệnh lý nền)?',
+        options: ['Khoảng 140/90 mmHg', 'Dưới 120/80 mmHg', 'Dưới 100/60 mmHg', 'Khoảng 160/100 mmHg'],
+        correctIndex: 1,
+        explanation: 'Huyết áp tối ưu thường được xác định là dưới 120/80 mmHg, tuy nhiên mục tiêu cụ thể có thể khác nhau tùy tình trạng cá nhân và chỉ định của bác sĩ.',
       },
     ],
   },
@@ -235,6 +267,10 @@ export const educationArticles = [
         type: 'note',
         text: 'Ngưỡng của bạn có thể khác người khác tùy theo tình trạng sức khỏe. Hãy hỏi bác sĩ về ngưỡng cá nhân hóa của bạn.',
       },
+      {
+        type: 'paragraph',
+        text: 'Tuyệt đối không tự ý uống thêm thuốc hoặc tăng liều hạ áp chỉ vì thấy kết quả đo một lần cao hơn bình thường nếu chưa có hướng dẫn trước đó của bác sĩ, vì việc hạ huyết áp quá nhanh có thể gây sốc hoặc chóng mặt.',
+      },
     ],
     quiz: [
       {
@@ -264,6 +300,18 @@ export const educationArticles = [
         ],
         correctIndex: 2,
         explanation: 'Đau ngực kèm khó thở là dấu hiệu nghiêm trọng cần hỗ trợ y tế khẩn cấp, không chần chừ.',
+      },
+      {
+        question: 'Nếu kết quả đo lần đầu bất thường, bạn nên chờ bao lâu để đo lại lần hai?',
+        options: ['Đo lại ngay lập tức', 'Khoảng 1-2 phút', '10-15 phút', 'Chờ sang ngày hôm sau'],
+        correctIndex: 2,
+        explanation: 'Nên ngồi nghỉ ngơi hoàn toàn từ 10-15 phút để cơ thể ổn định trước khi đo lại lần hai để có kết quả chính xác nhất.',
+      },
+      {
+        question: 'Bạn có nên tự uống gấp đôi liều thuốc khi thấy huyết áp đột ngột tăng cao?',
+        options: ['Có, để hạ huyết áp ngay', 'Không, tuyệt đối không tự ý đổi liều', 'Có, nếu cảm thấy đau đầu', 'Chỉ uống thêm nửa viên'],
+        correctIndex: 1,
+        explanation: 'Tự ý thay đổi liều lượng thuốc có thể gây tụt huyết áp quá mức nguy hiểm. Chỉ thực hiện khi có phác đồ hướng dẫn trước của bác sĩ.',
       },
     ],
   },
@@ -311,6 +359,10 @@ export const educationArticles = [
         type: 'note',
         text: 'Mục tiêu là hình thành thói quen ăn ít mặn hơn trước, không nhất thiết phải ăn nhạt hoàn toàn ngay từ đầu.',
       },
+      {
+        type: 'paragraph',
+        text: 'Bạn có thể sử dụng các loại gia vị tự nhiên như tiêu, tỏi, hành, ớt, nước cốt chanh hoặc các loại thảo mộc để tăng thêm hương vị cho món ăn thay vì dùng muối hay bột ngọt (bột ngọt cũng chứa một lượng natri nhất định).',
+      },
     ],
     quiz: [
       {
@@ -340,6 +392,18 @@ export const educationArticles = [
         ],
         correctIndex: 1,
         explanation: 'Nấu ăn tại nhà giúp bạn kiểm soát lượng muối, và đọc nhãn thực phẩm giúp nhận ra thực phẩm chứa nhiều natri.',
+      },
+      {
+        question: 'Bột ngọt (mì chính) có an toàn tuyệt đối cho người cần ăn nhạt không?',
+        options: ['Có, vì nó không mặn', 'Không, vì bột ngọt cũng chứa natri', 'Có, bột ngọt làm giảm huyết áp', 'Chỉ khi nấu canh'],
+        correctIndex: 1,
+        explanation: 'Thành phần chính của bột ngọt là Monosodium Glutamate, chứa Natri (sodium) có thể góp phần làm tăng huyết áp nếu dùng nhiều.',
+      },
+      {
+        question: 'Cách tốt nhất để làm món ăn đậm đà hơn mà không cần thêm muối là gì?',
+        options: ['Thêm đường', 'Thêm mắm tôm', 'Sử dụng tiêu, hành, tỏi, thảo mộc hoặc chanh', 'Sử dụng nước mắm pha loãng với nước tương'],
+        correctIndex: 2,
+        explanation: 'Các loại gia vị tự nhiên và thảo mộc giúp tăng hương vị kích thích vị giác rất hiệu quả mà không bổ sung thêm natri.',
       },
     ],
   },
@@ -382,6 +446,10 @@ export const educationArticles = [
         type: 'note',
         text: 'Mục tiêu là vận động đều đặn, không nhất thiết phải tập nặng. Đi bộ 30 phút mỗi ngày đã là rất tốt.',
       },
+      {
+        type: 'paragraph',
+        text: 'Những người bị tăng huyết áp nên tránh các bài tập nín thở gắng sức (như nâng tạ quá nặng), vì việc nín thở và dùng sức mạnh đột ngột (nghiệm pháp Valsalva) sẽ làm huyết áp tăng vọt tức thời rất nguy hiểm.',
+      },
     ],
     quiz: [
       {
@@ -416,6 +484,18 @@ export const educationArticles = [
         ],
         correctIndex: 1,
         explanation: 'Cơ thể cần thích nghi dần và thói quen đều đặn mang lại lợi ích bền vững hơn cho tim mạch.',
+      },
+      {
+        question: 'Bài tập nào sau đây NGƯỜI TĂNG HUYẾT ÁP NÊN TRÁNH?',
+        options: ['Đi bộ nhanh', 'Đạp xe nhẹ nhàng', 'Bơi lội', 'Nâng tạ nặng kèm nín thở gắng sức'],
+        correctIndex: 3,
+        explanation: 'Nín thở gắng sức (nghiệm pháp Valsalva) làm tăng áp lực lồng ngực và khiến huyết áp tăng vọt đột ngột, rất nguy hiểm.',
+      },
+      {
+        question: 'Khi bắt đầu một buổi tập thể dục, bước nào là bắt buộc?',
+        options: ['Uống ngay 1 lít nước', 'Khởi động nhẹ nhàng', 'Đo huyết áp liên tục', 'Chạy nước rút 100m'],
+        correctIndex: 1,
+        explanation: 'Khởi động giúp nhịp tim và huyết áp tăng lên từ từ, giúp tim mạch và cơ bắp thích nghi an toàn trước khi tập luyện.',
       },
     ],
   },
@@ -455,6 +535,10 @@ export const educationArticles = [
         type: 'note',
         text: 'Theo dõi huyết áp đều đặn là cách tốt nhất để phát hiện sớm nếu có biến đổi bất thường.',
       },
+      {
+        type: 'paragraph',
+        text: 'Bên cạnh đó, việc sử dụng các chất kích thích có chứa nhiều caffeine như cà phê hay nước tăng lực với lượng lớn mỗi ngày cũng có thể gây co mạch và làm tăng huyết áp ở một số người nhạy cảm.',
+      },
     ],
     quiz: [
       {
@@ -489,6 +573,18 @@ export const educationArticles = [
         ],
         correctIndex: 1,
         explanation: 'Thay đổi từ từ và bền vững dễ duy trì hơn so với thay đổi đột ngột nhiều thứ cùng lúc.',
+      },
+      {
+        question: 'Caffeine trong cà phê hoặc nước tăng lực ảnh hưởng thế nào đến huyết áp?',
+        options: ['Làm giảm huyết áp mạnh', 'Làm co mạch và có thể tăng huyết áp ở người nhạy cảm', 'Giúp mạch máu giãn nở tốt hơn', 'Không có bất kỳ tác động nào'],
+        correctIndex: 1,
+        explanation: 'Caffeine là chất kích thích có thể làm co mạch máu, khiến tim đập nhanh và tăng huyết áp tạm thời.',
+      },
+      {
+        question: 'Vì sao việc thức khuya, thiếu ngủ liên tục lại có hại cho huyết áp?',
+        options: ['Vì cơ thể không tiết đủ hormone điều hòa huyết áp', 'Vì thiếu ngủ làm tăng lượng đường huyết', 'Vì ngủ ít làm giảm cân nhanh', 'Vì ban đêm huyết áp luôn cao hơn ban ngày'],
+        correctIndex: 0,
+        explanation: 'Trong lúc ngủ sâu, huyết áp thường giảm để tim nghỉ ngơi. Việc thiếu ngủ khiến cơ thể căng thẳng và tiết ra nhiều hormone làm tăng huyết áp.',
       },
     ],
   },
@@ -530,6 +626,10 @@ export const educationArticles = [
         type: 'note',
         text: 'Trong app, bạn có thể dùng tính năng nhắn tin để liên hệ với bác sĩ hoặc điều dưỡng phụ trách của mình.',
       },
+      {
+        type: 'paragraph',
+        text: 'Tuy nhiên, đối với các trường hợp khẩn cấp như có dấu hiệu đột quỵ (méo miệng, yếu liệt nửa người, nói đớ), nhồi máu cơ tim (đau thắt ngực dữ dội lan ra tay trái, vã mồ hôi lạnh), cần gọi cấp cứu 115 ngay thay vì chờ phản hồi trên app.',
+      },
     ],
     quiz: [
       {
@@ -564,6 +664,23 @@ export const educationArticles = [
         ],
         correctIndex: 1,
         explanation: 'Tính năng nhắn tin trong app giúp bạn liên hệ với bác sĩ hoặc điều dưỡng phụ trách cho những câu hỏi thông thường.',
+      },
+      {
+        question: 'Dấu hiệu nào sau đây cảnh báo nguy cơ đột quỵ cần gọi 115 ngay?',
+        options: ['Méo miệng, yếu liệt nửa người, nói đớ', 'Đau nhức cơ bắp chân', 'Khô miệng, khát nước', 'Sôi bụng, khó tiêu'],
+        correctIndex: 0,
+        explanation: 'Méo miệng, yếu liệt nửa người và nói khó là ba dấu hiệu kinh điển của đột quỵ, cần cấp cứu ngay lập tức trong "thời gian vàng".',
+      },
+      {
+        question: 'Nếu bạn có thắc mắc về tác dụng phụ của loại thuốc huyết áp mới đổi, bạn nên làm gì?',
+        options: [
+          'Ngừng uống thuốc ngay lập tức',
+          'Nhắn tin cho bác sĩ qua app để hỏi ý kiến',
+          'Uống thêm thuốc cũ cho chắc',
+          'Hỏi kinh nghiệm người hàng xóm'
+        ],
+        correctIndex: 1,
+        explanation: 'App cung cấp kênh liên lạc an toàn giúp bạn trao đổi trực tiếp với bác sĩ về thuốc, tuyệt đối không nên tự ý ngưng thuốc.',
       },
     ],
   },
@@ -609,6 +726,10 @@ export const educationArticles = [
         type: 'note',
         text: 'Khi nhập liệu vào app, hãy luôn chọn đúng "Trước ăn" hoặc "Sau ăn" để kết quả có giá trị theo dõi.',
       },
+      {
+        type: 'paragraph',
+        text: 'Chỉ số đường huyết lúc đói (trước ăn) giúp đánh giá liều lượng thuốc nền đang dùng, trong khi chỉ số đường huyết sau ăn phản ánh khả năng xử lý lượng carbohydrate (tinh bột, đường) từ bữa ăn của cơ thể.',
+      },
     ],
     quiz: [
       {
@@ -638,6 +759,28 @@ export const educationArticles = [
         options: ['Ngay sau khi ăn', '1–2 tiếng sau ăn', '4 tiếng sau ăn', 'Sau 8 tiếng'],
         correctIndex: 1,
         explanation: 'Thông thường đường huyết sau ăn được đo khoảng 1–2 tiếng sau bữa ăn, theo hướng dẫn của bác sĩ.',
+      },
+      {
+        question: 'Chỉ số đường huyết "sau ăn" phản ánh điều gì?',
+        options: [
+          'Khả năng cơ thể xử lý lượng carbohydrate (tinh bột) từ thức ăn',
+          'Lượng nước đã uống trong ngày',
+          'Khả năng hấp thu chất béo của dạ dày',
+          'Mức độ buồn ngủ sau ăn'
+        ],
+        correctIndex: 0,
+        explanation: 'Đường huyết sau ăn cho thấy cơ thể (đặc biệt là insulin) hoạt động hiệu quả ra sao để đưa lượng đường mới ăn vào các tế bào.',
+      },
+      {
+        question: 'Đường huyết "lúc đói" (trước ăn) thường mang lại thông tin gì cho bác sĩ?',
+        options: [
+          'Cho biết bệnh nhân có ăn vặt đêm không',
+          'Giúp đánh giá hiệu quả của liều thuốc nền và khả năng kiểm soát đường huyết cơ bản của cơ thể',
+          'Cho biết mức độ căng thẳng hiện tại',
+          'Để biết hôm nay bệnh nhân ăn sáng món gì'
+        ],
+        correctIndex: 1,
+        explanation: 'Đường huyết lúc đói phản ánh lượng đường do gan sản xuất và hiệu quả của thuốc điều trị kéo dài qua đêm.',
       },
     ],
   },
@@ -675,6 +818,10 @@ export const educationArticles = [
         type: 'note',
         text: 'Trong app, hãy luôn chọn đúng mealTiming (Trước ăn / Sau ăn) để dữ liệu của bạn có giá trị y tế cao nhất.',
       },
+      {
+        type: 'paragraph',
+        text: 'Một mức đường huyết 180 mg/dL có thể là bình thường nếu được đo ngay sau một bữa tiệc lớn, nhưng lại là dấu hiệu cảnh báo nghiêm trọng nếu đó là mức đường huyết đo được vào lúc đói buổi sáng.',
+      },
     ],
     quiz: [
       {
@@ -704,6 +851,23 @@ export const educationArticles = [
         options: ['Làm tăng đường huyết', 'Không ảnh hưởng', 'Thường làm giảm đường huyết', 'Làm đường huyết lúc tăng lúc giảm ngẫu nhiên'],
         correctIndex: 2,
         explanation: 'Vận động thể chất thường giúp cơ bắp sử dụng glucose, từ đó làm giảm đường huyết.',
+      },
+      {
+        question: 'Kết quả 180 mg/dL có ý nghĩa như thế nào?',
+        options: [
+          'Luôn luôn là mức rất nguy hiểm',
+          'Luôn luôn là mức bình thường',
+          'Có thể bình thường nếu đo sau bữa ăn lớn, nhưng là cảnh báo nếu đo lúc đói',
+          'Chứng tỏ máy đo bị hỏng'
+        ],
+        correctIndex: 2,
+        explanation: 'Ý nghĩa của con số phụ thuộc hoàn toàn vào bối cảnh (thời điểm đo). 180 mg/dL sau ăn 1 giờ có thể chấp nhận được, nhưng lúc đói thì quá cao.',
+      },
+      {
+        question: 'Một giấc ngủ kém chất lượng (thiếu ngủ) có tác động gì đến đường huyết?',
+        options: ['Làm giảm mạnh đường huyết', 'Không tác động gì', 'Có thể làm giảm khả năng nhạy cảm với insulin, dẫn đến tăng đường huyết', 'Giúp đường huyết ổn định hơn'],
+        correctIndex: 2,
+        explanation: 'Thiếu ngủ làm cơ thể căng thẳng và giảm độ nhạy insulin, khiến đường huyết có xu hướng cao hơn vào ngày hôm sau.',
       },
     ],
   },
@@ -751,6 +915,10 @@ export const educationArticles = [
         type: 'note',
         text: 'Nếu bạn mất ý thức hoặc không thể tự xử lý, người xung quanh cần gọi hỗ trợ y tế khẩn cấp ngay.',
       },
+      {
+        type: 'paragraph',
+        text: 'Quy tắc "15-15" thường được khuyến nghị để xử lý hạ đường huyết nhẹ: Ăn hoặc uống 15 gram carbohydrate tác dụng nhanh (như nửa ly nước ép trái cây, hoặc 3-4 viên kẹo), sau đó đợi 15 phút rồi đo lại. Nếu vẫn thấp, lặp lại quá trình này.',
+      },
     ],
     quiz: [
       {
@@ -780,6 +948,23 @@ export const educationArticles = [
         ],
         correctIndex: 2,
         explanation: 'Mất ý thức là tình trạng nguy hiểm cần gọi cấp cứu ngay, không chờ đợi.',
+      },
+      {
+        question: 'Quy tắc "15-15" trong xử lý hạ đường huyết nhẹ là gì?',
+        options: [
+          'Chạy bộ 15 phút, nghỉ 15 phút',
+          'Ăn 15g carbohydrate tác dụng nhanh, đợi 15 phút đo lại',
+          'Đo đường huyết mỗi 15 phút trong 15 giờ',
+          'Uống 15 viên thuốc và đợi 15 phút'
+        ],
+        correctIndex: 1,
+        explanation: 'Quy tắc "15-15" giúp nâng đường huyết lên mức an toàn một cách từ từ, tránh làm đường huyết tăng vọt quá mức sau đó.',
+      },
+      {
+        question: 'Thực phẩm nào sau đây là TỐT NHẤT để áp dụng quy tắc 15g carbohydrate?',
+        options: ['Một miếng thịt mỡ', 'Nửa ly nước ép trái cây ngọt hoặc 3 viên kẹo ngọt', 'Một đĩa rau luộc to', 'Một chén phở lớn'],
+        correctIndex: 1,
+        explanation: 'Nước ép hoặc kẹo ngọt chứa carbohydrate đơn giản, giúp hấp thu vào máu rất nhanh để cấp cứu hạ đường huyết.',
       },
     ],
   },
@@ -818,6 +1003,10 @@ export const educationArticles = [
         type: 'note',
         text: 'Ghi chú trong app sau khi ăn (đã ăn gì, ăn bao nhiêu) giúp bác sĩ hiểu rõ hơn nguyên nhân biến động đường huyết của bạn.',
       },
+      {
+        type: 'paragraph',
+        text: 'Chỉ số đường huyết (GI) của thực phẩm cũng ảnh hưởng lớn. Thực phẩm GI cao (bánh mì trắng, gạo trắng, kẹo ngọt) làm đường huyết tăng vọt rất nhanh, trong khi thực phẩm GI thấp (yến mạch, ngũ cốc nguyên cám, rau xanh) giúp đường huyết tăng từ từ và ổn định hơn.',
+      },
     ],
     quiz: [
       {
@@ -852,6 +1041,18 @@ export const educationArticles = [
         ],
         correctIndex: 1,
         explanation: 'Đi bộ nhẹ sau ăn giúp cơ bắp sử dụng glucose, giảm mức đỉnh đường huyết sau bữa ăn.',
+      },
+      {
+        question: 'Ăn quá nhanh có thể gây ra điều gì cho đường huyết?',
+        options: ['Không ảnh hưởng gì', 'Làm đường huyết tăng vọt do cơ thể không kịp điều tiết', 'Giúp tiêu hóa tốt hơn', 'Làm hạ đường huyết'],
+        correctIndex: 1,
+        explanation: 'Ăn quá nhanh khiến một lượng lớn glucose đi vào máu cùng lúc, làm cơ thể không kịp tiết đủ insulin để xử lý, gây tăng vọt đường huyết.',
+      },
+      {
+        question: 'Chỉ số đường huyết (GI) của thực phẩm có ý nghĩa gì?',
+        options: ['Cho biết thực phẩm đó có giá trị dinh dưỡng cao hay thấp', 'Phản ánh tốc độ làm tăng đường huyết sau khi ăn thực phẩm đó', 'Đo lượng đường có trong một gam thức ăn', 'Không có ý nghĩa gì đối với người bệnh tiểu đường'],
+        correctIndex: 1,
+        explanation: 'GI (Glycemic Index) đo lường tốc độ một loại thực phẩm chứa carbohydrate làm tăng đường huyết. Thực phẩm GI cao làm đường huyết tăng nhanh hơn.',
       },
     ],
   },
@@ -896,6 +1097,10 @@ export const educationArticles = [
         type: 'note',
         text: 'Chế độ ăn cụ thể nên được thảo luận với bác sĩ hoặc chuyên gia dinh dưỡng của bạn, vì mỗi người có nhu cầu khác nhau.',
       },
+      {
+        type: 'paragraph',
+        text: 'Một phương pháp dễ áp dụng là "Quy tắc Đĩa thức ăn": Chia đĩa ăn làm 4 phần, 2 phần (một nửa đĩa) là rau xanh không tinh bột, 1 phần là đạm (thịt, cá, trứng, đậu), và 1 phần còn lại là tinh bột (cơm gạo lứt, khoai lang, bánh mì nguyên cám).',
+      },
     ],
     quiz: [
       {
@@ -925,6 +1130,18 @@ export const educationArticles = [
         ],
         correctIndex: 1,
         explanation: 'Mỗi người phản ứng khác nhau với thức ăn. Theo dõi giúp bạn và bác sĩ biết loại thức ăn nào ảnh hưởng mạnh đến đường huyết của riêng bạn.',
+      },
+      {
+        question: 'Theo "Quy tắc Đĩa thức ăn", rau xanh nên chiếm bao nhiêu phần của đĩa?',
+        options: ['1/4 (Một phần tư)', '1/2 (Một nửa)', '3/4', 'Toàn bộ đĩa'],
+        correctIndex: 1,
+        explanation: 'Một nửa đĩa (2/4) nên là các loại rau không chứa nhiều tinh bột để cung cấp chất xơ, vitamin và làm chậm quá trình hấp thu đường.',
+      },
+      {
+        question: 'Việc bỏ bữa (nhịn đói) có giúp kiểm soát đường huyết tốt hơn không?',
+        options: ['Có, vì không ăn thì đường không tăng', 'Có, nó giúp giảm cân nhanh', 'Không, vì có thể gây hạ đường huyết hoặc làm đường huyết dao động mạnh sau đó', 'Có, nếu chỉ uống nước lọc'],
+        correctIndex: 2,
+        explanation: 'Bỏ bữa có thể làm hạ đường huyết nguy hiểm và thường dẫn đến ăn bù quá nhiều ở bữa sau, gây tăng vọt đường huyết.',
       },
     ],
   },
@@ -960,6 +1177,10 @@ export const educationArticles = [
         type: 'note',
         text: 'App của bạn lưu lịch sử và hiển thị đồ thị giúp bạn và bác sĩ thấy xu hướng dễ dàng hơn.',
       },
+      {
+        type: 'paragraph',
+        text: 'Lưu ý khi lấy máu ngẫu nhiên tại nhà: Hãy rửa tay thật sạch bằng xà phòng và nước ấm, sau đó lau khô hoàn toàn trước khi lấy máu. Các vết dính từ thức ăn ngọt (như trái cây) trên ngón tay có thể làm kết quả đường huyết đo được cao hơn rất nhiều so với thực tế.',
+      },
     ],
     quiz: [
       {
@@ -994,6 +1215,18 @@ export const educationArticles = [
         ],
         correctIndex: 1,
         explanation: 'Bác sĩ sẽ hướng dẫn tần suất phù hợp với tình trạng của bạn. Tự ý đo quá nhiều không nhất thiết có lợi hơn.',
+      },
+      {
+        question: 'Điều gì có thể xảy ra nếu bạn không rửa tay trước khi đo đường huyết?',
+        options: ['Máy đo sẽ không hoạt động', 'Vết bẩn thực phẩm (như đường từ trái cây) có thể làm kết quả sai lệch (thường cao hơn)', 'Kim không đâm qua được da', 'Không có vấn đề gì'],
+        correctIndex: 1,
+        explanation: 'Bất kỳ cặn thức ăn chứa đường nào trên ngón tay đều sẽ hòa vào mẫu máu và làm máy đo hiển thị kết quả cao sai lệch.',
+      },
+      {
+        question: 'Vì sao rửa tay bằng nước ấm trước khi đo lại có ích?',
+        options: ['Nước ấm tiêu diệt toàn bộ vi khuẩn', 'Nước ấm làm tăng lượng đường trong máu', 'Nước ấm giúp tăng cường lưu thông máu ở ngón tay, giúp dễ lấy mẫu máu hơn', 'Nước ấm làm giảm đau'],
+        correctIndex: 2,
+        explanation: 'Rửa tay bằng nước ấm giúp giãn mạch máu ở đầu ngón tay, giúp máu chảy ra dễ dàng hơn khi dùng kim chích.',
       },
     ],
   },
@@ -1035,6 +1268,10 @@ export const educationArticles = [
         type: 'note',
         text: 'Khi không chắc chắn, hãy liên hệ bác sĩ hoặc điều dưỡng qua tính năng nhắn tin trong app. Không nên tự quyết định khi còn băn khoăn.',
       },
+      {
+        type: 'paragraph',
+        text: 'Đặc biệt, nếu bạn đang bị bệnh lý khác (như cảm cúm, sốt cao, hoặc nhiễm trùng dạ dày), đường huyết thường có xu hướng tăng cao hoặc khó kiểm soát hơn. Đây là giai đoạn bạn cần đo thường xuyên hơn và báo cáo cho bác sĩ.',
+      },
     ],
     quiz: [
       {
@@ -1069,6 +1306,18 @@ export const educationArticles = [
         ],
         correctIndex: 2,
         explanation: 'App có tính năng nhắn tin để liên hệ trực tiếp với bác sĩ hoặc điều dưỡng phụ trách của bạn.',
+      },
+      {
+        question: 'Khi bạn bị ốm (như cảm cúm, sốt), điều gì thường xảy ra với đường huyết?',
+        options: ['Luôn luôn giảm mạnh', 'Đường huyết thường có xu hướng tăng cao và khó kiểm soát', 'Không thay đổi', 'Về mức bình thường tuyệt đối'],
+        correctIndex: 1,
+        explanation: 'Khi cơ thể bị ốm, nó tiết ra các hormone để chống lại bệnh tật. Các hormone này có thể làm giảm tác dụng của insulin, dẫn đến tăng đường huyết.',
+      },
+      {
+        question: 'Việc vết thương lâu lành liên quan như thế nào đến đường huyết?',
+        options: ['Không có sự liên quan', 'Là dấu hiệu đường huyết quá thấp', 'Là dấu hiệu đường huyết liên tục ở mức cao gây tổn thương mạch máu nhỏ và giảm miễn dịch', 'Chỉ xảy ra khi dùng quá nhiều thuốc'],
+        correctIndex: 2,
+        explanation: 'Đường huyết cao mãn tính làm hẹp mạch máu và giảm chức năng của tế bào bạch cầu, khiến các vết thương khó lành và dễ nhiễm trùng hơn.',
       },
     ],
   },
@@ -1106,6 +1355,10 @@ export const educationArticles = [
         type: 'note',
         text: 'Nếu có ngày không đo được, không sao — hãy tiếp tục vào ngày hôm sau. Dữ liệu đều đặn theo thời gian quan trọng hơn mỗi ngày một lần.',
       },
+      {
+        type: 'paragraph',
+        text: 'Mỗi cá nhân có một mức "bình thường" khác nhau. Việc đo thường xuyên lúc bạn khỏe mạnh giúp thiết lập đường cơ sở (baseline) này. Khi có bất kỳ sự thay đổi tinh tế nào, bác sĩ sẽ dễ dàng nhận ra thông qua đường cơ sở đó thay vì so sánh với một ngưỡng chung chung.',
+      },
     ],
     quiz: [
       {
@@ -1140,6 +1393,18 @@ export const educationArticles = [
         ],
         correctIndex: 2,
         explanation: 'Nếu bỏ sót một ngày, chỉ cần tiếp tục từ ngày hôm sau. Không cần bù hay lo lắng.',
+      },
+      {
+        question: '"Đường cơ sở" (baseline) trong việc theo dõi sức khỏe có ý nghĩa gì?',
+        options: ['Là mức đường huyết khi bụng đói', 'Là mức sức khỏe trung bình của toàn cộng đồng', 'Là chỉ số bình thường đặc trưng của riêng cá nhân bạn khi khỏe mạnh', 'Là số ngày bạn đã dùng app'],
+        correctIndex: 2,
+        explanation: 'Đường cơ sở là mức chỉ số bình thường thường thấy của riêng bạn. So sánh với nó giúp bác sĩ phát hiện bất thường sớm hơn.',
+      },
+      {
+        question: 'Vì sao không nên đợi đến khi cảm thấy thật mệt mới đo chỉ số?',
+        options: ['Vì máy đo không chạy lúc đó', 'Vì khi mệt chỉ số chắc chắn sẽ sai lệch do máy lỗi', 'Vì không có dữ liệu lúc khỏe mạnh thì bác sĩ khó biết tình trạng mệt mỏi này nghiêm trọng đến mức nào', 'Vì app sẽ tự động khóa'],
+        correctIndex: 2,
+        explanation: 'Dữ liệu lúc mệt chỉ có giá trị cao nhất khi được so sánh với những dữ liệu đều đặn lúc bạn đang ở trạng thái khỏe mạnh.',
       },
     ],
   },
@@ -1177,6 +1442,10 @@ export const educationArticles = [
         type: 'note',
         text: 'Nếu nhịp tim bất thường kèm theo hồi hộp, khó thở, đau ngực, hoặc chóng mặt, hãy liên hệ bác sĩ.',
       },
+      {
+        type: 'paragraph',
+        text: 'Nhịp tim lúc nghỉ ngơi bình thường của người trưởng thành thường dao động từ 60 đến 100 nhịp/phút. Tuy nhiên, ở những người tập luyện thể thao thường xuyên hoặc vận động viên, nhịp tim lúc nghỉ có thể thấp hơn (khoảng 40-60 nhịp/phút) và điều này thường là dấu hiệu của một trái tim khỏe mạnh.',
+      },
     ],
     quiz: [
       {
@@ -1211,6 +1480,18 @@ export const educationArticles = [
         ],
         correctIndex: 1,
         explanation: 'Nhịp tim bất thường có kèm triệu chứng như hồi hộp, khó thở, đau ngực mới cần liên hệ bác sĩ khẩn.',
+      },
+      {
+        question: 'Nhịp tim lúc nghỉ ngơi bình thường của người trưởng thành (không phải vận động viên) thường là bao nhiêu?',
+        options: ['40 - 60 nhịp/phút', '60 - 100 nhịp/phút', '100 - 120 nhịp/phút', 'Dưới 40 nhịp/phút'],
+        correctIndex: 1,
+        explanation: 'Ở người trưởng thành bình thường, nhịp tim lúc nghỉ ngơi từ 60 đến 100 nhịp/phút được coi là an toàn và bình thường.',
+      },
+      {
+        question: 'Đối với những người thường xuyên tập luyện thể thao cường độ cao, nhịp tim lúc nghỉ ngơi của họ thường như thế nào?',
+        options: ['Cao hơn bình thường', 'Bằng chính xác 100 nhịp/phút', 'Thường thấp hơn bình thường (dưới 60 nhịp/phút)', 'Không thể đo được'],
+        correctIndex: 2,
+        explanation: 'Tập thể dục giúp cơ tim hoạt động hiệu quả hơn, do đó bơm máu tốt hơn với ít nhịp đập hơn. Vận động viên thường có nhịp tim nghỉ ngơi thấp.',
       },
     ],
   },
@@ -1253,6 +1534,10 @@ export const educationArticles = [
         type: 'note',
         text: 'Nếu SpO₂ thấp kèm theo khó thở, da tím tái, hoặc mệt nhiều — đây là dấu hiệu cần hỗ trợ y tế ngay.',
       },
+      {
+        type: 'paragraph',
+        text: 'Chỉ số SpO₂ bình thường ở người khỏe mạnh là từ 95% đến 100%. Nếu chỉ số này thường xuyên dưới 95% (hoặc thấp hơn ngưỡng bác sĩ của bạn đặt ra, đặc biệt đối với người có bệnh phổi mãn tính), đó có thể là dấu hiệu các cơ quan không nhận đủ oxy.',
+      },
     ],
     quiz: [
       {
@@ -1287,6 +1572,18 @@ export const educationArticles = [
         ],
         correctIndex: 1,
         explanation: 'SpO₂ thấp kèm khó thở và tím tái là dấu hiệu thiếu oxy nghiêm trọng, cần gọi cấp cứu ngay.',
+      },
+      {
+        question: 'Chỉ số SpO₂ bình thường của một người khỏe mạnh thường nằm trong khoảng nào?',
+        options: ['80% - 90%', '90% - 94%', '95% - 100%', 'Trêm 100%'],
+        correctIndex: 2,
+        explanation: 'Mức SpO₂ từ 95% đến 100% là mức bình thường cho hầu hết mọi người không có bệnh nền về hô hấp.',
+      },
+      {
+        question: 'Vì sao sơn móng tay màu đậm lại làm kết quả đo SpO₂ bị sai lệch?',
+        options: ['Vì sơn móng tay làm lạnh ngón tay', 'Vì sơn móng tay ngăn cản tia sáng hồng ngoại của máy đo xuyên qua móng tay', 'Vì sơn móng tay làm nhịp tim đập nhanh hơn', 'Vì máy đo bị dị ứng với sơn'],
+        correctIndex: 1,
+        explanation: 'Máy đo SpO₂ hoạt động dựa trên việc phát tia sáng qua đầu ngón tay. Lớp sơn móng tay dày hoặc màu đậm sẽ cản trở tia sáng này, gây sai số.',
       },
     ],
   },
@@ -1327,6 +1624,10 @@ export const educationArticles = [
         type: 'note',
         text: 'Nếu có khó thở đột ngột, tím tái môi/đầu ngón tay, hoặc lơ mơ — cần hỗ trợ y tế ngay, không chờ đợi.',
       },
+      {
+        type: 'paragraph',
+        text: 'Nhịp thở bình thường ở người trưởng thành lúc nghỉ ngơi thường từ 12 đến 20 lần/phút. Việc đếm nhịp thở nên được thực hiện tự nhiên, tránh để người bệnh chú ý quá mức vì họ có thể tự điều chỉnh nhịp thở (thở nhanh hoặc chậm hơn bình thường một cách vô thức).',
+      },
     ],
     quiz: [
       {
@@ -1361,6 +1662,18 @@ export const educationArticles = [
         ],
         correctIndex: 1,
         explanation: 'Khó thở đột ngột kèm tím tái là dấu hiệu nguy hiểm cần gọi cấp cứu ngay.',
+      },
+      {
+        question: 'Nhịp thở lúc nghỉ ngơi của người trưởng thành khỏe mạnh bình thường là bao nhiêu?',
+        options: ['Dưới 10 lần/phút', '12 đến 20 lần/phút', '25 đến 30 lần/phút', 'Trên 30 lần/phút'],
+        correctIndex: 1,
+        explanation: 'Ở trạng thái nghỉ ngơi, một người trưởng thành khỏe mạnh thở khoảng 12 đến 20 nhịp mỗi phút.',
+      },
+      {
+        question: 'Tại sao khi đếm nhịp thở, bạn không nên nói cho người bệnh biết bạn đang đếm?',
+        options: ['Vì đó là bí mật y tế', 'Vì người bệnh sẽ tự động thay đổi nhịp thở của mình một cách vô thức khi biết mình bị theo dõi', 'Vì nói chuyện sẽ làm tăng huyết áp', 'Vì đếm thầm sẽ chính xác hơn'],
+        correctIndex: 1,
+        explanation: 'Hô hấp là hoạt động có thể điều khiển được một phần bằng ý thức. Khi biết đang bị đếm nhịp thở, người bệnh thường có xu hướng thở không tự nhiên.',
       },
     ],
   },
@@ -1404,6 +1717,10 @@ export const educationArticles = [
         type: 'note',
         text: 'Ghi chú ngắn trong app tiết kiệm thời gian giải thích khi gặp bác sĩ và giúp bác sĩ hiểu bối cảnh kết quả của bạn.',
       },
+      {
+        type: 'paragraph',
+        text: 'Đừng quên duy trì việc nhập liệu ngay cả vào những ngày cuối tuần hoặc ngày lễ. Rất nhiều trường hợp bất thường xảy ra vào thời điểm sinh hoạt bị thay đổi (như các kỳ nghỉ) nhưng lại thiếu dữ liệu để bác sĩ kịp thời can thiệp.',
+      },
     ],
     quiz: [
       {
@@ -1438,6 +1755,18 @@ export const educationArticles = [
         ],
         correctIndex: 1,
         explanation: 'Ghi chú khi có bối cảnh đặc biệt giúp bác sĩ hiểu tại sao kết quả khác với thường lệ.',
+      },
+      {
+        question: 'Việc ghi chú "Sau ăn" hoặc "Trước ăn" đối với đường huyết ảnh hưởng như thế nào đến quyết định của bác sĩ?',
+        options: ['Chỉ để bác sĩ biết bạn ăn món gì', 'Giúp bác sĩ phân biệt và đánh giá đúng tình trạng chuyển hóa của cơ thể theo các tiêu chuẩn khác nhau', 'Không ảnh hưởng gì', 'Làm bác sĩ bối rối'],
+        correctIndex: 1,
+        explanation: 'Ngưỡng đánh giá trước ăn và sau ăn hoàn toàn khác nhau, do đó việc ghi chú sai thời điểm có thể dẫn đến việc điều chỉnh sai liều thuốc.',
+      },
+      {
+        question: 'Tại sao cần duy trì nhập liệu vào ngày nghỉ, ngày lễ?',
+        options: ['Vì app không cho nghỉ', 'Để tích điểm thưởng', 'Vì sinh hoạt vào ngày nghỉ thường thay đổi, làm tăng nguy cơ biến động chỉ số, cần được theo dõi sát', 'Để bác sĩ luôn bận rộn'],
+        correctIndex: 2,
+        explanation: 'Các thay đổi về ăn uống, ngủ nghỉ trong những ngày lễ dễ làm chỉ số biến động, do đó việc theo dõi không nên bị gián đoạn.',
       },
     ],
   },
@@ -1474,6 +1803,10 @@ export const educationArticles = [
         type: 'note',
         text: 'Nếu cảm thấy không khỏe dù app không có cảnh báo, hãy liên hệ bác sĩ. Cơ thể bạn quan trọng hơn con số.',
       },
+      {
+        type: 'paragraph',
+        text: 'Hãy nhớ rằng, đôi khi thiết bị đo có thể gặp trục trặc như hết pin, lỗi cảm biến hoặc lỏng vòng bít. Trước khi hốt hoảng vì một cảnh báo rất cao, hãy kiểm tra thiết bị, nghỉ ngơi 5 phút và đo lại lần thứ hai một cách cẩn thận để xác nhận.',
+      },
     ],
     quiz: [
       {
@@ -1508,6 +1841,18 @@ export const educationArticles = [
         ],
         correctIndex: 1,
         explanation: 'App hỗ trợ theo dõi nhưng không thể thay thế cảm nhận của bạn. Nếu không khỏe, hãy liên hệ bác sĩ.',
+      },
+      {
+        question: 'Nếu máy báo kết quả cực kỳ cao hoặc thấp nhưng bạn thấy hoàn toàn bình thường, bước tiếp theo tốt nhất là gì?',
+        options: ['Báo ngay cho bác sĩ hoặc gọi cấp cứu', 'Uống thuốc ngay lập tức', 'Kiểm tra lại máy, nghỉ ngơi 5 phút rồi tiến hành đo lại cẩn thận', 'Đập bỏ máy đo'],
+        correctIndex: 2,
+        explanation: 'Rất có thể đó là lỗi của thiết bị (hết pin, đeo sai cách). Việc đo lại giúp loại trừ sai số trước khi đưa ra quyết định.',
+      },
+      {
+        question: 'Một cảnh báo trên app là chẩn đoán y tế cuối cùng?',
+        options: ['Đúng, app có thể thay thế bác sĩ', 'Sai, cảnh báo chỉ là tín hiệu nhắc nhở để bạn và bác sĩ chú ý theo dõi thêm', 'Đúng, cảnh báo luôn luôn chuẩn xác 100%', 'Sai, cảnh báo không có ý nghĩa gì cả'],
+        correctIndex: 1,
+        explanation: 'Chỉ có bác sĩ mới có thể đưa ra chẩn đoán và phác đồ điều trị sau khi đánh giá tổng thể tình trạng của bạn.',
       },
     ],
   },
@@ -1545,6 +1890,10 @@ export const educationArticles = [
         type: 'note',
         text: 'Theo dõi đều đặn 70–80% số ngày trong tháng đã cho kết quả hữu ích. Không cần 100% mới có giá trị.',
       },
+      {
+        type: 'paragraph',
+        text: 'Để duy trì động lực, hãy chia sẻ kết quả với gia đình hoặc một người bạn đồng hành. Việc có người khích lệ và nhắc nhở thường xuyên sẽ làm giảm cảm giác cô đơn trong hành trình quản lý bệnh mãn tính.',
+      },
     ],
     quiz: [
       {
@@ -1574,6 +1923,18 @@ export const educationArticles = [
         options: ['100% mới có giá trị', '70–80% đã cho kết quả hữu ích', 'Cần ít nhất 95%', 'Chỉ cần vài ngày mỗi tháng'],
         correctIndex: 1,
         explanation: 'Theo dõi đều đặn 70–80% số ngày đã cung cấp đủ dữ liệu để bác sĩ theo dõi xu hướng.',
+      },
+      {
+        question: 'Tại sao việc đặt máy đo ở nơi dễ thấy (như bàn ngủ hoặc góc bếp) lại quan trọng?',
+        options: ['Để khoe với khách đến nhà', 'Nhằm mục đích trang trí', 'Nó đóng vai trò như một lời nhắc nhở trực quan (visual cue) giúp bạn không quên việc đo mỗi ngày', 'Để tránh máy bị hỏng'],
+        correctIndex: 2,
+        explanation: 'Môi trường có ảnh hưởng lớn đến thói quen. Việc nhìn thấy máy đo thường xuyên sẽ tự động nhắc nhở não bộ thực hiện hành động đo lường.',
+      },
+      {
+        question: 'Ai có thể giúp bạn duy trì thói quen theo dõi sức khỏe tốt hơn?',
+        options: ['Người lạ trên mạng', 'Chỉ duy nhất bác sĩ', 'Một người thân trong gia đình hoặc bạn đồng hành (để khích lệ, nhắc nhở)', 'Không ai cả'],
+        correctIndex: 2,
+        explanation: 'Sự hỗ trợ từ người thân không chỉ giúp nhắc nhở về mặt thời gian mà còn cung cấp động lực tinh thần rất lớn để duy trì thói quen.',
       },
     ],
   },
@@ -1619,6 +1980,10 @@ export const educationArticles = [
         type: 'note',
         text: 'Nếu thường xuyên quên thuốc, hãy chia sẻ với bác sĩ để cùng tìm cách giải quyết — không cần ngại ngùng.',
       },
+      {
+        type: 'paragraph',
+        text: 'Một số loại thuốc có tương tác với thức ăn (như bưởi chùm có thể làm tăng độc tính của thuốc hạ huyết áp mỡ máu). Luôn hỏi bác sĩ hoặc đọc kỹ tờ hướng dẫn sử dụng về các loại thực phẩm hoặc đồ uống cần tránh khi uống loại thuốc đó.',
+      },
     ],
     quiz: [
       {
@@ -1653,6 +2018,18 @@ export const educationArticles = [
         ],
         correctIndex: 1,
         explanation: 'Nhắc nhở uống thuốc trong app giúp bạn không bỏ sót liều, từ đó tăng hiệu quả điều trị.',
+      },
+      {
+        question: 'Nếu bạn có một chuyến đi xa và quên mang theo thuốc huyết áp, bạn nên làm gì?',
+        options: ['Không uống thuốc vài ngày cũng không sao', 'Mượn thuốc của người thân đi cùng nếu họ cũng uống thuốc huyết áp', 'Đến nhà thuốc hoặc cơ sở y tế gần nhất để xin tư vấn và mua đúng loại thuốc/hoạt chất mình đang dùng', 'Uống trà thảo mộc thay thế'],
+        correctIndex: 2,
+        explanation: 'Tuyệt đối không dùng thuốc của người khác vì mỗi người có chỉ định liều lượng và loại thuốc riêng. Cần mua đúng thuốc hoặc hỏi ý kiến dược sĩ/bác sĩ.',
+      },
+      {
+        question: 'Thức ăn và đồ uống (như nước ép bưởi) có thể ảnh hưởng đến thuốc như thế nào?',
+        options: ['Luôn làm thuốc mất tác dụng', 'Có thể gây tương tác, làm thay đổi khả năng hấp thu hoặc làm tăng tác dụng phụ của một số loại thuốc', 'Giúp thuốc hấp thu tốt hơn gấp đôi', 'Không có bất kỳ ảnh hưởng nào'],
+        correctIndex: 1,
+        explanation: 'Nhiều loại thuốc có tương tác mạnh với thực phẩm, do đó luôn phải tuân thủ hướng dẫn uống lúc no/đói và tránh các thực phẩm cấm kỵ.',
       },
     ],
   },

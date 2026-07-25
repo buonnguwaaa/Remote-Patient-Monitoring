@@ -253,7 +253,7 @@ export default function AlertDetailScreen() {
               color={isHigh ? colors.danger : colors.warning}
             />
           </View>
-          <Text style={styles.bannerTitle}>Cảnh báo chỉ số sinh tồn vượt ngưỡng</Text>
+          <Text style={styles.bannerTitle}>Cảnh báo chỉ số sinh hiệu vượt ngưỡng</Text>
           <View style={styles.timeRow}>
             <Ionicons name="time-outline" size={14} color={colors.textSecondary} />
             <Text style={styles.timeText}>Phát hiện lúc: {formatDate(alertData.createdAt)}</Text>

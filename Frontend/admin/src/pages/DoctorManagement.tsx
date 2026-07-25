@@ -130,6 +130,19 @@ const DoctorManagement: React.FC = () => {
     setCurrentPage(1);
   }, [searchTerm]);
 
+  useEffect(() => {
+    if (doctors.length > 0) {
+      const urlParams = new URLSearchParams(window.location.search);
+      const viewId = urlParams.get("viewId");
+      if (viewId && !showWizard) {
+        const docToView = doctors.find((d) => d.id === viewId);
+        if (docToView) {
+          handleView(docToView);
+        }
+      }
+    }
+  }, [doctors]);
+
   return (
     <div className="p-4 md:p-6">
       <Toast toast={toast} onClose={hideToast} />

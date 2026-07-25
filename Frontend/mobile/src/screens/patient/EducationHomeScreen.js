@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -22,13 +22,13 @@ const { width: SCREEN_W } = Dimensions.get('window');
 const DISCLAIMER = 'Nội dung chỉ mang tính tham khảo, không thay thế tư vấn của bác sĩ.';
 
 const FILTER_TABS = [
-  { key: 'all', label: '📚 Tất cả' },
-  { key: 'recommended', label: '⭐ Cho bạn' },
-  { key: 'bloodPressure', label: '❤️ Huyết áp' },
-  { key: 'glucose', label: '🩸 Tiểu đường' },
-  { key: 'general', label: '💚 Sinh tồn' },
-  { key: 'general_app', label: '📱 Dùng app' },
-  { key: 'lifestyle', label: '🌟 Lối sống' },
+  { key: 'all', label: 'Tất cả', icon: 'grid-outline', activeIcon: 'grid', color: '#3B82F6' },
+  { key: 'recommended', label: 'Cho bạn', icon: 'star-outline', activeIcon: 'star', color: '#F59E0B' },
+  { key: 'bloodPressure', label: 'Huyết áp', icon: 'heart-outline', activeIcon: 'heart', color: '#EF4444' },
+  { key: 'glucose', label: 'Tiểu đường', icon: 'water-outline', activeIcon: 'water', color: '#8B5CF6' },
+  { key: 'general', label: 'Sinh hiệu', icon: 'pulse-outline', activeIcon: 'pulse', color: '#10B981' },
+  { key: 'general_app', label: 'Dùng app', icon: 'phone-portrait-outline', activeIcon: 'phone-portrait', color: '#6366F1' },
+  { key: 'lifestyle', label: 'Lối sống', icon: 'leaf-outline', activeIcon: 'leaf', color: '#EAB308' },
 ];
 
 // Màu gradient giả bằng lớp view chồng
@@ -49,7 +49,7 @@ function StatsBanner({ total, recommended }) {
       </View>
       <View style={s.statDivider} />
       <View style={s.statItem}>
-        <Text style={s.statNum}>3</Text>
+        <Text style={s.statNum}>5</Text>
         <Text style={s.statLabel}>Câu quiz/bài</Text>
       </View>
       <View style={s.statDivider} />
@@ -141,10 +141,14 @@ function FeaturedCard({ article, onPress }) {
 
 export default function EducationHomeScreen() {
   const navigation = useNavigation();
-  const [showAllArticles, setShowAllArticles] = useState(false);
   const [activeFilter, setActiveFilter] = useState('all');
   const [diseaseTypes, setDiseaseTypes] = useState(null);
   const [searchText, setSearchText] = useState('');
+  const [visibleCount, setVisibleCount] = useState(5);
+
+  useEffect(() => {
+    setVisibleCount(5);
+  }, [activeFilter, searchText]);
 
   useFocusEffect(
     useCallback(() => {
@@ -228,143 +232,105 @@ export default function EducationHomeScreen() {
           <Text style={s.disclaimerText}>{DISCLAIMER}</Text>
         </View>
 
-        {!showAllArticles ? (
-          <>
-            {/* ─── BÀI HỌC HÔM NAY ─── */}
-            <View style={{ paddingHorizontal: 16, marginTop: 20 }}>
-              <Text style={s.sectionLabel}>✨ Bài học hôm nay</Text>
-              {dailyFeatured && (
-                <FeaturedCard
-                  article={dailyFeatured}
-                  onPress={() => navigation.navigate('EducationArticle', { articleId: dailyFeatured.id })}
-                />
-              )}
-            </View>
+        {/* ─── SEARCH ─── */}
+        <View style={[s.searchWrap, { marginTop: 16 }]}>
+          <Ionicons name="search-outline" size={17} color="#9CA3AF" />
+          <TextInput
+            style={s.searchInput}
+            placeholder="Tìm bài học..."
+            placeholderTextColor="#9CA3AF"
+            value={searchText}
+            onChangeText={setSearchText}
+          />
+          {searchText.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchText('')}>
+              <Ionicons name="close-circle" size={17} color="#9CA3AF" />
+            </TouchableOpacity>
+          )}
+        </View>
 
-            {/* ─── DÀNH CHO BẠN ─── */}
-            <View style={{ paddingHorizontal: 16, marginTop: 24 }}>
-              <Text style={s.sectionLabel}>⭐ Dành cho bạn</Text>
-              {recommendedShortList.map((article) => (
+        {/* ─── FILTER CHIPS ─── */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={s.filterRow}
+        >
+          {FILTER_TABS.map((tab) => {
+            const isActive = activeFilter === tab.key;
+            return (
+              <TouchableOpacity
+                key={tab.key}
+                style={[
+                  s.chip,
+                  { borderColor: isActive ? '#2563EB' : tab.color + '40' },
+                  isActive && s.chipActive
+                ]}
+                onPress={() => setActiveFilter(tab.key)}
+              >
+                <Ionicons
+                  name={isActive ? tab.activeIcon : tab.icon}
+                  size={15}
+                  color={isActive ? '#FFFFFF' : tab.color}
+                  style={{ marginRight: 6 }}
+                />
+                <Text style={[
+                  s.chipText,
+                  !isActive && { color: tab.color },
+                  isActive && s.chipTextActive
+                ]}>
+                  {tab.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        {/* ─── BÀI HỌC HÔM NAY ─── */}
+        {activeFilter === 'all' && searchText.trim() === '' && dailyFeatured && (
+          <View style={{ paddingHorizontal: 16, marginTop: 4, marginBottom: 16 }}>
+            <Text style={s.sectionLabel}>✨ Bài học hôm nay</Text>
+            <FeaturedCard
+              article={dailyFeatured}
+              onPress={() => navigation.navigate('EducationArticle', { articleId: dailyFeatured.id })}
+            />
+          </View>
+        )}
+
+        {/* ─── SECTION TITLE & COUNT ─── */}
+        <View style={s.listHeaderRow}>
+          <Text style={s.listSectionTitle}>
+            {FILTER_TABS.find((t) => t.key === activeFilter)?.label || 'Tất cả bài học'}
+          </Text>
+          <Text style={s.countText}>{articles.length} bài học</Text>
+        </View>
+
+        {/* ─── ARTICLE GRID ─── */}
+        <View style={{ paddingHorizontal: 16 }}>
+          {articles.length === 0 ? (
+            <View style={s.emptyBox}>
+              <Text style={{ fontSize: 48 }}>🔍</Text>
+              <Text style={s.emptyText}>Không tìm thấy bài học phù hợp.</Text>
+            </View>
+          ) : (
+            <>
+              {articles.slice(0, visibleCount).map((article) => (
                 <ArticleCard
                   key={article.id}
                   article={article}
                   onPress={() => navigation.navigate('EducationArticle', { articleId: article.id })}
                 />
               ))}
-            </View>
-
-            {/* ─── CHỦ ĐỀ SỨC KHỎE ─── */}
-            <View style={{ marginTop: 24 }}>
-              <Text style={[s.sectionLabel, { paddingHorizontal: 16 }]}>🗂️ Chủ đề sức khỏe</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.catScroll}>
-                {FILTER_TABS.slice(2).map((tab) => {
-                  const catKey = tab.key === 'general_app' ? 'general' : tab.key;
-                  const bg = CATEGORY_COLORS[catKey]?.light || '#F3F4F6';
-                  const textColor = CATEGORY_COLORS[catKey]?.from || '#374151';
-                  return (
-                    <TouchableOpacity
-                      key={tab.key}
-                      style={[s.catCard, { backgroundColor: bg }]}
-                      onPress={() => {
-                        setActiveFilter(tab.key);
-                        setSearchText('');
-                        setShowAllArticles(true);
-                      }}
-                    >
-                      <Text style={[s.catCardText, { color: textColor }]}>{tab.label}</Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-            </View>
-
-            {/* ─── SHOW ALL BUTTON ─── */}
-            <View style={{ paddingHorizontal: 16, marginTop: 28 }}>
-              <TouchableOpacity
-                style={s.showAllBtn}
-                onPress={() => {
-                  setActiveFilter('all');
-                  setSearchText('');
-                  setShowAllArticles(true);
-                }}
-              >
-                <Text style={s.showAllBtnText}>Khám phá tất cả {educationArticles.length} bài học →</Text>
-              </TouchableOpacity>
-            </View>
-          </>
-        ) : (
-          <>
-            {/* ─── EXPLORE MODE ─── */}
-
-            {/* ─── SEARCH ─── */}
-            <View style={[s.searchWrap, { marginTop: 0 }]}>
-              <Ionicons name="search-outline" size={17} color="#9CA3AF" />
-              <TextInput
-                style={s.searchInput}
-                placeholder="Tìm bài học..."
-                placeholderTextColor="#9CA3AF"
-                value={searchText}
-                onChangeText={setSearchText}
-              />
-              {searchText.length > 0 && (
-                <TouchableOpacity onPress={() => setSearchText('')}>
-                  <Ionicons name="close-circle" size={17} color="#9CA3AF" />
-                </TouchableOpacity>
-              )}
-            </View>
-
-            {/* ─── FILTER CHIPS ─── */}
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={s.filterRow}
-            >
-              <TouchableOpacity
-                style={s.chip}
-                onPress={() => setShowAllArticles(false)}
-              >
-                <Text style={s.chipText}>🏠 Trang chủ</Text>
-              </TouchableOpacity>
-              {FILTER_TABS.map((tab) => (
+              {articles.length > visibleCount && (
                 <TouchableOpacity
-                  key={tab.key}
-                  style={[s.chip, activeFilter === tab.key && s.chipActive]}
-                  onPress={() => setActiveFilter(tab.key)}
+                  style={[s.showAllBtn, { marginTop: 8, marginBottom: 20 }]}
+                  onPress={() => setVisibleCount((prev) => prev + 5)}
                 >
-                  <Text style={[s.chipText, activeFilter === tab.key && s.chipTextActive]}>
-                    {tab.label}
-                  </Text>
+                  <Text style={s.showAllBtnText}>Xem thêm ({articles.length - visibleCount} bài nữa) ⬇️</Text>
                 </TouchableOpacity>
-              ))}
-            </ScrollView>
-
-            {/* ─── SECTION TITLE & COUNT ─── */}
-            <View style={s.listHeaderRow}>
-              <Text style={s.listSectionTitle}>
-                {FILTER_TABS.find((t) => t.key === activeFilter)?.label.replace(/[^\p{L}\s]/gu, '').trim() || 'Tất cả bài học'}
-              </Text>
-              <Text style={s.countText}>{articles.length} bài học</Text>
-            </View>
-
-            {/* ─── ARTICLE GRID ─── */}
-            <View style={{ paddingHorizontal: 16 }}>
-              {articles.length === 0 ? (
-                <View style={s.emptyBox}>
-                  <Text style={{ fontSize: 48 }}>🔍</Text>
-                  <Text style={s.emptyText}>Không tìm thấy bài học phù hợp.</Text>
-                </View>
-              ) : (
-                articles.map((article) => (
-                  <ArticleCard
-                    key={article.id}
-                    article={article}
-                    onPress={() => navigation.navigate('EducationArticle', { articleId: article.id })}
-                  />
-                ))
               )}
-            </View>
-          </>
-        )}
+            </>
+          )}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -491,6 +457,8 @@ const s = StyleSheet.create({
     gap: 8,
   },
   chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 999,

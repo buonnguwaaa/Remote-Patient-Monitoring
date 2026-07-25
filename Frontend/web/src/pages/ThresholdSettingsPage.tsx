@@ -266,10 +266,10 @@ export default function ThresholdSettingsPage() {
     setIsFormVisible(true);
   };
 
-  const handleCloneArchived = (threshold: ThresholdRecord) => {
-    handleEditActiveThreshold(threshold);
-    setEditingPatientId(null); // Clone implies creating a new one without explicitly closing an "active" one
-  };
+  // const handleCloneArchived = (threshold: ThresholdRecord) => {
+  //   handleEditActiveThreshold(threshold);
+  //   setEditingPatientId(null);
+  // };
 
   const handleChange = (
     e: ChangeEvent<HTMLInputElement | HTMLSelectElement>,
@@ -562,14 +562,6 @@ export default function ThresholdSettingsPage() {
                 </span>
               )}
             </div>
-          </div>
-          <div className="flex items-center">
-            <button
-              onClick={() => handleCloneArchived(threshold)}
-              className="px-4 py-1.5 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 rounded-lg text-sm transition flex items-center"
-            >
-              <FaPlus className="mr-1.5 h-3 w-3" /> Sao chép tạo mới
-            </button>
           </div>
         </div>
       </div>

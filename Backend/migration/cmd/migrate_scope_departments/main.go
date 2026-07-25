@@ -22,12 +22,13 @@ import (
 // Narrows existing MongoDB data to hypertension / diabetes departments only:
 //   - Khoa Tim mạch
 //   - Khoa Nội Tổng quát  (renames "Khoa Nội Tổng hợp" if present)
-//   - Khoa Thận - Tiết niệu
 //   - Khoa Nội tiết
 //
 // Reassigns doctors/nurses off deleted departments, aligns doctor
 // specialization with the assigned department, then deletes other departments.
 // Does NOT drop the database.
+//
+// Note: "Khoa Thận - Tiết niệu" is out of scope — use migrate_remove_nephrology.
 //
 // Usage (from Backend/):
 //
@@ -138,11 +139,10 @@ func run(ctx context.Context, db *mongo.Database, dryRun bool) error {
 	}
 
 	specToDept := map[string]string{
-		"Tim mạch":         "Khoa Tim mạch",
-		"Nội Tổng quát":    "Khoa Nội Tổng quát",
-		"Nội Tổng hợp":     "Khoa Nội Tổng quát",
-		"Thận - Tiết niệu": "Khoa Thận - Tiết niệu",
-		"Nội tiết":         "Khoa Nội tiết",
+		"Tim mạch":      "Khoa Tim mạch",
+		"Nội Tổng quát": "Khoa Nội Tổng quát",
+		"Nội Tổng hợp":  "Khoa Nội Tổng quát",
+		"Nội tiết":      "Khoa Nội tiết",
 	}
 
 	staffCur, err := usersCol.Find(ctx, bson.M{

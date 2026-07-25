@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { FaBuilding, FaPlus, FaSearch, FaUserMd, FaUserNurse, FaArrowLeft, FaEdit, FaTrash } from "react-icons/fa";
+import { FaBuilding, FaPlus, FaSearch, FaUserMd, FaArrowLeft, FaEdit, FaTrash } from "react-icons/fa";
 import { useTranslation } from "react-i18next";
 import api from "../services/api";
-import type { Department } from "../types";
+import type { Department, doctor, Nurse } from "../types";
+import { DoctorFormWizard } from "../components/users/DoctorFormWizard";
+import NurseFormWizard from "../components/users/NurseFormWizard";
 import { adminPrimaryButtonClass, adminSecondaryButtonClass } from "../styles/buttonStyles";
 import { useToast } from "../hooks/useToast";
 import Toast from "../components/ui/Toast";
@@ -12,7 +14,8 @@ interface Member {
     name: string;
     email: string;
     role: string;
-    avatar: string;
+    avatarUrl?: string;
+    avatar?: string;
     createdAt: string;
 }
 
@@ -54,6 +57,15 @@ function resolveDepartmentNameById(departments: Department[], departmentId: unkn
     return matchedDepartment?.name || "";
 }
 
+const getDepartmentImage = (name: string) => {
+    const n = name.toLowerCase();
+    if (n.includes("tim mạch")) return "/images/departments/cardiology.png";
+    if (n.includes("nội tiết")) return "/images/departments/endocrinology.png";
+    if (n.includes("thận") || n.includes("tiết niệu")) return "/images/departments/nephrology.png";
+    // Default medical/hospital image for others (General Medicine, etc)
+    return "/images/departments/general.png";
+};
+
 const DepartmentManagement: React.FC = () => {
     const { t } = useTranslation();
     const { toast, showToast, hideToast } = useToast();
@@ -69,6 +81,11 @@ const DepartmentManagement: React.FC = () => {
     const [loadingMembers, setLoadingMembers] = useState(false);
     const [showAddMemberModal, setShowAddMemberModal] = useState(false);
     const [candidates, setCandidates] = useState<CandidateMember[]>([]);
+
+    const [viewingDoctor, setViewingDoctor] = useState<doctor | null>(null);
+    const [showDoctorWizard, setShowDoctorWizard] = useState(false);
+    const [viewingNurse, setViewingNurse] = useState<Nurse | null>(null);
+    const [showNurseWizard, setShowNurseWizard] = useState(false);
 
     useEffect(() => {
         fetchDepartments();
@@ -95,6 +112,63 @@ const DepartmentManagement: React.FC = () => {
             console.error("Failed to fetch members", error);
         } finally {
             setLoadingMembers(false);
+        }
+    };
+
+    const handleMemberClick = async (member: Member) => {
+        try {
+            if (member.role.includes('doctor')) {
+                const res = await api.get(`/users/doctors/${member.id}`);
+                const u = res.data.data;
+                const doc: doctor = {
+                    id: u.id,
+                    name: u.name,
+                    displayName: u.displayName || u.name,
+                    academicDegree: u.academicDegree,
+                    academicDegreeLabel: u.academicDegreeLabel,
+                    professionalQualification: u.professionalQualification,
+                    professionalQualificationLabel: u.professionalQualificationLabel,
+                    academicTitle: u.academicTitle,
+                    academicTitleLabel: u.academicTitleLabel,
+                    email: u.email,
+                    gender: u.gender === "M" ? "Nam" : u.gender === "F" ? "Nữ" : "Khác",
+                    dateOfBirth: u.dob,
+                    phone: u.phone || "",
+                    specialization: u.specialization || "",
+                    licenseNumber: u.licenseNumber || "",
+                    departmentId: u.departmentId,
+                    department: resolveDepartmentNameById(departments, u.departmentId),
+                    workplace: u.workplace || "",
+                    yearsOfExperience: u.yearsOfExperience || 0,
+                    status: u.status === "inactive" ? "inactive" : "active",
+                    profileImageUrl: u.avatarUrl || "/avartar.jpg",
+                };
+                setViewingDoctor(doc);
+                setShowDoctorWizard(true);
+            } else {
+                const res = await api.get(`/users/nurses/${member.id}`);
+                const u = res.data.data;
+                const n: Nurse = {
+                    id: u.id,
+                    name: u.name,
+                    email: u.email,
+                    gender: u.gender === "M" ? "Nam" : u.gender === "F" ? "Nữ" : "Khác",
+                    dateOfBirth: u.dob,
+                    phone: u.phone || "",
+                    departmentId: u.departmentId,
+                    department: resolveDepartmentNameById(departments, u.departmentId),
+                    workplace: u.workplace || "",
+                    yearsOfExperience: u.yearsOfExperience || 0,
+                    licenseNumber: u.licenseNumber || "",
+                    status: u.status === "inactive" ? "inactive" : "active",
+                    profileImageUrl: u.avatarUrl || "/avartar.jpg",
+                };
+                setViewingNurse(n);
+                setShowNurseWizard(true);
+            }
+        } catch (err) {
+            console.error("Failed to load user details", err);
+            showToast(t("system.error") || "Không thể tải thông tin chi tiết", "error");
         }
     };
 
@@ -265,10 +339,18 @@ const DepartmentManagement: React.FC = () => {
                     ) : (
                         <div className="divide-y divide-gray-100 dark:divide-gray-700">
                             {deptMembers.map(member => (
-                                <div key={member.id} className="flex items-center justify-between p-4 transition hover:bg-gray-50 dark:hover:bg-slate-800/80">
+                                <div 
+                                    key={member.id} 
+                                    onClick={() => handleMemberClick(member)}
+                                    className="flex items-center justify-between p-4 transition hover:bg-gray-50 dark:hover:bg-slate-800/80 cursor-pointer"
+                                >
                                     <div className="flex items-center">
-                                        <div className={`mr-4 flex h-10 w-10 items-center justify-center rounded-full ${member.role.includes('doctor') ? 'bg-slate-100 text-slate-700 dark:bg-blue-950/50 dark:text-blue-300' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200'}`}>
-                                            {member.role.includes('doctor') ? <FaUserMd /> : <FaUserNurse />}
+                                        <div className={`mr-4 flex h-10 w-10 overflow-hidden items-center justify-center rounded-full ${member.role.includes('doctor') ? 'bg-slate-100 text-slate-700 dark:bg-blue-950/50 dark:text-blue-300' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200'}`}>
+                                            {member.avatarUrl || member.avatar ? (
+                                                <img src={member.avatarUrl || member.avatar} alt={member.name} className="h-full w-full object-cover" />
+                                            ) : (
+                                                <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(member.name)}&background=random`} alt={member.name} className="h-full w-full object-cover" />
+                                            )}
                                         </div>
                                         <div>
                                             <p className="font-semibold text-gray-800 dark:text-gray-100">{member.name}</p>
@@ -323,93 +405,132 @@ const DepartmentManagement: React.FC = () => {
                         </div>
                     </div>
                 )}
+
+                {showDoctorWizard && viewingDoctor && (
+                    <DoctorFormWizard
+                        isOpen={showDoctorWizard}
+                        onClose={() => setShowDoctorWizard(false)}
+                        editingDoctor={viewingDoctor}
+                        modalMode="view"
+                        departments={departments}
+                        onSuccess={() => {}}
+                        showToast={showToast}
+                    />
+                )}
+                {showNurseWizard && viewingNurse && (
+                    <NurseFormWizard
+                        isOpen={showNurseWizard}
+                        onClose={() => setShowNurseWizard(false)}
+                        editingNurse={viewingNurse}
+                        modalMode="view"
+                        departments={departments}
+                        onSuccess={() => {}}
+                        showToast={showToast}
+                    />
+                )}
             </div>
         );
     }
 
     return (
-            <div className="p-4 md:p-6">
+        <div className="p-4 md:p-8 space-y-8 bg-slate-50/50 dark:bg-slate-900 min-h-screen">
             <Toast toast={toast} onClose={hideToast} />
-            <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            
+            {/* Header & Toolbar */}
+            <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
                 <div>
-                    <h1 className="flex items-center text-2xl font-bold leading-tight text-gray-800 dark:text-white md:text-3xl">
-                        <FaBuilding className="mr-3 text-slate-700 dark:text-blue-400" />
+                    <h1 className="flex items-center text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+                        <FaBuilding className="mr-3 text-blue-500" />
                         {t("departmentManagement.title")}
                     </h1>
-                    <p className="text-gray-600 dark:text-gray-400 mt-2">
+                    <p className="mt-2 text-slate-500 dark:text-slate-400 font-medium">
                         {t("departmentManagement.totalCount", { count: departments.length })}
                     </p>
                 </div>
-                <button
-                    onClick={() => setShowCreateModal(true)}
-                    className={`${adminPrimaryButtonClass} w-full md:w-auto`}
-                >
-                    <FaPlus className="mr-2" />
-                    {t("departmentManagement.addDepartment")}
-                </button>
-            </div>
-
-            <div className="mb-6 rounded-lg bg-white p-3  dark:bg-slate-900 dark:ring-1 dark:ring-slate-800 md:p-4">
-                <div className="relative">
-                    <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                    <input
-                        type="text"
-                        placeholder={t("departmentManagement.searchPlaceholder")}
-                        className="w-full rounded-lg border border-gray-300 py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder-gray-500 dark:focus:ring-slate-700"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
+                
+                <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
+                    {/* Pill Search Bar */}
+                    <div className="relative w-full sm:w-72">
+                        <FaSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400" />
+                        <input
+                            type="text"
+                            placeholder={t("departmentManagement.searchPlaceholder")}
+                            className="w-full rounded-full border-none bg-white py-2.5 pl-11 pr-4 shadow-sm ring-1 ring-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:ring-slate-700 dark:text-white dark:placeholder-slate-500 transition-shadow hover:shadow-md"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                    
+                    <button
+                        onClick={() => setShowCreateModal(true)}
+                        className={`${adminPrimaryButtonClass} w-full sm:w-auto`}
+                    >
+                        <FaPlus className="mr-2" />
+                        {t("departmentManagement.addDepartment")}
+                    </button>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 lg:grid-cols-3">
+            {/* Department Cards Grid */}
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {filtered.map((dept) => (
                     <div
                         key={dept.id}
-                        className="group overflow-hidden rounded-xl border border-gray-100 bg-white shadow-md transition duration-300 hover:shadow-lg dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700"
+                        className="group relative flex flex-col overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200 transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl dark:bg-slate-800 dark:ring-slate-700"
                     >
-                        <div className="p-4 md:p-6">
-                            <div className="flex justify-between items-start mb-4">
-                                <div className="flex-1 cursor-pointer" onClick={() => handleViewDept(dept)}>
-                                    <h3 className="mb-2 text-lg font-bold text-gray-800 transition group-hover:text-slate-900 dark:text-white dark:group-hover:text-blue-300 md:text-xl">
-                                        {dept.name}
-                                    </h3>
-                                    <p className="text-gray-500 dark:text-gray-400 text-sm line-clamp-2">
-                                        {dept.description || t("departmentManagement.noDescription")}
-                                    </p>
-                                </div>
-                                <div className="flex gap-2 ml-2">
-                                    <button
-                                        onClick={(e) => handleEditClick(e, dept)}
-                                        className="p-2 rounded-lg text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20 transition"
-                                        title={t("common.edit")}
-                                    >
-                                        <FaEdit />
-                                    </button>
-                                    <button
-                                        onClick={(e) => handleDeleteClick(e, dept)}
-                                        className="p-2 rounded-lg text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20 transition"
-                                        title={t("common.delete")}
-                                    >
-                                        <FaTrash />
-                                    </button>
-                                </div>
+                        {/* Cover Image */}
+                        <div 
+                            className="h-40 w-full overflow-hidden bg-slate-100 cursor-pointer relative"
+                            onClick={() => handleViewDept(dept)}
+                        >
+                            <img 
+                                src={getDepartmentImage(dept.name)} 
+                                alt={dept.name} 
+                                className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                            />
+                            {/* Overlay Gradient for contrast */}
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-black/20"></div>
+                            
+                            {/* Actions (Edit/Delete) - appear on hover */}
+                            <div className="absolute right-3 top-3 flex gap-2 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                                <button
+                                    onClick={(e) => handleEditClick(e, dept)}
+                                    className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 backdrop-blur-md text-white hover:bg-white/40 transition-colors"
+                                    title={t("common.edit")}
+                                >
+                                    <FaEdit size={14} />
+                                </button>
+                                <button
+                                    onClick={(e) => handleDeleteClick(e, dept)}
+                                    className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 backdrop-blur-md text-red-200 hover:bg-red-500/80 hover:text-white transition-colors"
+                                    title={t("common.delete")}
+                                >
+                                    <FaTrash size={14} />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex flex-1 flex-col justify-between p-6 cursor-pointer" onClick={() => handleViewDept(dept)}>
+                            <div>
+                                <h3 className="mb-2 text-xl font-bold text-slate-900 dark:text-white line-clamp-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                                    {dept.name}
+                                </h3>
+                                <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2">
+                                    {dept.description || t("departmentManagement.noDescription")}
+                                </p>
                             </div>
 
-                            <div 
-                                className="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-700 cursor-pointer"
-                                onClick={() => handleViewDept(dept)}
-                            >
-                                <div className="flex flex-col">
-                                    <span className="text-xs text-gray-500 dark:text-gray-400 uppercase font-semibold">
-                                        {t("sidebar.assignments")}
-                                    </span>
-                                    <span className="text-lg font-bold text-gray-700 dark:text-gray-200">
-                                        {dept.memberCount}
-                                    </span>
+                            {/* Assignments Badge */}
+                            <div className="mt-6 flex items-center justify-between border-t border-slate-100 dark:border-slate-700/60 pt-4">
+                                <div className="flex items-center text-sm font-semibold text-slate-700 dark:text-slate-300">
+                                    <div className="mr-2 flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
+                                        <FaUserMd size={14} />
+                                    </div>
+                                    <span>{dept.memberCount} Nhân sự</span>
                                 </div>
-                                <span className="mb-0 flex self-end pb-0 text-sm text-slate-500 opacity-0 transition group-hover:opacity-100 dark:text-blue-300">
-                                    {t("common.viewAll")} &rarr;
+                                <span className="text-sm font-medium text-blue-600 opacity-0 transition-opacity group-hover:opacity-100 dark:text-blue-400">
+                                    Chi tiết &rarr;
                                 </span>
                             </div>
                         </div>
@@ -417,14 +538,19 @@ const DepartmentManagement: React.FC = () => {
                 ))}
 
                 {loading && (
-                    <div className="col-span-full text-center py-10 text-gray-500">
-                        {t("common.loading")}
+                    <div className="col-span-full py-20 text-center">
+                        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-slate-300 border-t-blue-600"></div>
+                        <p className="mt-4 text-slate-500 font-medium">{t("common.loading")}</p>
                     </div>
                 )}
 
                 {!loading && filtered.length === 0 && (
-                    <div className="col-span-full rounded-lg border border-dashed border-slate-300 bg-slate-50 py-10 text-center text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
-                        {t("departmentManagement.notFound")}
+                    <div className="col-span-full flex flex-col items-center justify-center rounded-3xl border border-dashed border-slate-300 bg-white/50 py-24 text-center dark:border-slate-700 dark:bg-slate-800/50">
+                        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
+                            <FaSearch className="h-6 w-6 text-slate-400" />
+                        </div>
+                        <p className="text-lg font-semibold text-slate-900 dark:text-white">Không tìm thấy khoa nào</p>
+                        <p className="text-slate-500 dark:text-slate-400 mt-1">{t("departmentManagement.notFound")}</p>
                     </div>
                 )}
             </div>

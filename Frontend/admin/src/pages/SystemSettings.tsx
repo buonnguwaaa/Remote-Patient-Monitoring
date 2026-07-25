@@ -26,7 +26,7 @@ interface SettingsFormState {
 const sectionClass =
   "rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm shadow-slate-200/40 dark:border-slate-700 dark:bg-slate-900 dark:shadow-none";
 const inputClass =
-  "w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-indigo-500 dark:focus:ring-indigo-500/20 dark:disabled:bg-slate-800 dark:disabled:text-slate-400";
+  "w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-blue-500 dark:focus:ring-blue-500/20 dark:disabled:bg-slate-800 dark:disabled:text-slate-400";
 const labelClass = "mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200";
 const rowClass =
   "flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 dark:border-slate-700 dark:bg-slate-800/70";
@@ -95,10 +95,10 @@ const SystemSettings: React.FC = () => {
     <>
       <Toast toast={toast} onClose={hideToast} />
 
-      <div className="mx-auto max-w-6xl space-y-6 p-6">
+      <div className="w-full space-y-6 p-4 md:p-6">
         <div className="flex flex-col gap-4 rounded-3xl border border-slate-200/80 bg-gradient-to-br from-white via-slate-50 to-slate-100 p-6 shadow-sm shadow-slate-200/50 dark:border-slate-700 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 dark:shadow-none lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-3">
-            <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-lg shadow-slate-300/40 dark:bg-indigo-500 dark:shadow-indigo-500/20">
+            <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-lg shadow-slate-300/40 dark:bg-blue-500 dark:shadow-blue-500/20">
               <MdAdminPanelSettings className="text-2xl" />
             </div>
             <div>
@@ -184,7 +184,7 @@ const SystemSettings: React.FC = () => {
                   onChange={(event) => updateDraft("emailNotifications", event.target.checked)}
                   disabled={!isEditing}
                 />
-                <div className="h-6 w-11 rounded-full bg-slate-300 transition peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-100 peer-checked:bg-slate-900 peer-checked:after:translate-x-full peer-checked:after:border-white peer-disabled:opacity-60 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-slate-200 after:bg-white after:transition-all after:content-[''] dark:bg-slate-600 dark:peer-focus:ring-indigo-500/20 dark:peer-checked:bg-indigo-500" />
+                <div className="h-6 w-11 rounded-full bg-slate-300 transition peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-100 peer-checked:bg-slate-900 peer-checked:after:translate-x-full peer-checked:after:border-white peer-disabled:opacity-60 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-slate-200 after:bg-white after:transition-all after:content-[''] dark:bg-slate-600 dark:peer-focus:ring-blue-500/20 dark:peer-checked:bg-blue-500" />
               </label>
             </div>
           </section>
@@ -201,7 +201,7 @@ const SystemSettings: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="inline-flex items-center rounded-xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 dark:bg-indigo-500 dark:hover:bg-indigo-400"
+                  className="inline-flex items-center rounded-xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 dark:bg-blue-500 dark:hover:bg-blue-400"
                 >
                   <FaSave className="mr-2" />
                   {t("systemSettings.saveSettings")}
@@ -211,7 +211,7 @@ const SystemSettings: React.FC = () => {
               <button
                 type="button"
                 onClick={startEditing}
-                className="inline-flex items-center rounded-xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 dark:bg-indigo-500 dark:hover:bg-indigo-400"
+                className="inline-flex items-center rounded-xl bg-slate-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 dark:bg-blue-500 dark:hover:bg-blue-400"
               >
                 <MdAdminPanelSettings className="mr-2 text-lg" />
                 {t("systemSettings.editSystem")}

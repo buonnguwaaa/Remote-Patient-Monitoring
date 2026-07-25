@@ -8,7 +8,8 @@ import React, {
 } from "react";
 import { AppState } from "react-native";
 
-import { getUnreadNotificationCount } from "../api/notificationsApi";
+import { getMyNotifications } from "../api/notificationsApi";
+import { getMyAlerts } from "../api/alertApi";
 import { getConversations } from "../api/chatApi";
 import { subscribeNotificationEvents } from "../services/notificationEvents";
 import { useAuth } from "../hooks/useAuth";
@@ -30,13 +31,30 @@ export function BadgeProvider({ children }) {
   const fetchNotifCount = useCallback(async () => {
     if (!user) return;
     try {
-      const response = await getUnreadNotificationCount();
-      if (response?.ok) {
-        const count = Number(
-          response.body?.data?.count ?? response.body?.count ?? 0
-        );
-        setUnreadNotifCount(count);
+      const [alertsRes, notifsRes] = await Promise.all([
+        getMyAlerts(),
+        getMyNotifications(),
+      ]);
+
+      let openAlertsCount = 0;
+      if (alertsRes?.ok) {
+        const alertList = alertsRes.body?.data || alertsRes.body || [];
+        if (Array.isArray(alertList)) {
+          openAlertsCount = alertList.filter((a) => a.status === "open").length;
+        }
       }
+
+      let unreadRemindersCount = 0;
+      if (notifsRes?.ok) {
+        const notifList = notifsRes.body?.data || notifsRes.body || [];
+        if (Array.isArray(notifList)) {
+          unreadRemindersCount = notifList.filter(
+            (n) => n.type !== "alert" && !n.isRead && n.readAt == null
+          ).length;
+        }
+      }
+
+      setUnreadNotifCount(openAlertsCount + unreadRemindersCount);
     } catch {
       // Silent fail for badge polling
     }
@@ -57,7 +75,11 @@ export function BadgeProvider({ children }) {
         conversations.forEach((conv) => {
           const latestMsgId = conv.latestMessageId
             ? String(conv.latestMessageId)
-            : null;
+            : conv.lastMessage?.id
+              ? String(conv.lastMessage.id)
+              : conv.lastMessage?._id
+                ? String(conv.lastMessage._id)
+                : null;
 
           // No messages in conversation at all
           if (!latestMsgId) return;
@@ -78,7 +100,7 @@ export function BadgeProvider({ children }) {
           const lastMessageSenderId = conv.lastMessage?.senderId
             ? String(conv.lastMessage.senderId)
             : null;
-          if (lastMessageSenderId === currentUserId) return;
+          if (lastMessageSenderId && lastMessageSenderId === currentUserId) return;
 
           // Unread if latestMessageId is different from what I last read
           if (latestMsgId !== myLastRead) {
@@ -106,7 +128,7 @@ export function BadgeProvider({ children }) {
     setUnreadNotifCount(0);
   }, []);
 
-  // Initial fetch + polling every 30s
+  // Initial fetch + polling every 10s
   useEffect(() => {
     if (!user) {
       setUnreadNotifCount(0);
@@ -118,7 +140,7 @@ export function BadgeProvider({ children }) {
 
     pollingRef.current = setInterval(() => {
       refreshBadges();
-    }, 30000);
+    }, 10000);
 
     return () => {
       if (pollingRef.current) {
@@ -140,9 +162,9 @@ export function BadgeProvider({ children }) {
   // Refresh on push notification events
   useEffect(() => {
     return subscribeNotificationEvents(() => {
-      void fetchNotifCount();
+      refreshBadges();
     });
-  }, [fetchNotifCount]);
+  }, [refreshBadges]);
 
   return (
     <BadgeContext.Provider

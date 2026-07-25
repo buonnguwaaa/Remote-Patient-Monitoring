@@ -11,6 +11,7 @@ import (
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/config"
 	userDomain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/util"
+	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/migration/seed"
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -132,10 +133,7 @@ func run(ctx context.Context, db *mongo.Database, dryRun bool) error {
 		useBP := i%2 == 0 // alternate; start with THA (underrepresented)
 		bp, glu := useBP, !useBP
 		preferred := preferredSpecialty(bp, glu)
-		historyPlain := "Tăng huyết áp"
-		if glu {
-			historyPlain = "Đái tháo đường type 2"
-		}
+		historyPlain := seed.PatientMedicalHistoryForKey(p.ID.Hex(), bp, glu)
 		historyEnc, err := crypto.Encrypt(historyPlain)
 		if err != nil {
 			return fmt.Errorf("encrypt medicalHistory for %s: %w", p.Email, err)
@@ -246,7 +244,7 @@ func preferredSpecialty(bp, glucose bool) string {
 }
 
 func pickDoctor(keepers []staffUser, preferred string, rr map[string]int) (staffUser, error) {
-	ordered := []string{preferred, "Nội Tổng quát", "Tim mạch", "Nội tiết", "Thận - Tiết niệu"}
+	ordered := []string{preferred, "Nội Tổng quát", "Tim mạch", "Nội tiết"}
 	seen := map[string]bool{}
 	for _, spec := range ordered {
 		if seen[spec] {
