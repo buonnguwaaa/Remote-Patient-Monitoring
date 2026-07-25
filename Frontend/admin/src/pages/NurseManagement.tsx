@@ -141,7 +141,7 @@ const NurseManagement: React.FC = () => {
       <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="flex items-center text-2xl font-bold text-gray-800 dark:text-white md:text-3xl">
-            <FaUserNurse className="mr-3 text-purple-600" />
+            <FaUserNurse className="mr-3 text-blue-600" />
             {t("nurseManagement.title")}
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-2">
@@ -162,7 +162,7 @@ const NurseManagement: React.FC = () => {
             placeholder={t("nurseManagement.searchPlaceholder")}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full rounded-xl border border-gray-300 py-2.5 pl-10 pr-4 text-gray-900 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+            className="w-full rounded-xl border border-gray-300 py-2.5 pl-10 pr-4 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
           />
         </div>
       </div>

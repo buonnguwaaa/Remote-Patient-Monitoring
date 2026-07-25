@@ -152,7 +152,7 @@ const AdminDashboard: React.FC = () => {
       case "create": return "bg-blue-500/10 text-blue-700 dark:text-blue-400";
       case "update": return "bg-amber-500/10 text-amber-700 dark:text-amber-400";
       case "delete": return "bg-rose-500/10 text-rose-700 dark:text-rose-400";
-      case "system": return "bg-indigo-500/10 text-indigo-700 dark:text-indigo-400";
+      case "system": return "bg-blue-500/10 text-blue-700 dark:text-blue-400";
       default: return "bg-slate-500/10 text-slate-700 dark:text-slate-400";
     }
   };
@@ -215,13 +215,13 @@ const AdminDashboard: React.FC = () => {
           </div>
           <div className="space-y-2">
             <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
-              <div style={{ width: `${(counts.doctors / (totalUsers || 1)) * 100}%` }} className="bg-indigo-500"></div>
-              <div style={{ width: `${(counts.nurses / (totalUsers || 1)) * 100}%` }} className="bg-purple-500"></div>
+              <div style={{ width: `${(counts.doctors / (totalUsers || 1)) * 100}%` }} className="bg-blue-600"></div>
+              <div style={{ width: `${(counts.nurses / (totalUsers || 1)) * 100}%` }} className="bg-sky-500"></div>
               <div style={{ width: `${(counts.patients / (totalUsers || 1)) * 100}%` }} className="bg-emerald-500"></div>
             </div>
             <div className="flex flex-wrap items-center gap-4 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-              <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-indigo-500"></span>BS: {counts.doctors}</div>
-              <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-purple-500"></span>YT: {counts.nurses}</div>
+              <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-blue-600"></span>BS: {counts.doctors}</div>
+              <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-sky-500"></span>YT: {counts.nurses}</div>
               <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500"></span>BN: {counts.patients}</div>
             </div>
           </div>
@@ -280,7 +280,7 @@ const AdminDashboard: React.FC = () => {
         <div className="lg:col-span-2 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/60 overflow-hidden flex flex-col shadow-sm">
           <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-700/60 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/80">
             <h2 className="text-base font-bold text-slate-900 dark:text-white">Nhật Ký Hoạt Động</h2>
-            <Link to="/activity-history" className="text-sm font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 transition-colors">
+            <Link to="/activity-history" className="text-sm font-bold text-blue-600 dark:text-blue-400 hover:text-blue-800 transition-colors">
               Xem toàn bộ &rarr;
             </Link>
           </div>
@@ -331,7 +331,7 @@ const AdminDashboard: React.FC = () => {
               <h2 className="text-base font-bold text-slate-900 dark:text-white mb-1">Khối lượng tiếp nhận của bác sĩ</h2>
               <p className="text-sm text-slate-500 dark:text-slate-400">Top bác sĩ tiếp nhận nhiều bệnh nhân nhất</p>
             </div>
-            <Link to="/assignments" className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 transition-colors">
+            <Link to="/assignments" className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-800 transition-colors">
               Phân công &rarr;
             </Link>
           </div>
@@ -354,13 +354,13 @@ const AdminDashboard: React.FC = () => {
                   <div key={doc.id} className="group cursor-pointer" onClick={() => window.location.href = `/assignments?doctorId=${doc.id}`}>
                     <div className="flex justify-between items-end mb-2">
                       <div className="flex flex-col pr-4 overflow-hidden">
-                        <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                        <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                           {doc.name}
                         </span>
                         <span className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold truncate">{doc.department}</span>
                       </div>
                       <div className="flex flex-col items-end shrink-0">
-                        <span className="text-sm font-black text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                        <span className="text-sm font-black text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                           {doc.patientCount} <span className="text-xs font-medium text-slate-400">bệnh nhân</span>
                         </span>
                       </div>
@@ -368,7 +368,7 @@ const AdminDashboard: React.FC = () => {
                     <div className="flex items-center">
                       <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-700/50 rounded-full overflow-hidden">
                         <div 
-                          className={`h-full rounded-full transition-all duration-500 group-hover:opacity-80 ${percentage >= 80 ? 'bg-rose-500' : percentage >= 50 ? 'bg-amber-500' : 'bg-blue-600 dark:bg-indigo-500'}`} 
+                          className={`h-full rounded-full transition-all duration-500 group-hover:opacity-80 ${percentage >= 80 ? 'bg-rose-500' : percentage >= 50 ? 'bg-amber-500' : 'bg-blue-600 dark:bg-blue-600'}`} 
                           style={{ width: `${percentage}%` }}
                         ></div>
                       </div>

@@ -255,14 +255,14 @@ const ActivityHistory: React.FC = () => {
       <Toast toast={toast} onClose={hideToast} />
 
       <div className="mb-4">
-        <Link to="/" className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 transition-colors">
+        <Link to="/" className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400 transition-colors">
           &larr; Quay lại Bảng điều khiển
         </Link>
       </div>
 
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-800 dark:text-white flex items-center">
-          <FaHistory className="mr-3 text-indigo-600" />
+          <FaHistory className="mr-3 text-blue-600" />
           {t("activityHistory.title")}
         </h1>
         <p className="text-gray-600 dark:text-gray-400 mt-2">
@@ -284,7 +284,7 @@ const ActivityHistory: React.FC = () => {
                 onClick={() => setDateMode("all")}
                 className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all ${
                   dateMode === "all"
-                    ? "bg-white dark:bg-gray-600 text-indigo-600 dark:text-white shadow-sm"
+                    ? "bg-white dark:bg-gray-600 text-blue-600 dark:text-white shadow-sm"
                     : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
                 }`}
               >
@@ -295,7 +295,7 @@ const ActivityHistory: React.FC = () => {
                 onClick={() => setDateMode("range")}
                 className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all ${
                   dateMode === "range"
-                    ? "bg-white dark:bg-gray-600 text-indigo-600 dark:text-white shadow-sm"
+                    ? "bg-white dark:bg-gray-600 text-blue-600 dark:text-white shadow-sm"
                     : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
                 }`}
               >
@@ -306,7 +306,7 @@ const ActivityHistory: React.FC = () => {
                 onClick={() => setDateMode("single")}
                 className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all ${
                   dateMode === "single"
-                    ? "bg-white dark:bg-gray-600 text-indigo-600 dark:text-white shadow-sm"
+                    ? "bg-white dark:bg-gray-600 text-blue-600 dark:text-white shadow-sm"
                     : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
                 }`}
               >
@@ -331,7 +331,7 @@ const ActivityHistory: React.FC = () => {
                   </label>
                   <input
                     type="date"
-                    className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                    className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
                   />
@@ -347,7 +347,7 @@ const ActivityHistory: React.FC = () => {
                           setStartDate("");
                           setEndDate("");
                         }}
-                        className="text-[10px] text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium"
+                        className="text-[10px] text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
                       >
                         {t("common.clearFilter")}
                       </button>
@@ -355,7 +355,7 @@ const ActivityHistory: React.FC = () => {
                   </div>
                   <input
                     type="date"
-                    className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                    className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
                   />
@@ -372,7 +372,7 @@ const ActivityHistory: React.FC = () => {
                   {singleDate && (
                     <button
                       onClick={() => setSingleDate("")}
-                      className="text-[10px] text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium"
+                      className="text-[10px] text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
                     >
                       {t("common.clearFilter")}
                     </button>
@@ -380,7 +380,7 @@ const ActivityHistory: React.FC = () => {
                 </div>
                 <input
                   type="date"
-                  className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                  className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                   value={singleDate}
                   onChange={(e) => setSingleDate(e.target.value)}
                 />
@@ -394,7 +394,7 @@ const ActivityHistory: React.FC = () => {
               {t("activityHistory.activityType")}
             </label>
             <select
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
             >
@@ -451,7 +451,7 @@ const ActivityHistory: React.FC = () => {
 
         {loading ? (
           <div className="p-12 text-center">
-            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-indigo-600 border-r-transparent"></div>
+            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
             <p className="mt-4 text-gray-500">{t("common.loading")}</p>
           </div>
         ) : filteredActivities.length === 0 ? (
@@ -570,7 +570,7 @@ const ActivityHistory: React.FC = () => {
                   <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
                     {t("activityHistory.action") || "Hành động thực hiện"}
                   </p>
-                  <p className="text-lg font-bold text-indigo-600 dark:text-indigo-400 mt-1">
+                  <p className="text-lg font-bold text-blue-600 dark:text-blue-400 mt-1">
                     {translateAction(selectedActivity.action)}
                   </p>
                 </div>
@@ -622,7 +622,7 @@ const ActivityHistory: React.FC = () => {
                     {selectedActivity.method && (
                       <div>
                         <span className="font-medium text-gray-400 mr-1.5">Phương thức:</span>
-                        <span className="font-bold font-mono text-indigo-600 dark:text-indigo-400">{selectedActivity.method}</span>
+                        <span className="font-bold font-mono text-blue-600 dark:text-blue-400">{selectedActivity.method}</span>
                       </div>
                     )}
                     {selectedActivity.path && (

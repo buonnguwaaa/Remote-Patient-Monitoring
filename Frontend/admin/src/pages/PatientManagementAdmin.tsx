@@ -158,7 +158,7 @@ const PatientManagementAdmin: React.FC = () => {
       <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="flex items-center text-2xl font-bold text-gray-800 dark:text-white md:text-3xl">
-            <FaRegUser className="mr-3 text-green-600" />
+            <FaRegUser className="mr-3 text-blue-600" />
             {t("patientManagement.title")}
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-2">
@@ -176,7 +176,7 @@ const PatientManagementAdmin: React.FC = () => {
           onClick={() => setActiveTab("all")}
           className={`pb-3 font-semibold text-base md:text-lg border-b-2 transition flex items-center gap-2 whitespace-nowrap ${
             activeTab === "all"
-              ? "border-green-600 text-green-600 dark:border-green-400 dark:text-green-400"
+              ? "border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400"
               : "border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
           }`}
         >
@@ -207,14 +207,14 @@ const PatientManagementAdmin: React.FC = () => {
             placeholder={t("patientManagement.searchPlaceholder")}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full rounded-xl border border-gray-300 py-2.5 pl-10 pr-4 text-gray-900 focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+            className="w-full rounded-xl border border-gray-300 py-2.5 pl-10 pr-4 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
           />
         </div>
       </div>
 
       {isLoading ? (
         <div className="flex h-48 items-center justify-center">
-          <FaSpinner className="animate-spin text-3xl text-green-600" />
+          <FaSpinner className="animate-spin text-3xl text-blue-600" />
         </div>
       ) : paginatedPatients.length === 0 ? (
         <div className="rounded-xl border border-dashed border-gray-300 p-8 text-center dark:border-gray-700">

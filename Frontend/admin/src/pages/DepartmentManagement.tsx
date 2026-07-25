@@ -440,7 +440,7 @@ const DepartmentManagement: React.FC = () => {
             <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
                 <div>
                     <h1 className="flex items-center text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-                        <FaBuilding className="mr-3 text-indigo-500" />
+                        <FaBuilding className="mr-3 text-blue-500" />
                         {t("departmentManagement.title")}
                     </h1>
                     <p className="mt-2 text-slate-500 dark:text-slate-400 font-medium">
@@ -455,7 +455,7 @@ const DepartmentManagement: React.FC = () => {
                         <input
                             type="text"
                             placeholder={t("departmentManagement.searchPlaceholder")}
-                            className="w-full rounded-full border-none bg-white py-2.5 pl-11 pr-4 shadow-sm ring-1 ring-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-800 dark:ring-slate-700 dark:text-white dark:placeholder-slate-500 transition-shadow hover:shadow-md"
+                            className="w-full rounded-full border-none bg-white py-2.5 pl-11 pr-4 shadow-sm ring-1 ring-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:ring-slate-700 dark:text-white dark:placeholder-slate-500 transition-shadow hover:shadow-md"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
@@ -463,7 +463,7 @@ const DepartmentManagement: React.FC = () => {
                     
                     <button
                         onClick={() => setShowCreateModal(true)}
-                        className="w-full sm:w-auto inline-flex items-center justify-center rounded-full bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 transition-all hover:shadow-md"
+                        className={`${adminPrimaryButtonClass} w-full sm:w-auto`}
                     >
                         <FaPlus className="mr-2" />
                         {t("departmentManagement.addDepartment")}
@@ -513,7 +513,7 @@ const DepartmentManagement: React.FC = () => {
                         {/* Content */}
                         <div className="flex flex-1 flex-col justify-between p-6 cursor-pointer" onClick={() => handleViewDept(dept)}>
                             <div>
-                                <h3 className="mb-2 text-xl font-bold text-slate-900 dark:text-white line-clamp-1 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                                <h3 className="mb-2 text-xl font-bold text-slate-900 dark:text-white line-clamp-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                                     {dept.name}
                                 </h3>
                                 <p className="text-sm text-slate-500 dark:text-slate-400 line-clamp-2">
@@ -524,12 +524,12 @@ const DepartmentManagement: React.FC = () => {
                             {/* Assignments Badge */}
                             <div className="mt-6 flex items-center justify-between border-t border-slate-100 dark:border-slate-700/60 pt-4">
                                 <div className="flex items-center text-sm font-semibold text-slate-700 dark:text-slate-300">
-                                    <div className="mr-2 flex h-8 w-8 items-center justify-center rounded-full bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
+                                    <div className="mr-2 flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
                                         <FaUserMd size={14} />
                                     </div>
                                     <span>{dept.memberCount} Nhân sự</span>
                                 </div>
-                                <span className="text-sm font-medium text-indigo-600 opacity-0 transition-opacity group-hover:opacity-100 dark:text-indigo-400">
+                                <span className="text-sm font-medium text-blue-600 opacity-0 transition-opacity group-hover:opacity-100 dark:text-blue-400">
                                     Chi tiết &rarr;
                                 </span>
                             </div>
@@ -539,7 +539,7 @@ const DepartmentManagement: React.FC = () => {
 
                 {loading && (
                     <div className="col-span-full py-20 text-center">
-                        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-slate-300 border-t-indigo-600"></div>
+                        <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-slate-300 border-t-blue-600"></div>
                         <p className="mt-4 text-slate-500 font-medium">{t("common.loading")}</p>
                     </div>
                 )}

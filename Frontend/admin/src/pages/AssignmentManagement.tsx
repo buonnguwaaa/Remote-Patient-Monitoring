@@ -108,7 +108,7 @@ function PatientInfoCard({ patient }: { patient: Patient }) {
   const genderStr = (g === "male" || g === "m") ? "Nam" : (g === "female" || g === "f") ? "Nữ" : patient.gender || "Khác";
 
   return (
-    <div className="rounded-xl border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 dark:border-blue-800 dark:from-blue-950/40 dark:to-indigo-950/40 space-y-4">
+    <div className="rounded-xl border border-blue-200 bg-gradient-to-r from-blue-50 to-blue-50 p-4 dark:border-blue-800 dark:from-blue-950/40 dark:to-blue-950/40 space-y-4">
       {/* Header: Avatar + Tên + Email */}
       <div className="flex items-center gap-4">
         <img
@@ -832,10 +832,15 @@ const AssignmentManagement: React.FC = () => {
   return (
     <div className="p-4 md:p-6">
       <Toast toast={toast} onClose={hideToast} />
-      <h1 className="mb-8 flex items-center text-2xl font-bold text-gray-800 dark:text-white md:text-3xl">
-        <FaExchangeAlt className="mr-3 text-slate-700 dark:text-slate-200" />
-        {t("assignmentManagement.title")}
-      </h1>
+      <div className="mb-8">
+        <h1 className="flex items-center text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+          <FaExchangeAlt className="mr-3 text-blue-600" />
+          {t("assignmentManagement.title")}
+        </h1>
+        <p className="mt-2 text-slate-500 dark:text-slate-400 font-medium">
+          {t("assignmentManagement.subtitle") || "Quản lý và điều phối luồng công việc giữa Bệnh nhân và Y bác sĩ"}
+        </p>
+      </div>
 
       {/* ── Form Panel ── */}
       <div className="rounded-xl bg-white p-6 shadow-md dark:bg-gray-800 md:p-8">
