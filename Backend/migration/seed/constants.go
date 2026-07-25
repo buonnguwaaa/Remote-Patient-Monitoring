@@ -101,7 +101,6 @@ var neutralGivenNames = []string{
 var departmentNames = []string{
 	"Khoa Tim mạch",
 	"Khoa Nội Tổng quát",
-	"Khoa Thận - Tiết niệu",
 	"Khoa Nội tiết",
 }
 

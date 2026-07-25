@@ -244,7 +244,7 @@ func preferredSpecialty(bp, glucose bool) string {
 }
 
 func pickDoctor(keepers []staffUser, preferred string, rr map[string]int) (staffUser, error) {
-	ordered := []string{preferred, "Nội Tổng quát", "Tim mạch", "Nội tiết", "Thận - Tiết niệu"}
+	ordered := []string{preferred, "Nội Tổng quát", "Tim mạch", "Nội tiết"}
 	seen := map[string]bool{}
 	for _, spec := range ordered {
 		if seen[spec] {

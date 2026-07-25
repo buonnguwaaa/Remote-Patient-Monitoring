@@ -308,13 +308,13 @@ func preferredSpecialty(bp, glucose bool) string {
 func specialtyPreferenceList(bp, glucose bool) []string {
 	switch {
 	case bp && glucose:
-		return []string{"Nội Tổng quát", "Tim mạch", "Nội tiết", "Thận - Tiết niệu"}
+		return []string{"Nội Tổng quát", "Tim mạch", "Nội tiết"}
 	case glucose:
 		return []string{"Nội tiết", "Nội Tổng quát"}
 	case bp:
-		return []string{"Tim mạch", "Thận - Tiết niệu", "Nội Tổng quát"}
+		return []string{"Tim mạch", "Nội Tổng quát"}
 	default:
-		return []string{"Nội Tổng quát", "Tim mạch", "Nội tiết", "Thận - Tiết niệu"}
+		return []string{"Nội Tổng quát", "Tim mạch", "Nội tiết"}
 	}
 }
 
