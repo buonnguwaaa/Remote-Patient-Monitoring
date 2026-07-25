@@ -345,15 +345,18 @@ func (h *AuthHandler) ResetPassword(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Đặt lại mật khẩu thành công"})
 }
 
-// ShowAcceptInvite renders the set-password form for an admin-created patient invite link.
+// ShowAcceptInvite renders the set-password form for patient/nurse invite links (browser fallback).
+// After success, users are directed to the corresponding mobile app — not the doctor web portal.
 // @Summary Show accept-invite form
 // @Tags auth
 // @Produce html
 // @Param token query string true "Invite token"
+// @Param role query string false "User role (user.patient, user.nurse)"
 // @Success 200 {string} string "HTML form"
 // @Router /auth/accept-invite [get]
 func (h *AuthHandler) ShowAcceptInvite(c *gin.Context) {
 	token := strings.TrimSpace(c.Query("token"))
+	role := strings.TrimSpace(c.Query("role"))
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
@@ -363,7 +366,7 @@ func (h *AuthHandler) ShowAcceptInvite(c *gin.Context) {
 		return
 	}
 
-	h.renderAcceptInvitePage(c, http.StatusOK, acceptInviteFormBody(name, token, ""))
+	h.renderAcceptInvitePage(c, http.StatusOK, acceptInviteFormBody(name, token, role, ""))
 }
 
 // SubmitAcceptInvite completes first-time password setup from the invite link.
@@ -372,12 +375,14 @@ func (h *AuthHandler) ShowAcceptInvite(c *gin.Context) {
 // @Accept application/x-www-form-urlencoded
 // @Produce html
 // @Param token formData string true "Invite token"
+// @Param role formData string false "User role"
 // @Param password formData string true "New password"
 // @Param confirmedPassword formData string true "Confirm password"
 // @Success 200 {string} string "HTML success"
 // @Router /auth/accept-invite [post]
 func (h *AuthHandler) SubmitAcceptInvite(c *gin.Context) {
 	token := strings.TrimSpace(c.PostForm("token"))
+	role := strings.TrimSpace(c.PostForm("role"))
 	password := c.PostForm("password")
 	confirmed := c.PostForm("confirmedPassword")
 
@@ -390,19 +395,24 @@ func (h *AuthHandler) SubmitAcceptInvite(c *gin.Context) {
 			h.renderAcceptInvitePage(c, http.StatusBadRequest, acceptInviteExpiredBody())
 			return
 		}
-		h.renderAcceptInvitePage(c, http.StatusBadRequest, acceptInviteFormBody(name, token, err.Error()))
+		h.renderAcceptInvitePage(c, http.StatusBadRequest, acceptInviteFormBody(name, token, role, err.Error()))
 		return
 	}
 
-	h.renderAcceptInvitePage(c, http.StatusOK, `
-		<p class="ok">Đặt mật khẩu thành công. Bạn có thể mở ứng dụng RPM và đăng nhập bằng email hoặc số điện thoại đã đăng ký.</p>
-	`)
+	h.renderAcceptInvitePage(c, http.StatusOK, acceptInviteSuccessBody(role))
 }
 
 func (h *AuthHandler) renderAcceptInvitePage(c *gin.Context, status int, body string) {
 	c.Header("Content-Type", "text/html; charset=utf-8")
 	htmlContent := strings.Replace(constant.AcceptInvitePageTemplate, "{{BODY}}", body, 1)
 	c.String(status, "%s", htmlContent)
+}
+
+func acceptInviteAppLabel(role string) string {
+	if isStaffAppRole(role) {
+		return "ứng dụng RPM dành cho cán bộ y tế"
+	}
+	return "ứng dụng RPM"
 }
 
 func acceptInviteExpiredBody() string {
@@ -412,22 +422,31 @@ func acceptInviteExpiredBody() string {
 	`
 }
 
-func acceptInviteFormBody(name, token, formError string) string {
+func acceptInviteSuccessBody(role string) string {
+	app := acceptInviteAppLabel(role)
+	return `
+		<p class="ok">Đặt mật khẩu thành công. Hãy mở ` + app + ` trên điện thoại và đăng nhập bằng email hoặc số điện thoại đã đăng ký.</p>
+	`
+}
+
+func acceptInviteFormBody(name, token, role, formError string) string {
 	errBlock := ""
 	if formError != "" {
 		errBlock = `<p class="error">` + htmlEscape(formError) + `</p>`
 	}
+	app := acceptInviteAppLabel(role)
 	return errBlock + `
 		<p>Chào <strong>` + htmlEscape(name) + `</strong>, hãy đặt mật khẩu để kích hoạt tài khoản RPM.</p>
 		<form method="POST" action="/auth/accept-invite">
 			<input type="hidden" name="token" value="` + htmlEscape(token) + `">
+			<input type="hidden" name="role" value="` + htmlEscape(role) + `">
 			<label for="password">Mật khẩu mới</label>
 			<input id="password" name="password" type="password" minlength="6" required autocomplete="new-password">
 			<label for="confirmedPassword">Xác nhận mật khẩu</label>
 			<input id="confirmedPassword" name="confirmedPassword" type="password" minlength="6" required autocomplete="new-password">
 			<button type="submit">Lưu mật khẩu</button>
 		</form>
-		<p class="hint">Liên kết có hiệu lực 15 phút. Sau khi lưu, đăng nhập trên ứng dụng RPM.</p>
+		<p class="hint">Liên kết có hiệu lực 15 phút. Sau khi lưu, đăng nhập trên ` + app + `.</p>
 	`
 }
 
@@ -442,7 +461,43 @@ func htmlEscape(s string) string {
 	return replacer.Replace(s)
 }
 
-// HandleSmartInvite routes incoming invite links to Native App, Web Portal, or Static HTML depending on device & role.
+// isDoctorInviteRole: chỉ bác sĩ dùng web portal sau khi đặt mật khẩu.
+func isDoctorInviteRole(role string) bool {
+	switch strings.ToLower(strings.TrimSpace(role)) {
+	case "user.doctor", "doctor":
+		return true
+	default:
+		return false
+	}
+}
+
+// isStaffAppRole: bác sĩ + điều dưỡng mở app staff (rpm-doctor).
+func isStaffAppRole(role string) bool {
+	switch strings.ToLower(strings.TrimSpace(role)) {
+	case "user.doctor", "doctor", "user.nurse", "nurse":
+		return true
+	default:
+		return false
+	}
+}
+
+// acceptInviteBrowserDestination:
+// - bác sĩ → web portal (đặt MK rồi vào cổng bác sĩ)
+// - bệnh nhân / điều dưỡng → trang HTML API (đặt MK rồi hướng dẫn mở app)
+func acceptInviteBrowserDestination(token, role string) string {
+	if isDoctorInviteRole(role) {
+		return util.FrontendWebURL() + "/accept-invite?token=" + url.QueryEscape(token)
+	}
+	dest := util.AcceptInviteURL(token)
+	if role != "" {
+		dest += "&role=" + url.QueryEscape(role)
+	}
+	return dest
+}
+
+// HandleSmartInvite routes invite links by device + role:
+// - Desktop doctor → doctor web; desktop patient/nurse → HTML set-password (then use mobile app)
+// - Mobile: deep-link to rpm (patient) or rpm-doctor (doctor/nurse); fallback = browser destination above
 // @Summary Handle smart invite link
 // @Tags auth
 // @Param token query string true "Invite token"
@@ -452,6 +507,7 @@ func (h *AuthHandler) HandleSmartInvite(c *gin.Context) {
 	token := strings.TrimSpace(c.Query("token"))
 	role := strings.TrimSpace(c.Query("role"))
 	userAgent := strings.ToLower(c.Request.UserAgent())
+	useStaffApp := isStaffAppRole(role)
 
 	isMobile := strings.Contains(userAgent, "android") ||
 		strings.Contains(userAgent, "iphone") ||
@@ -459,20 +515,22 @@ func (h *AuthHandler) HandleSmartInvite(c *gin.Context) {
 		strings.Contains(userAgent, "ipod") ||
 		strings.Contains(userAgent, "mobile")
 
-	// Desktop Web Browser -> Redirect to Web Portal accept-invite page
+	browserURL := acceptInviteBrowserDestination(token, role)
+
+	// Desktop / non-mobile browser: role-based set-password page.
 	if !isMobile {
-		webPortalURL := util.FrontendWebURL() + "/accept-invite?token=" + url.QueryEscape(token)
-		c.Redirect(http.StatusFound, webPortalURL)
+		c.Redirect(http.StatusFound, browserURL)
 		return
 	}
 
-	// Mobile device: attempt native app deep link redirect with HTML launcher page
+	// Mobile: try native app; if not installed, "Tiếp tục trên trình duyệt" uses browserURL.
 	scheme := "rpm"
-	if role == "user.doctor" || role == "doctor" || role == "user.nurse" || role == "nurse" {
+	appLabel := "Ứng dụng RPM"
+	if useStaffApp {
 		scheme = "rpm-doctor"
+		appLabel = "Ứng dụng RPM Cán bộ y tế"
 	}
 	deepLink := fmt.Sprintf("%s://accept-invite?token=%s", scheme, url.QueryEscape(token))
-	fallbackUrl := util.PublicAPIBaseURL() + "/auth/accept-invite?token=" + url.QueryEscape(token)
 
 	html := fmt.Sprintf(`<!DOCTYPE html>
 <html lang="vi">
@@ -498,11 +556,11 @@ func (h *AuthHandler) HandleSmartInvite(c *gin.Context) {
 <div class="card">
   <h2>Đang kích hoạt tài khoản RPM</h2>
   <p>Hệ thống đang mở ứng dụng di động để bạn đặt mật khẩu...</p>
-  <a href="%s" class="btn btn-primary">Mở Ứng dụng RPM</a>
+  <a href="%s" class="btn btn-primary">Mở %s</a>
   <a href="%s" class="btn btn-secondary">Tiếp tục trên Trình duyệt Web</a>
 </div>
 </body>
-</html>`, deepLink, deepLink, fallbackUrl)
+</html>`, deepLink, deepLink, appLabel, browserURL)
 
 	c.Header("Content-Type", "text/html; charset=utf-8")
 	c.String(http.StatusOK, "%s", html)
