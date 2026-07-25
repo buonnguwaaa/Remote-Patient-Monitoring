@@ -65,11 +65,14 @@ jobs:
             exit 1
           fi
 
+      - name: Inject Environment Variables for Expo
+        working-directory: Frontend/mobile
+        run: |
+          echo "EXPO_PUBLIC_BASE_URL=${{ secrets.EXPO_PUBLIC_BASE_URL }}" > .env
+          echo "BASE_URL=${{ secrets.BASE_URL }}" >> .env
+
       - name: EAS Build Android APK (preview)
         working-directory: Frontend/mobile
-        env:
-          EXPO_PUBLIC_BASE_URL: ${{ secrets.EXPO_PUBLIC_BASE_URL }}
-          BASE_URL: ${{ secrets.BASE_URL }}
         run: |
           eas build \
             --platform android \
@@ -123,11 +126,14 @@ jobs:
             exit 1
           fi
 
+      - name: Inject Environment Variables for Expo
+        working-directory: Frontend/doctor-app
+        run: |
+          echo "EXPO_PUBLIC_BASE_URL=${{ secrets.EXPO_PUBLIC_BASE_URL }}" > .env
+          echo "BASE_URL=${{ secrets.BASE_URL }}" >> .env
+
       - name: EAS Build Android APK (preview)
         working-directory: Frontend/doctor-app
-        env:
-          EXPO_PUBLIC_BASE_URL: ${{ secrets.EXPO_PUBLIC_BASE_URL }}
-          BASE_URL: ${{ secrets.BASE_URL }}
         run: |
           eas build \
             --platform android \
