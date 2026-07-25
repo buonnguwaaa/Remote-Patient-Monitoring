@@ -11,16 +11,68 @@ import {
   HiUser,
   HiArrowRight,
   HiSparkles,
-  HiCheck
+  HiCheck,
+  HiDevicePhoneMobile,
 } from "react-icons/hi2";
 import api from "../services/api";
+
+function normalizeRole(role: string): string {
+  return role.trim().toLowerCase();
+}
+
+function isDoctorRole(role: string): boolean {
+  const r = normalizeRole(role);
+  return r === "user.doctor" || r === "doctor";
+}
+
+function isStaffAppRole(role: string): boolean {
+  const r = normalizeRole(role);
+  return (
+    r === "user.doctor" ||
+    r === "doctor" ||
+    r === "user.nurse" ||
+    r === "nurse"
+  );
+}
+
+function roleLabel(role: string): string {
+  const r = normalizeRole(role);
+  if (r === "user.doctor" || r === "doctor") return "Bác sĩ tiếp nhận";
+  if (r === "user.nurse" || r === "nurse") return "Điều dưỡng / Cán bộ y tế";
+  return "Bệnh nhân";
+}
+
+function leftBadge(role: string): string {
+  if (isStaffAppRole(role) && !isDoctorRole(role)) {
+    return "Kích hoạt Tài khoản Cán bộ Y tế";
+  }
+  if (isDoctorRole(role)) return "Kích hoạt Tài khoản Cán bộ Y tế";
+  return "Kích hoạt Tài khoản Bệnh nhân";
+}
+
+function leftWelcome(role: string): string {
+  if (isDoctorRole(role)) {
+    return "Chào mừng Bác sĩ đến với nền tảng RPM. Hãy khởi tạo mật khẩu cá nhân để bảo mật thông tin và bắt đầu tiếp nhận hồ sơ bệnh án theo dõi trực tuyến.";
+  }
+  if (isStaffAppRole(role)) {
+    return "Chào mừng bạn đến với nền tảng RPM. Hãy khởi tạo mật khẩu cá nhân để bảo mật thông tin và bắt đầu hỗ trợ theo dõi bệnh nhân trên ứng dụng di động.";
+  }
+  return "Chào mừng bạn đến với nền tảng RPM. Hãy khởi tạo mật khẩu cá nhân để bảo mật thông tin sức khỏe và bắt đầu theo dõi chỉ số trên ứng dụng di động.";
+}
+
+function appLabel(role: string): string {
+  if (isStaffAppRole(role)) return "ứng dụng RPM dành cho cán bộ y tế";
+  return "ứng dụng RPM";
+}
 
 export default function AcceptInvitePage() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token") || "";
+  const roleFromQuery = searchParams.get("role") || "";
   const navigate = useNavigate();
 
   const [userName, setUserName] = useState<string>("");
+  const [role, setRole] = useState<string>(roleFromQuery);
   const [password, setPassword] = useState<string>("");
   const [confirmedPassword, setConfirmedPassword] = useState<string>("");
   const [showPassword, setShowPassword] = useState<boolean>(false);
@@ -32,6 +84,8 @@ export default function AcceptInvitePage() {
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [isSuccess, setIsSuccess] = useState<boolean>(false);
 
+  const doctorFlow = isDoctorRole(role);
+
   useEffect(() => {
     async function verifyToken() {
       if (!token) {
@@ -42,14 +96,21 @@ export default function AcceptInvitePage() {
 
       try {
         setCheckingToken(true);
-        const res = await api.get(`/auth/accept-invite/preview?token=${encodeURIComponent(token)}`);
+        const res = await api.get(
+          `/auth/accept-invite/preview?token=${encodeURIComponent(token)}`
+        );
         if (res.data?.valid) {
           setUserName(res.data.name || "");
+          if (res.data.role) {
+            setRole(res.data.role);
+          } else if (roleFromQuery) {
+            setRole(roleFromQuery);
+          }
           setTokenExpired(false);
         } else {
           setTokenExpired(true);
         }
-      } catch (err: any) {
+      } catch {
         setTokenExpired(true);
       } finally {
         setCheckingToken(false);
@@ -57,9 +118,8 @@ export default function AcceptInvitePage() {
     }
 
     verifyToken();
-  }, [token]);
+  }, [token, roleFromQuery]);
 
-  // Password validation stats
   const hasMinLength = password.length >= 6;
   const passwordsMatch = password.length > 0 && password === confirmedPassword;
   const isFormValid = hasMinLength && passwordsMatch;
@@ -92,7 +152,10 @@ export default function AcceptInvitePage() {
     } catch (err: any) {
       const errorText =
         err.response?.data?.error || err.message || "Không thể khởi tạo mật khẩu.";
-      if (errorText.toLowerCase().includes("hết hạn") || errorText.toLowerCase().includes("không hợp lệ")) {
+      if (
+        errorText.toLowerCase().includes("hết hạn") ||
+        errorText.toLowerCase().includes("không hợp lệ")
+      ) {
         setTokenExpired(true);
       } else {
         setErrorMessage(errorText);
@@ -104,47 +167,52 @@ export default function AcceptInvitePage() {
 
   return (
     <div className="min-h-screen w-full flex bg-slate-900 font-sans text-slate-800 antialiased selection:bg-blue-500 selection:text-white">
-      {/* LEFT PANEL - Hero Branding & Visual Highlights */}
+      {/* LEFT PANEL */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-slate-950 via-blue-950 to-indigo-950 p-12 flex-col justify-between border-r border-slate-800/60">
-        {/* Ambient Glow Orbs */}
         <div className="absolute -top-32 -left-32 w-96 h-96 bg-blue-500/15 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute top-1/2 -right-32 w-96 h-96 bg-indigo-500/15 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-32 left-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
 
-        {/* Top Header */}
         <div className="relative z-10 flex items-center space-x-3">
           <div className="h-12 w-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 p-0.5 shadow-lg shadow-blue-500/30 flex items-center justify-center">
-            <img src="/doctor-logo.png" alt="RPM" className="h-full w-full rounded-[14px] object-cover" />
+            <img
+              src="/doctor-logo.png"
+              alt="RPM"
+              className="h-full w-full rounded-[14px] object-cover"
+            />
           </div>
           <div>
             <span className="text-xl font-extrabold tracking-tight text-white">RPM</span>
-            <span className="block text-xs font-medium text-blue-400 tracking-wider uppercase">Remote Patient Monitoring</span>
+            <span className="block text-xs font-medium text-blue-400 tracking-wider uppercase">
+              Remote Patient Monitoring
+            </span>
           </div>
         </div>
 
-        {/* Hero Central Content */}
         <div className="relative z-10 my-auto max-w-lg">
           <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-blue-500/10 border border-blue-400/20 text-blue-300 text-xs font-semibold backdrop-blur-md mb-6">
             <HiSparkles className="h-4 w-4 text-blue-400" />
-            <span>Kích hoạt Tài khoản Cán bộ Y tế</span>
+            <span>{leftBadge(role)}</span>
           </div>
 
           <h2 className="text-4xl font-extrabold text-white leading-tight tracking-tight mb-4">
-            Theo dõi & Giám sát Sức khỏe Bệnh nhân <span className="bg-gradient-to-r from-blue-400 via-cyan-400 to-indigo-300 bg-clip-text text-transparent">Từ xa</span>
+            Theo dõi & Giám sát Sức khỏe Bệnh nhân{" "}
+            <span className="bg-gradient-to-r from-blue-400 via-cyan-400 to-indigo-300 bg-clip-text text-transparent">
+              Từ xa
+            </span>
           </h2>
 
-          <p className="text-slate-300 text-base leading-relaxed mb-8">
-            Chào mừng Bác sĩ đến với nền tảng RPM. Hãy khởi tạo mật khẩu cá nhân để bảo mật thông tin và bắt đầu tiếp nhận hồ sơ bệnh án theo dõi trực tuyến.
-          </p>
+          <p className="text-slate-300 text-base leading-relaxed mb-8">{leftWelcome(role)}</p>
 
-          {/* Feature Highlights Grid */}
           <div className="grid grid-cols-2 gap-4">
             <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800/80 backdrop-blur-md">
               <div className="h-9 w-9 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center mb-3">
                 <HiHeart className="h-5 w-5" />
               </div>
               <h4 className="text-sm font-bold text-white mb-1">Giám sát Chỉ số</h4>
-              <p className="text-xs text-slate-400 leading-normal">Cảnh báo ngưỡng Huyết áp & Đường huyết tự động 24/7</p>
+              <p className="text-xs text-slate-400 leading-normal">
+                Cảnh báo ngưỡng Huyết áp & Đường huyết tự động 24/7
+              </p>
             </div>
 
             <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800/80 backdrop-blur-md">
@@ -152,12 +220,13 @@ export default function AcceptInvitePage() {
                 <HiShieldCheck className="h-5 w-5" />
               </div>
               <h4 className="text-sm font-bold text-white mb-1">Bảo mật Y tế</h4>
-              <p className="text-xs text-slate-400 leading-normal">Mã hóa dữ liệu bệnh nhân đạt tiêu chuẩn y khoa</p>
+              <p className="text-xs text-slate-400 leading-normal">
+                Mã hóa dữ liệu bệnh nhân đạt tiêu chuẩn y khoa
+              </p>
             </div>
           </div>
         </div>
 
-        {/* Footer Quote */}
         <div className="relative z-10 pt-6 border-t border-slate-800/60 flex items-center justify-between text-xs text-slate-400">
           <span>&copy; {new Date().getFullYear()} Remote Patient Monitoring System</span>
           <span className="flex items-center gap-1 text-slate-400">
@@ -166,22 +235,24 @@ export default function AcceptInvitePage() {
         </div>
       </div>
 
-      {/* RIGHT PANEL - Form Container */}
+      {/* RIGHT PANEL */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12 bg-slate-50 dark:bg-slate-950 relative overflow-y-auto">
         <div className="w-full max-w-md my-auto">
           {checkingToken ? (
-            /* LOADING STATE */
             <div className="bg-white dark:bg-slate-900 rounded-3xl p-10 shadow-2xl border border-slate-100 dark:border-slate-800 text-center">
               <div className="relative inline-flex items-center justify-center mb-6">
                 <div className="h-16 w-16 rounded-2xl bg-blue-50 dark:bg-blue-950/50 flex items-center justify-center text-blue-600 dark:text-blue-400">
                   <div className="h-8 w-8 animate-spin rounded-full border-3 border-solid border-blue-600 border-r-transparent" />
                 </div>
               </div>
-              <h3 className="text-xl font-bold text-slate-900 dark:text-white">Đang xác thực liên kết...</h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">Vui lòng đợi trong giây lát</p>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white">
+                Đang xác thực liên kết...
+              </h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
+                Vui lòng đợi trong giây lát
+              </p>
             </div>
           ) : tokenExpired ? (
-            /* EXPIRED TOKEN STATE */
             <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 sm:p-10 shadow-2xl border border-red-100 dark:border-red-950/30 text-center relative overflow-hidden">
               <div className="w-20 h-20 bg-red-50 dark:bg-red-950/40 rounded-3xl flex items-center justify-center mx-auto mb-6 text-red-500 dark:text-red-400 border border-red-100 dark:border-red-900/30 shadow-inner">
                 <HiExclamationTriangle className="w-10 h-10" />
@@ -190,40 +261,63 @@ export default function AcceptInvitePage() {
                 Liên kết không hợp lệ hoặc đã hết hạn
               </h2>
               <p className="text-sm text-slate-600 dark:text-slate-400 mb-8 leading-relaxed">
-                Liên kết kích hoạt tài khoản chỉ có hiệu lực trong <strong className="text-slate-800 dark:text-slate-200">15 phút</strong> và chỉ sử dụng được 1 lần. Vui lòng liên hệ Quản trị viên hệ thống để cấp lại liên kết mới.
+                Liên kết kích hoạt tài khoản chỉ có hiệu lực trong{" "}
+                <strong className="text-slate-800 dark:text-slate-200">15 phút</strong> và chỉ
+                sử dụng được 1 lần. Vui lòng liên hệ Quản trị viên hệ thống để cấp lại liên kết
+                mới.
               </p>
-              <button
-                onClick={() => navigate("/login")}
-                className="w-full py-3.5 bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white rounded-2xl font-bold text-sm transition-all shadow-lg shadow-slate-900/10 flex items-center justify-center gap-2"
-              >
-                <span>Về trang Đăng nhập</span>
-                <HiArrowRight className="h-4 w-4" />
-              </button>
+              {doctorFlow && (
+                <button
+                  onClick={() => navigate("/login")}
+                  className="w-full py-3.5 bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white rounded-2xl font-bold text-sm transition-all shadow-lg shadow-slate-900/10 flex items-center justify-center gap-2"
+                >
+                  <span>Về trang Đăng nhập</span>
+                  <HiArrowRight className="h-4 w-4" />
+                </button>
+              )}
             </div>
           ) : isSuccess ? (
-            /* SUCCESS STATE */
             <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 sm:p-10 shadow-2xl border border-emerald-100 dark:border-emerald-950/30 text-center relative overflow-hidden">
               <div className="w-20 h-20 bg-emerald-50 dark:bg-emerald-950/40 rounded-3xl flex items-center justify-center mx-auto mb-6 text-emerald-500 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30 shadow-inner">
                 <HiCheckCircle className="w-10 h-10" />
               </div>
               <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white mb-3">
-                Đặt mật khẩu thành công! 🎉
+                Đặt mật khẩu thành công!
               </h2>
-              <p className="text-sm text-slate-600 dark:text-slate-400 mb-8 leading-relaxed">
-                Tài khoản của bạn đã sẵn sàng. Hãy đăng nhập vào hệ thống bằng mật khẩu vừa khởi tạo.
-              </p>
-              <button
-                onClick={() => navigate("/login")}
-                className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-2xl font-bold text-sm transition-all shadow-xl shadow-blue-500/25 flex items-center justify-center gap-2"
-              >
-                <span>Đăng nhập Cổng Bác sĩ</span>
-                <HiArrowRight className="h-4 w-4" />
-              </button>
+              {doctorFlow ? (
+                <>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 mb-8 leading-relaxed">
+                    Tài khoản của bạn đã sẵn sàng. Hãy đăng nhập vào hệ thống bằng mật khẩu vừa
+                    khởi tạo.
+                  </p>
+                  <button
+                    onClick={() => navigate("/login")}
+                    className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-2xl font-bold text-sm transition-all shadow-xl shadow-blue-500/25 flex items-center justify-center gap-2"
+                  >
+                    <span>Đăng nhập Cổng Bác sĩ</span>
+                    <HiArrowRight className="h-4 w-4" />
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400">
+                    <HiDevicePhoneMobile className="h-7 w-7" />
+                  </div>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 mb-2 leading-relaxed">
+                    Tài khoản đã sẵn sàng. Hãy mở{" "}
+                    <strong className="text-slate-800 dark:text-slate-200">
+                      {appLabel(role)}
+                    </strong>{" "}
+                    trên điện thoại và đăng nhập bằng email hoặc số điện thoại đã đăng ký.
+                  </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-500 leading-relaxed">
+                    Bạn không cần đăng nhập trên trình duyệt web.
+                  </p>
+                </>
+              )}
             </div>
           ) : (
-            /* FORM STATE */
             <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 sm:p-10 shadow-2xl border border-slate-100 dark:border-slate-800">
-              {/* Header Title inside Card */}
               <div className="mb-8">
                 <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 text-xs font-bold uppercase tracking-wider mb-3">
                   <HiShieldCheck className="h-4 w-4" />
@@ -238,14 +332,17 @@ export default function AcceptInvitePage() {
                       <HiUser className="h-5 w-5" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <span className="block text-xs text-slate-400 font-medium">Bác sĩ tiếp nhận</span>
-                      <span className="block text-sm font-bold text-slate-800 dark:text-white truncate">{userName}</span>
+                      <span className="block text-xs text-slate-400 font-medium">
+                        {roleLabel(role)}
+                      </span>
+                      <span className="block text-sm font-bold text-slate-800 dark:text-white truncate">
+                        {userName}
+                      </span>
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* Error Banner */}
               {errorMessage && (
                 <div className="mb-6 p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 rounded-2xl text-xs font-medium text-red-600 dark:text-red-400 flex items-start gap-3">
                   <HiExclamationTriangle className="h-5 w-5 flex-shrink-0 text-red-500 mt-0.5" />
@@ -254,7 +351,6 @@ export default function AcceptInvitePage() {
               )}
 
               <form onSubmit={handleSubmit} className="space-y-5">
-                {/* New Password Field */}
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
                     Mật khẩu mới
@@ -277,12 +373,15 @@ export default function AcceptInvitePage() {
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute inset-y-0 right-0 flex items-center pr-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
                     >
-                      {showPassword ? <HiOutlineEyeSlash className="h-5 w-5" /> : <HiOutlineEye className="h-5 w-5" />}
+                      {showPassword ? (
+                        <HiOutlineEyeSlash className="h-5 w-5" />
+                      ) : (
+                        <HiOutlineEye className="h-5 w-5" />
+                      )}
                     </button>
                   </div>
                 </div>
 
-                {/* Confirm Password Field */}
                 <div>
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
                     Xác nhận mật khẩu
@@ -305,28 +404,54 @@ export default function AcceptInvitePage() {
                       onClick={() => setShowConfirmedPassword(!showConfirmedPassword)}
                       className="absolute inset-y-0 right-0 flex items-center pr-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
                     >
-                      {showConfirmedPassword ? <HiOutlineEyeSlash className="h-5 w-5" /> : <HiOutlineEye className="h-5 w-5" />}
+                      {showConfirmedPassword ? (
+                        <HiOutlineEyeSlash className="h-5 w-5" />
+                      ) : (
+                        <HiOutlineEye className="h-5 w-5" />
+                      )}
                     </button>
                   </div>
                 </div>
 
-                {/* Live Password Validation Checklist */}
                 <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 space-y-2">
                   <div className="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-400">
-                    <div className={`h-4 w-4 rounded-full flex items-center justify-center text-[10px] ${hasMinLength ? "bg-emerald-500 text-white" : "bg-slate-300 dark:bg-slate-700 text-slate-500"}`}>
+                    <div
+                      className={`h-4 w-4 rounded-full flex items-center justify-center text-[10px] ${
+                        hasMinLength
+                          ? "bg-emerald-500 text-white"
+                          : "bg-slate-300 dark:bg-slate-700 text-slate-500"
+                      }`}
+                    >
                       <HiCheck className="h-3 w-3 stroke-[3]" />
                     </div>
-                    <span className={hasMinLength ? "text-emerald-600 dark:text-emerald-400 font-bold" : ""}>Tối thiểu 6 ký tự</span>
+                    <span
+                      className={
+                        hasMinLength ? "text-emerald-600 dark:text-emerald-400 font-bold" : ""
+                      }
+                    >
+                      Tối thiểu 6 ký tự
+                    </span>
                   </div>
                   <div className="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-400">
-                    <div className={`h-4 w-4 rounded-full flex items-center justify-center text-[10px] ${passwordsMatch ? "bg-emerald-500 text-white" : "bg-slate-300 dark:bg-slate-700 text-slate-500"}`}>
+                    <div
+                      className={`h-4 w-4 rounded-full flex items-center justify-center text-[10px] ${
+                        passwordsMatch
+                          ? "bg-emerald-500 text-white"
+                          : "bg-slate-300 dark:bg-slate-700 text-slate-500"
+                      }`}
+                    >
                       <HiCheck className="h-3 w-3 stroke-[3]" />
                     </div>
-                    <span className={passwordsMatch ? "text-emerald-600 dark:text-emerald-400 font-bold" : ""}>Mật khẩu xác nhận phải trùng khớp</span>
+                    <span
+                      className={
+                        passwordsMatch ? "text-emerald-600 dark:text-emerald-400 font-bold" : ""
+                      }
+                    >
+                      Mật khẩu xác nhận phải trùng khớp
+                    </span>
                   </div>
                 </div>
 
-                {/* Submit Button */}
                 <button
                   type="submit"
                   disabled={loading || !isFormValid}
@@ -339,12 +464,18 @@ export default function AcceptInvitePage() {
                     </>
                   ) : (
                     <>
-                      <span>Lưu mật khẩu & Đăng nhập</span>
+                      <span>{doctorFlow ? "Lưu mật khẩu & Đăng nhập" : "Lưu mật khẩu"}</span>
                       <HiArrowRight className="h-4 w-4" />
                     </>
                   )}
                 </button>
               </form>
+
+              {!doctorFlow && (
+                <p className="mt-4 text-center text-xs text-slate-500 leading-relaxed">
+                  Sau khi lưu, đăng nhập trên {appLabel(role)}.
+                </p>
+              )}
             </div>
           )}
         </div>
