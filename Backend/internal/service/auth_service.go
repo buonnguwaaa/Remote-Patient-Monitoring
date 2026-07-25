@@ -45,7 +45,7 @@ type AuthService interface {
 	ForgotPassword(ctx context.Context, input *usecase.ForgotPasswordInput) error
 	VerifyResetOTP(ctx context.Context, email, otp string) error
 	ResetPassword(ctx context.Context, input *usecase.ResetPasswordInput) error
-	PreviewAcceptInvite(ctx context.Context, rawToken string) (string, error)
+	PreviewAcceptInvite(ctx context.Context, rawToken string) (name string, role string, err error)
 	AcceptInvite(ctx context.Context, rawToken, newPassword, confirmedPassword string) error
 }
 
@@ -408,12 +408,12 @@ func (s *authService) ResetPassword(ctx context.Context, input *usecase.ResetPas
 	return nil
 }
 
-func (s *authService) PreviewAcceptInvite(ctx context.Context, rawToken string) (string, error) {
+func (s *authService) PreviewAcceptInvite(ctx context.Context, rawToken string) (string, string, error) {
 	u, err := s.findInviteUser(ctx, rawToken)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
-	return u.Name, nil
+	return u.Name, string(u.Role), nil
 }
 
 func (s *authService) AcceptInvite(ctx context.Context, rawToken, newPassword, confirmedPassword string) error {

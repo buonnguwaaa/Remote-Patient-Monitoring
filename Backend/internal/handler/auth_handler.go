@@ -360,13 +360,16 @@ func (h *AuthHandler) ShowAcceptInvite(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
-	name, err := h.service.PreviewAcceptInvite(ctx, token)
+	name, previewRole, err := h.service.PreviewAcceptInvite(ctx, token)
 	if err != nil {
-		h.renderAcceptInvitePage(c, http.StatusBadRequest, acceptInviteExpiredBody())
+		h.renderAcceptInvitePage(c, http.StatusBadRequest, role, acceptInviteExpiredBody())
 		return
 	}
+	if role == "" {
+		role = previewRole
+	}
 
-	h.renderAcceptInvitePage(c, http.StatusOK, acceptInviteFormBody(name, token, role, ""))
+	h.renderAcceptInvitePage(c, http.StatusOK, role, acceptInviteFormBody(name, token, role, ""))
 }
 
 // SubmitAcceptInvite completes first-time password setup from the invite link.
@@ -390,22 +393,50 @@ func (h *AuthHandler) SubmitAcceptInvite(c *gin.Context) {
 	defer cancel()
 
 	if err := h.service.AcceptInvite(ctx, token, password, confirmed); err != nil {
-		name, previewErr := h.service.PreviewAcceptInvite(ctx, token)
+		name, previewRole, previewErr := h.service.PreviewAcceptInvite(ctx, token)
 		if previewErr != nil {
-			h.renderAcceptInvitePage(c, http.StatusBadRequest, acceptInviteExpiredBody())
+			h.renderAcceptInvitePage(c, http.StatusBadRequest, role, acceptInviteExpiredBody())
 			return
 		}
-		h.renderAcceptInvitePage(c, http.StatusBadRequest, acceptInviteFormBody(name, token, role, err.Error()))
+		if role == "" {
+			role = previewRole
+		}
+		h.renderAcceptInvitePage(c, http.StatusBadRequest, role, acceptInviteFormBody(name, token, role, err.Error()))
 		return
 	}
 
-	h.renderAcceptInvitePage(c, http.StatusOK, acceptInviteSuccessBody(role))
+	h.renderAcceptInvitePage(c, http.StatusOK, role, acceptInviteSuccessBody(role))
 }
 
-func (h *AuthHandler) renderAcceptInvitePage(c *gin.Context, status int, body string) {
+func (h *AuthHandler) renderAcceptInvitePage(c *gin.Context, status int, role, body string) {
 	c.Header("Content-Type", "text/html; charset=utf-8")
-	htmlContent := strings.Replace(constant.AcceptInvitePageTemplate, "{{BODY}}", body, 1)
+	htmlContent := constant.AcceptInvitePageTemplate
+	htmlContent = strings.Replace(htmlContent, "{{BODY}}", body, 1)
+	htmlContent = strings.Replace(htmlContent, "{{BADGE}}", acceptInviteLeftBadge(role), 1)
+	htmlContent = strings.Replace(htmlContent, "{{WELCOME}}", acceptInviteLeftWelcome(role), 1)
+	htmlContent = strings.Replace(htmlContent, "{{YEAR}}", fmt.Sprintf("%d", time.Now().Year()), 1)
 	c.String(status, "%s", htmlContent)
+}
+
+func acceptInviteLeftBadge(role string) string {
+	if isStaffAppRole(role) {
+		return "Kích hoạt Tài khoản Cán bộ Y tế"
+	}
+	return "Kích hoạt Tài khoản Bệnh nhân"
+}
+
+func acceptInviteLeftWelcome(role string) string {
+	if isStaffAppRole(role) {
+		return "Chào mừng bạn đến với nền tảng RPM. Hãy khởi tạo mật khẩu cá nhân để bảo mật thông tin và bắt đầu hỗ trợ theo dõi bệnh nhân trên ứng dụng di động."
+	}
+	return "Chào mừng bạn đến với nền tảng RPM. Hãy khởi tạo mật khẩu cá nhân để bảo mật thông tin sức khỏe và bắt đầu theo dõi chỉ số trên ứng dụng di động."
+}
+
+func acceptInviteRoleLabel(role string) string {
+	if isStaffAppRole(role) {
+		return "Điều dưỡng / Cán bộ y tế"
+	}
+	return "Bệnh nhân"
 }
 
 func acceptInviteAppLabel(role string) string {
@@ -417,36 +448,103 @@ func acceptInviteAppLabel(role string) string {
 
 func acceptInviteExpiredBody() string {
 	return `
-		<p class="error">Liên kết không hợp lệ hoặc đã hết hạn (15 phút).</p>
-		<p class="hint">Nếu tài khoản có email, mở ứng dụng RPM → <strong>Quên mật khẩu</strong> để nhận mã OTP mới và đặt mật khẩu. Nếu chỉ có số điện thoại, hãy liên hệ quản trị viên để gửi lại liên kết.</p>
+		<div class="card center error-state">
+			<div class="status-icon err">
+				<svg viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003ZM12 8.25a.75.75 0 0 1 .75.75v3.75a.75.75 0 0 1-1.5 0V9a.75.75 0 0 1 .75-.75Zm0 8.25a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z" clip-rule="evenodd"/></svg>
+			</div>
+			<h2>Liên kết không hợp lệ hoặc đã hết hạn</h2>
+			<p class="msg">Liên kết kích hoạt tài khoản chỉ có hiệu lực trong <strong>15 phút</strong> và chỉ sử dụng được 1 lần. Nếu có email, mở ứng dụng RPM → <strong>Quên mật khẩu</strong> để nhận mã OTP mới. Nếu chỉ có số điện thoại, hãy liên hệ Quản trị viên để cấp lại liên kết.</p>
+		</div>
 	`
 }
 
 func acceptInviteSuccessBody(role string) string {
 	app := acceptInviteAppLabel(role)
 	return `
-		<p class="ok">Đặt mật khẩu thành công. Hãy mở ` + app + ` trên điện thoại và đăng nhập bằng email hoặc số điện thoại đã đăng ký.</p>
+		<div class="card center success">
+			<div class="status-icon ok">
+				<svg viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12Zm13.36-1.814a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd"/></svg>
+			</div>
+			<h2>Đặt mật khẩu thành công!</h2>
+			<p class="msg">Tài khoản của bạn đã sẵn sàng. Hãy mở <strong>` + htmlEscape(app) + `</strong> trên điện thoại và đăng nhập bằng email hoặc số điện thoại đã đăng ký.</p>
+		</div>
 	`
 }
 
 func acceptInviteFormBody(name, token, role, formError string) string {
 	errBlock := ""
 	if formError != "" {
-		errBlock = `<p class="error">` + htmlEscape(formError) + `</p>`
+		errBlock = `
+			<div class="alert-error">
+				<svg viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003ZM12 8.25a.75.75 0 0 1 .75.75v3.75a.75.75 0 0 1-1.5 0V9a.75.75 0 0 1 .75-.75Zm0 8.25a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z" clip-rule="evenodd"/></svg>
+				<span>` + htmlEscape(formError) + `</span>
+			</div>`
 	}
+
+	userBlock := ""
+	if strings.TrimSpace(name) != "" {
+		userBlock = `
+				<div class="user-box">
+					<div class="user-avatar">
+						<svg viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M7.5 6a4.5 4.5 0 1 1 9 0 4.5 4.5 0 0 1-9 0ZM3.751 20.105a8.25 8.25 0 0 1 16.498 0 .75.75 0 0 1-.437.695A18.683 18.683 0 0 1 12 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 0 1-.437-.695Z" clip-rule="evenodd"/></svg>
+					</div>
+					<div style="min-width:0;flex:1">
+						<span class="user-label">` + htmlEscape(acceptInviteRoleLabel(role)) + `</span>
+						<span class="user-name">` + htmlEscape(name) + `</span>
+					</div>
+				</div>`
+	}
+
 	app := acceptInviteAppLabel(role)
-	return errBlock + `
-		<p>Chào <strong>` + htmlEscape(name) + `</strong>, hãy đặt mật khẩu để kích hoạt tài khoản RPM.</p>
-		<form method="POST" action="/auth/accept-invite">
-			<input type="hidden" name="token" value="` + htmlEscape(token) + `">
-			<input type="hidden" name="role" value="` + htmlEscape(role) + `">
-			<label for="password">Mật khẩu mới</label>
-			<input id="password" name="password" type="password" minlength="6" required autocomplete="new-password">
-			<label for="confirmedPassword">Xác nhận mật khẩu</label>
-			<input id="confirmedPassword" name="confirmedPassword" type="password" minlength="6" required autocomplete="new-password">
-			<button type="submit">Lưu mật khẩu</button>
-		</form>
-		<p class="hint">Liên kết có hiệu lực 15 phút. Sau khi lưu, đăng nhập trên ` + app + `.</p>
+	eyeIcon := `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>`
+	lockIcon := `<svg viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M12 1.5a5.25 5.25 0 0 0-5.25 5.25v3a3 3 0 0 0-3 3v6.75a3 3 0 0 0 3 3h10.5a3 3 0 0 0 3-3v-6.75a3 3 0 0 0-3-3v-3c0-2.9-2.35-5.25-5.25-5.25Zm3.75 8.25v-3a3.75 3.75 0 1 0-7.5 0v3h7.5Z" clip-rule="evenodd"/></svg>`
+	checkIcon := `<svg viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd"/></svg>`
+
+	return `
+		<div class="card">
+			<div class="chip">
+				<svg viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M12.516 2.17a.75.75 0 0 0-1.032 0 11.209 11.209 0 0 1-7.877 3.08.75.75 0 0 0-.722.515A12.74 12.74 0 0 0 2.25 9.75c0 5.814 3.854 10.73 9.164 12.28a.75.75 0 0 0 .672 0c5.31-1.55 9.164-6.466 9.164-12.28a12.74 12.74 0 0 0-.635-3.985.75.75 0 0 0-.722-.516 11.209 11.209 0 0 1-7.877-3.08Z" clip-rule="evenodd"/></svg>
+				<span>Khởi tạo Mật khẩu</span>
+			</div>
+			<h1>Thiết lập Mật khẩu</h1>
+			` + userBlock + `
+			` + errBlock + `
+			<form method="POST" action="/auth/accept-invite" novalidate>
+				<input type="hidden" name="token" value="` + htmlEscape(token) + `">
+				<input type="hidden" name="role" value="` + htmlEscape(role) + `">
+				<div class="field">
+					<label for="password">Mật khẩu mới</label>
+					<div class="input-wrap">
+						<span class="icon-left">` + lockIcon + `</span>
+						<input id="password" name="password" type="password" minlength="6" required autocomplete="new-password" placeholder="Tối thiểu 6 ký tự">
+						<button type="button" class="toggle" id="togglePassword" aria-label="Hiện mật khẩu">` + eyeIcon + `</button>
+					</div>
+				</div>
+				<div class="field">
+					<label for="confirmedPassword">Xác nhận mật khẩu</label>
+					<div class="input-wrap">
+						<span class="icon-left">` + lockIcon + `</span>
+						<input id="confirmedPassword" name="confirmedPassword" type="password" minlength="6" required autocomplete="new-password" placeholder="Nhập lại mật khẩu mới">
+						<button type="button" class="toggle" id="toggleConfirm" aria-label="Hiện mật khẩu">` + eyeIcon + `</button>
+					</div>
+				</div>
+				<div class="checks">
+					<div class="check-row" id="checkMin">
+						<span class="check-dot">` + checkIcon + `</span>
+						<span>Tối thiểu 6 ký tự</span>
+					</div>
+					<div class="check-row" id="checkMatch">
+						<span class="check-dot">` + checkIcon + `</span>
+						<span>Mật khẩu xác nhận phải trùng khớp</span>
+					</div>
+				</div>
+				<button type="submit" class="btn" id="submitBtn" disabled>
+					<span>Lưu mật khẩu</span>
+					<svg viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" d="M12.97 3.97a.75.75 0 0 1 1.06 0l7.5 7.5a.75.75 0 0 1 0 1.06l-7.5 7.5a.75.75 0 1 1-1.06-1.06l6.22-6.22H3a.75.75 0 0 1 0-1.5h16.19l-6.22-6.22a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd"/></svg>
+				</button>
+			</form>
+			<p class="hint">Liên kết có hiệu lực 15 phút. Sau khi lưu, đăng nhập trên ` + htmlEscape(app) + `.</p>
+		</div>
 	`
 }
 
@@ -461,16 +559,6 @@ func htmlEscape(s string) string {
 	return replacer.Replace(s)
 }
 
-// isDoctorInviteRole: chỉ bác sĩ dùng web portal sau khi đặt mật khẩu.
-func isDoctorInviteRole(role string) bool {
-	switch strings.ToLower(strings.TrimSpace(role)) {
-	case "user.doctor", "doctor":
-		return true
-	default:
-		return false
-	}
-}
-
 // isStaffAppRole: bác sĩ + điều dưỡng mở app staff (rpm-doctor).
 func isStaffAppRole(role string) bool {
 	switch strings.ToLower(strings.TrimSpace(role)) {
@@ -481,14 +569,10 @@ func isStaffAppRole(role string) bool {
 	}
 }
 
-// acceptInviteBrowserDestination:
-// - bác sĩ → web portal (đặt MK rồi vào cổng bác sĩ)
-// - bệnh nhân / điều dưỡng → trang HTML API (đặt MK rồi hướng dẫn mở app)
+// acceptInviteBrowserDestination: mọi role đặt mật khẩu trên web portal FE.
+// Sau khi đặt MK: bác sĩ → đăng nhập cổng web; bệnh nhân/điều dưỡng → hướng dẫn mở app.
 func acceptInviteBrowserDestination(token, role string) string {
-	if isDoctorInviteRole(role) {
-		return util.FrontendWebURL() + "/accept-invite?token=" + url.QueryEscape(token)
-	}
-	dest := util.AcceptInviteURL(token)
+	dest := util.FrontendWebURL() + "/accept-invite?token=" + url.QueryEscape(token)
 	if role != "" {
 		dest += "&role=" + url.QueryEscape(role)
 	}
@@ -496,8 +580,8 @@ func acceptInviteBrowserDestination(token, role string) string {
 }
 
 // HandleSmartInvite routes invite links by device + role:
-// - Desktop doctor → doctor web; desktop patient/nurse → HTML set-password (then use mobile app)
-// - Mobile: deep-link to rpm (patient) or rpm-doctor (doctor/nurse); fallback = browser destination above
+// - Desktop / browser fallback: FE web portal /accept-invite (role-aware CTA after set password)
+// - Mobile: deep-link to rpm (patient) or rpm-doctor (doctor/nurse)
 // @Summary Handle smart invite link
 // @Tags auth
 // @Param token query string true "Invite token"
@@ -611,13 +695,13 @@ func (h *AuthHandler) PreviewAcceptInviteApi(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
-	name, err := h.service.PreviewAcceptInvite(ctx, token)
+	name, role, err := h.service.PreviewAcceptInvite(ctx, token)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "valid": false})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"name": name, "valid": true})
+	c.JSON(http.StatusOK, gin.H{"name": name, "role": role, "valid": true})
 }
 
 // ========================================================

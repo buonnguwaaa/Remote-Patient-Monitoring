@@ -120,9 +120,10 @@ func (s *accountNotifier) NotifyPatientActivated(ctx context.Context, patient *u
 					<a href="%s" style="background:#007bff;color:#fff;text-decoration:none;padding:12px 22px;border-radius:6px;display:inline-block;font-weight:600;">Đặt mật khẩu</a>
 				</p>
 				<p>Liên kết có hiệu lực trong <strong>%d phút</strong>. Nếu hết hạn, mở ứng dụng RPM và chọn <strong>Quên mật khẩu</strong> (cần email) để nhận mã OTP mới.</p>
-				<p style="font-size:13px;color:#666;word-break:break-all;">Hoặc mở: %s</p>`,
+				<p style="font-size:13px;color:#666;word-break:break-all;">Hoặc mở: <a href="%s" style="color:#007bff;">%s</a></p>`,
 				safeURL,
 				ttlMinutes,
+				safeURL,
 				safeURL,
 			)
 			smsBody = fmt.Sprintf(
