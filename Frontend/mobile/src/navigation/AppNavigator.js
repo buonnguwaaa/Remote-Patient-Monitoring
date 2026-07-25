@@ -23,6 +23,7 @@ import RegisterScreen from "../screens/auth/RegisterScreen";
 import RegisterOptionalScreen from "../screens/auth/RegisterOptionalScreen";
 import ForgotPasswordScreen from "../screens/auth/ForgotPasswordScreen";
 import ResetPasswordScreen from "../screens/auth/ResetPasswordScreen";
+import SetPasswordScreen from "../screens/auth/SetPasswordScreen";
 
 import HomeScreen from "../screens/patient/HomeScreen";
 import HistoryScreen from "../screens/patient/HistoryScreen";
@@ -148,6 +149,7 @@ function RootNavigator() {
         <Stack.Screen name="RegisterOptional" component={RegisterOptionalScreen} />
         <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
         <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
+        <Stack.Screen name="SetPassword" component={SetPasswordScreen} />
       </Stack.Navigator>
     );
   }
@@ -165,14 +167,25 @@ function RootNavigator() {
       <Stack.Screen name="EducationArticle" component={EducationArticleScreen} />
       <Stack.Screen name="EducationQuiz" component={EducationQuizScreen} />
       <Stack.Screen name="AccountHistory" component={AccountHistoryScreen} />
+      <Stack.Screen name="SetPassword" component={SetPasswordScreen} />
     </Stack.Navigator>
   );
 }
+
+const linking = {
+  prefixes: ["rpm://", "exp+rpm-patient://"],
+  config: {
+    screens: {
+      SetPassword: "accept-invite",
+    },
+  },
+};
 
 export default function AppNavigator() {
   return (
     <NavigationContainer
       ref={navigationRef}
+      linking={linking}
       onReady={() => {
         flushPendingNotificationNavigation();
       }}

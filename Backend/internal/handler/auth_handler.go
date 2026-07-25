@@ -2,7 +2,9 @@ package handler
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -438,6 +440,126 @@ func htmlEscape(s string) string {
 		`'`, "&#39;",
 	)
 	return replacer.Replace(s)
+}
+
+// HandleSmartInvite routes incoming invite links to Native App, Web Portal, or Static HTML depending on device & role.
+// @Summary Handle smart invite link
+// @Tags auth
+// @Param token query string true "Invite token"
+// @Param role query string false "User role (user.doctor, user.nurse, user.patient)"
+// @Router /auth/smart-invite [get]
+func (h *AuthHandler) HandleSmartInvite(c *gin.Context) {
+	token := strings.TrimSpace(c.Query("token"))
+	role := strings.TrimSpace(c.Query("role"))
+	userAgent := strings.ToLower(c.Request.UserAgent())
+
+	isMobile := strings.Contains(userAgent, "android") ||
+		strings.Contains(userAgent, "iphone") ||
+		strings.Contains(userAgent, "ipad") ||
+		strings.Contains(userAgent, "ipod") ||
+		strings.Contains(userAgent, "mobile")
+
+	// Desktop Web Browser -> Redirect to Web Portal accept-invite page
+	if !isMobile {
+		webPortalURL := util.FrontendWebURL() + "/accept-invite?token=" + url.QueryEscape(token)
+		c.Redirect(http.StatusFound, webPortalURL)
+		return
+	}
+
+	// Mobile device: attempt native app deep link redirect with HTML launcher page
+	scheme := "rpm"
+	if role == "user.doctor" || role == "doctor" || role == "user.nurse" || role == "nurse" {
+		scheme = "rpm-doctor"
+	}
+	deepLink := fmt.Sprintf("%s://accept-invite?token=%s", scheme, url.QueryEscape(token))
+	fallbackUrl := util.PublicAPIBaseURL() + "/auth/accept-invite?token=" + url.QueryEscape(token)
+
+	html := fmt.Sprintf(`<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Đang mở ứng dụng RPM...</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f8fafc; text-align: center; padding: 40px 20px; color: #1e293b; }
+  .card { max-width: 400px; margin: 0 auto; background: #ffffff; padding: 32px 24px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+  .btn { display: inline-block; width: 100%%; padding: 14px; margin-top: 12px; font-weight: 600; text-decoration: none; border-radius: 10px; box-sizing: border-box; text-align: center; }
+  .btn-primary { background: #2563eb; color: #ffffff; }
+  .btn-secondary { background: #e2e8f0; color: #334155; }
+  p { font-size: 15px; line-height: 1.5; color: #64748b; }
+</style>
+<script>
+  window.onload = function() {
+    window.location.href = "%s";
+  };
+</script>
+</head>
+<body>
+<div class="card">
+  <h2>Đang kích hoạt tài khoản RPM</h2>
+  <p>Hệ thống đang mở ứng dụng di động để bạn đặt mật khẩu...</p>
+  <a href="%s" class="btn btn-primary">Mở Ứng dụng RPM</a>
+  <a href="%s" class="btn btn-secondary">Tiếp tục trên Trình duyệt Web</a>
+</div>
+</body>
+</html>`, deepLink, deepLink, fallbackUrl)
+
+	c.Header("Content-Type", "text/html; charset=utf-8")
+	c.String(http.StatusOK, "%s", html)
+}
+
+// SubmitAcceptInviteApi completes first-time password setup via JSON API (for Mobile App and Web Portal).
+// @Summary Submit accept-invite form via JSON API
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param data body dto.AcceptInviteApiRequest true "Token and password"
+// @Success 200 {object} map[string]string "Success message"
+// @Failure 400 {object} map[string]string "Error message"
+// @Router /auth/accept-invite/api [post]
+func (h *AuthHandler) SubmitAcceptInviteApi(c *gin.Context) {
+	var req dto.AcceptInviteApiRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Thông tin không hợp lệ: " + err.Error()})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	if err := h.service.AcceptInvite(ctx, req.Token, req.Password, req.ConfirmedPassword); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Đặt mật khẩu thành công. Bạn có thể đăng nhập ngay bây giờ."})
+}
+
+// PreviewAcceptInviteApi checks if an invite token is valid and gets user's name via JSON API.
+// @Summary Preview accept-invite token via JSON API
+// @Tags auth
+// @Produce json
+// @Param token query string true "Invite token"
+// @Success 200 {object} map[string]interface{} "User info"
+// @Failure 400 {object} map[string]string "Error message"
+// @Router /auth/accept-invite/preview [get]
+func (h *AuthHandler) PreviewAcceptInviteApi(c *gin.Context) {
+	token := strings.TrimSpace(c.Query("token"))
+	if token == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Token là bắt buộc", "valid": false})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	name, err := h.service.PreviewAcceptInvite(ctx, token)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "valid": false})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"name": name, "valid": true})
 }
 
 // ========================================================

@@ -222,7 +222,7 @@ func (s *userService) CreatePatient(ctx context.Context, input *usecase.CreatePa
 		return nil, err
 	}
 
-	inviteURL, err := s.issuePatientInvite(ctx, created.ID)
+	inviteURL, err := s.issueInvite(ctx, created.ID, domain.RolePatient)
 	if err != nil {
 		log.Printf("[WARN] patient %s created but invite token failed: %v", created.ID.Hex(), err)
 		return mapPatient(created), nil
@@ -247,7 +247,7 @@ func (s *userService) ResendPatientInvite(ctx context.Context, input *usecase.Ge
 		return &ValidationError{Field: "contact", Message: "Bệnh nhân cần email hoặc số điện thoại để nhận liên kết."}
 	}
 
-	inviteURL, err := s.issuePatientInvite(ctx, patient.ID)
+	inviteURL, err := s.issueInvite(ctx, patient.ID, patient.Role)
 	if err != nil {
 		return err
 	}
@@ -255,8 +255,9 @@ func (s *userService) ResendPatientInvite(ctx context.Context, input *usecase.Ge
 	return nil
 }
 
-// issuePatientInvite mints a one-time set-password token (15m) and returns the public accept-invite URL.
-func (s *userService) issuePatientInvite(ctx context.Context, userID primitive.ObjectID) (string, error) {
+// issueInvite mints a one-time set-password token (15m) and returns the
+// smart-invite URL that routes to the correct destination based on role.
+func (s *userService) issueInvite(ctx context.Context, userID primitive.ObjectID, role domain.Role) (string, error) {
 	rawToken, err := util.GenerateRandomToken(InviteTokenBytes)
 	if err != nil {
 		return "", err
@@ -265,7 +266,7 @@ func (s *userService) issuePatientInvite(ctx context.Context, userID primitive.O
 	if err := s.baseUserRepo.SetResetTokenByID(ctx, userID, util.HashTokenSHA256(rawToken), expires); err != nil {
 		return "", err
 	}
-	return util.AcceptInviteURL(rawToken), nil
+	return util.SmartInviteURL(rawToken, string(role)), nil
 }
 
 // notifyPatientActivatedAsync delivers the activation email/SMS off the
@@ -425,7 +426,7 @@ func (s *userService) CreateDoctor(ctx context.Context, input *usecase.CreateDoc
 	}
 
 	if created.MustSetPassword {
-		inviteURL, err := s.issuePatientInvite(ctx, created.ID)
+		inviteURL, err := s.issueInvite(ctx, created.ID, domain.RoleDoctor)
 		if err == nil {
 			s.notifyPatientActivatedAsync(ctx, &domain.Patient{BaseUser: created.BaseUser}, true, inviteURL)
 		}
@@ -447,7 +448,7 @@ func (s *userService) CreateNurse(ctx context.Context, input *usecase.CreateNurs
 	}
 
 	if created.MustSetPassword {
-		inviteURL, err := s.issuePatientInvite(ctx, created.ID)
+		inviteURL, err := s.issueInvite(ctx, created.ID, domain.RoleNurse)
 		if err == nil {
 			s.notifyPatientActivatedAsync(ctx, &domain.Patient{BaseUser: created.BaseUser}, true, inviteURL)
 		}

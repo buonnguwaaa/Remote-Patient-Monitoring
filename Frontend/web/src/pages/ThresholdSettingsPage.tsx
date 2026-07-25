@@ -266,10 +266,10 @@ export default function ThresholdSettingsPage() {
     setIsFormVisible(true);
   };
 
-  const handleCloneArchived = (threshold: ThresholdRecord) => {
-    handleEditActiveThreshold(threshold);
-    setEditingPatientId(null); // Clone implies creating a new one without explicitly closing an "active" one
-  };
+  // const handleCloneArchived = (threshold: ThresholdRecord) => {
+  //   handleEditActiveThreshold(threshold);
+  //   setEditingPatientId(null);
+  // };
 
   const handleChange = (
     e: ChangeEvent<HTMLInputElement | HTMLSelectElement>,

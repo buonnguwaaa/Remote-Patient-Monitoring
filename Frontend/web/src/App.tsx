@@ -19,6 +19,7 @@ const PageLoader = () => (
 );
 
 const LoginPage = lazy(() => import("./pages/LoginPage.tsx"));
+const AcceptInvitePage = lazy(() => import("./pages/AcceptInvitePage.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 
 const DashBoard = lazy(() => import("./pages/DashBoard.tsx"));
@@ -64,6 +65,7 @@ function App() {
           <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/accept-invite" element={<AcceptInvitePage />} />
               <Route
                 element={
                   <ProtectedRoute>

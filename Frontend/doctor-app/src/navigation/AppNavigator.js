@@ -17,6 +17,7 @@ import {
 
 // Doctor Screens
 import LoginScreen from "../screens/LoginScreen";
+import SetPasswordScreen from "../screens/SetPasswordScreen";
 import HomeScreen from "../screens/HomeScreen";
 import ProfileScreen from "../screens/ProfileScreen";
 import PatientsScreen from "../screens/PatientsScreen";
@@ -232,6 +233,7 @@ function RootNavigator() {
     return (
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Login" component={LoginScreen} />
+        <Stack.Screen name="SetPassword" component={SetPasswordScreen} />
       </Stack.Navigator>
     );
   }
@@ -244,6 +246,7 @@ function RootNavigator() {
         <Stack.Screen name="NursePatientDetail" component={PatientDetailScreen} />
         <Stack.Screen name="NursePrescriptionDetail" component={PrescriptionsScreen} />
         <Stack.Screen name="AccountHistory" component={AccountHistoryScreen} options={themeRootHeaderOptions("Lịch sử hoạt động")} />
+        <Stack.Screen name="SetPassword" component={SetPasswordScreen} />
       </Stack.Navigator>
     );
   }
@@ -261,14 +264,25 @@ function RootNavigator() {
       <Stack.Screen name="Settings" component={SettingsScreen} options={themeRootHeaderOptions("Cài đặt")} />
       <Stack.Screen name="AlertDetail" component={AlertDetailScreen} options={themeRootHeaderOptions("Chi tiết cảnh báo")} />
       <Stack.Screen name="AccountHistory" component={AccountHistoryScreen} options={themeRootHeaderOptions("Lịch sử hoạt động")} />
+      <Stack.Screen name="SetPassword" component={SetPasswordScreen} />
     </Stack.Navigator>
   );
 }
+
+const linking = {
+  prefixes: ["rpm-doctor://", "exp+rpm-doctor://"],
+  config: {
+    screens: {
+      SetPassword: "accept-invite",
+    },
+  },
+};
 
 export default function AppNavigator() {
   return (
     <NavigationContainer
       ref={navigationRef}
+      linking={linking}
       onReady={flushPendingNotificationNavigation}
     >
       <RootNavigator />
