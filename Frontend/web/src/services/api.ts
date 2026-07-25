@@ -72,7 +72,7 @@ api.interceptors.response.use(
                 // Chỉ đẩy user về trang đăng nhập nếu API trả về lỗi xác thực (400, 401, 403)
                 // Bỏ qua nếu là lỗi mạng (Network Error) hoặc lỗi server 5xx để tránh văng app oan
                 const isAuthError = refreshError.response && [400, 401, 403].includes(refreshError.response.status);
-                const isPublicPage = window.location.pathname === "/login" || window.location.pathname.startsWith("/accept-invite");
+                const isPublicPage = window.location.pathname === "/login" || window.location.pathname === "/forgot-password" || window.location.pathname.startsWith("/accept-invite");
                 
                 if (isAuthError && !isPublicPage) {
                     window.location.href = "/login";

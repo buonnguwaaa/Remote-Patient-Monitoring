@@ -251,6 +251,11 @@ func (h *AuthHandler) HandleGoogleOAuth2Callback(c *gin.Context) {
 
 	resp, err := h.service.HandleGoogleOAuth2Callback(ctx, &usecase.GoogleOAuth2Input{Code: code})
 	if err != nil {
+		mobileURI := os.Getenv("FE_MOBILE_URI")
+		if mobileURI != "" {
+			c.Redirect(http.StatusTemporaryRedirect, mobileURI+"?error="+url.QueryEscape(err.Error()))
+			return
+		}
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}

@@ -102,7 +102,7 @@ const savedAccountStyle = StyleSheet.create({
   },
 });
 
-export default function LoginScreen() {
+export default function LoginScreen({ navigation }) {
   const { showToast } = useToast();
   const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
@@ -294,7 +294,7 @@ export default function LoginScreen() {
             </View>
           )}
 
-          <View style={styles.field}>
+          <View style={[styles.field, { marginBottom: 12 }]}>
             <Text style={styles.label}>Mật khẩu</Text>
             <View style={styles.passwordWrap}>
               <TextInput
@@ -314,11 +314,21 @@ export default function LoginScreen() {
             </View>
           </View>
 
+          <TouchableOpacity
+            style={{ alignSelf: 'flex-end', marginTop: 0, marginBottom: 20, paddingVertical: 2, paddingHorizontal: 2 }}
+            onPress={() => navigation?.navigate('ForgotPassword')}
+            activeOpacity={0.7}
+          >
+            <Text style={{ fontSize: 13, fontWeight: '600', color: '#2563EB' }}>
+              Quên mật khẩu?
+            </Text>
+          </TouchableOpacity>
+
           <ButtonPrimary
             title={loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
             onPress={handleSubmit}
             disabled={loading}
-            style={{ marginTop: 10 }}
+            style={{ marginTop: 0 }}
           />
 
           {hasBiometric && (

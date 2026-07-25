@@ -10,7 +10,7 @@ import NotificationInboxScreen from "./NotificationInboxScreen";
 export default function NotificationContainerScreen({ navigation, route }) {
   const [activeTab, setActiveTab] = useState("alerts"); // "alerts" | "system"
   const isFocused = useIsFocused();
-  const { refreshBadges } = useBadge();
+  const { refreshBadges, unreadAlertsCount = 0, unreadRemindersCount = 0 } = useBadge();
 
   // Refresh badge count when screen is focused
   useEffect(() => {
@@ -29,18 +29,56 @@ export default function NotificationContainerScreen({ navigation, route }) {
             onPress={() => setActiveTab("alerts")}
             activeOpacity={0.8}
           >
-            <Text style={[styles.segmentText, activeTab === "alerts" && styles.segmentTextActive]}>
-              Cảnh báo sức khỏe
-            </Text>
+            <View style={styles.tabContentRow}>
+              <Text style={[styles.segmentText, activeTab === "alerts" && styles.segmentTextActive]}>
+                Cảnh báo sức khỏe
+              </Text>
+              {unreadAlertsCount > 0 && (
+                <View
+                  style={[
+                    styles.badgePill,
+                    activeTab === "alerts" ? styles.badgePillActive : styles.badgePillInactive,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.badgePillText,
+                      activeTab === "alerts" ? styles.badgePillTextActive : styles.badgePillTextInactive,
+                    ]}
+                  >
+                    {unreadAlertsCount > 99 ? "99+" : unreadAlertsCount}
+                  </Text>
+                </View>
+              )}
+            </View>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.segmentTab, activeTab === "system" && styles.segmentTabActive]}
             onPress={() => setActiveTab("system")}
             activeOpacity={0.8}
           >
-            <Text style={[styles.segmentText, activeTab === "system" && styles.segmentTextActive]}>
-              Nhắc nhở
-            </Text>
+            <View style={styles.tabContentRow}>
+              <Text style={[styles.segmentText, activeTab === "system" && styles.segmentTextActive]}>
+                Nhắc nhở
+              </Text>
+              {unreadRemindersCount > 0 && (
+                <View
+                  style={[
+                    styles.badgePill,
+                    activeTab === "system" ? styles.badgePillActive : styles.badgePillInactive,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.badgePillText,
+                      activeTab === "system" ? styles.badgePillTextActive : styles.badgePillTextInactive,
+                    ]}
+                  >
+                    {unreadRemindersCount > 99 ? "99+" : unreadRemindersCount}
+                  </Text>
+                </View>
+              )}
+            </View>
           </TouchableOpacity>
         </View>
       </View>
@@ -88,6 +126,36 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
+  },
+  tabContentRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  badgePill: {
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    paddingHorizontal: 5,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  badgePillActive: {
+    backgroundColor: "#FFFFFF",
+  },
+  badgePillInactive: {
+    backgroundColor: "#EF4444",
+  },
+  badgePillText: {
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  badgePillTextActive: {
+    color: "#2563EB",
+  },
+  badgePillTextInactive: {
+    color: "#FFFFFF",
   },
   segmentText: {
     fontSize: 14,

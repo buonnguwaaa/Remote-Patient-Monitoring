@@ -340,7 +340,11 @@ export default function AlertDetailPage() {
                   Giới tính
                 </span>
                 <span className="font-medium text-slate-900 dark:text-slate-100">
-                  {patient?.gender || "Chưa có"}
+                  {patient?.gender === "M" || patient?.gender === "MALE" || patient?.gender === "user.gender.male"
+                    ? "Nam"
+                    : patient?.gender === "F" || patient?.gender === "FEMALE" || patient?.gender === "user.gender.female"
+                    ? "Nữ"
+                    : (patient?.gender || "Chưa có")}
                 </span>
               </div>
               <div>
