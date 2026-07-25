@@ -66,9 +66,32 @@ export const FormWizardModal: React.FC<FormWizardModalProps> = ({
           </button>
         </div>
 
-        {/* Stepper Progress Bar */}
-        <div className="px-6 py-4 bg-gray-50 dark:bg-gray-900/60 border-b border-gray-100 dark:border-gray-700">
-          <div className="flex items-center justify-between">
+        {isViewOnly ? (
+          <div className="flex border-b border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800">
+            {stepTitles.map((stepTitle, idx) => {
+              const stepNumber = idx + 1;
+              const isActive = currentStep === stepNumber;
+              return (
+                <button
+                  key={stepNumber}
+                  type="button"
+                  onClick={() => {
+                    if (onStepClick) onStepClick(stepNumber);
+                  }}
+                  className={`flex-1 py-4 text-center text-sm font-semibold transition-colors border-b-2 ${
+                    isActive
+                      ? "border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-900/20"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-800"
+                  }`}
+                >
+                  {stepTitle}
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="px-6 py-4 bg-gray-50 dark:bg-gray-900/60 border-b border-gray-100 dark:border-gray-700">
+            <div className="flex items-center justify-between">
             {stepTitles.map((stepTitle, idx) => {
               const stepNumber = idx + 1;
               const isCompleted = currentStep > stepNumber;
@@ -124,6 +147,7 @@ export const FormWizardModal: React.FC<FormWizardModalProps> = ({
             })}
           </div>
         </div>
+        )}
 
         {/* Form Body */}
         <form

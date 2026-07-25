@@ -16,14 +16,14 @@ import (
 // and is simply left empty when caching a Nurse.
 type cachedMedicalStaff struct {
 	cachedBaseUser
-	DepartmentID              primitive.ObjectID                `json:"departmentId,omitempty"`
-	Workplace                 string                            `json:"workplace,omitempty"`
-	LicenseNumber             string                            `json:"licenseNumber,omitempty"`
-	YearsOfExperience         int                               `json:"yearsOfExperience,omitempty"`
-	Specialization            string                            `json:"specialization,omitempty"`
-	AcademicDegree            domain.AcademicDegree             `json:"academicDegree,omitempty"`
-	ProfessionalQualification domain.ProfessionalQualification  `json:"professionalQualification,omitempty"`
-	AcademicTitle             domain.AcademicTitle              `json:"academicTitle,omitempty"`
+	DepartmentID              primitive.ObjectID               `json:"departmentId,omitempty"`
+	Workplace                 string                           `json:"workplace,omitempty"`
+	LicenseNumber             string                           `json:"licenseNumber,omitempty"`
+	YearsOfExperience         int                              `json:"yearsOfExperience,omitempty"`
+	Specialization            string                           `json:"specialization,omitempty"`
+	AcademicDegree            domain.AcademicDegree            `json:"academicDegree,omitempty"`
+	ProfessionalQualification domain.ProfessionalQualification `json:"professionalQualification,omitempty"`
+	AcademicTitle             domain.AcademicTitle             `json:"academicTitle,omitempty"`
 }
 
 // toCachedStaff and fromCachedStaff use the same type-switch approach as
@@ -62,7 +62,7 @@ func fromCachedStaff[T StaffEntity](c cachedMedicalStaff) T {
 	case *domain.Doctor:
 		d := domain.Doctor{
 			MedicalStaff: domain.MedicalStaff{
-				BaseUser:          *c.cachedBaseUser.toDomain(),
+				BaseUser:          *c.toDomain(),
 				DepartmentID:      c.DepartmentID,
 				Workplace:         c.Workplace,
 				LicenseNumber:     c.LicenseNumber,
@@ -77,7 +77,7 @@ func fromCachedStaff[T StaffEntity](c cachedMedicalStaff) T {
 	case *domain.Nurse:
 		n := domain.Nurse{
 			MedicalStaff: domain.MedicalStaff{
-				BaseUser:          *c.cachedBaseUser.toDomain(),
+				BaseUser:          *c.toDomain(),
 				DepartmentID:      c.DepartmentID,
 				Workplace:         c.Workplace,
 				LicenseNumber:     c.LicenseNumber,

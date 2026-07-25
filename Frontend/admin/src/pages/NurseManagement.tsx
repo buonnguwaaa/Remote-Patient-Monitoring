@@ -121,6 +121,19 @@ const NurseManagement: React.FC = () => {
     setCurrentPage(1);
   }, [searchTerm]);
 
+  useEffect(() => {
+    if (nurses.length > 0) {
+      const urlParams = new URLSearchParams(window.location.search);
+      const viewId = urlParams.get("viewId");
+      if (viewId && !showWizard) {
+        const nurseToView = nurses.find((n) => n.id === viewId);
+        if (nurseToView) {
+          handleView(nurseToView);
+        }
+      }
+    }
+  }, [nurses]);
+
   return (
     <div className="p-4 md:p-6">
       <Toast toast={toast} onClose={hideToast} />

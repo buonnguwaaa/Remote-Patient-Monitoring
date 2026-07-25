@@ -70,7 +70,7 @@ func JWTAuthMiddleware(jwtManager *util.JWTManager, blacklist repository.TokenBl
 				}
 				// Compare at second precision to match Redis storage and avoid
 				// rejecting a freshly issued token that shares the same second.
-				if ok && claims.IssuedAt.Time.Unix() < invalidBefore.Unix() {
+				if ok && claims.IssuedAt.Unix() < invalidBefore.Unix() {
 					c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": constant.MsgTokenRevoked})
 					return
 				}

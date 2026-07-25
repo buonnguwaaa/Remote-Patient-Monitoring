@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { FaHistory, FaFilter, FaUserMd, FaRegUser, FaUserNurse, FaCog } from "react-icons/fa";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 import api from "../services/api";
 import { useToast } from "../hooks/useToast";
 import Toast from "../components/ui/Toast";
@@ -211,9 +212,53 @@ const ActivityHistory: React.FC = () => {
     return t(`activityHistory.types.${type}`) || t("activityHistory.types.other");
   };
 
+  const translateAction = (action: string) => {
+    if (!action) return "";
+    const map: Record<string, string> = {
+      "login": "đăng nhập",
+      "logout": "đăng xuất",
+      "update": "cập nhật",
+      "create": "tạo mới",
+      "delete": "xóa",
+      "notifications": "thông báo",
+      "notification": "thông báo",
+      "alerts": "cảnh báo",
+      "alert": "cảnh báo",
+      "doctor": "bác sĩ",
+      "doctors": "bác sĩ",
+      "nurse": "y tá",
+      "nurses": "y tá",
+      "patient": "bệnh nhân",
+      "patients": "bệnh nhân",
+      "department": "khoa phòng",
+      "departments": "khoa phòng",
+      "user": "người dùng",
+      "users": "người dùng",
+      "assignment": "phân công",
+      "assignments": "phân công",
+      "settings": "cài đặt",
+      "profile": "hồ sơ",
+      "password": "mật khẩu",
+      "status": "trạng thái"
+    };
+
+    let translated = action;
+    for (const [key, value] of Object.entries(map)) {
+      const regex = new RegExp(`\\b${key}\\b`, 'gi');
+      translated = translated.replace(regex, value);
+    }
+    return translated.charAt(0).toUpperCase() + translated.slice(1);
+  };
+
   return (
     <div className="p-6">
       <Toast toast={toast} onClose={hideToast} />
+
+      <div className="mb-4">
+        <Link to="/" className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 transition-colors">
+          &larr; Quay lại Bảng điều khiển
+        </Link>
+      </div>
 
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-800 dark:text-white flex items-center">
@@ -455,7 +500,7 @@ const ActivityHistory: React.FC = () => {
                                 {getActivityTypeLabel(activity.type)}
                               </span>
                             </div>
-                            <p className="text-gray-700 dark:text-gray-300">{activity.action}</p>
+                            <p className="text-gray-700 dark:text-gray-300">{translateAction(activity.action)}</p>
                           </div>
                         </div>
                         <div className="text-right">
@@ -526,7 +571,7 @@ const ActivityHistory: React.FC = () => {
                     {t("activityHistory.action") || "Hành động thực hiện"}
                   </p>
                   <p className="text-lg font-bold text-indigo-600 dark:text-indigo-400 mt-1">
-                    {selectedActivity.action}
+                    {translateAction(selectedActivity.action)}
                   </p>
                 </div>
                 <span

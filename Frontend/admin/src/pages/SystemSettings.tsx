@@ -95,7 +95,7 @@ const SystemSettings: React.FC = () => {
     <>
       <Toast toast={toast} onClose={hideToast} />
 
-      <div className="mx-auto max-w-6xl space-y-6 p-6">
+      <div className="w-full space-y-6 p-4 md:p-6">
         <div className="flex flex-col gap-4 rounded-3xl border border-slate-200/80 bg-gradient-to-br from-white via-slate-50 to-slate-100 p-6 shadow-sm shadow-slate-200/50 dark:border-slate-700 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 dark:shadow-none lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-3">
             <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-lg shadow-slate-300/40 dark:bg-indigo-500 dark:shadow-indigo-500/20">
