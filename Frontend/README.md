@@ -30,7 +30,7 @@ The frontend is split into **four independent apps** — not a monorepo with sha
 |-----|-----------|--------------|-------|----------|--------|
 | **Doctor Web** | [`web/`](web/) | Doctors | React 18, TypeScript, Vite, Tailwind CSS 4 | `3000` | [`web/README.md`](web/README.md) |
 | **Admin Panel** | [`admin/`](admin/) | Administrators | React 19, TypeScript, Vite, Tailwind CSS 4 | `5174` | [`admin/README.md`](admin/README.md) |
-| **Patient Mobile** | [`mobile/`](mobile/) | Patients (and legacy nurse flows) | React Native, Expo SDK 54 | `8081` | [`mobile/README.md`](mobile/README.md) |
+| **Patient Mobile** | [`mobile/`](mobile/) | Patients | React Native, Expo SDK 54 | `8081` | [`mobile/README.md`](mobile/README.md) |
 | **Staff Mobile** | [`doctor-app/`](doctor-app/) | Doctors and nurses | React Native, Expo SDK 54 | `3001` | — |
 
 ### Doctor Web (`web/`)
@@ -47,7 +47,7 @@ Key routes: `/`, `/doctors`, `/patients`, `/nurses`, `/departments`, `/assignmen
 
 ### Patient Mobile (`mobile/`)
 
-Expo app for patients on iOS and Android. Home screen, vitals tracking, health education, messaging, notifications, medication management, and video calls. Also includes a nurse-oriented tab layout for assigned patient lists and measurement entry.
+Expo app for patients on iOS and Android. Home screen, vitals tracking, health education, messaging, notifications, medication management, and video calls.
 
 ### Staff Mobile (`doctor-app/`)
 
@@ -56,7 +56,7 @@ Expo app for clinical staff on the go. After login, navigation adapts to the use
 - **Doctors** — bottom tabs for overview, patients, alerts, chat, and a "More" menu (thresholds, reminders, prescriptions, compliance, settings, video calls).
 - **Nurses** — a focused tab bar for patient list, measurement input, prescriptions, and profile.
 
-Despite the directory name, this is the staff-facing mobile client (package name: `rpm-staff`), not a doctor-only app.
+Despite the directory name, this is the staff-facing mobile client (package name: `rpm-staff`), not a doctor-only app. Nurse flows that previously lived under Patient Mobile were moved here.
 
 ---
 
@@ -279,7 +279,7 @@ Role checks happen on both sides:
 - **Admin panel** — client redirects non-admin users away from protected routes; backend enforces admin-only endpoints.
 - **Doctor web** — doctor-role accounts only.
 - **Staff mobile** — `isDoctor` / `isNurse` from auth context drives which navigator renders.
-- **Patient mobile** — patient and nurse roles get different tab layouts.
+- **Patient mobile** — patient role only.
 
 **Patient onboarding (backend):** When an admin creates a patient, the API does **not** send a raw temporary password. It emails/SMS an invite link to `/auth/accept-invite` (HTML set-password page), sets `mustSetPassword`, and uses a 15-minute token TTL. Admins can resend via `POST /users/patients/:id/resend-invite`. Forgot password on the patient app is a 6-digit email OTP (15 min). The API accepts login by email or phone (`phoneLookupHash`); logout uses a Redis JWT blacklist.
 
@@ -289,7 +289,7 @@ Role checks happen on both sides:
 |------|-------|----------|----------|
 | Admin | `admin@gmail.com` | `Admin@123` | Admin panel |
 | Doctor | `doctor@gmail.com` | `Doctor12345@` | Doctor web or staff mobile |
-| Nurse | `nurse@gmail.com` | `Nurse@123` | Staff mobile or patient mobile |
+| Nurse | `nurse@gmail.com` | `Nurse@123` | Staff mobile |
 | Patient | `patient@gmail.com` | `Patient12345@` | Patient mobile |
 
 ---
@@ -349,10 +349,9 @@ Frontend/
 │   ├── src/
 │   │   ├── screens/
 │   │   │   ├── patient/    # Home, tracking, education, chat, …
-│   │   │   ├── nurse/      # Nurse patient list, measurement input
 │   │   │   └── auth/       # Login, register, password reset
 │   │   ├── api/            # httpClient, measurementApi, chatApi, …
-│   │   └── navigation/     # AppNavigator (role-based)
+│   │   └── navigation/     # AppNavigator
 │   ├── app.config.js
 │   ├── eas.json            # EAS Build profiles
 │   └── .env.example
