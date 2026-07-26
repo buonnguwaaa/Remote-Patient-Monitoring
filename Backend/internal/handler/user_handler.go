@@ -1093,6 +1093,99 @@ func (h *UserHandler) UpdateNurseByID(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Cập nhật điều dưỡng thành công"})
 }
 
+// UpdateMyNurseProfile handles profile update for the authenticated nurse.
+// @Summary Update my nurse profile
+// @Description Update the authenticated nurse's profile information
+// @Tags nurses
+// @Accept json
+// @Produce json
+// @Param input body dto.UpdateNurseRequest true "Nurse profile update information"
+// @Success 200 {object} map[string]interface{} "Nurse profile updated successfully"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 400 {object} map[string]string "Bad request"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /users/nurses/me [patch]
+func (h *UserHandler) UpdateMyNurseProfile(c *gin.Context) {
+	userID, exists := c.Get("userId")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": constant.MsgUnauthorized})
+		return
+	}
+
+	var req dto.UpdateNurseRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
+	defer cancel()
+
+	input := &usecase.UpdateUserInfoInput{
+		ID:     userID.(string),
+		Name:   req.Name,
+		Email:  req.Email,
+		Gender: domain.Gender(req.Gender),
+		Phone:  req.Phone,
+		StaffFieldsInput: usecase.StaffFieldsInput{
+			DepartmentID:  req.DepartmentID,
+			LicenseNumber: req.LicenseNumber,
+			Workplace:     req.Workplace,
+		},
+		NurseFieldsInput: usecase.NurseFieldsInput{
+			YearsOfExperience: req.YearsOfExperience,
+		},
+	}
+
+	if err := h.service.UpdateNurse(ctx, input); err != nil {
+		var validationErr *service.ValidationError
+		var conflictErr *service.ConflictError
+
+		switch {
+		case errors.As(err, &validationErr):
+			c.JSON(http.StatusBadRequest, gin.H{"field": validationErr.Field, "error": validationErr.Message})
+			return
+		case errors.As(err, &conflictErr):
+			c.JSON(http.StatusConflict, gin.H{"field": conflictErr.Field, "error": conflictErr.Message})
+			return
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+	}
+
+	updatedNurse, err := h.service.GetNurseByID(ctx, &usecase.GetUserByIDInput{ID: userID.(string)})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": updatedNurse, "message": "Cập nhật hồ sơ thành công"})
+}
+
+// UploadMyNurseAvatar handles avatar upload for the authenticated nurse.
+// @Summary Upload my nurse avatar
+// @Description Upload an avatar image for the authenticated nurse
+// @Tags nurses
+// @Accept multipart/form-data
+// @Produce json
+// @Param file formData file true "Avatar image file"
+// @Success 200 {object} map[string]interface{} "Avatar uploaded successfully"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 400 {object} map[string]string "Bad request"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /users/nurses/me/avatar [post]
+func (h *UserHandler) UploadMyNurseAvatar(c *gin.Context) {
+	userID, exists := c.Get("userId")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": constant.MsgUnauthorized})
+		return
+	}
+
+	h.uploadAvatarForUser(c, userID.(string))
+}
+
+
 func parseOptionalBoolQuery(c *gin.Context, key string) *bool {
 	raw := c.Query(key)
 	if raw == "" {
