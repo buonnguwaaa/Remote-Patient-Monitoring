@@ -19,6 +19,7 @@ import { useAuth } from "../../hooks/useAuth";
 import { getDepartments } from "../../api/departmentApi";
 import { getMyNurseProfile } from "../../api/profileApi";
 import { useToast } from "../../context/ToastContext";
+import EditNurseProfileModal from "../../components/nurse/EditNurseProfileModal";
 
 
 const EMPTY_PROFILE = {
@@ -221,6 +222,7 @@ export default function NurseProfileScreen() {
   const { showToast } = useToast();
   const { logout, isBiometricEnabled, enableBiometric, disableBiometric, refreshBiometricStatus, sessionPassword } = useAuth();
   const [profile, setProfile] = useState(EMPTY_PROFILE);
+  const [editModalVisible, setEditModalVisible] = useState(false);
   const [biometricLoading, setBiometricLoading] = useState(false);
   const [departmentName, setDepartmentName] = useState("");
   const [loading, setLoading] = useState(true);
@@ -380,6 +382,13 @@ export default function NurseProfileScreen() {
       >
         <View style={styles.headerRow}>
           <Text style={styles.headerTitle}>Hồ sơ điều dưỡng</Text>
+          <TouchableOpacity
+            style={styles.editBtn}
+            onPress={() => setEditModalVisible(true)}
+          >
+            <Ionicons name="pencil" size={16} color="#2563EB" />
+            <Text style={styles.editBtnText}>Chỉnh sửa</Text>
+          </TouchableOpacity>
         </View>
 
         {loadError ? (
@@ -559,6 +568,16 @@ export default function NurseProfileScreen() {
         <Text style={styles.footerVersion}>Phiên bản 1.0.0</Text>
         <Text style={styles.footerBrand}>© 2025 Remote Patient Monitoring</Text>
       </ScrollView>
+
+      <EditNurseProfileModal
+        visible={editModalVisible}
+        nurse={profile}
+        onClose={() => setEditModalVisible(false)}
+        onSuccess={() => {
+          setEditModalVisible(false);
+          loadProfile();
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -626,6 +645,20 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     color: "#111827",
+  },
+  editBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#EFF6FF",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 4,
+  },
+  editBtnText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#2563EB",
   },
   inlineErrorCard: {
     flexDirection: "row",

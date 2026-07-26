@@ -390,9 +390,21 @@ function formatDayLabel(iso: string, t: (key: string) => string) {
   });
 }
 
+function formatGenderLabel(gender?: string | null) {
+  if (!gender) return null;
+  const g = gender.trim().toUpperCase();
+  if (g === "M" || g === "MALE" || g === "USER.GENDER.MALE" || g === "NAM") {
+    return "Nam";
+  }
+  if (g === "F" || g === "FEMALE" || g === "USER.GENDER.FEMALE" || g === "NỮ" || g === "NU") {
+    return "Nữ";
+  }
+  return gender;
+}
+
 function getPatientSummary(patient: PatientDetailResponse, hideHistory = false) {
   const parts = [
-    patient.gender || null,
+    formatGenderLabel(patient.gender),
     patient.patientCode ? `Mã hồ sơ ${patient.patientCode}` : null,
     hideHistory ? null : (patient.medicalHistory || null),
   ].filter(Boolean);

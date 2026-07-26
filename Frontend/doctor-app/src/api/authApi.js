@@ -20,4 +20,22 @@ export const refresh = async () => {
   });
 };
 
-export default { login, me, logout, refresh };
+export const forgotPassword = (email) =>
+  request("/auth/forgot-password", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+
+export const verifyResetOtp = ({ email, otp }) =>
+  request("/auth/verify-reset-otp", {
+    method: "POST",
+    body: JSON.stringify({ email, otp }),
+  });
+
+export const resetPassword = ({ email, otp, newPassword, confirmedNewPassword }) =>
+  request("/auth/reset-password", {
+    method: "POST",
+    body: JSON.stringify({ email, otp, newPassword, confirmedNewPassword }),
+  });
+
+export default { login, me, logout, refresh, forgotPassword, verifyResetOtp, resetPassword };

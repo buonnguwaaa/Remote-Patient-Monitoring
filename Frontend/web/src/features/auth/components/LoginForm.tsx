@@ -107,16 +107,19 @@ const LoginForm: React.FC = () => {
           </div>
         </div>
 
-        <div className="mb-6 text-right">
-          <a href="#" className="text-sm text-gray-700 hover:underline">
-            Quên mật khẩu ?
+        <div className="mt-2 text-right">
+          <a
+            href="/forgot-password"
+            className="text-sm font-medium text-blue-600 hover:text-blue-500 hover:underline"
+          >
+            Quên mật khẩu?
           </a>
         </div>
 
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full rounded-md bg-gray-900 px-4 py-3 text-base font-semibold text-white shadow-sm transition duration-200 ease-in-out hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed"
+          className="mt-6 w-full rounded-md bg-gray-900 px-4 py-3 text-base font-semibold text-white shadow-sm transition duration-200 ease-in-out hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed"
         >
           {isLoading ? t("dashboard.generating") : t("auth.login")}
         </button>

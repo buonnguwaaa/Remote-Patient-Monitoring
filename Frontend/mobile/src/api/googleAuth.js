@@ -17,6 +17,14 @@ export async function loginWithGoogle() {
       const parsedUrl = Linking.parse(result.url);
       const token = parsedUrl.queryParams?.accessToken;
       const refreshToken = parsedUrl.queryParams?.refreshToken;
+      const errorMsg = parsedUrl.queryParams?.error;
+
+      if (errorMsg) {
+        return {
+          ok: false,
+          error: decodeURIComponent(errorMsg),
+        };
+      }
 
       if (!token) {
         return {

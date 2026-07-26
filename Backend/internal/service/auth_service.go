@@ -312,6 +312,11 @@ func (s *authService) HandleGoogleOAuth2Callback(ctx context.Context, input *use
 			}
 		}
 	}
+
+	if existing != nil && existing.Role != domain.RolePatient {
+		return nil, errors.New("Email này thuộc tài khoản Bác sĩ/Điều dưỡng. Vui lòng đăng nhập trên ứng dụng dành cho Bác sĩ.")
+	}
+
 	if existing.Status != domain.StatusActive {
 		return nil, errors.New("Tài khoản đang chờ quản trị viên xác minh")
 	}

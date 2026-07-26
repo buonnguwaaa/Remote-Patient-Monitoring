@@ -112,7 +112,13 @@ func (s *userService) UpdateBaseUser(ctx context.Context, input *usecase.UpdateU
 	}
 
 	updateData := buildBaseUpdateData(input)
-	return s.baseUserRepo.Update(ctx, objID, updateData)
+	if err := s.baseUserRepo.Update(ctx, objID, updateData); err != nil {
+		return err
+	}
+	_ = s.doctorRepo.Update(ctx, objID, updateData)
+	_ = s.nurseRepo.Update(ctx, objID, updateData)
+	_ = s.patientRepo.Update(ctx, objID, updateData)
+	return nil
 }
 
 func (s *userService) UpdateBaseUserStatus(ctx context.Context, input *usecase.UpdateUserStatusInput) error {

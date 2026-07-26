@@ -134,28 +134,6 @@ export default function RegisterOptionalScreen({ route, navigation }) {
       } else {
         const errorMsg = error?.error || error?.message || (typeof error === 'string' ? error : JSON.stringify(error)) || 'Đăng ký thất bại.';
         showError(errorMsg);
-
-        // Alert user if email / phone already exists, offering to navigate back to Step 1 with data preserved
-        const lowerErr = errorMsg.toLowerCase();
-        if (
-          lowerErr.includes('email') ||
-          lowerErr.includes('tồn tại') ||
-          lowerErr.includes('đã được đăng ký') ||
-          lowerErr.includes('phone') ||
-          lowerErr.includes('số điện thoại')
-        ) {
-          Alert.alert(
-            'Đăng ký không thành công',
-            `${errorMsg}\n\nBạn có muốn quay lại Bước 1 để thay đổi email hoặc thông tin cá nhân không? (Dữ liệu ở Bước 2 này sẽ được giữ nguyên)`,
-            [
-              { text: 'Ở lại màn này', style: 'cancel' },
-              {
-                text: 'Quay lại Bước 1',
-                onPress: handleGoBackToStep1,
-              },
-            ]
-          );
-        }
       }
     } catch (err) {
       setLoading(false);

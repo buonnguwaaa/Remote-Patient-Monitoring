@@ -376,6 +376,13 @@ export default function LoginScreen({ onLoginSuccess, navigation }) {
                     if (meRes.ok) {
                       const body = meRes.body;
                       const meUser = body.data || body.user || body;
+
+                      if (meUser.role && meUser.role !== 'patient' && meUser.role !== 'user.patient') {
+                        await logout();
+                        showError('Tài khoản này là Bác sĩ/Điều dưỡng. Vui lòng đăng nhập trên Ứng dụng Bác sĩ.');
+                        return;
+                      }
+
                       updateUser(meUser);
                       if (onLoginSuccess) {
                         await onLoginSuccess(meUser);

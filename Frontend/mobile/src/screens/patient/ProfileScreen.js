@@ -4,6 +4,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Pressable,
   Image,
   TextInput,
   ActivityIndicator,
@@ -13,18 +14,21 @@ import {
   Modal,
   Switch,
   Alert,
+  Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons, MaterialIcons, FontAwesome5 } from "@expo/vector-icons";
 import { useCallback, useState } from "react";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import QRCode from "react-native-qrcode-svg";
+import * as ImagePicker from "expo-image-picker";
 
 import { useAuth } from "../../hooks/useAuth";
 import { useSnackbar } from "../../hooks/useSnackbar";
 import {
   getMyPatientProfile,
   updateMyPatientProfile,
+  uploadMyPatientAvatar,
 } from "../../api/profileApi";
 import {
   getFirstValidationMessage,
@@ -33,6 +37,8 @@ import {
 import { buildPatientQrValue } from "../../utils/patientQrUtils";
 import { request } from "../../api/httpClient";
 import { getMyCareTeam } from "../../api/assignmentApi";
+import AvatarPickerModal from "../../components/AvatarPickerModal";
+
 
 
 const EMPTY_USER_FORM = {
@@ -257,6 +263,9 @@ export default function ProfileScreen() {
   const [qrPreviewVisible, setQrPreviewVisible] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
+  const [avatarUri, setAvatarUri] = useState(null);
+  const [pickerModalVisible, setPickerModalVisible] = useState(false);
+
 
   const [userForm, setUserForm] = useState(EMPTY_USER_FORM);
   const [patientForm, setPatientForm] = useState(EMPTY_PATIENT_FORM);
@@ -286,6 +295,7 @@ export default function ProfileScreen() {
     setSnapshot(normalized);
     setFieldErrors({});
     setLoadError("");
+    setAvatarUri(null);
   }, []);
 
   const loadProfile = useCallback(
@@ -362,11 +372,51 @@ export default function ProfileScreen() {
       setUserForm(snapshot.user);
       setPatientForm(snapshot.patient);
       setFieldErrors({});
+      setAvatarUri(null);
       setEditMode(false);
       return;
     }
 
     setEditMode(true);
+  };
+
+  const handlePickAvatar = () => {
+    setPickerModalVisible(true);
+  };
+
+  const handleTakePhoto = async () => {
+    const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+    if (permissionResult.granted === false) {
+      Alert.alert("Quyền truy cập", "Bạn cần cấp quyền truy cập máy ảnh để chụp hình.");
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      setAvatarUri(result.assets[0]);
+    }
+  };
+
+  const handleChooseLibrary = async () => {
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (permissionResult.granted === false) {
+      Alert.alert("Quyền truy cập", "Bạn cần cấp quyền truy cập thư viện ảnh để chọn ảnh.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      setAvatarUri(result.assets[0]);
+    }
   };
 
   const handleSave = async () => {
@@ -395,6 +445,25 @@ export default function ProfileScreen() {
         throw new Error(getErrorMessage(response));
       }
 
+      let newAvatarUrl = userForm.avatarUrl;
+      if (avatarUri) {
+        const avatarData = new FormData();
+        avatarData.append("file", {
+          uri: avatarUri.uri,
+          name: avatarUri.fileName || "avatar.jpg",
+          type: avatarUri.mimeType || "image/jpeg",
+        });
+
+        const avatarRes = await uploadMyPatientAvatar(avatarData);
+        if (!avatarRes.ok) {
+          throw new Error(getErrorMessage(avatarRes) || "Cập nhật ảnh đại diện thất bại");
+        }
+
+        if (avatarRes.body?.avatarUrl) {
+          newAvatarUrl = avatarRes.body.avatarUrl;
+        }
+      }
+
       const updatedProfile = response.body?.data || {
         ...payload,
         id: patientForm.id,
@@ -404,16 +473,21 @@ export default function ProfileScreen() {
         gender: patientForm.gender,
         dob: patientForm.dob,
         email: userForm.email,
-        avatarUrl: userForm.avatarUrl,
+        avatarUrl: newAvatarUrl,
       };
 
+      if (newAvatarUrl) {
+        updatedProfile.avatarUrl = newAvatarUrl;
+      }
+
+      setAvatarUri(null);
       applyProfile(updatedProfile);
       updateUser({
         id: updatedProfile.id,
         name: updatedProfile.name,
         email: updatedProfile.email,
         phone: updatedProfile.phone,
-        avatarUrl: updatedProfile.avatarUrl,
+        avatarUrl: updatedProfile.avatarUrl || newAvatarUrl,
         gender: updatedProfile.gender,
         dob: updatedProfile.dob,
       });
@@ -524,125 +598,277 @@ export default function ProfileScreen() {
       </Modal>
 
       <Modal
+        key={selectedStaff?.id || selectedStaff?._id || selectedStaff?.phone || "staff-modal"}
         visible={!!selectedStaff}
         transparent
-        animationType="slide"
+        statusBarTranslucent={true}
+        animationType="fade"
         onRequestClose={() => setSelectedStaff(null)}
       >
-        <TouchableOpacity
-          style={styles.qrModalOverlay}
-          activeOpacity={1}
-          onPress={() => setSelectedStaff(null)}
-        >
+        <View style={styles.qrModalOverlay}>
           <TouchableOpacity
+            style={StyleSheet.absoluteFill}
             activeOpacity={1}
-            onPress={() => {}}
-            style={[styles.qrModalCard, { padding: 0, overflow: 'hidden' }]}
+            onPress={() => setSelectedStaff(null)}
+          />
+
+          <View
+            style={{
+              width: "90%",
+              maxWidth: 380,
+              maxHeight: "82%",
+              backgroundColor: "#FFFFFF",
+              borderRadius: 24,
+              padding: 0,
+              overflow: "hidden",
+              alignItems: "stretch",
+              shadowColor: "#000",
+              shadowOpacity: 0.25,
+              shadowRadius: 16,
+              elevation: 12,
+            }}
           >
-            <View style={{ backgroundColor: selectedStaff?.role === "user.doctor" ? "#EEF2FF" : "#F7FEE7", padding: 20, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#E5E7EB' }}>
-              <TouchableOpacity
-                style={{ position: 'absolute', top: 12, right: 12, padding: 8 }}
-                onPress={() => setSelectedStaff(null)}
-              >
-                <Ionicons name="close" size={24} color="#374151" />
-              </TouchableOpacity>
-              
-              <View style={[styles.infoIconWrapper, { backgroundColor: '#FFFFFF', width: 80, height: 80, borderRadius: 40, marginBottom: 12, shadowColor: "#000", shadowOpacity: 0.1, shadowRadius: 4, shadowOffset: { width: 0, height: 2 } }]}>
-                {selectedStaff?.avatarUrl ? (
-                  <Image source={{ uri: selectedStaff.avatarUrl }} style={{ width: 80, height: 80, borderRadius: 40 }} />
-                ) : (
-                  <Ionicons name={selectedStaff?.role === "user.doctor" ? "person" : "medkit"} size={40} color={selectedStaff?.role === "user.doctor" ? "#4338CA" : "#65A30D"} />
-                )}
-              </View>
-              <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#111827', textAlign: 'center' }}>
-                {selectedStaff?.displayName || selectedStaff?.name}
-              </Text>
-              <Text style={{ fontSize: 14, color: '#4B5563', marginTop: 4 }}>
-                {selectedStaff?.role === "user.doctor" ? "Bác sĩ phụ trách" : "Điều dưỡng phụ trách"}
-              </Text>
-            </View>
-            
-            <ScrollView style={{ maxHeight: 400 }} contentContainerStyle={{ padding: 20 }}>
-              <View style={{ flexDirection: 'row', marginBottom: 16, alignItems: 'center' }}>
-                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-                  <Ionicons name="call" size={18} color="#4B5563" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 12, color: '#6B7280' }}>Số điện thoại</Text>
-                  <Text style={{ fontSize: 15, fontWeight: '500', color: '#111827', marginTop: 2 }}>{selectedStaff?.phone || 'Chưa cập nhật'}</Text>
-                </View>
-              </View>
-              
-              <View style={{ flexDirection: 'row', marginBottom: 16, alignItems: 'center' }}>
-                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-                  <Ionicons name="male-female" size={18} color="#4B5563" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 12, color: '#6B7280' }}>Giới tính</Text>
-                  <Text style={{ fontSize: 15, fontWeight: '500', color: '#111827', marginTop: 2 }}>
-                    {selectedStaff?.gender === "MALE" ? "Nam" : selectedStaff?.gender === "FEMALE" ? "Nữ" : "Khác"}
-                  </Text>
-                </View>
-              </View>
+            {(() => {
+              const isDoctor =
+                selectedStaff?.role === "doctor" ||
+                selectedStaff?.role === "user.doctor" ||
+                selectedStaff?.role?.includes("doctor");
+              const genderText =
+                selectedStaff?.gender === "MALE" ||
+                selectedStaff?.gender === "user.gender.male" ||
+                selectedStaff?.gender === "M" ||
+                selectedStaff?.gender === "male" ||
+                selectedStaff?.gender === "Nam"
+                  ? "Nam"
+                  : selectedStaff?.gender === "FEMALE" ||
+                    selectedStaff?.gender === "user.gender.female" ||
+                    selectedStaff?.gender === "F" ||
+                    selectedStaff?.gender === "female" ||
+                    selectedStaff?.gender === "Nữ"
+                  ? "Nữ"
+                  : "Chưa cập nhật";
 
-              {selectedStaff?.role === "user.doctor" && selectedStaff?.specialization ? (
-                <View style={{ flexDirection: 'row', marginBottom: 16, alignItems: 'center' }}>
-                  <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-                    <Ionicons name="medical" size={18} color="#4B5563" />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 12, color: '#6B7280' }}>Chuyên khoa</Text>
-                    <Text style={{ fontSize: 15, fontWeight: '500', color: '#111827', marginTop: 2 }}>
-                      {selectedStaff.specialization}
-                    </Text>
-                  </View>
-                </View>
-              ) : null}
+              const qualificationParts = [
+                selectedStaff?.academicTitleLabel,
+                selectedStaff?.academicDegreeLabel,
+                selectedStaff?.professionalQualificationLabel,
+              ]
+                .filter(Boolean)
+                .join(" • ");
 
-              {(selectedStaff?.academicTitleLabel || selectedStaff?.academicDegreeLabel || selectedStaff?.professionalQualificationLabel) ? (
-                <View style={{ flexDirection: 'row', marginBottom: 16, alignItems: 'center' }}>
-                  <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-                    <Ionicons name="school" size={18} color="#4B5563" />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 12, color: '#6B7280' }}>Học vị / Chuyên môn</Text>
-                    <Text style={{ fontSize: 15, fontWeight: '500', color: '#111827', marginTop: 2 }}>
-                      {[selectedStaff.academicTitleLabel, selectedStaff.academicDegreeLabel, selectedStaff.professionalQualificationLabel].filter(Boolean).join(" - ")}
-                    </Text>
-                  </View>
-                </View>
-              ) : null}
+              return (
+                <>
+                  <TouchableOpacity
+                    style={{
+                      position: "absolute",
+                      top: 14,
+                      right: 14,
+                      padding: 6,
+                      borderRadius: 16,
+                      backgroundColor: "rgba(255,255,255,0.9)",
+                      zIndex: 20,
+                      shadowColor: "#000",
+                      shadowOpacity: 0.1,
+                      shadowRadius: 4,
+                      elevation: 2,
+                    }}
+                    onPress={() => setSelectedStaff(null)}
+                  >
+                    <Ionicons name="close" size={20} color="#475569" />
+                  </TouchableOpacity>
 
-              {selectedStaff?.yearsOfExperience ? (
-                <View style={{ flexDirection: 'row', marginBottom: 16, alignItems: 'center' }}>
-                  <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-                    <Ionicons name="briefcase" size={18} color="#4B5563" />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 12, color: '#6B7280' }}>Kinh nghiệm</Text>
-                    <Text style={{ fontSize: 15, fontWeight: '500', color: '#111827', marginTop: 2 }}>
-                      {selectedStaff.yearsOfExperience} năm
-                    </Text>
-                  </View>
-                </View>
-              ) : null}
-              
-              {selectedStaff?.workplace ? (
-                <View style={{ flexDirection: 'row', marginBottom: 16, alignItems: 'center' }}>
-                  <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-                    <Ionicons name="business" size={18} color="#4B5563" />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 12, color: '#6B7280' }}>Nơi công tác</Text>
-                    <Text style={{ fontSize: 15, fontWeight: '500', color: '#111827', marginTop: 2 }}>
-                      {selectedStaff.workplace}
-                    </Text>
-                  </View>
-                </View>
-              ) : null}
-            </ScrollView>
-          </TouchableOpacity>
-        </TouchableOpacity>
+                  <ScrollView
+                    style={{ width: "100%", backgroundColor: "#FFFFFF" }}
+                    contentContainerStyle={{ paddingBottom: 24 }}
+                    showsVerticalScrollIndicator={true}
+                    bounces={true}
+                    overScrollMode="always"
+                    scrollEventThrottle={16}
+                  >
+                    <View
+                      style={{
+                        width: "100%",
+                        backgroundColor: "#FFFFFF",
+                        paddingTop: 28,
+                        paddingBottom: 16,
+                        paddingHorizontal: 20,
+                        alignItems: "center",
+                        borderBottomWidth: 1,
+                        borderBottomColor: "#F1F5F9",
+                      }}
+                    >
+                      <View
+                        style={{
+                          backgroundColor: "#F8FAFC",
+                          width: 84,
+                          height: 84,
+                          borderRadius: 42,
+                          marginBottom: 12,
+                          alignItems: "center",
+                          justifyContent: "center",
+                          shadowColor: "#000",
+                          shadowOpacity: 0.06,
+                          shadowRadius: 6,
+                          shadowOffset: { width: 0, height: 2 },
+                          borderWidth: 2,
+                          borderColor: "#E2E8F0",
+                        }}
+                      >
+                        {selectedStaff?.avatarUrl ? (
+                          <Image
+                            source={{ uri: selectedStaff.avatarUrl }}
+                            style={{ width: 80, height: 80, borderRadius: 40 }}
+                          />
+                        ) : (
+                          <Ionicons
+                            name={isDoctor ? "person" : "medkit"}
+                            size={42}
+                            color={isDoctor ? "#2563EB" : "#16A34A"}
+                          />
+                        )}
+                      </View>
+
+                      <Text
+                        style={{
+                          fontSize: 19,
+                          fontWeight: "700",
+                          color: "#0F172A",
+                          textAlign: "center",
+                        }}
+                      >
+                        {selectedStaff?.displayName || selectedStaff?.name}
+                      </Text>
+
+                      <View
+                        style={{
+                          marginTop: 6,
+                          paddingHorizontal: 12,
+                          paddingVertical: 4,
+                          borderRadius: 12,
+                          backgroundColor: isDoctor ? "#EFF6FF" : "#F0FDF4",
+                        }}
+                      >
+                        <Text
+                          style={{
+                            fontSize: 12,
+                            fontWeight: "700",
+                            color: isDoctor ? "#2563EB" : "#16A34A",
+                          }}
+                        >
+                          {isDoctor ? "Bác sĩ phụ trách" : "Điều dưỡng phụ trách"}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={{ padding: 20 }}>
+                      <View style={{ flexDirection: "row", marginBottom: 16, alignItems: "center", width: "100%" }}>
+                        <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: "#F8FAFC", alignItems: "center", justifyContent: "center", marginRight: 14, flexShrink: 0, borderWidth: 1, borderColor: "#F1F5F9" }}>
+                          <Ionicons name="call" size={18} color={isDoctor ? "#2563EB" : "#16A34A"} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: 12, color: "#64748B", fontWeight: "600" }}>Số điện thoại</Text>
+                          <Text style={{ fontSize: 15, fontWeight: "700", color: "#0F172A", marginTop: 2 }}>
+                            {selectedStaff?.phone || "Chưa cập nhật"}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <View style={{ flexDirection: "row", marginBottom: 16, alignItems: "center", width: "100%" }}>
+                        <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: "#F8FAFC", alignItems: "center", justifyContent: "center", marginRight: 14, flexShrink: 0, borderWidth: 1, borderColor: "#F1F5F9" }}>
+                          <Ionicons name="male-female" size={18} color={isDoctor ? "#2563EB" : "#16A34A"} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: 12, color: "#64748B", fontWeight: "600" }}>Giới tính</Text>
+                          <Text style={{ fontSize: 15, fontWeight: "700", color: "#0F172A", marginTop: 2 }}>
+                            {genderText}
+                          </Text>
+                        </View>
+                      </View>
+
+                      {isDoctor && selectedStaff?.specialization ? (
+                        <View style={{ flexDirection: "row", marginBottom: 16, alignItems: "center", width: "100%" }}>
+                          <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: "#F8FAFC", alignItems: "center", justifyContent: "center", marginRight: 14, flexShrink: 0, borderWidth: 1, borderColor: "#F1F5F9" }}>
+                            <Ionicons name="medical" size={18} color={isDoctor ? "#2563EB" : "#16A34A"} />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ fontSize: 12, color: "#64748B", fontWeight: "600" }}>Chuyên khoa</Text>
+                            <Text style={{ fontSize: 15, fontWeight: "700", color: "#0F172A", marginTop: 2 }}>
+                              {selectedStaff.specialization}
+                            </Text>
+                          </View>
+                        </View>
+                      ) : null}
+
+                      {qualificationParts ? (
+                        <View style={{ flexDirection: "row", marginBottom: 16, alignItems: "center", width: "100%" }}>
+                          <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: "#F8FAFC", alignItems: "center", justifyContent: "center", marginRight: 14, flexShrink: 0, borderWidth: 1, borderColor: "#F1F5F9" }}>
+                            <Ionicons name="school" size={18} color={isDoctor ? "#2563EB" : "#16A34A"} />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ fontSize: 12, color: "#64748B", fontWeight: "600" }}>Học vị / Chuyên môn</Text>
+                            <Text style={{ fontSize: 15, fontWeight: "700", color: "#0F172A", marginTop: 2 }}>
+                              {qualificationParts}
+                            </Text>
+                          </View>
+                        </View>
+                      ) : null}
+
+                      {selectedStaff?.yearsOfExperience ? (
+                        <View style={{ flexDirection: "row", marginBottom: 16, alignItems: "center", width: "100%" }}>
+                          <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: "#F8FAFC", alignItems: "center", justifyContent: "center", marginRight: 14, flexShrink: 0, borderWidth: 1, borderColor: "#F1F5F9" }}>
+                            <Ionicons name="briefcase" size={18} color={isDoctor ? "#2563EB" : "#16A34A"} />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ fontSize: 12, color: "#64748B", fontWeight: "600" }}>Kinh nghiệm</Text>
+                            <Text style={{ fontSize: 15, fontWeight: "700", color: "#0F172A", marginTop: 2 }}>
+                              {selectedStaff.yearsOfExperience} năm
+                            </Text>
+                          </View>
+                        </View>
+                      ) : null}
+
+                      {selectedStaff?.workplace ? (
+                        <View style={{ flexDirection: "row", marginBottom: 16, alignItems: "center", width: "100%" }}>
+                          <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: "#F8FAFC", alignItems: "center", justifyContent: "center", marginRight: 14, flexShrink: 0, borderWidth: 1, borderColor: "#F1F5F9" }}>
+                            <Ionicons name="business" size={18} color={isDoctor ? "#2563EB" : "#16A34A"} />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ fontSize: 12, color: "#64748B", fontWeight: "600" }}>Nơi công tác</Text>
+                            <Text style={{ fontSize: 15, fontWeight: "700", color: "#0F172A", marginTop: 2 }}>
+                              {selectedStaff.workplace}
+                            </Text>
+                          </View>
+                        </View>
+                      ) : null}
+
+                      {selectedStaff?.phone ? (
+                        <TouchableOpacity
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            backgroundColor: isDoctor ? "#2563EB" : "#16A34A",
+                            paddingVertical: 14,
+                            borderRadius: 14,
+                            marginTop: 8,
+                            gap: 8,
+                            width: "100%",
+                          }}
+                          onPress={() => Linking.openURL(`tel:${selectedStaff.phone}`)}
+                        >
+                          <Ionicons name="call" size={18} color="#FFFFFF" />
+                          <Text style={{ color: "#FFFFFF", fontWeight: "700", fontSize: 14 }}>
+                            Gọi điện ngay
+                          </Text>
+                        </TouchableOpacity>
+                      ) : null}
+                    </View>
+                  </ScrollView>
+                </>
+              );
+            })()}
+          </View>
+        </View>
       </Modal>
 
       <KeyboardAvoidingView
@@ -699,18 +925,30 @@ export default function ProfileScreen() {
           <View style={styles.profileCard}>
             <View style={styles.profileTopRow}>
               <View style={styles.avatarColumn}>
-                <View style={styles.avatarWrapper}>
-                  {userForm.avatarUrl ? (
+                <TouchableOpacity
+                  disabled={!editMode}
+                  onPress={handlePickAvatar}
+                  style={styles.avatarContainer}
+                  activeOpacity={editMode ? 0.7 : 1}
+                >
+                  {avatarUri ? (
+                    <Image source={{ uri: avatarUri.uri }} style={styles.avatarImage} />
+                  ) : userForm.avatarUrl ? (
                     <Image source={{ uri: userForm.avatarUrl }} style={styles.avatarImage} />
                   ) : (
                     <View style={styles.avatar}>
                       <Text style={styles.avatarText}>{avatarInitial}</Text>
                     </View>
                   )}
-                </View>
-                <Text style={styles.avatarHint}>
-                  
-                </Text>
+                  {editMode ? (
+                    <View style={styles.cameraBadge}>
+                      <Ionicons name="camera" size={13} color="#FFFFFF" />
+                    </View>
+                  ) : null}
+                </TouchableOpacity>
+                {editMode ? (
+                  <Text style={styles.avatarHint}>Chạm để đổi ảnh</Text>
+                ) : null}
               </View>
 
               <View style={styles.profileMainContent}>
@@ -1187,9 +1425,18 @@ export default function ProfileScreen() {
 
 
           <Text style={styles.footerVersion}>Phiên bản 1.0.0</Text>
-          <Text style={styles.footerBrand}>© 2025 Remote Patient Monitoring</Text>
+          <Text style={styles.copyrightText}>
+            © {new Date().getFullYear()} Remote Patient Monitoring. Tất cả quyền được bảo lưu.
+          </Text>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <AvatarPickerModal
+        visible={pickerModalVisible}
+        onClose={() => setPickerModalVisible(false)}
+        onTakePhoto={handleTakePhoto}
+        onChooseLibrary={handleChooseLibrary}
+      />
     </SafeAreaView>
   );
 }
@@ -1319,12 +1566,34 @@ const styles = StyleSheet.create({
     marginRight: 12,
     alignItems: "center",
   },
-  avatarWrapper: {
-    width: 72,
-    height: 72,
-    borderRadius: 24,
-    overflow: "hidden",
-    marginBottom: 8,
+  avatarContainer: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: "#F1F5F9",
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+    marginBottom: 6,
+    borderWidth: 3,
+    borderColor: "#E2E8F0",
+  },
+  cameraBadge: {
+    position: "absolute",
+    bottom: -2,
+    right: -2,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: "#2563EB",
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
   },
   avatar: {
     width: "100%",
