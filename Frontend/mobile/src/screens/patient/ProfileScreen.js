@@ -21,12 +21,14 @@ import { Ionicons, MaterialIcons, FontAwesome5 } from "@expo/vector-icons";
 import { useCallback, useState } from "react";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import QRCode from "react-native-qrcode-svg";
+import * as ImagePicker from "expo-image-picker";
 
 import { useAuth } from "../../hooks/useAuth";
 import { useSnackbar } from "../../hooks/useSnackbar";
 import {
   getMyPatientProfile,
   updateMyPatientProfile,
+  uploadMyPatientAvatar,
 } from "../../api/profileApi";
 import {
   getFirstValidationMessage,
@@ -35,6 +37,8 @@ import {
 import { buildPatientQrValue } from "../../utils/patientQrUtils";
 import { request } from "../../api/httpClient";
 import { getMyCareTeam } from "../../api/assignmentApi";
+import AvatarPickerModal from "../../components/AvatarPickerModal";
+
 
 
 const EMPTY_USER_FORM = {
@@ -259,6 +263,9 @@ export default function ProfileScreen() {
   const [qrPreviewVisible, setQrPreviewVisible] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
+  const [avatarUri, setAvatarUri] = useState(null);
+  const [pickerModalVisible, setPickerModalVisible] = useState(false);
+
 
   const [userForm, setUserForm] = useState(EMPTY_USER_FORM);
   const [patientForm, setPatientForm] = useState(EMPTY_PATIENT_FORM);
@@ -288,6 +295,7 @@ export default function ProfileScreen() {
     setSnapshot(normalized);
     setFieldErrors({});
     setLoadError("");
+    setAvatarUri(null);
   }, []);
 
   const loadProfile = useCallback(
@@ -364,11 +372,51 @@ export default function ProfileScreen() {
       setUserForm(snapshot.user);
       setPatientForm(snapshot.patient);
       setFieldErrors({});
+      setAvatarUri(null);
       setEditMode(false);
       return;
     }
 
     setEditMode(true);
+  };
+
+  const handlePickAvatar = () => {
+    setPickerModalVisible(true);
+  };
+
+  const handleTakePhoto = async () => {
+    const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+    if (permissionResult.granted === false) {
+      Alert.alert("Quyền truy cập", "Bạn cần cấp quyền truy cập máy ảnh để chụp hình.");
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      setAvatarUri(result.assets[0]);
+    }
+  };
+
+  const handleChooseLibrary = async () => {
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (permissionResult.granted === false) {
+      Alert.alert("Quyền truy cập", "Bạn cần cấp quyền truy cập thư viện ảnh để chọn ảnh.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      setAvatarUri(result.assets[0]);
+    }
   };
 
   const handleSave = async () => {
@@ -397,6 +445,25 @@ export default function ProfileScreen() {
         throw new Error(getErrorMessage(response));
       }
 
+      let newAvatarUrl = userForm.avatarUrl;
+      if (avatarUri) {
+        const avatarData = new FormData();
+        avatarData.append("file", {
+          uri: avatarUri.uri,
+          name: avatarUri.fileName || "avatar.jpg",
+          type: avatarUri.mimeType || "image/jpeg",
+        });
+
+        const avatarRes = await uploadMyPatientAvatar(avatarData);
+        if (!avatarRes.ok) {
+          throw new Error(getErrorMessage(avatarRes) || "Cập nhật ảnh đại diện thất bại");
+        }
+
+        if (avatarRes.body?.avatarUrl) {
+          newAvatarUrl = avatarRes.body.avatarUrl;
+        }
+      }
+
       const updatedProfile = response.body?.data || {
         ...payload,
         id: patientForm.id,
@@ -406,16 +473,21 @@ export default function ProfileScreen() {
         gender: patientForm.gender,
         dob: patientForm.dob,
         email: userForm.email,
-        avatarUrl: userForm.avatarUrl,
+        avatarUrl: newAvatarUrl,
       };
 
+      if (newAvatarUrl) {
+        updatedProfile.avatarUrl = newAvatarUrl;
+      }
+
+      setAvatarUri(null);
       applyProfile(updatedProfile);
       updateUser({
         id: updatedProfile.id,
         name: updatedProfile.name,
         email: updatedProfile.email,
         phone: updatedProfile.phone,
-        avatarUrl: updatedProfile.avatarUrl,
+        avatarUrl: updatedProfile.avatarUrl || newAvatarUrl,
         gender: updatedProfile.gender,
         dob: updatedProfile.dob,
       });
@@ -853,18 +925,30 @@ export default function ProfileScreen() {
           <View style={styles.profileCard}>
             <View style={styles.profileTopRow}>
               <View style={styles.avatarColumn}>
-                <View style={styles.avatarWrapper}>
-                  {userForm.avatarUrl ? (
+                <TouchableOpacity
+                  disabled={!editMode}
+                  onPress={handlePickAvatar}
+                  style={styles.avatarContainer}
+                  activeOpacity={editMode ? 0.7 : 1}
+                >
+                  {avatarUri ? (
+                    <Image source={{ uri: avatarUri.uri }} style={styles.avatarImage} />
+                  ) : userForm.avatarUrl ? (
                     <Image source={{ uri: userForm.avatarUrl }} style={styles.avatarImage} />
                   ) : (
                     <View style={styles.avatar}>
                       <Text style={styles.avatarText}>{avatarInitial}</Text>
                     </View>
                   )}
-                </View>
-                <Text style={styles.avatarHint}>
-                  
-                </Text>
+                  {editMode ? (
+                    <View style={styles.cameraBadge}>
+                      <Ionicons name="camera" size={13} color="#FFFFFF" />
+                    </View>
+                  ) : null}
+                </TouchableOpacity>
+                {editMode ? (
+                  <Text style={styles.avatarHint}>Chạm để đổi ảnh</Text>
+                ) : null}
               </View>
 
               <View style={styles.profileMainContent}>
@@ -1341,9 +1425,18 @@ export default function ProfileScreen() {
 
 
           <Text style={styles.footerVersion}>Phiên bản 1.0.0</Text>
-          <Text style={styles.footerBrand}>© 2025 Remote Patient Monitoring</Text>
+          <Text style={styles.copyrightText}>
+            © {new Date().getFullYear()} Remote Patient Monitoring. Tất cả quyền được bảo lưu.
+          </Text>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <AvatarPickerModal
+        visible={pickerModalVisible}
+        onClose={() => setPickerModalVisible(false)}
+        onTakePhoto={handleTakePhoto}
+        onChooseLibrary={handleChooseLibrary}
+      />
     </SafeAreaView>
   );
 }
@@ -1473,12 +1566,34 @@ const styles = StyleSheet.create({
     marginRight: 12,
     alignItems: "center",
   },
-  avatarWrapper: {
-    width: 72,
-    height: 72,
-    borderRadius: 24,
-    overflow: "hidden",
-    marginBottom: 8,
+  avatarContainer: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: "#F1F5F9",
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+    marginBottom: 6,
+    borderWidth: 3,
+    borderColor: "#E2E8F0",
+  },
+  cameraBadge: {
+    position: "absolute",
+    bottom: -2,
+    right: -2,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: "#2563EB",
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
   },
   avatar: {
     width: "100%",
