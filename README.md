@@ -31,12 +31,12 @@ The repository contains five applications. Each one targets a specific role and 
 | **Backend API** | [`Backend/`](Backend/) | All clients | Go, Gin, MongoDB, Redis, Temporal | `8080` |
 | **Doctor Web** | [`Frontend/web/`](Frontend/web/) | Doctors (desktop) | React, TypeScript, Vite, Tailwind CSS | `3000` |
 | **Admin Panel** | [`Frontend/admin/`](Frontend/admin/) | System administrators | React, TypeScript, Vite, Tailwind CSS | `5174` |
-| **Patient Mobile** | [`Frontend/mobile/`](Frontend/mobile/) | Patients and nurses | React Native, Expo SDK 54 | `8081` |
-| **Doctor Mobile** | [`Frontend/doctor-app/`](Frontend/doctor-app/) | Doctors (on the go) | React Native, Expo SDK 54 | `3001` |
+| **Patient Mobile** | [`Frontend/mobile/`](Frontend/mobile/) | Patients | React Native, Expo SDK 54 | `8081` |
+| **Staff Mobile** | [`Frontend/doctor-app/`](Frontend/doctor-app/) | Doctors and nurses | React Native, Expo SDK 54 | `3001` |
 
-**Doctor Web vs Doctor Mobile** — Both give doctors access to patients, alerts, chat, prescriptions, and reminders. The web app is the primary desktop experience with charts and multi-panel layouts. The mobile app mirrors the core workflows for use between rounds or on call.
+**Doctor Web vs Staff Mobile** — Doctor Web is the primary desktop experience with charts and multi-panel layouts. Staff Mobile (`doctor-app`, package `rpm-staff`) mirrors core doctor workflows for use between rounds or on call, and also serves nurses with a focused assigned-patient / measurement-entry UI.
 
-**Patient Mobile vs Nurse flows** — The same mobile app serves two roles. Patients see home, vitals tracking, education content, messaging, and notifications. Nurses get a streamlined view focused on their assigned patients and entering measurements on their behalf.
+**Patient Mobile** — Patients only: home, vitals tracking, education, messaging, medications, and notifications. Nurse flows live in Staff Mobile, not this app.
 
 **Admin Panel** — Completely separate from the doctor web app. Only users with the `admin` role can sign in. It handles org-wide configuration that doctors and nurses do not need day to day.
 
@@ -68,9 +68,9 @@ The repository contains five applications. Each one targets a specific role and 
 
 ### For nurses
 
-- View assigned patients
+- View assigned patients on Staff Mobile
 - Enter measurements on behalf of patients
-- Access a focused mobile workflow separate from the full patient experience
+- View prescriptions for assigned patients
 
 ### For administrators
 
@@ -105,7 +105,7 @@ At a high level, clients call the Gin API server over HTTP. When something needs
 ┌──────────────────────────────────────────────────────────────────────────┐
 │                         Client applications                              │
 ├─────────────┬─────────────┬─────────────┬─────────────┬──────────────────┤
-│ Doctor Web  │ Admin Panel │ Patient App │ Doctor App  │                  │
+│ Doctor Web  │ Admin Panel │ Patient App │ Staff App   │                  │
 │ Vite/React  │ Vite/React  │ Expo/RN     │ Expo/RN     │                  │
 └──────┬──────┴──────┬──────┴──────┬──────┴──────┬──────┴──────────────────┘
        │             │             │             │
@@ -158,7 +158,7 @@ For local development, Docker Compose starts Temporal and Redis. MongoDB is expe
 | **Auth** | JWT, Google OAuth2 | Role-based middleware; invite + OTP reset flows |
 | **Encryption** | AES-GCM | PHI and chat fields via `FIELD_ENCRYPTION_KEY` |
 | **Doctor & admin web** | React, TypeScript, Vite, Tailwind CSS | Separate Vite apps, independent deployments |
-| **Mobile** | React Native, Expo SDK 54 | Patient app and doctor app are separate Expo projects |
+| **Mobile** | React Native, Expo SDK 54 | Patient app and staff app (`doctor-app`) are separate Expo projects |
 | **Push** | Firebase Cloud Messaging | Optional notifications to mobile |
 | **Video** | Jitsi | Telehealth room provisioning |
 | **Media** | Cloudinary | Image uploads |
@@ -298,7 +298,7 @@ Scan the QR code with Expo Go, or run `npm run android` / `npm run ios` for an e
 
 See [`Frontend/mobile/README.md`](Frontend/mobile/README.md) for EAS build instructions and device setup tips.
 
-### Step 5 — Doctor mobile app
+### Step 5 — Staff mobile app (doctors & nurses)
 
 ```bash
 cd Frontend/doctor-app
@@ -308,7 +308,7 @@ npm start
 
 Runs on port **3001** by default. Configure the API base URL in your environment to match your backend host.
 
-Screens mirror the doctor web experience: patient list, alerts, chat, thresholds, reminders, prescriptions, and video calls.
+After login, navigation adapts by role: doctors get overview, patients, alerts, chat, and clinical tools; nurses get assigned patients, measurement entry, prescriptions, and profile.
 
 ### Running everything at once
 
@@ -333,9 +333,9 @@ After running `make seed` in `Backend/`, these accounts are available for local 
 | Role | Email | Password | Sign in via |
 |------|-------|----------|-------------|
 | Admin | `admin@gmail.com` | `Admin@123` | Admin panel (`5174`) |
-| Doctor | `doctor@gmail.com` | `Doctor12345@` | Doctor web (`3000`) or doctor app (`3001`) |
-| Nurse | `nurse@gmail.com` | `Nurse@123` | Patient mobile app (`8081`) |
-| Patient | `patient@gmail.com` | `Patient12345@` | Patient mobile app (`8081`) |
+| Doctor | `doctor@gmail.com` | `Doctor12345@` | Doctor web (`3000`) or staff mobile (`3001`) |
+| Nurse | `nurse@gmail.com` | `Nurse@123` | Staff mobile (`3001`) |
+| Patient | `patient@gmail.com` | `Patient12345@` | Patient mobile (`8081`) |
 
 These credentials exist only in seeded development databases. Never use them in production.
 
@@ -374,8 +374,8 @@ Remote-Patient-Monitoring/
 ├── Frontend/
 │   ├── web/                          # Doctor dashboard (React + Vite)
 │   ├── admin/                        # Admin panel (React + Vite)
-│   ├── mobile/                       # Patient & nurse app (Expo)
-│   └── doctor-app/                   # Doctor mobile app (Expo)
+│   ├── mobile/                       # Patient mobile app (Expo)
+│   └── doctor-app/                   # Staff mobile — doctors & nurses (Expo)
 │
 └── .github/workflows/                # CI/CD pipelines
     ├── backend_ci_cd.yml
