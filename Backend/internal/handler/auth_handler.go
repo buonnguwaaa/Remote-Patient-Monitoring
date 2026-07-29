@@ -153,8 +153,8 @@ func (h *AuthHandler) Me(c *gin.Context) {
 func (h *AuthHandler) Refresh(c *gin.Context) {
 	var req dto.RefreshRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		cookie, cookieErr := c.Cookie("refreshToken")
-		if cookieErr != nil {
+		cookie := util.ReadRefreshTokenCookie(c)
+		if cookie == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
@@ -186,8 +186,8 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 func (h *AuthHandler) Logout(c *gin.Context) {
 	var req dto.LogoutRequest
 	if err := c.ShouldBindJSON(&req); err != nil || req.RefreshToken == "" {
-		cookie, err := c.Cookie("refreshToken")
-		if err != nil {
+		cookie := util.ReadRefreshTokenCookie(c)
+		if cookie == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": constant.MsgMissingRefreshToken})
 			return
 		}
@@ -214,13 +214,12 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 		return
 	}
 
-	sameSite := http.SameSiteLaxMode
-	if strings.ToLower(os.Getenv("FORCE_SAMESITE_NONE")) == "true" {
-		sameSite = http.SameSiteNoneMode
-	}
-	c.SetSameSite(sameSite)
-	c.SetCookie("accessToken", "", -1, "/", "", h.isSecure(c), true)
-	c.SetCookie("refreshToken", "", -1, "/", "", h.isSecure(c), true)
+	isSecure := h.isSecure(c)
+	h.setSameSite(c, isSecure)
+	domain := util.CookieDomain()
+	client := util.ResolveAuthClient(c.Request)
+	c.SetCookie(util.AccessTokenCookieName(client), "", -1, "/", domain, isSecure, true)
+	c.SetCookie(util.RefreshTokenCookieName(client), "", -1, "/", domain, isSecure, true)
 
 	c.JSON(http.StatusOK, gin.H{"message": "Đăng xuất thành công"})
 }
@@ -737,14 +736,13 @@ func (h *AuthHandler) setAccessTokenCookie(c *gin.Context, accessToken string) {
 	isSecure := h.isSecure(c)
 	h.setSameSite(c, isSecure)
 
-	domain := os.Getenv("COOKIE_DOMAIN")
-
+	client := util.ResolveAuthClient(c.Request)
 	c.SetCookie(
-		"accessToken",
+		util.AccessTokenCookieName(client),
 		accessToken,
 		maxAge,
 		"/",
-		domain,
+		util.CookieDomain(),
 		isSecure,
 		true,
 	)
@@ -755,14 +753,13 @@ func (h *AuthHandler) setRefreshTokenCookie(c *gin.Context, refreshToken string)
 	isSecure := h.isSecure(c)
 	h.setSameSite(c, isSecure)
 
-	domain := os.Getenv("COOKIE_DOMAIN")
-
+	client := util.ResolveAuthClient(c.Request)
 	c.SetCookie(
-		"refreshToken",
+		util.RefreshTokenCookieName(client),
 		refreshToken,
 		maxAge,
 		"/",
-		domain,
+		util.CookieDomain(),
 		isSecure,
 		true,
 	)
