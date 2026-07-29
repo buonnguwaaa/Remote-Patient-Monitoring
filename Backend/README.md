@@ -225,9 +225,11 @@ This layer is only wired into the HTTP server container (`internal/container/mai
 | `GOOGLE_CLIENT_ID`     | Google OAuth2 client ID                             |
 | `GOOGLE_CLIENT_SECRET` | Google OAuth2 client secret                         |
 | `GOOGLE_REDIRECT_URL`  | OAuth callback URL                                  |
-| `COOKIE_DOMAIN`        | Cookie domain for auth tokens                       |
-| `COOKIE_CROSS_SITE`    | Set to`true` for cross-site cookies in production |
+| `COOKIE_DOMAIN`        | Optional cookie Domain attribute. Leave empty (host-only on the API host). Do **not** set `.remotepatientmonitoring.com` — both frontends share the same API cookie jar, and a shared Domain makes collisions worse. |
+| `COOKIE_CROSS_SITE`    | Set to `true` in production so auth cookies use `SameSite=None` (required when FE origins differ from the API). |
 | `FORCE_SAMESITE_NONE`  | Force`SameSite=None` on cookies                   |
+
+Admin (`FE_ADMIN_URL`) and doctor web (`FE_WEB_URL`) use separate HttpOnly cookie names (`adminAccessToken` / `adminRefreshToken` vs `accessToken` / `refreshToken`) so both portals can stay logged in against the same API. Production must set those FE URLs to the real origins (e.g. `https://admin.remotepatientmonitoring.com` and `https://remotepatientmonitoring.com`) so the API can pick the right cookie from `Origin`/`Referer`.
 
 Patient onboarding (admin create): the API issues a one-time invite token (15 min), sets `mustSetPassword`, and notifies via SMTP and/or Twilio with a link to `GET/POST /auth/accept-invite` (HTML set-password page). Raw temporary passwords are never emailed/SMS'd. Admins can call `POST /users/patients/:id/resend-invite` while `mustSetPassword` is still true. Forgot password sends a 6-digit OTP by email (15 min TTL). Logout blacklists the access-token JTI in Redis.
 
