@@ -13,7 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useIsFocused } from "@react-navigation/native";
 import PatientSelectorModal from "../components/PatientSelectorModal";
@@ -715,106 +715,108 @@ export default function ThresholdsScreen() {
 
       {/* FORM MODAL */}
       <Modal visible={isFormVisible} animationType="slide" presentationStyle="fullScreen" onRequestClose={() => setIsFormVisible(false)}>
-        <SafeAreaView style={styles.formModal} edges={["top", "left", "right"]}>
-          <View style={styles.formModalHeader}>
-            <Text style={styles.formModalTitle}>
-              {editingPatientId ? "Chỉnh sửa cấu hình" : "Tạo cấu hình mới"}
-            </Text>
-            <TouchableOpacity onPress={() => setIsFormVisible(false)}>
-              <Ionicons name="close" size={24} color="#4B5563" />
-            </TouchableOpacity>
-          </View>
+        <SafeAreaProvider>
+          <SafeAreaView style={styles.formModal} edges={["top", "left", "right", "bottom"]}>
+            <View style={styles.formModalHeader}>
+              <Text style={styles.formModalTitle}>
+                {editingPatientId ? "Chỉnh sửa cấu hình" : "Tạo cấu hình mới"}
+              </Text>
+              <TouchableOpacity onPress={() => setIsFormVisible(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <Ionicons name="close" size={24} color="#4B5563" />
+              </TouchableOpacity>
+            </View>
 
-          <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-            <ScrollView style={styles.formBody} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
-              {/* Patient Selector */}
-              <View style={styles.formSection}>
-                <Text style={styles.formSecTitle}>Bệnh nhân</Text>
-                <TouchableOpacity
-                  style={styles.patientPickerBtn}
-                  onPress={() => setShowPatientModal(true)}
-                  disabled={!!editingPatientId}
-                  activeOpacity={0.7}
-                >
-                  <Text style={selectedFormPatient ? styles.patientPickerText : styles.patientPickerPlaceholder}>
-                    {selectedFormPatient?.patientName || "Nhấn để chọn bệnh nhân..."}
-                  </Text>
-                  <Ionicons name="chevron-down" size={18} color="#6B7280" />
-                </TouchableOpacity>
-                {editingPatientId && (
-                  <Text style={styles.editNote}>Lưu cấu hình mới sẽ tự động ngưng cấu hình hiện tại.</Text>
-                )}
-              </View>
+            <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+              <ScrollView style={styles.formBody} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+                {/* Patient Selector */}
+                <View style={styles.formSection}>
+                  <Text style={styles.formSecTitle}>Bệnh nhân</Text>
+                  <TouchableOpacity
+                    style={styles.patientPickerBtn}
+                    onPress={() => setShowPatientModal(true)}
+                    disabled={!!editingPatientId}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={selectedFormPatient ? styles.patientPickerText : styles.patientPickerPlaceholder}>
+                      {selectedFormPatient?.patientName || "Nhấn để chọn bệnh nhân..."}
+                    </Text>
+                    <Ionicons name="chevron-down" size={18} color="#6B7280" />
+                  </TouchableOpacity>
+                  {editingPatientId && (
+                    <Text style={styles.editNote}>Lưu cấu hình mới sẽ tự động ngưng cấu hình hiện tại.</Text>
+                  )}
+                </View>
 
-              {renderFormField("Nhiệt độ (°C)", "temperatureMin", "temperatureMax")}
-              {renderFormField("HA tâm thu (mmHg)", "systolicMin", "systolicMax")}
-              {renderFormField("HA tâm trương (mmHg)", "diastolicMin", "diastolicMax")}
-              {renderFormField("Nhịp tim (bpm)", "pulseMin", "pulseMax")}
-              {renderFormField("Nhịp thở (nhịp/ph)", "respiratoryRateMin", "respiratoryRateMax")}
+                {renderFormField("Nhiệt độ (°C)", "temperatureMin", "temperatureMax")}
+                {renderFormField("HA tâm thu (mmHg)", "systolicMin", "systolicMax")}
+                {renderFormField("HA tâm trương (mmHg)", "diastolicMin", "diastolicMax")}
+                {renderFormField("Nhịp tim (bpm)", "pulseMin", "pulseMax")}
+                {renderFormField("Nhịp thở (nhịp/ph)", "respiratoryRateMin", "respiratoryRateMax")}
 
-              <View style={styles.formSection}>
-                <Text style={styles.formSecTitle}>SpO2 tối thiểu (%)</Text>
-                <TextInput
-                  style={styles.input}
-                  keyboardType="numeric"
-                  value={formData.spo2Min}
-                  onChangeText={(val) => setFormData({ ...formData, spo2Min: val })}
-                />
-              </View>
+                <View style={styles.formSection}>
+                  <Text style={styles.formSecTitle}>SpO2 tối thiểu (%)</Text>
+                  <TextInput
+                    style={styles.input}
+                    keyboardType="numeric"
+                    value={formData.spo2Min}
+                    onChangeText={(val) => setFormData({ ...formData, spo2Min: val })}
+                  />
+                </View>
 
-              {renderFormField("Đường huyết (mg/dL)", "glucoseMin", "glucoseMax")}
+                {renderFormField("Đường huyết (mg/dL)", "glucoseMin", "glucoseMax")}
 
-              <View style={styles.formSection}>
-                <Text style={styles.formSecTitle}>Thời gian hiệu lực</Text>
-                <View style={styles.row}>
-                  <View style={styles.col}>
-                    <Text style={styles.inputLabel}>Bắt đầu</Text>
-                    <TouchableOpacity style={[styles.input, styles.dateBtn]} onPress={() => openDatePicker("effectiveFrom")}>
-                      <Text style={styles.dateBtnText}>{formData.effectiveFrom || "Chọn"}</Text>
-                      <Ionicons name="calendar-outline" size={16} color="#6B7280" />
-                    </TouchableOpacity>
-                  </View>
-                  <View style={styles.col}>
-                    <Text style={styles.inputLabel}>Kết thúc (tùy chọn)</Text>
-                    <TouchableOpacity style={[styles.input, styles.dateBtn]} onPress={() => openDatePicker("effectiveTo")}>
-                      <Text style={styles.dateBtnText}>{formData.effectiveTo || "Không hạn"}</Text>
-                      <Ionicons name="calendar-outline" size={16} color="#6B7280" />
-                    </TouchableOpacity>
+                <View style={styles.formSection}>
+                  <Text style={styles.formSecTitle}>Thời gian hiệu lực</Text>
+                  <View style={styles.row}>
+                    <View style={styles.col}>
+                      <Text style={styles.inputLabel}>Bắt đầu</Text>
+                      <TouchableOpacity style={[styles.input, styles.dateBtn]} onPress={() => openDatePicker("effectiveFrom")}>
+                        <Text style={styles.dateBtnText}>{formData.effectiveFrom || "Chọn"}</Text>
+                        <Ionicons name="calendar-outline" size={16} color="#6B7280" />
+                      </TouchableOpacity>
+                    </View>
+                    <View style={styles.col}>
+                      <Text style={styles.inputLabel}>Kết thúc (tùy chọn)</Text>
+                      <TouchableOpacity style={[styles.input, styles.dateBtn]} onPress={() => openDatePicker("effectiveTo")}>
+                        <Text style={styles.dateBtnText}>{formData.effectiveTo || "Không hạn"}</Text>
+                        <Ionicons name="calendar-outline" size={16} color="#6B7280" />
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 </View>
-              </View>
 
-              {errorMessage ? (
-                <View style={styles.errorBox}>
-                  <Ionicons name="alert-circle" size={16} color="#DC2626" />
-                  <Text style={styles.errorText}>{errorMessage}</Text>
+                {errorMessage ? (
+                  <View style={styles.errorBox}>
+                    <Ionicons name="alert-circle" size={16} color="#DC2626" />
+                    <Text style={styles.errorText}>{errorMessage}</Text>
+                  </View>
+                ) : null}
+
+                <View style={styles.formActions}>
+                  <TouchableOpacity style={styles.cancelBtn} onPress={() => setIsFormVisible(false)} disabled={saving}>
+                    <Text style={styles.cancelBtnText}>Hủy</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.saveBtn, saving && { opacity: 0.6 }]} onPress={handleSave} disabled={saving}>
+                    {saving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.saveBtnText}>Lưu cấu hình</Text>}
+                  </TouchableOpacity>
                 </View>
-              ) : null}
+              </ScrollView>
+            </KeyboardAvoidingView>
 
-              <View style={styles.formActions}>
-                <TouchableOpacity style={styles.cancelBtn} onPress={() => setIsFormVisible(false)} disabled={saving}>
-                  <Text style={styles.cancelBtnText}>Hủy</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.saveBtn, saving && { opacity: 0.6 }]} onPress={handleSave} disabled={saving}>
-                  {saving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.saveBtnText}>Lưu cấu hình</Text>}
-                </TouchableOpacity>
-              </View>
-            </ScrollView>
-          </KeyboardAvoidingView>
-
-          {/* Patient Selector Modal - inside form modal so it renders on top */}
-          <PatientSelectorModal
-            visible={showPatientModal}
-            onClose={() => setShowPatientModal(false)}
-            patients={missingPatients}
-            selectedPatientId={formData.patientId}
-            onSelect={(patientId) => {
-              setFormData({ ...formData, patientId });
-              setShowPatientModal(false);
-            }}
-            loading={loadingPatients}
-          />
-        </SafeAreaView>
+            {/* Patient Selector Modal - inside form modal so it renders on top */}
+            <PatientSelectorModal
+              visible={showPatientModal}
+              onClose={() => setShowPatientModal(false)}
+              patients={missingPatients}
+              selectedPatientId={formData.patientId}
+              onSelect={(patientId) => {
+                setFormData({ ...formData, patientId });
+                setShowPatientModal(false);
+              }}
+              loading={loadingPatients}
+            />
+          </SafeAreaView>
+        </SafeAreaProvider>
       </Modal>
 
       {renderDatePickerModal()}
