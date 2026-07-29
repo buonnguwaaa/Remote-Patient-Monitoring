@@ -3,6 +3,8 @@ import * as Notifications from "expo-notifications";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AuthProvider } from "./src/context/AuthContext";
 import { SnackbarProvider } from "./src/context/SnackbarContext";
+import { TutorialProvider } from "./src/context/tutorial/TutorialContext";
+import TutorialOverlay from "./src/components/tutorial/TutorialOverlay";
 import AppNavigator from "./src/navigation/AppNavigator";
 import ErrorBoundary from "./src/components/ErrorBoundary";
 import {
@@ -32,10 +34,13 @@ export default function App() {
     <ErrorBoundary>
       <AuthProvider>
         <SnackbarProvider>
-          <SafeAreaProvider>
-            <NotificationLifecycleBridge />
-            <AppNavigator />
-          </SafeAreaProvider>
+          <TutorialProvider>
+            <SafeAreaProvider>
+              <NotificationLifecycleBridge />
+              <AppNavigator />
+              <TutorialOverlay />
+            </SafeAreaProvider>
+          </TutorialProvider>
         </SnackbarProvider>
       </AuthProvider>
     </ErrorBoundary>

@@ -23,6 +23,7 @@ import { useSnackbar } from '../../hooks/useSnackbar';
 import * as GoogleAuth from '../../api/googleAuth';
 import * as authApi from '../../api/authApi';
 
+
 const biometricStyle = StyleSheet.create({
   btn: {
     flexDirection: 'row',
@@ -115,6 +116,8 @@ export default function LoginScreen({ onLoginSuccess, navigation }) {
   const { login, saveGoogleTokens, updateUser } = useAuth();
   const [hasBiometric, setHasBiometric] = useState(false);
   const [isSavedAccount, setIsSavedAccount] = useState(false);
+  
+
 
   useEffect(() => {
     (async () => {
@@ -412,6 +415,9 @@ export default function LoginScreen({ onLoginSuccess, navigation }) {
             <Text style={styles.signUp} onPress={() => navigation.navigate('Register')}>Đăng ký</Text>
           </Text>
         </View>
+
+
+
       </ScrollView>
     </KeyboardAvoidingView>
   );

@@ -1,14 +1,16 @@
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import TutorialTarget from "./tutorial/TutorialTarget";
+import { useTutorial } from "../context/tutorial/TutorialContext";
 
 import {
   MEASUREMENT_SECTIONS,
   hasMeasurementSectionValue,
 } from "../utils/measurementForm";
 
-function TypeTile({ active, isSaved, isDraft, item, onPress }) {
+function TypeTile({ active, isSaved, isDraft, item, onPress, style }) {
   return (
-    <TouchableOpacity onPress={onPress} style={[styles.typeTile, active && styles.typeTileActive]}>
+    <TouchableOpacity onPress={onPress} style={[styles.typeTile, active && styles.typeTileActive, style]}>
       <View style={styles.typeTileTopRow}>
         <View style={styles.typeTileIconWrapper}>
           <Ionicons name={item.iconName} size={18} color={active ? "#2563EB" : "#6B7280"} />
@@ -50,37 +52,57 @@ export default function MeasurementDraftForm({
     (item) => item.label
   );
   const allSectionsSaved = savedCount === MEASUREMENT_SECTIONS.length;
+  const { tutorialMode, currentStep, nextStep } = useTutorial();
+
+  const handleSelectType = (key) => {
+    if (tutorialMode && currentStep?.id === 'select_blood_pressure' && key === 'bp') {
+      nextStep();
+    }
+    onSelectType(key);
+  };
 
   const renderTypeFields = () => {
     if (type === "bp") {
       return (
-        <>
-          <Text style={styles.fieldGroupTitle}>Chỉ số huyết áp</Text>
-          <View style={styles.row}>
-            <View style={styles.fieldColumn}>
-              <Text style={styles.fieldLabel}>Tâm thu (SYS)</Text>
-              <TextInput
-                style={styles.input}
-                value={values.systolic}
-                onChangeText={(value) => onFieldChange("systolic", value, "bp")}
-                keyboardType="numeric"
-                placeholder="Ví dụ: 120"
-              />
-              <Text style={styles.fieldHint}>mmHg · 70-250</Text>
-            </View>
-            <View style={styles.fieldColumn}>
-              <Text style={styles.fieldLabel}>Tâm trương (DIA)</Text>
-              <TextInput
-                style={styles.input}
-                value={values.diastolic}
-                onChangeText={(value) => onFieldChange("diastolic", value, "bp")}
-                keyboardType="numeric"
-                placeholder="Ví dụ: 80"
-              />
-              <Text style={styles.fieldHint}>mmHg · 40-150</Text>
+        <TutorialTarget name="bloodPressureInput" routeName="InputMeasurement">
+          <View>
+            <Text style={styles.fieldGroupTitle}>Chỉ số huyết áp</Text>
+            <View style={styles.row}>
+              <View style={styles.fieldColumn}>
+                <Text style={styles.fieldLabel}>Tâm thu (SYS)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={values.systolic}
+                  onChangeText={(value) => {
+                    if (tutorialMode && currentStep?.id === 'input_blood_pressure') {
+                      nextStep();
+                    }
+                    onFieldChange("systolic", value, "bp");
+                  }}
+                  keyboardType="numeric"
+                  placeholder="Ví dụ: 120"
+                />
+                <Text style={styles.fieldHint}>mmHg · 70-250</Text>
+              </View>
+              <View style={styles.fieldColumn}>
+                <Text style={styles.fieldLabel}>Tâm trương (DIA)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={values.diastolic}
+                  onChangeText={(value) => {
+                    if (tutorialMode && currentStep?.id === 'input_blood_pressure') {
+                      nextStep();
+                    }
+                    onFieldChange("diastolic", value, "bp");
+                  }}
+                  keyboardType="numeric"
+                  placeholder="Ví dụ: 80"
+                />
+                <Text style={styles.fieldHint}>mmHg · 40-150</Text>
+              </View>
             </View>
           </View>
-        </>
+        </TutorialTarget>
       );
     }
 
@@ -241,16 +263,27 @@ export default function MeasurementDraftForm({
           Chọn nhóm chỉ số cần ghi nhận. Hoàn tất từng nhóm và bấm "Lưu" — chỉ cần ít nhất 1 nhóm để gửi bản đo.
         </Text>
         <View style={styles.typeGridRow}>
-          {MEASUREMENT_SECTIONS.slice(0, 3).map((item) => (
-            <TypeTile
-              key={item.key}
-              active={type === item.key}
-              isSaved={savedSections[item.key]}
-              isDraft={hasMeasurementSectionValue(item.key, values) && !savedSections[item.key]}
-              item={item}
-              onPress={() => onSelectType(item.key)}
-            />
-          ))}
+          {MEASUREMENT_SECTIONS.slice(0, 3).map((item) => {
+            const tile = (
+              <TypeTile
+                key={item.key}
+                active={type === item.key}
+                isSaved={savedSections[item.key]}
+                isDraft={hasMeasurementSectionValue(item.key, values) && !savedSections[item.key]}
+                item={item}
+                onPress={() => handleSelectType(item.key)}
+                style={item.key === 'bp' && tutorialMode ? { width: '100%' } : {}}
+              />
+            );
+            if (item.key === 'bp') {
+              return (
+                <TutorialTarget key={item.key} name="bloodPressureCard" routeName="InputMeasurement" style={{ width: "32%" }}>
+                  {tile}
+                </TutorialTarget>
+              );
+            }
+            return tile;
+          })}
         </View>
         <View style={styles.typeGridRow}>
           {MEASUREMENT_SECTIONS.slice(3, 6).map((item) => (
@@ -260,7 +293,7 @@ export default function MeasurementDraftForm({
               isSaved={savedSections[item.key]}
               isDraft={hasMeasurementSectionValue(item.key, values) && !savedSections[item.key]}
               item={item}
-              onPress={() => onSelectType(item.key)}
+              onPress={() => handleSelectType(item.key)}
             />
           ))}
         </View>
@@ -272,7 +305,7 @@ export default function MeasurementDraftForm({
               isSaved={savedSections[item.key]}
               isDraft={hasMeasurementSectionValue(item.key, values) && !savedSections[item.key]}
               item={item}
-              onPress={() => onSelectType(item.key)}
+              onPress={() => handleSelectType(item.key)}
             />
           ))}
         </View>
@@ -281,15 +314,17 @@ export default function MeasurementDraftForm({
       <Text style={styles.sectionTitle}>Chi tiết chỉ số đang nhập</Text>
       <View style={styles.card}>
         {renderTypeFields()}
-        <TouchableOpacity style={styles.secondaryBtn} onPress={onSaveSection}>
-          <Ionicons
-            name="document-text-outline"
-            size={18}
-            color="#2563EB"
-            style={styles.secondaryBtnIcon}
-          />
-          <Text style={styles.secondaryBtnText}>Lưu thông tin</Text>
-        </TouchableOpacity>
+        <TutorialTarget name="saveMeasurementButton" routeName="InputMeasurement">
+          <TouchableOpacity style={styles.secondaryBtn} onPress={onSaveSection}>
+            <Ionicons
+              name="document-text-outline"
+              size={18}
+              color="#2563EB"
+              style={styles.secondaryBtnIcon}
+            />
+            <Text style={styles.secondaryBtnText}>Lưu bản đo</Text>
+          </TouchableOpacity>
+        </TutorialTarget>
       </View>
 
       <Text style={styles.sectionTitle}>Thông tin chung của bản đo</Text>
