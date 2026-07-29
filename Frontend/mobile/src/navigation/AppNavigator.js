@@ -4,6 +4,8 @@ import {
   Text,
   ActivityIndicator,
   StyleSheet,
+  TouchableOpacity,
+  Platform,
 } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
@@ -12,6 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useAuth } from "../hooks/useAuth";
+import { useOnboardingStatus } from "../hooks/useOnboardingStatus";
 import {
   navigationRef,
   flushPendingNotificationNavigation,
@@ -30,9 +33,12 @@ import HistoryScreen from "../screens/patient/HistoryScreen";
 import AlertScreen from "../screens/patient/AlertScreen";
 import ProfileScreen from "../screens/patient/ProfileScreen";
 import DoctorChatScreen from "../screens/patient/DoctorChatScreen";
+import UserGuideScreen from "../screens/patient/UserGuideScreen";
 import InputMeasurementPatientScreen from "../screens/patient/InputMeasurementPatientScreen";
 import NotificationInboxScreen from "../screens/patient/NotificationInboxScreen";
 import TrackingScreen from "../screens/patient/TrackingScreen";
+import TutorialTarget from "../components/tutorial/TutorialTarget";
+import { useTutorial } from "../context/tutorial/TutorialContext";
 import NotificationContainerScreen from "../screens/patient/NotificationContainerScreen";
 import MedicationScreen from "../screens/patient/MedicationScreen";
 import VideoCallScreen from "../screens/patient/VideoCallScreen";
@@ -41,12 +47,7 @@ import EducationArticleScreen from "../screens/patient/EducationArticleScreen";
 import EducationQuizScreen from "../screens/patient/EducationQuizScreen";
 import AccountHistoryScreen from "../screens/patient/AccountHistoryScreen";
 
-// Nurse screen imports kept for rollback — not used in navigation (moved to doctor-app)
-// import NursePatientListScreen from "../screens/nurse/NursePatientListScreen";
-// import MeasurementInputScreen from "../screens/nurse/MeasurementInputScreen";
-// import NurseProfileScreen from "../screens/nurse/NurseProfileScreen";
-// import PatientDetailScreen from "../screens/nurse/PatientDetailScreen";
-// import NursePrescriptionScreen from "../screens/nurse/NursePrescriptionScreen";
+
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -109,7 +110,38 @@ function PatientTabNavigator() {
       })}
     >
       <Tab.Screen name="PatientHome" component={HomeScreen} options={{ title: "Trang chủ" }} />
-      <Tab.Screen name="PatientTracking" component={TrackingScreen} options={{ title: "Theo dõi" }} />
+      <Tab.Screen
+        name="PatientTracking"
+        component={TrackingScreen}
+        options={{
+          title: "Theo dõi",
+          tabBarButton: (props) => {
+            const { tutorialMode, nextStep, currentStep } = useTutorial();
+            const onPress = (e) => {
+              if (Platform.OS === 'web' && e && typeof e.preventDefault === 'function') {
+                e.preventDefault();
+              }
+              if (tutorialMode && currentStep?.id === 'home_tracking') {
+                nextStep();
+              }
+              props.onPress(e);
+            };
+            return (
+              <TutorialTarget
+                name="homeTrackingCard"
+                routeName="PatientHome"
+                style={[{ flex: 1 }, props.style]}
+              >
+                <TouchableOpacity
+                  {...props}
+                  style={[{ flex: 1, width: "100%", height: "100%", justifyContent: "center", alignItems: "center" }, props.style]}
+                  onPress={onPress}
+                />
+              </TutorialTarget>
+            );
+          }
+        }}
+      />
       <Tab.Screen name="EducationHome" component={EducationHomeScreen} options={{ title: "Giáo dục" }} />
       <Tab.Screen name="DoctorChat" component={DoctorChatScreen} options={{ title: "Tin nhắn", tabBarBadge: msgBadge }} />
       <Tab.Screen name="PatientNotifs" component={NotificationContainerScreen} options={{ title: "Thông báo", tabBarBadge: notifBadge }} />
@@ -118,8 +150,7 @@ function PatientTabNavigator() {
   );
 }
 
-// NurseTabNavigator removed — nurse app moved to doctor-app (staff app)
-// Files kept for rollback; not imported in navigation.
+
 
 function MainTabsScreen() {
   return (
@@ -131,12 +162,25 @@ function MainTabsScreen() {
 
 function RootNavigator() {
   const { user, initializing } = useAuth();
+  const { startTutorial } = useTutorial();
+  const { checkingOnboarding, hasCompletedOnboarding, markOnboardingComplete } =
+    useOnboardingStatus(user?._id || user?.id);
 
-  if (initializing) {
+  React.useEffect(() => {
+    if (user && !checkingOnboarding && !hasCompletedOnboarding) {
+      // We only mark onboarding complete here to avoid repeatedly triggering.
+      // The actual tutorial start is handled by HomeScreen > PatientTutorialModal > handleCompleteTutorial
+      markOnboardingComplete();
+    }
+  }, [user, checkingOnboarding, hasCompletedOnboarding, markOnboardingComplete]);
+
+  if (initializing || (user && checkingOnboarding)) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#2563EB" />
-        <Text style={styles.loadingText}>Đang kiểm tra phiên đăng nhập…</Text>
+        <Text style={styles.loadingText}>
+          {initializing ? "Đang kiểm tra phiên đăng nhập…" : "Đang chuẩn bị…"}
+        </Text>
       </View>
     );
   }
@@ -168,6 +212,7 @@ function RootNavigator() {
       <Stack.Screen name="EducationQuiz" component={EducationQuizScreen} />
       <Stack.Screen name="AccountHistory" component={AccountHistoryScreen} />
       <Stack.Screen name="SetPassword" component={SetPasswordScreen} />
+      <Stack.Screen name="UserGuide" component={UserGuideScreen} />
     </Stack.Navigator>
   );
 }

@@ -25,6 +25,8 @@ import * as ImagePicker from "expo-image-picker";
 
 import { useAuth } from "../../hooks/useAuth";
 import { useSnackbar } from "../../hooks/useSnackbar";
+import { useTutorial } from "../../context/tutorial/TutorialContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   getMyPatientProfile,
   updateMyPatientProfile,
@@ -202,6 +204,7 @@ export default function ProfileScreen() {
   const navigation = useNavigation();
   const { logout, updateUser, isBiometricEnabled, enableBiometric, disableBiometric, refreshBiometricStatus, sessionPassword } = useAuth();
   const { showSuccess, showError, showWarning } = useSnackbar();
+  const { resetTutorial } = useTutorial();
   const [biometricLoading, setBiometricLoading] = useState(false);
 
   const handleToggleBiometric = async () => {
@@ -1393,6 +1396,31 @@ export default function ProfileScreen() {
                 <Text style={styles.settingLabel}>Lịch sử tài khoản</Text>
                 <Text style={styles.settingSub}>
                   Xem các hoạt động đã thực hiện trên tài khoản
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward-outline" size={18} color="#9CA3AF" />
+            </TouchableOpacity>
+
+            {/* Row Hướng dẫn sử dụng chi tiết */}
+            <TouchableOpacity
+              style={[
+                styles.settingInfoRow,
+                {
+                  alignItems: "center",
+                  marginTop: 16,
+                  paddingTop: 16,
+                  borderTopWidth: 1,
+                  borderTopColor: "#F3F4F6",
+                },
+              ]}
+              onPress={() => navigation.navigate("UserGuide")}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="book-outline" size={20} color="#2563EB" />
+              <View style={styles.settingContent}>
+                <Text style={styles.settingLabel}>Hướng dẫn sử dụng chi tiết</Text>
+                <Text style={styles.settingSub}>
+                  Xem chi tiết hướng dẫn thao tác các tính năng chính của ứng dụng
                 </Text>
               </View>
               <Ionicons name="chevron-forward-outline" size={18} color="#9CA3AF" />

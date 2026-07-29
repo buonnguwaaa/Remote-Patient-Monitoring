@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
-import { 
-  View, Text, StyleSheet, Modal, ScrollView, TouchableOpacity, 
-  SafeAreaView, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator, Alert
+import {
+  View, Text, StyleSheet, Modal, ScrollView, TouchableOpacity,
+  SafeAreaView, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator, Alert,
+  FlatList
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
@@ -33,7 +34,7 @@ function MedicationEditorCard({ med, medIdx, onChange, onRemove, canRemove, erro
   const [customRouteInput, setCustomRouteInput] = useState("");
 
   const handleField = (k, v) => onChange(medIdx, k, v);
-  
+
   const handleSelectSuggestion = (drug) => {
     handleField("drugName", drug.name);
     if (drug.dosage) handleField("dosage", drug.dosage);
@@ -43,7 +44,7 @@ function MedicationEditorCard({ med, medIdx, onChange, onRemove, canRemove, erro
   };
 
   const currentDrugQuery = med.drugName || "";
-  const filteredDrugs = DRUG_SUGGESTIONS.filter(d => 
+  const filteredDrugs = DRUG_SUGGESTIONS.filter(d =>
     d.name.toLowerCase().includes(currentDrugQuery.toLowerCase())
   );
 
@@ -51,7 +52,7 @@ function MedicationEditorCard({ med, medIdx, onChange, onRemove, canRemove, erro
   const dosageError = errors[`med_${medIdx}_dosage`];
 
   return (
-    <View style={[styles.medCard, { zIndex: 1000 - medIdx }]}>
+    <View style={styles.medCard}>
       <View style={styles.medHeader}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           <Ionicons name="medical" size={16} color="#2563EB" />
@@ -64,67 +65,72 @@ function MedicationEditorCard({ med, medIdx, onChange, onRemove, canRemove, erro
         )}
       </View>
 
-      {/* Drug Name with Auto-Suggest */}
+      {/* Drug Name with Inline Auto-Suggest */}
       <Text style={styles.label}>Tên thuốc *</Text>
-      <View style={{ zIndex: 999 }}>
-        <TextInput
-          style={[styles.input, nameError && styles.inputError]}
-          value={med.drugName}
-          onChangeText={(v) => {
-            handleField("drugName", v);
-            setShowSuggestions(true);
-          }}
-          onFocus={() => setShowSuggestions(true)}
-          placeholder="Nhập hoặc chọn tên thuốc (Ví dụ: Paracetamol)..."
-          placeholderTextColor="#9CA3AF"
-        />
-        {nameError ? <Text style={styles.fieldErrorText}>{nameError}</Text> : null}
+      <TextInput
+        style={[styles.input, nameError && styles.inputError]}
+        value={med.drugName}
+        onChangeText={(v) => {
+          handleField("drugName", v);
+          setShowSuggestions(true);
+        }}
+        onFocus={() => setShowSuggestions(true)}
+        placeholder="Nhập hoặc chọn tên thuốc (Ví dụ: Paracetamol)..."
+        placeholderTextColor="#9CA3AF"
+      />
+      {nameError ? <Text style={styles.fieldErrorText}>{nameError}</Text> : null}
 
-        {showSuggestions && filteredDrugs.length > 0 && (
-          <View style={styles.suggestionsBox}>
-            <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="handled" style={{ maxHeight: 180 }}>
-              {filteredDrugs.map(d => (
-                <TouchableOpacity 
-                  key={d.name} 
-                  style={styles.suggestionItem} 
-                  onPress={() => handleSelectSuggestion(d)}
-                >
-                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                    <Text style={styles.suggestionName}>{d.name}</Text>
-                    {d.dosage ? <Text style={styles.suggestionDosage}>({d.dosage})</Text> : null}
-                  </View>
-                  {d.route ? <Text style={styles.suggestionRoute}>Đường dùng: {d.route}</Text> : null}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-            <TouchableOpacity 
-              style={styles.closeSuggestionsBtn} 
-              onPress={() => setShowSuggestions(false)}
-            >
-              <Text style={styles.closeSuggestionsText}>Đóng danh sách gợi ý</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
+      {/* Inline suggestions list — rendered inline (not absolute), ScrollView with nestedScrollEnabled */}
+      {showSuggestions && filteredDrugs.length > 0 && (
+        <View style={styles.inlineSuggestionsBox}>
+          <ScrollView
+            nestedScrollEnabled={true}
+            keyboardShouldPersistTaps="handled"
+            style={{ maxHeight: 200 }}
+            showsVerticalScrollIndicator={true}
+          >
+            {filteredDrugs.map(d => (
+              <TouchableOpacity
+                key={d.name}
+                style={styles.suggestionItem}
+                onPress={() => handleSelectSuggestion(d)}
+              >
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                  <Text style={styles.suggestionName}>{d.name}</Text>
+                  {d.dosage ? <Text style={styles.suggestionDosage}>({d.dosage})</Text> : null}
+                </View>
+                {d.route ? <Text style={styles.suggestionRoute}>Đường dùng: {d.route}</Text> : null}
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+          <TouchableOpacity
+            style={styles.closeSuggestionsBtn}
+            onPress={() => setShowSuggestions(false)}
+          >
+            <Ionicons name="chevron-up" size={16} color="#64748B" />
+            <Text style={styles.closeSuggestionsText}>Đóng gợi ý</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Dosage & Route of Administration */}
       <View style={styles.row}>
         <View style={{ flex: 1, marginRight: 8 }}>
           <Text style={styles.label}>Liều lượng *</Text>
-          <TextInput 
-            style={[styles.input, dosageError && styles.inputError]} 
-            value={med.dosage} 
-            onChangeText={(v) => handleField("dosage", v)} 
-            placeholder="VD: 500mg, 1 viên" 
-            placeholderTextColor="#9CA3AF" 
+          <TextInput
+            style={[styles.input, dosageError && styles.inputError]}
+            value={med.dosage}
+            onChangeText={(v) => handleField("dosage", v)}
+            placeholder="VD: 500mg, 1 viên"
+            placeholderTextColor="#9CA3AF"
           />
           {dosageError ? <Text style={styles.fieldErrorText}>{dosageError}</Text> : null}
         </View>
 
         <View style={{ flex: 1 }}>
           <Text style={styles.label}>Đường dùng</Text>
-          <TouchableOpacity 
-            style={styles.routeSelectBox} 
+          <TouchableOpacity
+            style={styles.routeSelectBox}
             onPress={() => setShowRouteModal(true)}
           >
             <Text style={styles.routeSelectText} numberOfLines={1}>
@@ -137,13 +143,13 @@ function MedicationEditorCard({ med, medIdx, onChange, onRemove, canRemove, erro
 
       {/* Instructions */}
       <Text style={styles.label}>Chỉ dẫn thêm</Text>
-      <TextInput 
-        style={[styles.input, { height: 56, textAlignVertical: "top" }]} 
-        value={med.instructions} 
-        onChangeText={(v) => handleField("instructions", v)} 
-        placeholder="VD: Uống sau ăn no, uống nhiều nước..." 
-        placeholderTextColor="#9CA3AF" 
-        multiline 
+      <TextInput
+        style={[styles.input, { height: 56, textAlignVertical: "top" }]}
+        value={med.instructions}
+        onChangeText={(v) => handleField("instructions", v)}
+        placeholder="VD: Uống sau ăn no, uống nhiều nước..."
+        placeholderTextColor="#9CA3AF"
+        multiline
       />
 
       {/* Schedule Preset Slots (Morning / Noon / Evening) & Extra Custom Doses */}
@@ -189,7 +195,7 @@ function MedicationEditorCard({ med, medIdx, onChange, onRemove, canRemove, erro
 
                 if (!enabled) {
                   return (
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       key={slot.tod}
                       style={[styles.doseFormCard, { backgroundColor: "#F8FAFC", borderColor: "#E2E8F0", opacity: 0.8, paddingVertical: 10, paddingHorizontal: 12, marginBottom: 0 }]}
                       onPress={handleToggleSlot}
@@ -208,20 +214,20 @@ function MedicationEditorCard({ med, medIdx, onChange, onRemove, canRemove, erro
                 }
 
                 return (
-                  <View 
+                  <View
                     key={slot.tod}
                     style={[styles.doseFormCard, { borderColor: "#3B82F6", borderWidth: 1.5, backgroundColor: "#FFFFFF", marginBottom: 0 }]}
                   >
-                    <TouchableOpacity 
-                      style={[styles.doseCardHeader, { borderBottomWidth: 1, borderBottomColor: "#F1F5F9", paddingBottom: 8, marginBottom: 10, flexDirection: "row", justifyContent: "space-between", alignItems: "center" }]} 
+                    <TouchableOpacity
+                      style={[styles.doseCardHeader, { borderBottomWidth: 1, borderBottomColor: "#F1F5F9", paddingBottom: 8, marginBottom: 10, flexDirection: "row", justifyContent: "space-between", alignItems: "center" }]}
                       onPress={handleToggleSlot}
                     >
                       <Ionicons name="checkbox" size={20} color="#2563EB" />
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                        <Ionicons 
-                          name={slot.tod === "morning" ? "sunny-outline" : slot.tod === "noon" ? "partly-sunny-outline" : "moon-outline"} 
-                          size={18} 
-                          color="#2563EB" 
+                        <Ionicons
+                          name={slot.tod === "morning" ? "sunny-outline" : slot.tod === "noon" ? "partly-sunny-outline" : "moon-outline"}
+                          size={18}
+                          color="#2563EB"
                         />
                         <Text style={{ fontSize: 14, fontWeight: "700", color: "#1E3A8A" }}>Buổi {slot.label}</Text>
                       </View>
@@ -295,7 +301,7 @@ function MedicationEditorCard({ med, medIdx, onChange, onRemove, canRemove, erro
                   {extraDoses.map((dose, extraIdx) => {
                     const actualIndex = med.schedule.indexOf(dose);
                     return (
-                      <View 
+                      <View
                         key={actualIndex}
                         style={[styles.doseFormCard, { borderColor: "#CBD5E1", borderWidth: 1.5, backgroundColor: "#FFFFFF", marginBottom: 0 }]}
                       >
@@ -304,8 +310,8 @@ function MedicationEditorCard({ med, medIdx, onChange, onRemove, canRemove, erro
                             <Ionicons name="time-outline" size={18} color="#2563EB" />
                             <Text style={{ fontSize: 13, fontWeight: "700", color: "#1E3A8A" }}>Buổi dùng bổ sung #{extraIdx + 1}</Text>
                           </View>
-                          <TouchableOpacity 
-                            onPress={() => handleField("schedule", med.schedule.filter((_, idx) => idx !== actualIndex))} 
+                          <TouchableOpacity
+                            onPress={() => handleField("schedule", med.schedule.filter((_, idx) => idx !== actualIndex))}
                             style={{ flexDirection: "row", alignItems: "center", gap: 3 }}
                           >
                             <Ionicons name="trash-outline" size={16} color="#EF4444" />
@@ -423,8 +429,8 @@ function MedicationEditorCard({ med, medIdx, onChange, onRemove, canRemove, erro
                 </View>
               )}
 
-              <TouchableOpacity 
-                style={[styles.addDoseBtn, { marginTop: 8, borderColor: "#3B82F6", backgroundColor: "#EFF6FF" }]} 
+              <TouchableOpacity
+                style={[styles.addDoseBtn, { marginTop: 8, borderColor: "#3B82F6", backgroundColor: "#EFF6FF" }]}
                 onPress={() => handleField("schedule", [...med.schedule, { timeOfDay: "evening", customTime: "21:30", mealTiming: "post_meal", pillCount: 1 }])}
               >
                 <Ionicons name="add-circle" size={16} color="#2563EB" />
@@ -447,8 +453,8 @@ function MedicationEditorCard({ med, medIdx, onChange, onRemove, canRemove, erro
             </View>
             <ScrollView style={{ maxHeight: 320 }}>
               {ROUTE_OPTIONS.map(opt => (
-                <TouchableOpacity 
-                  key={opt} 
+                <TouchableOpacity
+                  key={opt}
                   style={[styles.routeRow, med.route === opt && styles.routeRowSelected]}
                   onPress={() => {
                     handleField("route", opt);
@@ -462,7 +468,7 @@ function MedicationEditorCard({ med, medIdx, onChange, onRemove, canRemove, erro
                 </TouchableOpacity>
               ))}
             </ScrollView>
-            
+
             {/* Custom Route Input */}
             <View style={styles.customRouteBox}>
               <Text style={styles.label}>Đường dùng khác:</Text>
@@ -474,7 +480,7 @@ function MedicationEditorCard({ med, medIdx, onChange, onRemove, canRemove, erro
                   onChangeText={setCustomRouteInput}
                   placeholderTextColor="#9CA3AF"
                 />
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.applyCustomRouteBtn}
                   onPress={() => {
                     if (customRouteInput.trim()) {
@@ -537,20 +543,20 @@ export function PrescriptionFormModal({ visible, onClose, initialData, onSave, p
     if (!formData.daysOfWeek || formData.daysOfWeek.length === 0) {
       errs.days = "Vui lòng chọn ít nhất 1 ngày trong tuần.";
     }
-    
+
     formData.medications.forEach((m, i) => {
       const name = (m.drugName || "").trim();
       const dosage = (m.dosage || "").trim();
       if (!name) {
         errs[`med_${i}_name`] = "Thiếu tên thuốc";
-        if (!errs.meds) errs.meds = `Thuốc #${i+1} chưa có tên thuốc.`;
+        if (!errs.meds) errs.meds = `Thuốc #${i + 1} chưa có tên thuốc.`;
       }
       if (!dosage) {
         errs[`med_${i}_dosage`] = "Thiếu liều lượng";
-        if (!errs.meds) errs.meds = `Thuốc #${i+1} chưa có liều lượng.`;
+        if (!errs.meds) errs.meds = `Thuốc #${i + 1} chưa có liều lượng.`;
       }
       if (!m.schedule || m.schedule.length === 0) {
-        if (!errs.meds) errs.meds = `Thuốc #${i+1} chưa chọn lịch dùng.`;
+        if (!errs.meds) errs.meds = `Thuốc #${i + 1} chưa chọn lịch dùng.`;
       }
     });
 
@@ -559,7 +565,7 @@ export function PrescriptionFormModal({ visible, onClose, initialData, onSave, p
     if (Object.keys(errs).length > 0) {
       const firstErrorMsg = Object.values(errs)[0];
       setTopAlert(firstErrorMsg);
-      
+
       if (toastContext && toastContext.showToast) {
         toastContext.showToast(firstErrorMsg, "error");
       }
@@ -601,23 +607,23 @@ export function PrescriptionFormModal({ visible, onClose, initialData, onSave, p
 
   if (!visible) return null;
 
-  const selectedPatientName = patients.find(p => 
+  const selectedPatientName = patients.find(p =>
     (p.user?._id || p.patientId || p.id) === formData.patientId
-  )?.user?.name || patients.find(p => 
+  )?.user?.name || patients.find(p =>
     (p.user?._id || p.patientId || p.id) === formData.patientId
   )?.patientName || "Chọn bệnh nhân...";
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
+    <Modal visible={visible} animationType="slide" presentationStyle="fullScreen">
       <SafeAreaView style={styles.safeArea}>
-        <KeyboardAvoidingView 
-          style={styles.flex} 
+        <KeyboardAvoidingView
+          style={styles.flex}
           behavior={Platform.OS === "ios" ? "padding" : undefined}
           keyboardVerticalOffset={Platform.OS === "ios" ? 10 : 0}
         >
           {/* Header */}
           <View style={[
-            styles.header, 
+            styles.header,
             { paddingTop: Platform.OS === "android" ? Math.max(insets.top, 16) : 14 }
           ]}>
             <TouchableOpacity onPress={onClose} style={styles.closeHeaderBtn}>
@@ -639,11 +645,12 @@ export function PrescriptionFormModal({ visible, onClose, initialData, onSave, p
           ) : null}
 
           {/* Form Content in ScrollView with generous bottom padding */}
-          <ScrollView 
+          <ScrollView
             ref={scrollViewRef}
-            style={styles.body} 
-            contentContainerStyle={{ paddingBottom: Math.max(insets.bottom + 120, 140) }} 
+            style={[styles.body, styles.flex]}
+            contentContainerStyle={{ paddingBottom: Math.max(insets.bottom + 80, 100) }}
             keyboardShouldPersistTaps="handled"
+            nestedScrollEnabled={true}
             showsVerticalScrollIndicator={false}
           >
             <Section title="1. Thông tin bệnh nhân *" error={errors.patient}>
@@ -674,13 +681,13 @@ export function PrescriptionFormModal({ visible, onClose, initialData, onSave, p
 
               <Text style={styles.label}>Ngày dùng trong tuần</Text>
               <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
-                {[{v:1, l:"T2"},{v:2, l:"T3"},{v:3, l:"T4"},{v:4, l:"T5"},{v:5, l:"T6"},{v:6, l:"T7"},{v:0, l:"CN"}].map(d => (
-                  <Chip 
-                    key={d.v} label={d.l} 
-                    active={formData.daysOfWeek.includes(d.v)} 
+                {[{ v: 1, l: "T2" }, { v: 2, l: "T3" }, { v: 3, l: "T4" }, { v: 4, l: "T5" }, { v: 5, l: "T6" }, { v: 6, l: "T7" }, { v: 0, l: "CN" }].map(d => (
+                  <Chip
+                    key={d.v} label={d.l}
+                    active={formData.daysOfWeek.includes(d.v)}
                     onPress={() => {
                       const days = formData.daysOfWeek.includes(d.v) ? formData.daysOfWeek.filter(x => x !== d.v) : [...formData.daysOfWeek, d.v];
-                      setFormData({...formData, daysOfWeek: days});
+                      setFormData({ ...formData, daysOfWeek: days });
                     }}
                   />
                 ))}
@@ -689,7 +696,7 @@ export function PrescriptionFormModal({ visible, onClose, initialData, onSave, p
 
             <Section title={`3. Danh sách thuốc trong đơn (${formData.medications.length})`} error={errors.meds}>
               {formData.medications.map((med, idx) => (
-                <MedicationEditorCard 
+                <MedicationEditorCard
                   key={idx} med={med} medIdx={idx} errors={errors}
                   onChange={(i, k, v) => {
                     setFormData(prev => {
@@ -698,21 +705,23 @@ export function PrescriptionFormModal({ visible, onClose, initialData, onSave, p
                       return { ...prev, medications: next };
                     });
                   }}
-                  onRemove={(i) => setFormData(prev => ({...prev, medications: prev.medications.filter((_, index) => index !== i)}))}
+                  onRemove={(i) => setFormData(prev => ({ ...prev, medications: prev.medications.filter((_, index) => index !== i) }))}
                   canRemove={formData.medications.length > 1}
                 />
               ))}
-              <TouchableOpacity 
-                style={styles.addMedBtn} 
+              <TouchableOpacity
+                style={styles.addMedBtn}
                 onPress={() => setFormData({
-                  ...formData, 
+                  ...formData,
                   medications: [
-                    ...formData.medications, 
-                    { drugName: "", dosage: "", route: "Đường uống", schedule: [
-                      { timeOfDay: "morning", customTime: "08:00", mealTiming: "post_meal", pillCount: 1 },
-                      { timeOfDay: "noon", customTime: "12:00", mealTiming: "post_meal", pillCount: 1 },
-                      { timeOfDay: "evening", customTime: "20:00", mealTiming: "post_meal", pillCount: 1 }
-                    ] }
+                    ...formData.medications,
+                    {
+                      drugName: "", dosage: "", route: "Đường uống", schedule: [
+                        { timeOfDay: "morning", customTime: "08:00", mealTiming: "post_meal", pillCount: 1 },
+                        { timeOfDay: "noon", customTime: "12:00", mealTiming: "post_meal", pillCount: 1 },
+                        { timeOfDay: "evening", customTime: "20:00", mealTiming: "post_meal", pillCount: 1 }
+                      ]
+                    }
                   ]
                 })}
               >
@@ -724,8 +733,8 @@ export function PrescriptionFormModal({ visible, onClose, initialData, onSave, p
 
           {/* Sticky Bottom Action Bar (Fix UI Overlap: Never obscured by keyboard or content) */}
           <View style={[
-            styles.bottomActionBar, 
-            { paddingBottom: Math.max(insets.bottom, 12) + 8 }
+            styles.bottomActionBar,
+            { paddingBottom: Platform.OS === "ios" ? Math.max(insets.bottom, 12) + 4 : 12 }
           ]}>
             <TouchableOpacity style={styles.bottomCancelBtn} onPress={onClose}>
               <Text style={styles.bottomCancelText}>Hủy</Text>
@@ -770,11 +779,11 @@ export function PrescriptionFormModal({ visible, onClose, initialData, onSave, p
                 </TouchableOpacity>
               </View>
               <View style={{ paddingHorizontal: 16, paddingTop: 10 }}>
-                <TextInput 
-                  style={styles.searchPatientInput} 
-                  placeholder="Tìm tên bệnh nhân..." 
-                  value={searchPatient} 
-                  onChangeText={setSearchPatient} 
+                <TextInput
+                  style={styles.searchPatientInput}
+                  placeholder="Tìm tên bệnh nhân..."
+                  value={searchPatient}
+                  onChangeText={setSearchPatient}
                   placeholderTextColor="#9CA3AF"
                 />
               </View>
@@ -786,12 +795,12 @@ export function PrescriptionFormModal({ visible, onClose, initialData, onSave, p
                     const pname = p.user?.name || p.patientName || "Bệnh nhân #" + pid;
                     const selected = formData.patientId === pid;
                     return (
-                      <TouchableOpacity 
-                        key={pid} 
-                        style={[styles.patientRow, selected && styles.patientRowSelected]} 
+                      <TouchableOpacity
+                        key={pid}
+                        style={[styles.patientRow, selected && styles.patientRowSelected]}
                         onPress={async () => {
                           setShowPatientPicker(false);
-                          
+
                           try {
                             const list = await getPrescriptions({ patientId: pid, latest: true });
                             const activeP = Array.isArray(list) ? list[0] : null;
@@ -829,13 +838,13 @@ export function PrescriptionFormModal({ visible, onClose, initialData, onSave, p
                   <Ionicons name="close" size={20} color="#6B7280" />
                 </TouchableOpacity>
               </View>
-              
+
               <Text style={styles.promptModalDesc}>
-                Bệnh nhân này đã có đơn thuốc bắt đầu từ {activePrescriptionPrompt?.startDate?.slice(0,10) || "trước đó"}. Bạn muốn chỉnh sửa đơn này hay tiếp tục tạo đơn mới?
+                Bệnh nhân này đã có đơn thuốc bắt đầu từ {activePrescriptionPrompt?.startDate?.slice(0, 10) || "trước đó"}. Bạn muốn chỉnh sửa đơn này hay tiếp tục tạo đơn mới?
               </Text>
-              
+
               <View style={styles.promptModalActions}>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.promptModalBtnOutline}
                   onPress={() => {
                     setActivePrescriptionPrompt(null);
@@ -845,7 +854,7 @@ export function PrescriptionFormModal({ visible, onClose, initialData, onSave, p
                 >
                   <Text style={styles.promptModalBtnOutlineText}>Tạo đơn mới</Text>
                 </TouchableOpacity>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.promptModalBtnPrimary}
                   onPress={() => {
                     setActivePrescriptionPrompt(null);
@@ -862,7 +871,7 @@ export function PrescriptionFormModal({ visible, onClose, initialData, onSave, p
                         drugName: m.drugName, dosage: m.dosage, route: m.route || "", instructions: m.instructions || "",
                         schedule: (m.schedule || []).map(s => ({
                           timeOfDay: s.timeOfDay, mealTiming: s.mealTiming || "", pillCount: s.pillCount || 1,
-                          customTime: s.hour !== undefined ? `${String(s.hour).padStart(2,"0")}:${String(s.minute||0).padStart(2,"0")}` : ""
+                          customTime: s.hour !== undefined ? `${String(s.hour).padStart(2, "0")}:${String(s.minute || 0).padStart(2, "0")}` : ""
                         }))
                       }))
                     });
@@ -884,15 +893,15 @@ export function PrescriptionFormModal({ visible, onClose, initialData, onSave, p
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#F9FAFB" },
   flex: { flex: 1 },
-  header: { 
-    flexDirection: "row", 
-    justifyContent: "space-between", 
-    alignItems: "center", 
-    paddingHorizontal: 16, 
-    paddingVertical: 12, 
-    backgroundColor: "#FFF", 
-    borderBottomWidth: 1, 
-    borderBottomColor: "#E5E7EB" 
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: "#FFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB"
   },
   closeHeaderBtn: { padding: 4 },
   title: { fontSize: 16, fontWeight: "700", color: "#111827" },
@@ -911,7 +920,7 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: "#EFF6FF", borderColor: "#BFDBFE" },
   chipText: { fontSize: 12, color: "#4B5563", fontWeight: "600" },
   chipTextActive: { color: "#2563EB" },
-  
+
   patientBox: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: "#EFF6FF", padding: 12, borderRadius: 10, borderWidth: 1, borderColor: "#BFDBFE" },
   patientName: { fontSize: 15, fontWeight: "600", color: "#1E40AF" },
   datePickerBtn: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#F3F4F6", padding: 12, borderRadius: 8, borderWidth: 1, borderColor: "#E5E7EB", marginBottom: 12 },
@@ -971,7 +980,7 @@ const styles = StyleSheet.create({
   removeBtn: { padding: 4 },
   addMedBtn: { flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8, padding: 12, borderRadius: 10, backgroundColor: "#EFF6FF", borderWidth: 1, borderColor: "#BFDBFE", borderStyle: "dashed" },
   addMedText: { color: "#2563EB", fontWeight: "700" },
-  
+
   doseFormCard: {
     backgroundColor: "#FFFFFF",
     borderWidth: 1,
@@ -1143,28 +1152,19 @@ const styles = StyleSheet.create({
   },
   addDoseBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 6 },
   addDoseText: { color: "#2563EB", fontSize: 13, fontWeight: "600" },
-
-  suggestionsBox: { 
-    position: "absolute", 
-    top: 46, 
-    left: 0, 
-    right: 0, 
-    backgroundColor: "#FFF", 
-    borderRadius: 10, 
-    borderWidth: 1, 
-    borderColor: "#CBD5E1", 
-    maxHeight: 220, 
-    zIndex: 1000, 
-    elevation: 6, 
-    shadowColor: "#000", 
-    shadowOpacity: 0.15, 
-    shadowRadius: 6 
+  inlineSuggestionsBox: {
+    backgroundColor: "#FFF",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+    marginTop: 6,
+    overflow: "hidden",
   },
   suggestionItem: { padding: 12, borderBottomWidth: 1, borderBottomColor: "#F1F5F9" },
   suggestionName: { fontSize: 14, fontWeight: "700", color: "#1E293B" },
   suggestionDosage: { fontSize: 13, fontWeight: "600", color: "#2563EB" },
   suggestionRoute: { fontSize: 11, color: "#64748B", marginTop: 2 },
-  closeSuggestionsBtn: { padding: 10, backgroundColor: "#F8FAFC", alignItems: "center", borderTopWidth: 1, borderTopColor: "#E2E8F0" },
+  closeSuggestionsBtn: { flexDirection: "row", padding: 10, backgroundColor: "#F8FAFC", alignItems: "center", justifyContent: "center", gap: 4, borderTopWidth: 1, borderTopColor: "#E2E8F0" },
   closeSuggestionsText: { fontSize: 12, color: "#64748B", fontWeight: "600" },
 
   topAlertBanner: {
