@@ -33,6 +33,7 @@ import HistoryScreen from "../screens/patient/HistoryScreen";
 import AlertScreen from "../screens/patient/AlertScreen";
 import ProfileScreen from "../screens/patient/ProfileScreen";
 import DoctorChatScreen from "../screens/patient/DoctorChatScreen";
+import UserGuideScreen from "../screens/patient/UserGuideScreen";
 import InputMeasurementPatientScreen from "../screens/patient/InputMeasurementPatientScreen";
 import NotificationInboxScreen from "../screens/patient/NotificationInboxScreen";
 import TrackingScreen from "../screens/patient/TrackingScreen";
@@ -109,10 +110,10 @@ function PatientTabNavigator() {
       })}
     >
       <Tab.Screen name="PatientHome" component={HomeScreen} options={{ title: "Trang chủ" }} />
-      <Tab.Screen 
-        name="PatientTracking" 
-        component={TrackingScreen} 
-        options={{ 
+      <Tab.Screen
+        name="PatientTracking"
+        component={TrackingScreen}
+        options={{
           title: "Theo dõi",
           tabBarButton: (props) => {
             const { tutorialMode, nextStep, currentStep } = useTutorial();
@@ -126,12 +127,20 @@ function PatientTabNavigator() {
               props.onPress(e);
             };
             return (
-              <TutorialTarget name="homeTrackingCard" routeName="PatientHome">
-                <TouchableOpacity {...props} onPress={onPress} />
+              <TutorialTarget
+                name="homeTrackingCard"
+                routeName="PatientHome"
+                style={[{ flex: 1 }, props.style]}
+              >
+                <TouchableOpacity
+                  {...props}
+                  style={[{ flex: 1, width: "100%", height: "100%", justifyContent: "center", alignItems: "center" }, props.style]}
+                  onPress={onPress}
+                />
               </TutorialTarget>
             );
           }
-        }} 
+        }}
       />
       <Tab.Screen name="EducationHome" component={EducationHomeScreen} options={{ title: "Giáo dục" }} />
       <Tab.Screen name="DoctorChat" component={DoctorChatScreen} options={{ title: "Tin nhắn", tabBarBadge: msgBadge }} />
@@ -161,7 +170,7 @@ function RootNavigator() {
     if (user && !checkingOnboarding && !hasCompletedOnboarding) {
       // We only mark onboarding complete here to avoid repeatedly triggering.
       // The actual tutorial start is handled by HomeScreen > PatientTutorialModal > handleCompleteTutorial
-      markOnboardingComplete(); 
+      markOnboardingComplete();
     }
   }, [user, checkingOnboarding, hasCompletedOnboarding, markOnboardingComplete]);
 
@@ -203,6 +212,7 @@ function RootNavigator() {
       <Stack.Screen name="EducationQuiz" component={EducationQuizScreen} />
       <Stack.Screen name="AccountHistory" component={AccountHistoryScreen} />
       <Stack.Screen name="SetPassword" component={SetPasswordScreen} />
+      <Stack.Screen name="UserGuide" component={UserGuideScreen} />
     </Stack.Navigator>
   );
 }

@@ -44,6 +44,21 @@ export function TutorialProvider({ children }) {
     }
   }, [user]);
 
+  const resetTutorial = useCallback(async () => {
+    setActive(false);
+    setTutorialMode(false);
+    setCurrentStepIndex(0);
+    setTargets({});
+    setShowCompletion(false);
+    const userId = user?._id || user?.id;
+    if (userId) {
+      await AsyncStorage.multiRemove([
+        `hasSeenTutorial_${userId}`,
+        `rpm_tutorial_version_${userId}`,
+      ]);
+    }
+  }, [user]);
+
   const closeCompletion = useCallback(() => {
     setShowCompletion(false);
   }, []);
@@ -86,12 +101,13 @@ export function TutorialProvider({ children }) {
     nextStep,
     skipTutorial,
     completeTutorial,
+    resetTutorial,
     closeCompletion,
     registerTarget,
     unregisterTarget,
   }), [
     active, tutorialMode, showCompletion, currentStep, currentTargetLayout, targets,
-    startTutorial, nextStep, skipTutorial, completeTutorial, closeCompletion,
+    startTutorial, nextStep, skipTutorial, completeTutorial, resetTutorial, closeCompletion,
     registerTarget, unregisterTarget
   ]);
 

@@ -7,14 +7,14 @@ const OVERLAY_COLOR = 'rgba(0, 0, 0, 0.7)';
 
 export default function TutorialOverlay() {
   const { width: SCREEN_W, height: SCREEN_H } = useWindowDimensions();
-  const { 
-    active, 
-    tutorialMode, 
+  const {
+    active,
+    tutorialMode,
     showCompletion,
     closeCompletion,
-    currentStep, 
-    currentTargetLayout, 
-    skipTutorial 
+    currentStep,
+    currentTargetLayout,
+    skipTutorial
   } = useTutorial();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -47,7 +47,7 @@ export default function TutorialOverlay() {
         duration: 200,
         useNativeDriver: true,
       }).start();
-      
+
       if (active && tutorialMode && !currentTargetLayout) {
         // Fallback timer if target doesn't register after 3.5s
         const t = setTimeout(() => setShowFallback(true), 3500);
@@ -66,8 +66,8 @@ export default function TutorialOverlay() {
             <Text style={styles.completionText}>
               Bạn đã hoàn thành bài hướng dẫn. Bây giờ bạn đã sẵn sàng sử dụng ứng dụng để đồng hành cùng Bác sĩ.
             </Text>
-            <TouchableOpacity 
-              style={styles.completionBtn} 
+            <TouchableOpacity
+              style={styles.completionBtn}
               onPress={closeCompletion}
             >
               <Text style={styles.completionBtnText}>BẮT ĐẦU SỬ DỤNG</Text>

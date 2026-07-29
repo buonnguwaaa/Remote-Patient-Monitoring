@@ -8,7 +8,7 @@ export default function TutorialTarget({ name, routeName, children, style }) {
 
   const measureAndRegister = useCallback(() => {
     if (!tutorialMode) return;
-    
+
     let attempts = 0;
     let retryTimer = null;
     const tryMeasure = () => {
@@ -28,7 +28,7 @@ export default function TutorialTarget({ name, routeName, children, style }) {
               return;
             }
           }
-        } catch (e) {}
+        } catch (e) { }
       }
 
       // Schedule next attempt in case measure callback is silently dropped
@@ -37,13 +37,23 @@ export default function TutorialTarget({ name, routeName, children, style }) {
       }
 
       try {
-        viewRef.current.measure((x, y, width, height, pageX, pageY) => {
-          if (width > 0 && height > 0) {
+        const handleMeasure = (x, y, w, h) => {
+          if (w > 0 && h > 0) {
             clearTimeout(retryTimer);
-            registerTarget(name, { x: pageX, y: pageY, width, height, routeName });
+            registerTarget(name, { x, y, width: w, height: h, routeName });
           }
-        });
-      } catch (e) {}
+        };
+
+        if (viewRef.current.measureInWindow) {
+          viewRef.current.measureInWindow((x, y, w, h) => {
+            handleMeasure(x, y, w, h);
+          });
+        } else if (viewRef.current.measure) {
+          viewRef.current.measure((x, y, w, h, pageX, pageY) => {
+            handleMeasure(pageX, pageY, w, h);
+          });
+        }
+      } catch (e) { }
     };
 
     retryTimer = setTimeout(tryMeasure, 100);

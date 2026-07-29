@@ -146,7 +146,7 @@ function isWithinRecentDays(value, days = 5) {
 
 export default function HomeScreen({ navigation }) {
   const { user } = useAuth();
-  const { tutorialMode, nextStep, currentStep, startTutorial, scenario } = useTutorial();
+  const { tutorialMode, nextStep, currentStep, startTutorial, resetTutorial, scenario } = useTutorial();
 
   const [profile, setProfile] = useState(null);
   const [measurements, setMeasurements] = useState([]);
@@ -176,18 +176,30 @@ export default function HomeScreen({ navigation }) {
     checkTutorial();
   }, [user?._id, user?.id]);
 
-  const handleCompleteTutorial = async () => {
+  const handleStartGuide = async () => {
     const patientId = user?._id || user?.id;
     try {
       if (patientId) {
         await AsyncStorage.setItem(`hasSeenTutorial_${patientId}`, 'true');
       }
-    } catch (e) {
-      // ignore
-    }
+    } catch (e) {}
     setShowTutorial(false);
-    // Bắt đầu hướng dẫn thực tế (vòng sáng)
-    startTutorial();
+    navigation.navigate('UserGuide');
+  };
+
+  const handleSkipTutorial = async () => {
+    const patientId = user?._id || user?.id;
+    try {
+      if (patientId) {
+        await AsyncStorage.setItem(`hasSeenTutorial_${patientId}`, 'true');
+      }
+    } catch (e) {}
+    setShowTutorial(false);
+  };
+
+  const handleResetTutorial = async () => {
+    await resetTutorial();
+    setShowTutorial(true);
   };
 
   const loadHomeData = useCallback(async (isRefresh = false) => {
@@ -857,7 +869,8 @@ export default function HomeScreen({ navigation }) {
 
       <PatientTutorialModal 
         visible={showTutorial} 
-        onComplete={handleCompleteTutorial}
+        onStartGuide={handleStartGuide}
+        onSkip={handleSkipTutorial}
       />
     </SafeAreaView>
   );
@@ -941,6 +954,22 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",
+  },
+  resetTutorialHeaderBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#EFF6FF",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 4,
+    borderWidth: 1,
+    borderColor: "#BFDBFE",
+  },
+  resetTutorialHeaderText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#2563EB",
   },
   greetingAlertBox: {
     flexDirection: "row",
