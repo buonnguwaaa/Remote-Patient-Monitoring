@@ -8,6 +8,7 @@ import MeasurementDraftForm from "../../components/MeasurementDraftForm";
 import { useAuth } from "../../hooks/useAuth";
 import { useSnackbar } from "../../hooks/useSnackbar";
 import { createMeasurement } from "../../api/measurementApi";
+import { useTutorial } from "../../context/tutorial/TutorialContext";
 import {
   buildMeasurementPayload,
   createSavedMeasurementState,
@@ -20,8 +21,9 @@ import {
 } from "../../utils/measurementForm";
 
 export default function InputMeasurementPatientScreen({ isEmbedded }) {
-  const { user } = useAuth() || {};
+  const { user } = useAuth();
   const navigation = useNavigation();
+  const { tutorialMode, scenario, nextStep, currentStep } = useTutorial();
   const canGoBack = navigation.canGoBack();
   const { showSuccess, showError, showWarning, showInfo } = useSnackbar();
   const currentPatientUser = user || { _id: "u_patient_self_1", id: "p1", name: "Thong tin mau" };
@@ -40,7 +42,12 @@ export default function InputMeasurementPatientScreen({ isEmbedded }) {
   const [weight, setWeight] = useState("");
   const [savedSections, setSavedSections] = useState(createSavedMeasurementState);
   const [submitting, setSubmitting] = useState(false);
-  const measurementValues = {
+  const measurementValues = tutorialMode ? {
+    ...scenario.measurement,
+    mealTiming: "",
+    device: "",
+    note: "",
+  } : {
     systolic,
     diastolic,
     glucose,
@@ -123,6 +130,16 @@ export default function InputMeasurementPatientScreen({ isEmbedded }) {
   };
 
   const saveCurrentSection = () => {
+    if (tutorialMode && currentStep?.id === 'save_measurement') {
+      nextStep();
+      showSuccess("Đã lưu bản đo mẫu thành công!");
+      if (canGoBack) {
+        navigation.goBack();
+      } else {
+        navigation.navigate("PatientHome");
+      }
+      return;
+    }
     if (!validateSection(type)) return;
     setSavedSections((prev) => ({ ...prev, [type]: true }));
     const label = getMeasurementSectionLabel(type);
@@ -144,6 +161,13 @@ export default function InputMeasurementPatientScreen({ isEmbedded }) {
     );
     if (unsavedKeys.length > 0) {
       showWarning(`Bạn còn ${unsavedKeys.length} phần đang nhập nhưng chưa bấm "Lưu thông tin".`);
+      return;
+    }
+
+    if (tutorialMode) {
+      showSuccess("Đã hoàn thành bước lưu bản đo hướng dẫn!");
+      nextStep();
+      navigation.navigate("PatientHome");
       return;
     }
 

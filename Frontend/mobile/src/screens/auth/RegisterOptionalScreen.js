@@ -16,6 +16,7 @@ import ButtonPrimary from '../../components/ButtonPrimary';
 import styles from '../../styles/login';
 import { useAuth } from '../../hooks/useAuth';
 import { useSnackbar } from '../../hooks/useSnackbar';
+import RegistrationSuccessModal from '../../components/RegistrationSuccessModal';
 
 const portalBadgeStyle = StyleSheet.create({
   tag: {
@@ -49,6 +50,7 @@ export default function RegisterOptionalScreen({ route, navigation }) {
   const [bloodPressure, setBloodPressure] = useState(!!savedStep2Data.bloodPressure);
   const [glucose, setGlucose] = useState(!!savedStep2Data.glucose);
   const [loading, setLoading] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const { register } = useAuth();
   const { showSuccess, showError } = useSnackbar();
@@ -129,8 +131,7 @@ export default function RegisterOptionalScreen({ route, navigation }) {
       setLoading(false);
 
       if (ok) {
-        showSuccess('Đăng ký thành công! Tài khoản của bạn đang chờ Quản trị viên duyệt.');
-        navigation.navigate('Login');
+        setShowSuccessModal(true);
       } else {
         const errorMsg = error?.error || error?.message || (typeof error === 'string' ? error : JSON.stringify(error)) || 'Đăng ký thất bại.';
         showError(errorMsg);
@@ -339,6 +340,14 @@ export default function RegisterOptionalScreen({ route, navigation }) {
           </View>
         </View>
       </ScrollView>
+
+      <RegistrationSuccessModal 
+        visible={showSuccessModal} 
+        onReturnToLogin={() => {
+          setShowSuccessModal(false);
+          navigation.navigate('Login');
+        }}
+      />
     </KeyboardAvoidingView>
   );
 }

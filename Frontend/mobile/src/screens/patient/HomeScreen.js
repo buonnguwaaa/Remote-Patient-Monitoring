@@ -9,8 +9,12 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import PatientTutorialModal from "../../components/PatientTutorialModal";
+import TutorialTarget from "../../components/tutorial/TutorialTarget";
+import { useTutorial } from "../../context/tutorial/TutorialContext";
 
 import { getMyAlerts } from "../../api/alertApi";
 import { useAuth } from "../../hooks/useAuth";
@@ -140,9 +144,9 @@ function isWithinRecentDays(value, days = 5) {
   return Date.now() - timestamp <= days * 24 * 60 * 60 * 1000;
 }
 
-export default function HomeScreen() {
-  const { user } = useAuth() || {};
-  const navigation = useNavigation();
+export default function HomeScreen({ navigation }) {
+  const { user } = useAuth();
+  const { tutorialMode, nextStep, currentStep, startTutorial, scenario } = useTutorial();
 
   const [profile, setProfile] = useState(null);
   const [measurements, setMeasurements] = useState([]);
@@ -154,6 +158,37 @@ export default function HomeScreen() {
   const [error, setError] = useState("");
   const [alertError, setAlertError] = useState("");
   const [medicationError, setMedicationError] = useState("");
+  const [showTutorial, setShowTutorial] = useState(false);
+
+  React.useEffect(() => {
+    const checkTutorial = async () => {
+      if (!user?._id && !user?.id) return;
+      const patientId = user?._id || user?.id;
+      try {
+        const hasSeen = await AsyncStorage.getItem(`hasSeenTutorial_${patientId}`);
+        if (!hasSeen) {
+          setShowTutorial(true);
+        }
+      } catch (e) {
+        // ignore
+      }
+    };
+    checkTutorial();
+  }, [user?._id, user?.id]);
+
+  const handleCompleteTutorial = async () => {
+    const patientId = user?._id || user?.id;
+    try {
+      if (patientId) {
+        await AsyncStorage.setItem(`hasSeenTutorial_${patientId}`, 'true');
+      }
+    } catch (e) {
+      // ignore
+    }
+    setShowTutorial(false);
+    // Bắt đầu hướng dẫn thực tế (vòng sáng)
+    startTutorial();
+  };
 
   const loadHomeData = useCallback(async (isRefresh = false) => {
     try {
@@ -322,10 +357,12 @@ export default function HomeScreen() {
     [alerts]
   );
 
-  const alertPreviewItems = useMemo(
-    () => buildAlertPreviewItems(recentAlerts, 5),
-    [recentAlerts]
-  );
+  const alertPreviewItems = useMemo(() => {
+    if (tutorialMode && scenario?.alert) {
+      return [scenario.alert];
+    }
+    return buildAlertPreviewItems(recentAlerts, 5);
+  }, [recentAlerts, tutorialMode, scenario]);
 
   const openAlertCount = useMemo(
     () => recentAlerts.filter((item) => item.status === "open").length,
@@ -396,10 +433,6 @@ export default function HomeScreen() {
   }, [thresholds, latestVitals, recentAlerts]);
 
   const displayName = profile?.name || user?.name || user?.username || "Bệnh nhân";
-  const insuranceNumber = profile?.insuranceNumber || "Chưa cập nhật";
-  const emergencyName = profile?.emergencyContactName || "Chưa cập nhật";
-  const emergencyPhone = profile?.emergencyContactPhone || "Chưa cập nhật";
-
   const currentTimeOfDay = useMemo(() => getCurrentTimeOfDay(), []);
 
   const currentSessionMedications = useMemo(() => {
@@ -442,7 +475,6 @@ export default function HomeScreen() {
           />
         }
       >
-        {/* ---- GREETING CARD ---- */}
         <View style={styles.greetingCard}>
           <View style={styles.greetingHeader}>
             <View style={{ flex: 1 }}>
@@ -473,13 +505,17 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-
-        {/* ---- Medication Card ---- */}
-        <TouchableOpacity
-          activeOpacity={0.9}
-          onPress={() => navigation.navigate("PatientMedications", { timeOfDay: currentTimeOfDay })}
-          style={styles.headerCard}
-        >
+        <TutorialTarget name="homeMedicationCard" routeName="PatientHome">
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={() => {
+              if (tutorialMode && currentStep?.id === 'home_medication') {
+                nextStep();
+              }
+              navigation.navigate("PatientMedications", { timeOfDay: currentTimeOfDay });
+            }}
+            style={styles.headerCard}
+          >
           <View style={styles.headerTopRow}>
             <View style={[styles.headerIcon, { backgroundColor: "#EFF6FF" }]}>
               <Ionicons name="medical" size={26} color="#2563EB" />
@@ -518,6 +554,7 @@ export default function HomeScreen() {
             <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
           </View>
         </TouchableOpacity>
+        </TutorialTarget>
 
         {loading ? (
           <View style={styles.loadingCard}>
@@ -725,78 +762,103 @@ export default function HomeScreen() {
                   </Text>
                 </View>
               ) : (
-                alertPreviewItems.map((alert) => (
-                  <TouchableOpacity
-                    key={alert.id}
-                    activeOpacity={0.92}
-                    style={[
-                      styles.warningItem,
-                      (alert.isHigh && !alert.isAcknowledged) && styles.warningItemHigh,
-                    ]}
-                    onPress={() =>
-                      navigation.navigate("PatientAlerts", {
-                        selectedAlertId: alert.alertId || alert.id,
-                      })
-                    }
-                  >
-                    <View style={styles.alertHeaderRow}>
-                      <View style={styles.alertTitleWrapper}>
-                        <Ionicons
-                          name={alert.iconName}
-                          size={18}
-                          color={alert.isAcknowledged ? "#9CA3AF" : (alert.isHigh ? "#D63031" : "#1A8F4A")}
-                        />
-                        <Text style={styles.warnLabel}>
-                          {alert.title} · {alert.observedText}
-                        </Text>
-                      </View>
-
-                      <View
-                        style={
-                          alert.isHigh ? styles.alertStatusPillHigh : styles.alertStatusPillNormal
+                alertPreviewItems.map((alert, index) => {
+                  const content = (
+                    <TouchableOpacity
+                      key={alert.id}
+                      activeOpacity={0.92}
+                      style={[
+                        styles.warningItem,
+                        (alert.isHigh && !alert.isAcknowledged) && styles.warningItemHigh,
+                      ]}
+                      onPress={() => {
+                        if (tutorialMode && currentStep?.id === 'home_alert') {
+                          nextStep();
+                          return;
                         }
-                      >
-                        <Text
+                        navigation.navigate("PatientAlerts", {
+                          selectedAlertId: alert.alertId || alert.id,
+                        });
+                      }}
+                    >
+                      <View style={styles.alertHeaderRow}>
+                        <View style={styles.alertTitleWrapper}>
+                          <Ionicons
+                            name={alert.iconName}
+                            size={18}
+                            color={alert.isAcknowledged ? "#9CA3AF" : (alert.isHigh ? "#D63031" : "#1A8F4A")}
+                          />
+                          <Text style={styles.warnLabel}>
+                            {alert.title} · {alert.observedText}
+                          </Text>
+                        </View>
+
+                        <View
                           style={
-                            alert.isHigh ? styles.alertStatusTextHigh : styles.alertStatusTextNormal
+                            alert.isHigh ? styles.alertStatusPillHigh : styles.alertStatusPillNormal
                           }
                         >
-                          {alert.severityText}
+                          <Text
+                            style={
+                              alert.isHigh ? styles.alertStatusTextHigh : styles.alertStatusTextNormal
+                            }
+                          >
+                            {alert.severityText}
+                          </Text>
+                        </View>
+                      </View>
+
+                      {alert.additionalSummary ? (
+                        <Text style={styles.alertExtraText}>{alert.additionalSummary}</Text>
+                      ) : null}
+
+                      <View style={styles.alertRuleRow}>
+                        <View style={{ flex: 1 }} />
+                        <Text
+                          style={[
+                            styles.alertRuleText,
+                            alert.isAcknowledged
+                              ? styles.alertRuleTextAcknowledged
+                              : styles.alertRuleTextPending,
+                          ]}
+                        >
+                          {alert.statusText}
                         </Text>
                       </View>
-                    </View>
 
-                    {alert.additionalSummary ? (
-                      <Text style={styles.alertExtraText}>{alert.additionalSummary}</Text>
-                    ) : null}
+                      <View style={styles.alertTimeRow}>
+                        <Ionicons name="time-outline" size={14} color="#9CA3AF" />
+                        <Text style={styles.alertTimeText}>
+                          {formatRelativeTime(alert.createdAt)}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
 
-                    <View style={styles.alertRuleRow}>
-                      <View style={{ flex: 1 }} />
-                      <Text
-                        style={[
-                          styles.alertRuleText,
-                          alert.isAcknowledged
-                            ? styles.alertRuleTextAcknowledged
-                            : styles.alertRuleTextPending,
-                        ]}
-                      >
-                        {alert.statusText}
-                      </Text>
-                    </View>
+                  if (tutorialMode && index === 0) {
+                    return (
+                      <TutorialTarget key={alert.id} name="homeAlertCard" routeName="PatientHome">
+                        {content}
+                      </TutorialTarget>
+                    );
+                  }
 
-                    <View style={styles.alertTimeRow}>
-                      <Ionicons name="time-outline" size={14} color="#9CA3AF" />
-                      <Text style={styles.alertTimeText}>
-                        {formatRelativeTime(alert.createdAt)}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                ))
+                  return content;
+                })
               )}
+
             </View>
           </>
         )}
+
+
+        <View style={{ height: 40 }} />
       </ScrollView>
+
+      <PatientTutorialModal 
+        visible={showTutorial} 
+        onComplete={handleCompleteTutorial}
+      />
     </SafeAreaView>
   );
 }
