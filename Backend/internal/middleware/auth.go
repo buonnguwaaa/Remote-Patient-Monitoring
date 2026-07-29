@@ -26,10 +26,7 @@ func JWTAuthMiddleware(jwtManager *util.JWTManager, blacklist repository.TokenBl
 		}
 
 		if token == "" {
-			cookieToken, err := c.Cookie("accessToken")
-			if err == nil && cookieToken != "" {
-				token = cookieToken
-			}
+			token = util.ReadAccessTokenCookie(c)
 		}
 
 		if token == "" {
