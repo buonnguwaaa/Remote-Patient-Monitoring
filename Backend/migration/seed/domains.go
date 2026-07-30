@@ -502,17 +502,22 @@ func (s *Seeder) seedFollowUpAppointments(ctx context.Context, data *seedData) e
 		// visit itself actually happened.
 		bookedAt := scheduledAt.Add(-time.Duration(3+i%11) * 24 * time.Hour)
 
+		patient := data.patients[i]
 		appointment := &domain.FollowUpAppointment{
 			ID:              primitive.NewObjectID(),
-			PatientID:       data.patients[i].ID,
+			PatientID:       patient.ID,
 			DoctorID:        doctor.ID,
 			ScheduledAt:     scheduledAt,
 			DurationMinutes: pick([]int{15, 30, 45, 60}, i),
 			Timezone:        seedTimezone,
-			Location:        fmt.Sprintf("Bệnh viện Đa khoa Thành phố - Phòng %d", 100+i),
-			Notes:           fmt.Sprintf("Lịch tái khám %02d", i+1),
-			Status:          pick(statuses, i),
-			CreatedBy:       doctor.ID,
+			Location: ClinicLocationForDisease(
+				patient.DiseaseTypes.BloodPressure,
+				patient.DiseaseTypes.Glucose,
+				i,
+			),
+			Notes:     fmt.Sprintf("Lịch tái khám %02d", i+1),
+			Status:    pick(statuses, i),
+			CreatedBy: doctor.ID,
 		}
 
 		if _, err := s.followUpAppointmentRepo.Create(ctx, appointment); err != nil {

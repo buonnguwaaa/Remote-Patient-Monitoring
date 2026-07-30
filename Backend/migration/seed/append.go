@@ -583,10 +583,14 @@ func (s *Seeder) ensureAppendFollowUps(
 			ScheduledAt:     a.scheduledAt,
 			DurationMinutes: pick([]int{15, 30, 45, 60}, index+i),
 			Timezone:        seedTimezone,
-			Location:        fmt.Sprintf("Bệnh viện Đa khoa Thành phố - Phòng %d", 100+(index+i)%50),
-			Notes:           a.notes,
-			Status:          a.status,
-			CreatedBy:       doctor.ID,
+			Location: ClinicLocationForDisease(
+				patient.DiseaseTypes.BloodPressure,
+				patient.DiseaseTypes.Glucose,
+				index+i,
+			),
+			Notes:     a.notes,
+			Status:    a.status,
+			CreatedBy: doctor.ID,
 		}
 		if _, err := s.followUpAppointmentRepo.Create(ctx, appointment); err != nil {
 			return err
