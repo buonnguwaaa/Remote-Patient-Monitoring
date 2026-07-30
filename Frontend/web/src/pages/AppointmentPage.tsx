@@ -444,18 +444,12 @@ function LocationCombobox({ value, onChange }: LocationComboboxProps) {
 // ── Location presets ───────────────────────────────────────────────────────
 
 const LOCATION_OPTIONS = [
-  "Phòng khám Đa khoa Phước An (CN1 - Quận 10)",
-  "Phòng khám Đa khoa Quốc tế Exson (Quận 3)",
-  "Phòng khám Đa khoa Quốc tế Hàng Xanh (Bình Thạnh)",
-  "Phòng khám Y học Cổ truyền Sài Gòn (Gò Vấp)",
-  "Phòng khám Đa khoa CHAC (Quận 5)",
-  "Phòng khám Đa khoa Vietlife (Quận 10)",
-  "Phòng khám Đa khoa Jio Health (Quận 1)",
-  "Hệ thống Phòng khám Victoria Healthcare",
-  "Phòng khám Đa khoa Vạn Hạnh (Quận 10)",
-  "Phòng khám Nội Tim Mạch - BS.CKII Phạm Xuân Hậu",
-  "Phòng khám Nội tiết - Đái tháo đường BS.CKII Trương Mỹ Huệ",
-  "Trạm Y tế Phường 11, Quận 5",
+  "Hệ thống Y Tế Tim Mạch - Tiểu Đường 315, Chi nhánh Tô Hiến Thành, Phường Hoà Hưng, TP.HCM",
+  "Hệ thống Y Tế Tim Mạch - Tiểu Đường 315, Chi nhánh Lê Văn Việt, Phường Tăng Nhơn Phú, TP.HCM",
+  "Hệ thống Y Tế Tim Mạch - Tiểu Đường 315, Chi nhánh Huỳnh Tấn Phát, Phường Tân Thuận, TP.HCM",
+  "Phòng khám Nội Tổng Quát - Tim Mạch Thiên Phúc, 550/6/10 Trần Quang Cơ, Phường Tân Thới Hiệp, TP.HCM",
+  "Phòng khám Tim Mạch Hồng Tâm, 105 Thành Thái, Phường Diên Hồng, TP.HCM",
+  "Phòng khám Nội Tiết - Tiểu Đường PGS.TS.BS Nguyễn Thị Bích Đào, 215F Nguyễn Trãi, Phường Nguyễn Cư Trinh, TP.HCM"
 ];
 
 // ── Form state ─────────────────────────────────────────────────────────────
@@ -472,7 +466,7 @@ const defaultForm = (patientId = ""): FormData => {
   const now = new Date();
   now.setDate(now.getDate() + 1);
   const dateStr = now.toISOString().split("T")[0];
-  return { patientId, date: dateStr, time: "08:00", location: "Phòng khám Đa khoa Phước An (CN1 - Quận 10)", notes: "" };
+  return { patientId, date: dateStr, time: "08:00", location: "Hệ thống Y Tế Tim Mạch - Tiểu Đường 315, Chi nhánh Tô Hiến Thành, Phường Hoà Hưng, TP.HCM", notes: "" };
 };
 
 // ── MiniCalendar ──────────────────────────────────────────────────────────

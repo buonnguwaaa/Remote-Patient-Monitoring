@@ -28,6 +28,10 @@ type Status string
 const (
 	StatusActive   Status = "active"
 	StatusInactive Status = "inactive"
+	// StatusDeleted marks a soft-deleted account: hidden from listings and
+	// lookups, blocked from login/refresh, but the document is retained so
+	// clinical history stays intact.
+	StatusDeleted Status = "deleted"
 )
 
 type BaseUser struct {
@@ -49,6 +53,7 @@ type BaseUser struct {
 	MustSetPassword  bool      `json:"mustSetPassword,omitempty" bson:"mustSetPassword,omitempty"`
 	ResetToken       string    `json:"resetToken,omitempty" bson:"resetToken,omitempty"`
 	ResetTokenExpiry time.Time `json:"resetTokenExpiry,omitempty" bson:"resetTokenExpiry,omitempty"`
+	DeletedAt        time.Time `json:"deletedAt,omitempty" bson:"deletedAt,omitempty"`
 	CreatedAt        time.Time `json:"createdAt" bson:"createdAt"`
 	UpdatedAt        time.Time `json:"updatedAt" bson:"updatedAt"`
 }

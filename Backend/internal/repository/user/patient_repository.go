@@ -125,8 +125,9 @@ func (r *patientRepository) FindPatientsByIDs(ctx context.Context, ids []primiti
 	}
 
 	filter := bson.M{
-		"_id":  bson.M{"$in": ids},
-		"role": domain.RolePatient,
+		"_id":    bson.M{"$in": ids},
+		"role":   domain.RolePatient,
+		"status": bson.M{"$ne": domain.StatusDeleted},
 	}
 
 	cursor, err := r.col.Find(ctx, filter)
@@ -144,11 +145,10 @@ func (r *patientRepository) FindPatientsByIDs(ctx context.Context, ids []primiti
 
 func (r *patientRepository) Update(ctx context.Context, id primitive.ObjectID, updateData map[string]interface{}) error {
 	updateData["updatedAt"] = time.Now().UTC()
-	_, err := r.col.UpdateOne(ctx, bson.M{"_id": id}, bson.M{"$set": updateData})
+	_, err := r.col.UpdateOne(ctx, notDeletedByID(id), bson.M{"$set": updateData})
 	return err
 }
 
 func (r *patientRepository) Delete(ctx context.Context, id primitive.ObjectID) error {
-	_, err := r.col.DeleteOne(ctx, bson.M{"_id": id})
-	return err
+	return r.BaseUserRepository.Delete(ctx, id)
 }

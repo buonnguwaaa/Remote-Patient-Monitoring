@@ -116,17 +116,16 @@ func (r *staffRepository[T]) FindStaffByEmail(ctx context.Context, email string)
 
 func (r *staffRepository[T]) Update(ctx context.Context, id primitive.ObjectID, updateData map[string]interface{}) error {
 	updateData["updatedAt"] = time.Now().UTC()
-	_, err := r.col.UpdateOne(ctx, bson.M{"_id": id}, bson.M{"$set": updateData})
+	_, err := r.col.UpdateOne(ctx, notDeletedByID(id), bson.M{"$set": updateData})
 	return err
 }
 
 func (r *staffRepository[T]) Delete(ctx context.Context, id primitive.ObjectID) error {
-	_, err := r.col.DeleteOne(ctx, bson.M{"_id": id})
-	return err
+	return r.BaseUserRepository.Delete(ctx, id)
 }
 
 func (r *staffRepository[T]) CountByDepartmentID(ctx context.Context, deptID primitive.ObjectID) (int64, error) {
-	filter := bson.M{"departmentId": deptID}
+	filter := bson.M{"departmentId": deptID, "status": bson.M{"$ne": domain.StatusDeleted}}
 	expectedRole := expectedStaffRole[T]()
 	if expectedRole == "" {
 		return 0, invalidStaffRoleError[T]()
@@ -137,7 +136,7 @@ func (r *staffRepository[T]) CountByDepartmentID(ctx context.Context, deptID pri
 }
 
 func (r *staffRepository[T]) FindByDepartmentID(ctx context.Context, deptID primitive.ObjectID) ([]T, error) {
-	filter := bson.M{"departmentId": deptID}
+	filter := bson.M{"departmentId": deptID, "status": bson.M{"$ne": domain.StatusDeleted}}
 	expectedRole := expectedStaffRole[T]()
 	if expectedRole == "" {
 		return nil, invalidStaffRoleError[T]()

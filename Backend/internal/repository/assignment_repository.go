@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"log"
+	"time"
 
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain"
 	userDomain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
@@ -24,6 +25,12 @@ type AssignmentRepository interface {
 	FindByDoctorIDWithNamesPaginated(ctx context.Context, doctorID primitive.ObjectID, offset, limit int) ([]*domain.Assignment, map[primitive.ObjectID]UserDisplayInfo, int64, error)
 	FindByNurseIDWithNamesPaginated(ctx context.Context, nurseID primitive.ObjectID, offset, limit int) ([]*domain.Assignment, map[primitive.ObjectID]UserDisplayInfo, int64, error)
 	DeleteByID(ctx context.Context, assignmentID primitive.ObjectID) error
+	DeleteByPatientID(ctx context.Context, patientID primitive.ObjectID) error
+	// RemoveDoctorFromAssignments/RemoveNurseFromAssignments detach a
+	// soft-deleted staff member from all their assignments; assignments left
+	// with no assignee at all are removed.
+	RemoveDoctorFromAssignments(ctx context.Context, doctorID primitive.ObjectID) error
+	RemoveNurseFromAssignments(ctx context.Context, nurseID primitive.ObjectID) error
 	// CountByDoctorIDs trả về map doctorId (hex string) → số bệnh nhân đang được phân công
 	CountByDoctorIDs(ctx context.Context) (map[string]int64, error)
 	// CountByNurseIDs trả về map nurseId (hex string) → số bệnh nhân đang được phân công
@@ -96,8 +103,24 @@ func (r *assignmentRepository) HasAssignmentRecordForPair(ctx context.Context, f
 	return count > 0, nil
 }
 
+// activePatientGuardStages filters out assignments whose patient user document
+// no longer exists (legacy hard deletes) or is soft-deleted, so they never
+// surface as empty rows in assignment lists.
+func activePatientGuardStages() mongo.Pipeline {
+	return mongo.Pipeline{
+		{{Key: "$lookup", Value: bson.M{
+			"from":         "users",
+			"localField":   "patientId",
+			"foreignField": "_id",
+			"as":           "patientDoc",
+		}}},
+		{{Key: "$match", Value: bson.M{"patientDoc": bson.M{"$elemMatch": bson.M{"status": bson.M{"$ne": userDomain.StatusDeleted}}}}}},
+		{{Key: "$project", Value: bson.M{"patientDoc": 0}}},
+	}
+}
+
 func (r *assignmentRepository) FindAll(ctx context.Context) ([]*domain.Assignment, map[primitive.ObjectID]UserDisplayInfo, error) {
-	pipeline := mongo.Pipeline{
+	pipeline := append(activePatientGuardStages(), mongo.Pipeline{
 		{{Key: "$sort", Value: bson.M{"updatedAt": -1}}},
 		{{Key: "$facet", Value: bson.M{
 			"assignments": bson.A{
@@ -126,7 +149,7 @@ func (r *assignmentRepository) FindAll(ctx context.Context) ([]*domain.Assignmen
 				bson.M{"$project": bson.M{"_id": 1, "name": "$user.name", "publicId": "$user.userPublicId", "diseaseTypes": "$user.diseaseTypes"}},
 			},
 		}}},
-	}
+	}...)
 
 	cursor, err := r.collection.Aggregate(ctx, pipeline)
 	if err != nil {
@@ -193,40 +216,41 @@ func (r *assignmentRepository) FindByNurseIDWithNamesPaginated(ctx context.Conte
 func (r *assignmentRepository) findByAssigneeWithNamesPaginated(ctx context.Context, matchField string, assigneeID primitive.ObjectID, offset, limit int) ([]*domain.Assignment, map[primitive.ObjectID]UserDisplayInfo, int64, error) {
 	pipeline := mongo.Pipeline{
 		{{Key: "$match", Value: bson.M{matchField: assigneeID}}},
-		{{Key: "$facet", Value: bson.M{
-			"assignments": bson.A{
-				bson.M{"$sort": bson.M{"createdAt": -1}},
-				bson.M{"$skip": offset},
-				bson.M{"$limit": limit},
-				bson.M{"$project": bson.M{
-					"_id":        1,
-					"patientId":  1,
-					"doctorId":   1,
-					"nurseId":    1,
-					"assignedBy": 1,
-					"createdAt":  1,
-					"updatedAt":  1,
-				}},
-			},
-			"count": bson.A{
-				bson.M{"$count": "total"},
-			},
-			"names": bson.A{
-				bson.M{"$project": bson.M{"ids": bson.A{"$patientId", "$doctorId", "$nurseId", "$assignedBy"}}},
-				bson.M{"$unwind": "$ids"},
-				bson.M{"$match": bson.M{"ids": bson.M{"$ne": primitive.NilObjectID}}},
-				bson.M{"$group": bson.M{"_id": "$ids"}},
-				bson.M{"$lookup": bson.M{
-					"from":         "users",
-					"localField":   "_id",
-					"foreignField": "_id",
-					"as":           "user",
-				}},
-				bson.M{"$unwind": bson.M{"path": "$user", "preserveNullAndEmptyArrays": false}},
-				bson.M{"$project": bson.M{"_id": 1, "name": "$user.name", "publicId": "$user.userPublicId", "diseaseTypes": "$user.diseaseTypes"}},
-			},
-		}}},
 	}
+	pipeline = append(pipeline, activePatientGuardStages()...)
+	pipeline = append(pipeline, bson.D{{Key: "$facet", Value: bson.M{
+		"assignments": bson.A{
+			bson.M{"$sort": bson.M{"createdAt": -1}},
+			bson.M{"$skip": offset},
+			bson.M{"$limit": limit},
+			bson.M{"$project": bson.M{
+				"_id":        1,
+				"patientId":  1,
+				"doctorId":   1,
+				"nurseId":    1,
+				"assignedBy": 1,
+				"createdAt":  1,
+				"updatedAt":  1,
+			}},
+		},
+		"count": bson.A{
+			bson.M{"$count": "total"},
+		},
+		"names": bson.A{
+			bson.M{"$project": bson.M{"ids": bson.A{"$patientId", "$doctorId", "$nurseId", "$assignedBy"}}},
+			bson.M{"$unwind": "$ids"},
+			bson.M{"$match": bson.M{"ids": bson.M{"$ne": primitive.NilObjectID}}},
+			bson.M{"$group": bson.M{"_id": "$ids"}},
+			bson.M{"$lookup": bson.M{
+				"from":         "users",
+				"localField":   "_id",
+				"foreignField": "_id",
+				"as":           "user",
+			}},
+			bson.M{"$unwind": bson.M{"path": "$user", "preserveNullAndEmptyArrays": false}},
+			bson.M{"$project": bson.M{"_id": 1, "name": "$user.name", "publicId": "$user.userPublicId", "diseaseTypes": "$user.diseaseTypes"}},
+		},
+	}}})
 
 	cursor, err := r.collection.Aggregate(ctx, pipeline)
 	if err != nil {
@@ -270,34 +294,35 @@ func (r *assignmentRepository) findByAssigneeWithNamesPaginated(ctx context.Cont
 func (r *assignmentRepository) findByAssigneeWithNames(ctx context.Context, matchField string, assigneeID primitive.ObjectID) ([]*domain.Assignment, map[primitive.ObjectID]UserDisplayInfo, error) {
 	pipeline := mongo.Pipeline{
 		{{Key: "$match", Value: bson.M{matchField: assigneeID}}},
-		{{Key: "$facet", Value: bson.M{
-			"assignments": bson.A{
-				bson.M{"$project": bson.M{
-					"_id":        1,
-					"patientId":  1,
-					"doctorId":   1,
-					"nurseId":    1,
-					"assignedBy": 1,
-					"createdAt":  1,
-					"updatedAt":  1,
-				}},
-			},
-			"names": bson.A{
-				bson.M{"$project": bson.M{"ids": bson.A{"$patientId", "$doctorId", "$nurseId", "$assignedBy"}}},
-				bson.M{"$unwind": "$ids"},
-				bson.M{"$match": bson.M{"ids": bson.M{"$ne": primitive.NilObjectID}}},
-				bson.M{"$group": bson.M{"_id": "$ids"}},
-				bson.M{"$lookup": bson.M{
-					"from":         "users",
-					"localField":   "_id",
-					"foreignField": "_id",
-					"as":           "user",
-				}},
-				bson.M{"$unwind": bson.M{"path": "$user", "preserveNullAndEmptyArrays": false}},
-				bson.M{"$project": bson.M{"_id": 1, "name": "$user.name", "publicId": "$user.userPublicId", "diseaseTypes": "$user.diseaseTypes"}},
-			},
-		}}},
 	}
+	pipeline = append(pipeline, activePatientGuardStages()...)
+	pipeline = append(pipeline, bson.D{{Key: "$facet", Value: bson.M{
+		"assignments": bson.A{
+			bson.M{"$project": bson.M{
+				"_id":        1,
+				"patientId":  1,
+				"doctorId":   1,
+				"nurseId":    1,
+				"assignedBy": 1,
+				"createdAt":  1,
+				"updatedAt":  1,
+			}},
+		},
+		"names": bson.A{
+			bson.M{"$project": bson.M{"ids": bson.A{"$patientId", "$doctorId", "$nurseId", "$assignedBy"}}},
+			bson.M{"$unwind": "$ids"},
+			bson.M{"$match": bson.M{"ids": bson.M{"$ne": primitive.NilObjectID}}},
+			bson.M{"$group": bson.M{"_id": "$ids"}},
+			bson.M{"$lookup": bson.M{
+				"from":         "users",
+				"localField":   "_id",
+				"foreignField": "_id",
+				"as":           "user",
+			}},
+			bson.M{"$unwind": bson.M{"path": "$user", "preserveNullAndEmptyArrays": false}},
+			bson.M{"$project": bson.M{"_id": 1, "name": "$user.name", "publicId": "$user.userPublicId", "diseaseTypes": "$user.diseaseTypes"}},
+		},
+	}}})
 
 	cursor, err := r.collection.Aggregate(ctx, pipeline)
 	if err != nil {
@@ -332,6 +357,49 @@ func (r *assignmentRepository) findByAssigneeWithNames(ctx context.Context, matc
 
 func (r *assignmentRepository) DeleteByID(ctx context.Context, assignmentID primitive.ObjectID) error {
 	_, err := r.collection.DeleteOne(ctx, bson.M{"_id": assignmentID})
+	return err
+}
+
+func (r *assignmentRepository) DeleteByPatientID(ctx context.Context, patientID primitive.ObjectID) error {
+	_, err := r.collection.DeleteOne(ctx, bson.M{"patientId": patientID})
+	return err
+}
+
+func (r *assignmentRepository) RemoveDoctorFromAssignments(ctx context.Context, doctorID primitive.ObjectID) error {
+	return r.removeAssigneeFromAssignments(ctx, "doctorId", doctorID)
+}
+
+func (r *assignmentRepository) RemoveNurseFromAssignments(ctx context.Context, nurseID primitive.ObjectID) error {
+	return r.removeAssigneeFromAssignments(ctx, "nurseId", nurseID)
+}
+
+func (r *assignmentRepository) removeAssigneeFromAssignments(ctx context.Context, field string, staffID primitive.ObjectID) error {
+	_, err := r.collection.UpdateMany(ctx,
+		bson.M{field: staffID},
+		bson.M{
+			"$unset": bson.M{field: ""},
+			"$set":   bson.M{"updatedAt": time.Now().UTC()},
+		},
+	)
+	if err != nil {
+		return err
+	}
+
+	// An assignment must have at least one assignee; drop those that lost
+	// their last one (fields may be absent or stored as NilObjectID).
+	noAssignee := bson.M{
+		"$and": bson.A{
+			bson.M{"$or": bson.A{
+				bson.M{"doctorId": bson.M{"$exists": false}},
+				bson.M{"doctorId": primitive.NilObjectID},
+			}},
+			bson.M{"$or": bson.A{
+				bson.M{"nurseId": bson.M{"$exists": false}},
+				bson.M{"nurseId": primitive.NilObjectID},
+			}},
+		},
+	}
+	_, err = r.collection.DeleteMany(ctx, noAssignee)
 	return err
 }
 

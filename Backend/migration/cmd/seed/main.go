@@ -25,7 +25,7 @@ func main() {
 		}
 	}()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Hour)
 	defer cancel()
 
 	mode := "full"
@@ -35,8 +35,10 @@ func main() {
 
 	switch mode {
 	case "append":
-		// Adds patients/records for doctor@gmail.com + seed doctors 1..10
-		// without dropping existing data. Requires a prior full seed.
+		// Adds 10 patients (diseaseTypes matched to the doctor's specialty,
+		// nurse from the same department, full past-dated record bundle) to
+		// every active doctor, without dropping existing data. Requires a
+		// prior full seed.
 		if err := seed.RunAppend(ctx, config.Mongo.Database); err != nil {
 			log.Fatalf("[seed-append] failed: %v", err)
 		}

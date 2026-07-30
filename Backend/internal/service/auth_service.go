@@ -493,16 +493,17 @@ func (s *authService) ensureContactsAvailable(ctx context.Context, email, phone 
 
 func (s *authService) issueTokens(ctx context.Context, u *domain.BaseUser) (*dto.LoginResponse, error) {
 	userIDStr := u.ID.Hex()
-	now := time.Now().UTC()
+	// Comment code below to allow login with multiple devices
+	// now := time.Now().UTC()
 
-	if err := s.tokenRepo.RevokeAllByUserID(ctx, userIDStr); err != nil {
-		return nil, err
-	}
-	if s.blacklistRepo != nil {
-		if err := s.blacklistRepo.InvalidateUserTokensIssuedBefore(ctx, userIDStr, now, util.AccessTokenTTL); err != nil {
-			return nil, fmt.Errorf("không thể vô hiệu hóa phiên cũ: %w", err)
-		}
-	}
+	// if err := s.tokenRepo.RevokeAllByUserID(ctx, userIDStr); err != nil {
+	// 	return nil, err
+	// }
+	// if s.blacklistRepo != nil {
+	// 	if err := s.blacklistRepo.InvalidateUserTokensIssuedBefore(ctx, userIDStr, now, util.AccessTokenTTL); err != nil {
+	// 		return nil, fmt.Errorf("không thể vô hiệu hóa phiên cũ: %w", err)
+	// 	}
+	// }
 
 	accessToken, err := s.jwtManager.GenerateAccessToken(userIDStr, u.Role)
 	if err != nil {

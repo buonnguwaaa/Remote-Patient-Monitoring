@@ -185,7 +185,7 @@ func NewMainServerContainer() *MainServerContainer {
 	c.AccountNotifier = service.NewAccountNotifier(c.BaseUserRepo, c.NotificationService, smsProvider)
 
 	c.AuthService = service.NewAuthService(c.BaseUserRepo, c.PatientRepo, c.TokenRepo, c.TokenBlacklistRepo, c.JWTManager, c.AccountNotifier)
-	c.UserService = service.NewUserService(c.BaseUserRepo, c.PatientRepo, c.NurseRepo, c.DoctorRepo, c.AccountNotifier)
+	c.UserService = service.NewUserService(c.BaseUserRepo, c.PatientRepo, c.NurseRepo, c.DoctorRepo, c.AccountNotifier, c.AssignmentRepo, c.TokenRepo, c.NotificationTokenRepo)
 	c.MeasurementService = service.NewMeasurementService(c.PatientRepo, c.MeasurementRepo)
 	c.ThresholdService = service.NewThresholdService(c.PatientRepo, c.DoctorRepo, c.ThresholdRepo)
 	c.AlertService = service.NewAlertService(c.AlertRepo)

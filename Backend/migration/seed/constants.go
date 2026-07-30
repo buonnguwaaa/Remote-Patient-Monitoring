@@ -10,16 +10,21 @@ const (
 	adminCount = 5
 
 	// appendExtraPatientsPerDoctor is how many additional patients RunAppend
-	// attaches to each target doctor (doctor@gmail.com + seed doctors 1..10).
-	appendExtraPatientsPerDoctor = 10
+	// attaches to each active doctor found in the database.
+	appendExtraPatientsPerDoctor = 15
 
-	// appendDoctorMaxIndex is the last doctor index included in RunAppend
-	// (0 = doctor@gmail.com, 1..10 = seed-doctor-02..seed-doctor-11).
-	appendDoctorMaxIndex = 10
+	// appendPatientsPerDoctorStride is the fixed index range reserved per
+	// doctor, independent of appendExtraPatientsPerDoctor. Raising the count
+	// later (e.g. 10 → 15) then only fills more of each doctor's own range
+	// instead of shifting every later doctor's patient emails onto accounts
+	// that were created for (and assigned to) a different doctor.
+	appendPatientsPerDoctorStride = 100
 
-	// appendPatientIndexBase offsets new patient emails/names so they never
-	// collide with the original seed-patient-02..seed-patient-50 accounts.
-	appendPatientIndexBase = 1000
+	// appendPatientIndexBase offsets new patient emails/names/phones so they
+	// never collide with the original seed patients (indexes 0..seedCount-1)
+	// or with patients created by the previous revision of RunAppend, which
+	// used the 1000..1999 range.
+	appendPatientIndexBase = 2000
 
 	// Measurement history series (per patient). Span/count vary by patient
 	// index so windows are consecutive but not identical across everyone.
@@ -111,4 +116,3 @@ func DepartmentNames() []string {
 	copy(out, departmentNames)
 	return out
 }
-

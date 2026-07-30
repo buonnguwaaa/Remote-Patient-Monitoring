@@ -15,6 +15,8 @@ import { useFocusEffect } from "@react-navigation/native";
 import { getMyPrescriptions, getMedicationAdherence } from "../../api/prescriptionApi";
 import { recordMedicationIntake } from "../../api/medicationIntakeApi";
 import { useSnackbar } from "../../hooks/useSnackbar";
+import { useTutorial } from "../../context/tutorial/TutorialContext";
+import TutorialTarget from "../../components/tutorial/TutorialTarget";
 
 // ---- Helpers ----
 const formatTime = (h, m) => {
@@ -37,6 +39,7 @@ const renderMealTimingLabel = (mt) => {
 
 export default function MedicationScreen({ navigation, route }) {
   const { showSuccess, showError, showInfo } = useSnackbar();
+  const { tutorialMode, scenario, nextStep } = useTutorial();
   const [prescriptions, setPrescriptions] = useState([]);
   const [adherence, setAdherence] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -64,6 +67,37 @@ export default function MedicationScreen({ navigation, route }) {
   const loadData = async () => {
     try {
       setLoading(true);
+      if (tutorialMode) {
+        const mockDate = new Date().toISOString().split("T")[0];
+        setAdherence({
+          to: mockDate,
+          summary: {
+            taken: 0,
+            expected: 3,
+            missed: 0,
+            adherenceRate: 0
+          },
+          days: [{
+            date: mockDate,
+            expected: 3,
+            taken: 0,
+            medications: [{
+              prescriptionId: "mock1",
+              drugName: scenario.medication.name,
+              slots: ["morning", "noon", "evening"].map(tod => ({
+                timeOfDay: tod,
+                pillCount: 1,
+                status: "pending",
+                hour: 8,
+                minute: 0,
+                mealTiming: "post_meal"
+              }))
+            }]
+          }]
+        });
+        setPrescriptions([]);
+        return;
+      }
       const [presList, adhData] = await Promise.all([
         getMyPrescriptions("active"),
         getMedicationAdherence(7), // last 7 days
@@ -130,6 +164,12 @@ export default function MedicationScreen({ navigation, route }) {
 
     if (untakenCount === 0) {
       showInfo("Bạn đã uống hết thuốc cho buổi này");
+      return;
+    }
+
+    if (tutorialMode) {
+      showSuccess("Đã hoàn thành bước xác nhận uống thuốc hướng dẫn!");
+      nextStep();
       return;
     }
 
@@ -248,26 +288,28 @@ export default function MedicationScreen({ navigation, route }) {
           const allTaken = untakenCount === 0;
 
           return (
-            <TouchableOpacity
-              style={[
-                styles.takeAllButton,
-                allTaken && styles.takeAllButtonDisabled
-              ]}
-              onPress={() => handleTakeAllInSession(timeOfDayFilter)}
-              disabled={allTaken}
-            >
-              <Ionicons 
-                name={allTaken ? "checkmark-done-circle" : "checkmark-done-circle-outline"} 
-                size={22} 
-                color="#FFFFFF" 
-              />
-              <Text style={styles.takeAllButtonText}>
-                {allTaken 
-                  ? "Bạn đã uống hết thuốc cho buổi này"
-                  : "Đánh dấu đã uống hết"
-                }
-              </Text>
-            </TouchableOpacity>
+            <TutorialTarget name="confirmMedicationButton" routeName="Medication">
+              <TouchableOpacity
+                style={[
+                  styles.takeAllButton,
+                  allTaken && styles.takeAllButtonDisabled
+                ]}
+                onPress={() => handleTakeAllInSession(timeOfDayFilter)}
+                disabled={allTaken}
+              >
+                <Ionicons 
+                  name={allTaken ? "checkmark-done-circle" : "checkmark-done-circle-outline"} 
+                  size={22} 
+                  color="#FFFFFF" 
+                />
+                <Text style={styles.takeAllButtonText}>
+                  {allTaken 
+                    ? "Bạn đã uống hết thuốc cho buổi này"
+                    : "Đánh dấu đã uống hết"
+                  }
+                </Text>
+              </TouchableOpacity>
+            </TutorialTarget>
           );
         })()}
 
@@ -362,7 +404,7 @@ export default function MedicationScreen({ navigation, route }) {
   };
 
   const renderHistory = () => {
-    if (!adherence || !adherence.days || adherence.days.length === 0) {
+    if (!adherence || !adherence.days || adherence.days.length === 0 || !adherence.summary) {
       return (
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyText}>Chưa có dữ liệu lịch sử.</Text>
@@ -371,7 +413,7 @@ export default function MedicationScreen({ navigation, route }) {
     }
 
     const { summary, days } = adherence;
-    const rate = Math.round(summary.adherenceRate * 100);
+    const rate = Math.round((summary.adherenceRate || 0) * 100);
     
     // Dynamic styles for summary
     let summaryBg = "#EEF2FF";
