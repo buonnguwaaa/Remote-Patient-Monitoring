@@ -9,6 +9,7 @@ import (
 
 	domain "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/domain/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/dto"
+	coreRepository "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository"
 	repository "github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/repository/user"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/usecase"
 	"github.com/buonnguwaaa/Remote-Patient-Monitoring/Backend/internal/util"
@@ -17,11 +18,14 @@ import (
 )
 
 type userService struct {
-	baseUserRepo    repository.BaseUserRepository
-	patientRepo     repository.PatientRepository
-	nurseRepo       repository.StaffRepository[domain.Nurse]
-	doctorRepo      repository.StaffRepository[domain.Doctor]
-	accountNotifier AccountNotifier
+	baseUserRepo          repository.BaseUserRepository
+	patientRepo           repository.PatientRepository
+	nurseRepo             repository.StaffRepository[domain.Nurse]
+	doctorRepo            repository.StaffRepository[domain.Doctor]
+	accountNotifier       AccountNotifier
+	assignmentRepo        coreRepository.AssignmentRepository
+	refreshTokenRepo      coreRepository.TokenRepository
+	notificationTokenRepo coreRepository.NotificationTokenRepository
 }
 
 var ErrInvalidUserStatus = errors.New("Trạng thái người dùng không hợp lệ")
@@ -57,13 +61,19 @@ func NewUserService(
 	nurseRepo repository.StaffRepository[domain.Nurse],
 	doctorRepo repository.StaffRepository[domain.Doctor],
 	accountNotifier AccountNotifier,
+	assignmentRepo coreRepository.AssignmentRepository,
+	refreshTokenRepo coreRepository.TokenRepository,
+	notificationTokenRepo coreRepository.NotificationTokenRepository,
 ) UserService {
 	return &userService{
-		baseUserRepo:    baseUserRepo,
-		patientRepo:     patientRepo,
-		nurseRepo:       nurseRepo,
-		doctorRepo:      doctorRepo,
-		accountNotifier: accountNotifier,
+		baseUserRepo:          baseUserRepo,
+		patientRepo:           patientRepo,
+		nurseRepo:             nurseRepo,
+		doctorRepo:            doctorRepo,
+		accountNotifier:       accountNotifier,
+		assignmentRepo:        assignmentRepo,
+		refreshTokenRepo:      refreshTokenRepo,
+		notificationTokenRepo: notificationTokenRepo,
 	}
 }
 
@@ -159,13 +169,71 @@ func (s *userService) UpdateBaseUserStatus(ctx context.Context, input *usecase.U
 	return nil
 }
 
+// DeleteBaseUser soft-deletes the account (the user document and all clinical
+// data are retained), then detaches it from operational data: care-team
+// assignments, refresh tokens (kills active sessions), and push tokens.
+// Cleanup steps are best-effort — the account is already unreachable after the
+// soft delete, so a partial failure is logged instead of surfaced.
 func (s *userService) DeleteBaseUser(ctx context.Context, input *usecase.DeleteUserInput) error {
 	objID, err := primitive.ObjectIDFromHex(input.ID)
 	if err != nil {
 		return err
 	}
 
-	return s.baseUserRepo.Delete(ctx, objID)
+	user, err := s.baseUserRepo.FindByID(ctx, objID)
+	if err != nil {
+		return err
+	}
+	if user.Status == domain.StatusDeleted {
+		return nil
+	}
+
+	// Soft-delete through the role-specific repo first so its profile cache
+	// (patient/staff) is invalidated, then through the base repo — a no-op
+	// write at that point, but it invalidates the base-user cache entry.
+	switch user.Role {
+	case domain.RolePatient:
+		err = s.patientRepo.Delete(ctx, objID)
+	case domain.RoleDoctor:
+		err = s.doctorRepo.Delete(ctx, objID)
+	case domain.RoleNurse:
+		err = s.nurseRepo.Delete(ctx, objID)
+	}
+	if err != nil {
+		return err
+	}
+	if err := s.baseUserRepo.Delete(ctx, objID); err != nil {
+		return err
+	}
+
+	if s.assignmentRepo != nil {
+		var cleanupErr error
+		switch user.Role {
+		case domain.RolePatient:
+			cleanupErr = s.assignmentRepo.DeleteByPatientID(ctx, objID)
+		case domain.RoleDoctor:
+			cleanupErr = s.assignmentRepo.RemoveDoctorFromAssignments(ctx, objID)
+		case domain.RoleNurse:
+			cleanupErr = s.assignmentRepo.RemoveNurseFromAssignments(ctx, objID)
+		}
+		if cleanupErr != nil && !errors.Is(cleanupErr, mongo.ErrNoDocuments) {
+			log.Printf("[WARN] deleted user %s: assignment cleanup failed: %v", objID.Hex(), cleanupErr)
+		}
+	}
+
+	if s.refreshTokenRepo != nil {
+		if err := s.refreshTokenRepo.RevokeAllByUserID(ctx, objID.Hex()); err != nil {
+			log.Printf("[WARN] deleted user %s: refresh token revocation failed: %v", objID.Hex(), err)
+		}
+	}
+
+	if s.notificationTokenRepo != nil {
+		if err := s.notificationTokenRepo.DeactivateAllByUserID(ctx, objID); err != nil {
+			log.Printf("[WARN] deleted user %s: push token deactivation failed: %v", objID.Hex(), err)
+		}
+	}
+
+	return nil
 }
 
 func (s *userService) CreatePatient(ctx context.Context, input *usecase.CreatePatientInput) (*dto.PatientInfoResponse, error) {

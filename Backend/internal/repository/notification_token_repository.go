@@ -21,6 +21,7 @@ type NotificationTokenRepository interface {
 	FindActiveByUserID(ctx context.Context, userID primitive.ObjectID) ([]domain.NotificationToken, error)
 	DeactivateByToken(ctx context.Context, token string) error
 	DeactivateByUserAndDevice(ctx context.Context, userID primitive.ObjectID, deviceID string) error
+	DeactivateAllByUserID(ctx context.Context, userID primitive.ObjectID) error
 }
 
 func NewNotificationTokenRepository(db *mongo.Database) NotificationTokenRepository {
@@ -139,6 +140,15 @@ func (r *notificationTokenRepository) DeactivateByToken(ctx context.Context, tok
 	_, err := r.col.UpdateMany(
 		ctx,
 		bson.M{"token": token},
+		bson.M{"$set": bson.M{"isActive": false, "updatedAt": time.Now().UTC()}},
+	)
+	return err
+}
+
+func (r *notificationTokenRepository) DeactivateAllByUserID(ctx context.Context, userID primitive.ObjectID) error {
+	_, err := r.col.UpdateMany(
+		ctx,
+		bson.M{"userId": userID, "isActive": true},
 		bson.M{"$set": bson.M{"isActive": false, "updatedAt": time.Now().UTC()}},
 	)
 	return err

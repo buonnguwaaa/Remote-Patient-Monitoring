@@ -99,7 +99,7 @@ func (r *baseUserRepository) FindWithFilter(ctx context.Context, f UserFilter) (
 }
 
 func (r *baseUserRepository) ExistsByIDAndRole(ctx context.Context, id primitive.ObjectID, role domain.Role) (bool, error) {
-	count, err := r.col.CountDocuments(ctx, bson.M{"_id": id, "role": role})
+	count, err := r.col.CountDocuments(ctx, bson.M{"_id": id, "role": role, "status": bson.M{"$ne": domain.StatusDeleted}})
 	if err != nil {
 		return false, err
 	}
@@ -108,13 +108,36 @@ func (r *baseUserRepository) ExistsByIDAndRole(ctx context.Context, id primitive
 
 func (r *baseUserRepository) Update(ctx context.Context, id primitive.ObjectID, updateData map[string]interface{}) error {
 	updateData["updatedAt"] = time.Now().UTC()
-	_, err := r.col.UpdateOne(ctx, bson.M{"_id": id}, bson.M{"$set": updateData})
+	_, err := r.col.UpdateOne(ctx, notDeletedByID(id), bson.M{"$set": updateData})
 	return err
 }
 
+// Delete soft-deletes the user: the document is kept (clinical history must
+// survive account removal), but contact fields are renamed aside so the
+// partial unique indexes on email/phoneLookupHash free those values for reuse
+// and login/lookup by contact can no longer find the account.
 func (r *baseUserRepository) Delete(ctx context.Context, id primitive.ObjectID) error {
-	_, err := r.col.DeleteOne(ctx, bson.M{"_id": id})
+	now := time.Now().UTC()
+	_, err := r.col.UpdateOne(ctx, notDeletedByID(id), bson.M{
+		"$set": bson.M{
+			"status":    domain.StatusDeleted,
+			"deletedAt": now,
+			"updatedAt": now,
+		},
+		"$rename": bson.M{
+			"email":           "deletedEmail",
+			"phone":           "deletedPhone",
+			"phoneLookupHash": "deletedPhoneLookupHash",
+		},
+		"$unset": bson.M{"resetToken": "", "resetTokenExpiry": ""},
+	})
 	return err
+}
+
+// notDeletedByID guards writes so a soft-deleted account can never be
+// modified or resurrected through the generic update paths.
+func notDeletedByID(id primitive.ObjectID) bson.M {
+	return bson.M{"_id": id, "status": bson.M{"$ne": domain.StatusDeleted}}
 }
 
 func (r *baseUserRepository) SetResetToken(ctx context.Context, email, token string, expires time.Time) error {
@@ -177,7 +200,7 @@ func (r *baseUserRepository) ResetPassword(ctx context.Context, id primitive.Obj
 }
 
 func buildFilterAndOptions(f UserFilter) (bson.M, *options.FindOptions) {
-	bsonFilter := bson.M{}
+	bsonFilter := bson.M{"status": bson.M{"$ne": domain.StatusDeleted}}
 	opts := options.Find()
 
 	if f.Name != "" {

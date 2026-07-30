@@ -122,3 +122,42 @@ func (r *cachedAssignmentRepository) Create(ctx context.Context, assignment *dom
 
 	return created, nil
 }
+
+// DeleteByPatientID (used when a patient account is soft-deleted) looks up
+// the assignment first so the assignee list caches can be invalidated
+// precisely — otherwise the deleted patient would linger in the doctor's or
+// nurse's cached patient list until the TTL expires.
+func (r *cachedAssignmentRepository) DeleteByPatientID(ctx context.Context, patientID primitive.ObjectID) error {
+	assignment, findErr := r.AssignmentRepository.FindByPatientID(ctx, patientID)
+
+	if err := r.AssignmentRepository.DeleteByPatientID(ctx, patientID); err != nil {
+		return err
+	}
+
+	if findErr == nil && assignment != nil {
+		if err := r.store.Delete(ctx, assignmentsByDoctorCacheKey(assignment.DoctorID), assignmentsByNurseCacheKey(assignment.NurseID)); err != nil {
+			log.Printf("[WARN] failed to invalidate assignment cache for patient %s: %v", patientID.Hex(), err)
+		}
+	}
+	return nil
+}
+
+func (r *cachedAssignmentRepository) RemoveDoctorFromAssignments(ctx context.Context, doctorID primitive.ObjectID) error {
+	if err := r.AssignmentRepository.RemoveDoctorFromAssignments(ctx, doctorID); err != nil {
+		return err
+	}
+	if err := r.store.Delete(ctx, assignmentsByDoctorCacheKey(doctorID)); err != nil {
+		log.Printf("[WARN] failed to invalidate assignment cache for doctor %s: %v", doctorID.Hex(), err)
+	}
+	return nil
+}
+
+func (r *cachedAssignmentRepository) RemoveNurseFromAssignments(ctx context.Context, nurseID primitive.ObjectID) error {
+	if err := r.AssignmentRepository.RemoveNurseFromAssignments(ctx, nurseID); err != nil {
+		return err
+	}
+	if err := r.store.Delete(ctx, assignmentsByNurseCacheKey(nurseID)); err != nil {
+		log.Printf("[WARN] failed to invalidate assignment cache for nurse %s: %v", nurseID.Hex(), err)
+	}
+	return nil
+}
