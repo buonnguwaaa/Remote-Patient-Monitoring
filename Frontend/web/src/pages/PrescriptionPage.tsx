@@ -138,6 +138,40 @@ const DRUG_SUGGESTIONS: DrugSuggestion[] = [
     morning: { customTime: "07:30", mealTiming: "pre_meal", pillCount: 1 },
     evening: { customTime: "18:30", mealTiming: "pre_meal", pillCount: 1 },
   }),
+  drug("Nifedipine", "30mg", {
+    morning: { customTime: "08:00", mealTiming: "", pillCount: 1 },
+  }),
+  drug("Captopril", "25mg", {
+    morning: { customTime: "08:00", mealTiming: "pre_meal", pillCount: 1 },
+    evening: { customTime: "20:00", mealTiming: "pre_meal", pillCount: 1 },
+  }),
+  drug("Atenolol", "50mg", {
+    morning: { customTime: "08:00", mealTiming: "", pillCount: 1 },
+  }),
+  drug("Rosuvastatin", "10mg", {
+    evening: { customTime: "20:00", mealTiming: "post_meal", pillCount: 1 },
+  }),
+  drug("Atorvastatin", "20mg", {
+    evening: { customTime: "20:00", mealTiming: "post_meal", pillCount: 1 },
+  }),
+  drug("Sitagliptin", "50mg", {
+    morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 },
+  }),
+  drug("Dapagliflozin", "10mg", {
+    morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 },
+  }),
+  drug("Empagliflozin", "10mg", {
+    morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 },
+  }),
+  drug("Allopurinol", "300mg", {
+    morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 },
+  }),
+  drug("Aspirin", "81mg", {
+    morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 },
+  }),
+  drug("Clopidogrel", "75mg", {
+    morning: { customTime: "08:00", mealTiming: "post_meal", pillCount: 1 },
+  }),
 ];
 
 const ROUTE_OPTIONS = [
