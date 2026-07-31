@@ -119,6 +119,25 @@ const DRUG_SUGGESTIONS: DrugSuggestion[] = [
   drug("Losartan", "50mg", {
     morning: { customTime: "08:00", mealTiming: "", pillCount: 1 },
   }),
+  drug("Telmisartan", "40mg", {
+    morning: { customTime: "08:00", mealTiming: "", pillCount: 1 },
+  }),
+  drug("Enalapril", "5mg", {
+    morning: { customTime: "08:00", mealTiming: "", pillCount: 1 },
+  }),
+  drug("Bisoprolol", "5mg", {
+    morning: { customTime: "08:00", mealTiming: "", pillCount: 1 },
+  }),
+  drug("Gliclazide", "30mg", {
+    morning: { customTime: "07:30", mealTiming: "pre_meal", pillCount: 1 },
+  }),
+  drug("Insulin Glargine", "10 IU", {
+    evening: { customTime: "21:00", mealTiming: "", pillCount: 1 },
+  }),
+  drug("Insulin Mixtard", "15 IU", {
+    morning: { customTime: "07:30", mealTiming: "pre_meal", pillCount: 1 },
+    evening: { customTime: "18:30", mealTiming: "pre_meal", pillCount: 1 },
+  }),
 ];
 
 const ROUTE_OPTIONS = [
