@@ -1,0 +1,165 @@
+================================================================================
+                 HƯỚNG DẪN BIÊN DỊCH VÀ KHỞI CHẠY CHƯƠNG TRÌNH
+               ĐỀ TÀI: REMOTE PATIENT MONITORING (RPM) SYSTEM
+================================================================================
+
+I. CẤU HÌNH BIẾN MÔI TRƯỜNG (.ENV)
+--------------------------------------------------------------------------------
+Trước khi chạy hệ thống, cần tạo file `.env` cho từng ứng dụng từ các file `.env.example`:
+
+1. Cấu hình Backend API:
+   $ cd src/Backend
+   $ cp .env.example .env
+   * Lưu ý quan trọng trong `src/Backend/.env`:
+     - MONGO_URI: Đường dẫn kết nối MongoDB (ví dụ MongoDB Atlas hoặc `mongodb://localhost:27017`)
+     - MONGO_DB_NAME: `rpm`
+     - JWT_SECRET: Khóa bí mật mã hóa token JWT (mặc định: `mysecret`)
+     - REDIS_ADDR: `localhost:6379` (khớp với docker-compose)
+     - REDIS_PASSWORD: `redispassword`
+     - FIELD_ENCRYPTION_KEY: Khóa mã hóa dữ liệu nhạy cảm AES-GCM (nếu để trống, có thể tạo bằng: `openssl rand -base64 32`)
+
+2. Cấu hình Doctor Web App:
+   $ cd src/Frontend/web
+   $ cp .env.example .env
+   * `src/Frontend/web/.env`:
+     VITE_API_URL=http://localhost:8080
+
+3. Cấu hình Admin Web Panel:
+   $ cd src/Frontend/admin
+   $ cp .env.example .env
+   * `src/Frontend/admin/.env`:
+     VITE_API_URL=http://localhost:8080
+
+4. Cấu hình Patient Mobile App:
+   $ cd src/Frontend/mobile
+   $ cp .env.example .env
+   * `src/Frontend/mobile/.env`:
+     BASE_URL=http://<IP_MÁY_BẠN>:8080   (Ví dụ: http://192.168.1.10:8080 hoặc http://10.0.2.2:8080 nếu dùng Android Emulator)
+
+5. Cấu hình Staff Mobile App:
+   $ cd src/Frontend/doctor-app
+   $ cp .env.example .env
+   * `src/Frontend/doctor-app/.env`:
+     BASE_URL=http://<IP_MÁY_BẠN>:8080
+
+
+II. QUY TRÌNH BIÊN DỊCH VÀ KHỞI CHẠY TỪNG BƯỚC
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+[BƯỚC 1]: KHỞI CHẠY HẠ TẦNG DỊCH VỤ BACKEND (REDIS & TEMPORAL SERVER)
+--------------------------------------------------------------------------------
+Dịch vụ Backend phụ thuộc vào Redis (Cache/PubSub) và Temporal Server (Workflow Engine).
+Mở Terminal thứ 1:
+  $ cd src/Backend
+  $ make up-dev
+  (Hoặc chạy thủ công lệnh: docker compose up -d)
+
+Ghi chú: Lệnh trên sẽ lắng nghe trên các cổng:
+  - Redis: Port 6379
+  - Temporal Server: Port 7233
+  - Temporal Web Dashboard: Port 8233 (xem tại http://localhost:8233)
+
+
+--------------------------------------------------------------------------------
+[BƯỚC 2]: NẠP DỮ LIỆU MẪU BAN ĐẦU (SEED DEMO DATA)
+--------------------------------------------------------------------------------
+Để có sẵn dữ liệu bác sĩ, bệnh nhân, y tá, sinh hiệu và thông báo mẫu để kiểm thử:
+Tại Terminal thứ 1 (hoặc Terminal mới):
+  $ cd src/Backend
+  $ make seed
+  (Lệnh này sẽ tự khởi tạo tài khoản và sinh hiệu mẫu vào MongoDB)
+
+
+--------------------------------------------------------------------------------
+[BƯỚC 3]: CHẠY BACKEND API SERVER VÀ TEMPORAL WORKER
+--------------------------------------------------------------------------------
+Tại Terminal thứ 1:
+  $ cd src/Backend
+  $ make run
+  (Hoặc chạy độc lập: `go run cmd/server/main.go` và `go run cmd/worker/main.go`)
+
+Kiểm tra trạng thái Backend:
+  - Health Check: http://localhost:8080/health (Trả về: {"message":"OK"})
+  - Tài liệu API tương tác Swagger: http://localhost:8080/swagger/index.html
+
+
+--------------------------------------------------------------------------------
+[BƯỚC 4]: KHỞI CHẠY WEB DÀNH CHO BÁC SĨ (DOCTOR WEB APP)
+--------------------------------------------------------------------------------
+Mở Terminal thứ 2:
+  $ cd src/Frontend/web
+  $ npm run dev
+
+- Ứng dụng chạy tại: http://localhost:3000
+- Đăng nhập bằng tài khoản Bác sĩ mẫu.
+
+
+--------------------------------------------------------------------------------
+[BƯỚC 5]: KHỞI CHẠY WEB DÀNH CHO QUẢN TRỊ VIÊN (ADMIN PANEL)
+--------------------------------------------------------------------------------
+Mở Terminal thứ 3:
+  $ cd src/Frontend/admin
+  $ npm run dev
+
+- Ứng dụng chạy tại: http://localhost:5174
+- Đăng nhập bằng tài khoản Admin mẫu.
+
+
+--------------------------------------------------------------------------------
+[BƯỚC 6]: KHỞI CHẠY ỨNG DỤNG DI ĐỘNG BỆNH NHÂN (PATIENT MOBILE APP)
+--------------------------------------------------------------------------------
+Mở Terminal thứ 4:
+  $ cd src/Frontend/mobile
+  $ npx expo start
+
+- Mở ứng dụng "Expo Go" trên điện thoại Android/iOS và quét mã QR hiển thị trên Terminal.
+- Hoặc bấm `a` trên Terminal để mở trên máy giả lập Android Emulator.
+
+
+--------------------------------------------------------------------------------
+[BƯỚC 7]: KHỞI CHẠY ỨNG DỤNG DI ĐỘNG NHÂN VIÊN Y TẾ (STAFF MOBILE APP)
+--------------------------------------------------------------------------------
+Mở Terminal thứ 5:
+  $ cd src/Frontend/doctor-app
+  $ npx expo start
+
+- Mở Expo Go quét QR hoặc chọn máy giả lập để trải nghiệm giao diện di động cho Bác sĩ & Y tá.
+
+
+III. TÀI KHOẢN MẪU DÙNG ĐỂ KIỂM THỬ (DEMO ACCOUNTS)
+--------------------------------------------------------------------------------
+Sau khi thực hiện lệnh `make seed`, hệ thống có sẵn các tài khoản sau:
+
++--------------+---------------------+-----------------+----------------------------------------+
+| Vài trò      | Email / Username    | Mật khẩu        | Đăng nhập tại                          |
++--------------+---------------------+-----------------+----------------------------------------+
+| Administrator| admin@gmail.com     | Admin@123       | Admin Web Panel (Port 5174)            |
+| Doctor       | doctor@gmail.com    | Doctor12345@    | Doctor Web (3000) / Staff Mobile (3001)|
+| Nurse        | nurse@gmail.com     | Nurse@123       | Staff Mobile (Port 3001)               |
+| Patient      | patient@gmail.com   | Patient12345@   | Patient Mobile App (Port 8081)         |
++--------------+---------------------+-----------------+----------------------------------------+
+
+
+IV. CÁC TÍNH NĂNG CHÍNH CÓ THỂ KIỂM THỬ
+--------------------------------------------------------------------------------
+1. Bệnh nhân (Patient Mobile App):
+   - Nhập chỉ số sinh hiệu (Huyết áp, Nhịp tim, Đường huyết...).
+   - Xem biểu đồ xu hướng sinh hiệu 21 ngày.
+   - Nhận cảnh báo ngưỡng bất thường (Alert Notifications).
+   - Nhắn tin trao đổi trực tiếp với Bác sĩ phụ trách.
+   - Theo dõi lịch uống thuốc & nhận nhắc nhở.
+
+2. Bác sĩ (Doctor Web & Staff Mobile):
+   - Quản lý danh sách bệnh nhân được phân công.
+   - Cấu hình ngưỡng cảnh báo sinh hiệu riêng cho từng bệnh nhân.
+   - Xử lý các cảnh báo vi phạm ngưỡng (Threshold Alerts) và cảnh báo xu hướng (Trend Alerts).
+   - Kê đơn thuốc, đặt lịch khám lại, tạo cuộc gọi video khám từ xa (Jitsi Telehealth).
+
+3. Quản trị viên (Admin Panel):
+   - Quản lý Khoa/Phòng (Departments).
+   - Quản lý tài khoản Bác sĩ, Y tá, Bệnh nhân.
+   - Phân công Bác sĩ/Y tá phụ trách từng bệnh nhân.
+   - Xem Nhật ký hoạt động toàn hệ thống (Audit Logs).
+
+================================================================================

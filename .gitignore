@@ -19,3 +19,8 @@ pnpm-lock.yaml
 dist/
 build/
 *.log
+
+# Submission archives & folders
+*_MaNguon/
+*_MaNguon.zip
+*.zip
