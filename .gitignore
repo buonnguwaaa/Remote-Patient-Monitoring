@@ -19,3 +19,7 @@ pnpm-lock.yaml
 dist/
 build/
 *.log
+
+# Submission folders
+*_MaNguon/
+

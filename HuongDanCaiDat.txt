@@ -1,0 +1,66 @@
+================================================================================
+                      HƯỚNG DẪN CÀI ĐẶT MÔI TRƯỜNG & THƯ VIỆN
+               ĐỀ TÀI: REMOTE PATIENT MONITORING (RPM) SYSTEM
+================================================================================
+
+I. TỔNG QUAN HỆ THỐNG & CÔNG NGHỆ SỬ DỤNG
+--------------------------------------------------------------------------------
+Hệ thống Theo dõi Bệnh nhân Từ xa (Remote Patient Monitoring - RPM) gồm 5 thành phần:
+1. Backend API & Async Worker: Viết bằng Go (Golang v1.24, Gin Framework, Temporal Workflow, Redis, MongoDB).
+2. Web Doctor App: Dành cho Bác sĩ (React, TypeScript, Vite, Tailwind CSS).
+3. Web Admin Panel: Dành cho Quản trị viên hệ thống (React, TypeScript, Vite, Tailwind CSS).
+4. Mobile Patient App: Dành cho Bệnh nhân (React Native, Expo SDK 54).
+5. Mobile Staff App: Dành cho Bác sĩ/Y tá sử dụng di động (React Native, Expo SDK 54).
+
+
+II. YÊU CẦU MÔI TRƯỜNG PHÁT TRIỂN (PREREQUISITES)
+--------------------------------------------------------------------------------
+Trước khi cài đặt và khởi chạy, máy tính cần cài sẵn các công cụ sau:
+
+1. Môi trường Backend:
+   - Go (Golang): Phiên bản 1.24 trở lên (kiểm tra: `go version`)
+   - Docker & Docker Compose: Bản mới nhất (dùng để chạy Redis & Temporal Server)
+   - MongoDB: Đã có sẵn instance MongoDB Atlas hoặc MongoDB Local (v6.0+)
+   - Make CLI: (Tùy chọn) Để chạy các lệnh Makefile ngắn gọn
+
+2. Môi trường Frontend (Web & Mobile):
+   - Node.js: Phiên bản LTS 20.x trở lên (kiểm tra: `node -v`)
+   - npm: Phiên bản 10.x trở lên (kiểm tra: `npm -v`)
+
+3. Thiết bị/Trình giả lập ứng dụng di động:
+   - Điện thoại di động cài sẵn ứng dụng "Expo Go" (tải từ App Store / Google Play Store).
+   - Hoặc trình giả lập Android Studio Emulator / iOS Simulator.
+
+
+III. CÁCH THỨC CÀI ĐẶT THƯ VIỆN VÀ PHỤ THUỘC (DEPENDENCIES)
+--------------------------------------------------------------------------------
+Lưu ý: File nộp bài đã được tối ưu loại bỏ các thư viện nén trung gian (`node_modules`, `build`, `dist`...). 
+Người chấm/người dùng cần thực hiện cài đặt lại phụ thuộc theo các bước bên dưới.
+
+1. Cài đặt phụ thuộc cho Backend (Go Modules):
+   - Mở terminal tại thư mục Backend:
+     $ cd src/Backend
+     $ go mod download
+     $ go mod tidy
+
+2. Cài đặt phụ thuộc cho Doctor Web App (React / Vite):
+   - Mở terminal tại thư mục Doctor Web:
+     $ cd src/Frontend/web
+     $ npm install
+
+3. Cài đặt phụ thuộc cho Admin Web Panel (React / Vite):
+   - Mở terminal tại thư mục Admin Panel:
+     $ cd src/Frontend/admin
+     $ npm install
+
+4. Cài đặt phụ thuộc cho Patient Mobile App (React Native / Expo):
+   - Mở terminal tại thư mục Patient Mobile:
+     $ cd src/Frontend/mobile
+     $ npm install
+
+5. Cài đặt phụ thuộc cho Staff Mobile App (React Native / Expo):
+   - Mở terminal tại thư mục Staff Mobile:
+     $ cd src/Frontend/doctor-app
+     $ npm install
+
+================================================================================
