@@ -20,7 +20,6 @@ dist/
 build/
 *.log
 
-# Submission archives & folders
+# Submission folders
 *_MaNguon/
-*_MaNguon.zip
-*.zip
+
